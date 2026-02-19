@@ -1,4 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/announcement_model.dart';
+import '../services/announcement_service.dart';
+import '../services/token_storage_service.dart';
+import 'announcement_detail_screen.dart';
+// import 'announcement_api_test_screen.dart';
+import 'package:intl/intl.dart';
 
 class AnnouncementsScreen extends StatefulWidget {
   const AnnouncementsScreen({super.key});
@@ -8,35 +15,127 @@ class AnnouncementsScreen extends StatefulWidget {
 }
 
 class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
-  // 1. Extended Dummy Data with 'type' for filtering
-  final List<Map<String, String>> _allAnnouncements = [
-    {
-      "title": "Server Maintenance",
-      "date": "Feb 10, 2026",
-      "content": "The HR portal will be down for maintenance from 12:00 AM to 4:00 AM.",
-      "type": "Urgent"
-    },
-    {
-      "title": "Welcome to Aselea Network",
-      "date": "Feb 6, 2026",
-      "content": "We are thrilled to announce the launch of our new HRMS portal. Please update your profile.",
-      "type": "Info"
-    },
-    {
-      "title": "Public Holiday Notice",
-      "date": "Feb 5, 2026",
-      "content": "The office will remain closed on upcoming Tuesday due to public holiday.",
-      "type": "Important"
-    },
-    {
-      "title": "New Policy Update",
-      "date": "Jan 28, 2026",
-      "content": "Please review the updated remote work policy in the documents section.",
-      "type": "Important"
-    },
-  ];
-
+  List<Announcement> _allAnnouncements = [];
+  bool _isLoading = true;
+  String? _error;
   String _selectedFilter = 'All';
+  String? _currentUserId;
+  // Track which IDs have been read (persisted across sessions)
+  Set<String> _readIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeUserAndReadIds();
+  }
+
+  Future<void> _initializeUserAndReadIds() async {
+    // First get the current user ID
+    await _getCurrentUserId();
+    // Then load the read IDs for this specific user
+    await _loadPersistedReadIds();
+    // Finally fetch announcements
+    await _fetchAnnouncements();
+  }
+
+  Future<void> _getCurrentUserId() async {
+    try {
+      final token = await TokenStorageService().getToken();
+      if (token != null) {
+        // You might need to decode the JWT token or make an API call to get user ID
+        // For now, we'll use a simple approach - you can enhance this based on your token structure
+        _currentUserId = token.hashCode.toString(); // Simple approach using token hash
+        // TODO: Replace with actual user ID extraction from token or API call
+      }
+    } catch (e) {
+      print('Error getting current user ID: $e');
+    }
+  }
+
+  Future<void> _loadPersistedReadIds() async {
+    try {
+      if (_currentUserId == null) return;
+      
+      final prefs = await SharedPreferences.getInstance();
+      final userSpecificKey = 'read_announcement_ids_$_currentUserId';
+      final ids = prefs.getStringList(userSpecificKey) ?? [];
+      if (mounted) {
+        setState(() {
+          _readIds = Set<String>.from(ids);
+        });
+      }
+    } catch (e) {
+      print('Error loading persisted read IDs: $e');
+    }
+  }
+
+  Future<void> _persistReadId(String announcementId) async {
+    try {
+      if (_currentUserId == null) return;
+      
+      final prefs = await SharedPreferences.getInstance();
+      final userSpecificKey = 'read_announcement_ids_$_currentUserId';
+      final ids = prefs.getStringList(userSpecificKey) ?? [];
+      if (!ids.contains(announcementId)) {
+        ids.add(announcementId);
+        await prefs.setStringList(userSpecificKey, ids);
+      }
+    } catch (e) {
+      print('Error persisting read ID: $e');
+    }
+  }
+
+  Future<void> _fetchAnnouncements() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      // Get token
+      final token = await TokenStorageService().getToken();
+      if (token == null) {
+        throw Exception('No authentication token found');
+      }
+
+      // Fetch announcements
+      final response = await AnnouncementService.getAnnouncements(token: token);
+
+      if (mounted) {
+        setState(() {
+          _allAnnouncements = response.data
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching announcements: $e');
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _markAsRead(String announcementId) async {
+    if (_readIds.contains(announcementId)) return;
+    setState(() => _readIds.add(announcementId));
+    // Persist so read state survives app restarts
+    _persistReadId(announcementId);
+    try {
+      final token = await TokenStorageService().getToken();
+      if (token != null) {
+        await AnnouncementService.markAsRead(
+          token: token,
+          announcementId: announcementId,
+        );
+      }
+    } catch (e) {
+      print('Mark as read error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,14 +146,15 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     final kYellowAccent = const Color(0xFFFBC02D);
     final kPurpleAccent = const Color(0xFF7B1FA2);
     
-    // Filter Logic
-    List<Map<String, String>> filteredList = _selectedFilter == 'All'
+    // Filter Logic - filter by displayType
+    List<Announcement> filteredList = _selectedFilter == 'All'
         ? _allAnnouncements
-        : _allAnnouncements.where((item) => item['type'] == _selectedFilter).toList();
+        : _allAnnouncements.where((item) => item.displayType == _selectedFilter).toList();
 
     // Stats Calculation
-    int urgentCount = _allAnnouncements.where((i) => i['type'] == 'Urgent').length;
-    int importantCount = _allAnnouncements.where((i) => i['type'] == 'Important').length;
+    int urgentCount = _allAnnouncements.where((i) => i.displayType == 'Urgent').length;
+    int importantCount = _allAnnouncements.where((i) => i.displayType == 'Important').length;
+    int infoCount = _allAnnouncements.where((i) => i.displayType == 'Info').length;
     int totalCount = _allAnnouncements.length;
 
     return Scaffold(
@@ -71,6 +171,19 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
           "Announcements",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
         ),
+        // actions: [
+        //   Tooltip(
+        //     message: 'API Tests',
+        //     child: IconButton(
+        //       icon: const Icon(Icons.api_outlined, color: Colors.pinkAccent, size: 22),
+        //       onPressed: () => Navigator.push(
+        //         context,
+        //         MaterialPageRoute(
+        //             builder: (_) => const AnnouncementApiTestScreen()),
+        //       ),
+        //     ),
+        //   ),
+        // ],
       ),
       body: SafeArea(
         child: Padding(
@@ -78,15 +191,34 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Top Stats Row (Urgent, Important, Total)
-              Row(
-                children: [
-                  Expanded(child: _buildStatCard("Urgent", urgentCount, Icons.warning_amber_rounded, kRedAccent)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildStatCard("Important", importantCount, Icons.notifications_active_outlined, kYellowAccent)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildStatCard("Total", totalCount, Icons.campaign_outlined, kPurpleAccent)),
-                ],
+              // 1. Top Stats Row (Urgent, Important, Info, Total) - Scrollable
+              SizedBox(
+                height: 100,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      width: 100,
+                      child: _buildStatCard("Urgent", urgentCount, Icons.warning_amber_rounded, kRedAccent),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 100,
+                      child: _buildStatCard("Important", importantCount, Icons.notifications_active_outlined, kYellowAccent),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 100,
+                      child: _buildStatCard("Info", infoCount, Icons.info_outline_rounded, kPurpleAccent),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 100,
+                      child: _buildStatCard("Total", totalCount, Icons.campaign_outlined, Colors.blueAccent),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 32),
@@ -147,16 +279,25 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
               // 3. The List
               Expanded(
-                child: filteredList.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.separated(
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: filteredList.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          return _buildAnnouncementCard(filteredList[index], kCardColor);
-                        },
-                      ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? _buildErrorState()
+                        : filteredList.isEmpty
+                            ? _buildEmptyState()
+                            : RefreshIndicator(
+                                onRefresh: _fetchAnnouncements,
+                                child: ListView.separated(
+                                  physics: const AlwaysScrollableScrollPhysics(
+                                    parent: BouncingScrollPhysics(),
+                                  ),
+                                  itemCount: filteredList.length,
+                                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    return _buildAnnouncementCard(filteredList[index], kCardColor);
+                                  },
+                                ),
+                              ),
               ),
             ],
           ),
@@ -169,82 +310,185 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
   Widget _buildStatCard(String label, int count, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 18),
+            child: Icon(icon, color: color, size: 16),
           ),
-          const SizedBox(height: 12),
+          const Spacer(),
           Text(
             "$count",
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           Text(
             label,
-            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            style: TextStyle(color: Colors.grey[500], fontSize: 11),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAnnouncementCard(Map<String, String> item, Color cardColor) {
+  Widget _buildAnnouncementCard(Announcement item, Color cardColor) {
     Color typeColor = Colors.blue;
-    if (item['type'] == 'Urgent') typeColor = const Color(0xFFD32F2F);
-    if (item['type'] == 'Important') typeColor = const Color(0xFFFBC02D);
-    if (item['type'] == 'Info') typeColor = const Color(0xFF7B1FA2);
+    if (item.displayType == 'Urgent') typeColor = const Color(0xFFD32F2F);
+    if (item.displayType == 'Important') typeColor = const Color(0xFFFBC02D);
+    if (item.displayType == 'Info') typeColor = const Color(0xFF7B1FA2);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: typeColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: typeColor.withOpacity(0.3)),
+    // Format date
+    String formattedDate = DateFormat('MMM d, yyyy').format(item.createdAt);
+
+    final bool isRead = _readIds.contains(item.id);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AnnouncementDetailScreen(
+              announcement: item,
+              isAlreadyRead: isRead,
+              onRead: (id) => _markAsRead(id),
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: isRead
+              ? null
+              : Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: typeColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: typeColor.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    item.displayType.toUpperCase(),
+                    style: TextStyle(color: typeColor, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
                 ),
-                child: Text(
-                  item['type']!.toUpperCase(),
-                  style: TextStyle(color: typeColor, fontSize: 10, fontWeight: FontWeight.bold),
+                const Spacer(),
+                if (isRead)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.done_all, size: 12, color: Colors.green[400]),
+                        const SizedBox(width: 4),
+                        Text('Read', style: TextStyle(fontSize: 10, color: Colors.green[400])),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.blueAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                const SizedBox(width: 8),
+                Text(
+                  formattedDate,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              item.title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: isRead ? Colors.grey[400] : Colors.white,
               ),
-              const Spacer(),
-              Text(
-                item["date"] ?? "",
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              item.content,
+              style: TextStyle(fontSize: 13, color: Colors.grey[400], height: 1.4),
+            ),
+            if (item.createdBy != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.person_outline, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 6),
+                  Text(
+                    'By ${item.createdBy!.name}',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  ),
+                ],
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, size: 48, color: Colors.grey[800]),
+          const SizedBox(height: 16),
+          Text(
+            "Failed to load announcements",
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
           ),
+          if (_error != null && _error!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _error!.replaceFirst('Exception: ', ''),
+                style: TextStyle(color: Colors.red[400], fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ),
           const SizedBox(height: 12),
-          Text(
-            item["title"] ?? "",
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            item["content"] ?? "",
-            style: TextStyle(fontSize: 13, color: Colors.grey[400], height: 1.4),
+          ElevatedButton.icon(
+            onPressed: _fetchAnnouncements,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF141414),
+              foregroundColor: Colors.white,
+            ),
           ),
         ],
       ),

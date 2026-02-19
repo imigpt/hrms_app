@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:hrms_app/models/profile_model.dart';
 import 'package:hrms_app/screen/announcements_screen.dart';
 import 'package:hrms_app/screen/attendance_screen.dart';
 import 'package:hrms_app/screen/expenses_screen.dart';
 import 'package:hrms_app/screen/profile_screen.dart';
 import 'package:hrms_app/screen/tasks_screen.dart';
+import 'package:hrms_app/screen/login_screen.dart';
+import 'package:hrms_app/services/auth_service.dart';
+import 'package:hrms_app/services/token_storage_service.dart';
+import 'package:hrms_app/screen/chat_screen.dart';
 
 class SidebarMenu extends StatefulWidget {
-  const SidebarMenu({super.key});
+  final ProfileUser? user;
+  final String? token;
+
+  const SidebarMenu({super.key, this.user, this.token});
 
   @override
   State<SidebarMenu> createState() => _SidebarMenuState();
@@ -55,7 +63,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
             ),
           ),
           
-          // --- BOTTOM ACTION ---
+          // --- PROFILE SUMMARY ---
+          _buildProfileSummary(),
           _buildLogoutButton(),
         ],
       ),
@@ -70,7 +79,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
           SizedBox(
             height: 40,
             width: 40,
-            child: Image.asset('assets/images/aselea-logo.png', height: 24, width: 44),
+            child: Image.asset('assets/images/aselea-logo.png', height: 50, width: 70),
           ),
           const SizedBox(width: 14),
           const Text(
@@ -158,6 +167,65 @@ class _SidebarMenuState extends State<SidebarMenu> {
     );
   }
 
+  Widget _buildProfileSummary() {
+    final userName = widget.user?.name ?? "Rahul Gupta";
+    final userRole = widget.user?.role ?? "Employee";
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 30),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF111111),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: 34,
+              width: 34,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1D1D1D),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: const Center(
+                child: Icon(Icons.person_outline, size: 18, color: Colors.pinkAccent),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    userName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    userRole,
+                    style: const TextStyle(
+                      color: Color(0xFF8A8A8A),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLogoutButton() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 30),
@@ -169,17 +237,68 @@ class _SidebarMenuState extends State<SidebarMenu> {
         ),
         child: ListTile(
           visualDensity: VisualDensity.compact,
-          leading: Icon(Icons.logout_rounded, color: Colors.redAccent.shade200, size: 20),
+          leading: Icon(Icons.logout_rounded, color: Colors.redAccent.shade100, size: 20),
           title: Text(
-            "Log Out", 
-            style: TextStyle(color: Colors.redAccent.shade100, fontSize: 14, fontWeight: FontWeight.w500)
+            "Log Out",
+            style: TextStyle(color: Colors.redAccent.shade100, fontSize: 14, fontWeight: FontWeight.w500),
           ),
-          onTap: () {
-            // Add logout logic
-          },
+          onTap: () => _handleLogout(context),
         ),
       ),
     );
+  }
+
+  void _handleLogout(BuildContext context) async {
+    final tokenStorage = TokenStorageService();
+    
+    if (widget.token == null) {
+      // Clear any stored data and navigate to login
+      await tokenStorage.clearLoginData();
+      
+      if (!context.mounted) return;
+      
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    // Call logout API
+    final authService = AuthService();
+    final success = await authService.logout(widget.token!);
+
+    // Clear stored token and user data
+    await tokenStorage.clearLoginData();
+
+    // Close loading dialog
+    if (context.mounted) Navigator.of(context).pop();
+
+    // Navigate to login screen
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+
+      // Show success/failure message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Logged out successfully' : 'Logout completed'),
+          backgroundColor: success ? Colors.green : Colors.orange,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   // --- LOGIC SECTION ---
@@ -194,7 +313,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
 
     // Smooth Navigation
     if (title == "My Profile") {
-      Navigator.of(context).push(_createSmoothRoute(const ProfileScreen()));
+      Navigator.of(context).push(
+        _createSmoothRoute(ProfileScreen(user: widget.user, token: widget.token)),
+      );
     } else if (title == "Attendance") {
       Navigator.of(context).push(_createSmoothRoute(const AttendanceScreen()));
     } else if (title == "Tasks") {
@@ -203,6 +324,15 @@ class _SidebarMenuState extends State<SidebarMenu> {
       Navigator.of(context).push(_createSmoothRoute(const ExpensesScreen()));
     } else if (title == "Announcements") {
       Navigator.of(context).push(_createSmoothRoute(const AnnouncementsScreen()));
+    } else if (title == "Chat") {
+      // Placeholder for Chat Screen
+      Navigator.of(context).push(_createSmoothRoute( const ChatScreen()));
+    }
+     else {
+      // For Dashboard and any other unimplemented screens
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This screen is under development.')),
+      );
     }
   }
 
