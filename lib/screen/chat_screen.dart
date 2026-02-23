@@ -131,8 +131,21 @@ class _ChatScreenState extends State<ChatScreen> {
       if (query.isEmpty) {
         _filtered = List.from(_allRooms);
       } else {
+        final searchTerm = query.toLowerCase();
         _filtered = _allRooms
-            .where((r) => r.name.toLowerCase().contains(query.toLowerCase()))
+            .where((room) {
+              // Search by room name
+              if (room.name.toLowerCase().contains(searchTerm)) return true;
+              // Search by other user's name (for personal chats)
+              if (room.otherUser?.name.toLowerCase().contains(searchTerm) ?? false) {
+                return true;
+              }
+              // Search by last message content
+              if (room.lastMessage?.content.toLowerCase().contains(searchTerm) ?? false) {
+                return true;
+              }
+              return false;
+            })
             .toList();
       }
     });
@@ -179,7 +192,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.api_outlined, color: Colors.pinkAccent),
+            icon: const Icon(Icons.api_outlined, color: AppTheme.primaryColor),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ChatApiTestScreen()),
@@ -211,6 +224,19 @@ class _ChatScreenState extends State<ChatScreen> {
                     color: Colors.grey[600],
                     size: 20,
                   ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            _onSearch('');
+                          },
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: Colors.grey[600],
+                            size: 18,
+                          ),
+                        )
+                      : null,
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -664,8 +690,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   // ── Pagination ─────────────────────────────────────────────────────────
   void _onScroll() {
-    if (_scrollController.position.pixels <=
-        _scrollController.position.minScrollExtent + 60) {
+    // With reverse: true, newest messages are at the top (offset ~0)
+    // and oldest messages are at the bottom (offset ~maxScrollExtent).
+    // So load older messages when user scrolls DOWN near the bottom.
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 60) {
       _loadOlderMessages();
     }
   }
@@ -1042,7 +1071,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               _MediaOption(
                 icon: Icons.insert_drive_file_rounded,
                 label: 'Document',
-                color: Colors.pinkAccent,
+                color: AppTheme.primaryColor,
                 onTap: () async {
                   Navigator.pop(context);
                   final result = await FilePicker.platform.pickFiles();
@@ -1247,20 +1276,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   // ── Helpers ─────────────────────────────────────────────────────────────
   void _scrollToBottom({bool jump = false}) {
+    // With reverse: true, the newest messages are at offset 0 (top of viewport)
+    // and oldest messages are at maxScrollExtent (bottom of viewport).
+    // So to auto-scroll when new messages arrive, we need to scroll to offset 0.
+    const Duration delay = Duration(milliseconds: 50);
     // Use a short Timer so we run after ALL pending frames + layout are done.
     // A single post-frame can fire before ListView measures its content height;
     // 50 ms is imperceptible to the user but gives the layout pipeline time to
     // finish, making this reliable on both first-load and new-message arrivals.
-    Timer(const Duration(milliseconds: 50), () {
+    Timer(delay, () {
       if (!mounted || !_scrollController.hasClients) return;
       final pos = _scrollController.position;
       if (!pos.hasContentDimensions) return;
-      final max = pos.maxScrollExtent;
       if (jump) {
-        _scrollController.jumpTo(max);
+        _scrollController.jumpTo(0);
       } else {
         _scrollController.animateTo(
-          max,
+          0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -1506,6 +1538,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
 
     return ListView.builder(
+      reverse: true, // 👈 Bottom-to-top messaging: newest at top, oldest at bottom
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       physics: const BouncingScrollPhysics(),
@@ -1726,12 +1759,65 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   _showSnack('Copied to clipboard');
                 },
               ),
+              if (msg.sender?.id == _currentUserId)
+                _MenuTile(
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Delete',
+                  color: Colors.redAccent,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmDeleteMessage(msg);
+                  },
+                ),
             ],
             const SizedBox(height: 8),
           ],
         ),
       ),
     );
+  }
+
+  // ── Delete message ────────────────────────────────────────────────────────
+  void _confirmDeleteMessage(ChatMessage msg) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C1E),
+        title: const Text('Delete Message', style: TextStyle(color: Colors.white)),
+        content: const Text('Are you sure you want to delete this message?',
+            style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteMessage(msg);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteMessage(ChatMessage msg) async {
+    try {
+      await ChatService.deleteMessage(token: _token!, messageId: msg.id);
+      if (mounted) {
+        setState(() {
+          final idx = _messages.indexWhere((m) => m.id == msg.id);
+          if (idx != -1) {
+            _messages[idx] = _messages[idx].copyWith(isDeleted: true);
+          }
+        });
+        _showSnack('Message deleted');
+      }
+    } catch (e) {
+      if (mounted) _showSnack('Failed to delete message');
+    }
   }
 
   // ── Reply bar ─────────────────────────────────────────────────────────────
@@ -2320,115 +2406,113 @@ class _ImageBubbleState extends State<_ImageBubble> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final thumbW = 200.0;
+    final thumbH = 200.0;
+    final fullW = screenWidth * 0.85;
+
     return GestureDetector(
       onTap: () => setState(() => _fullScreen = !_fullScreen),
       onLongPress: _saveToGallery,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: _fullScreen ? MediaQuery.of(context).size.width * 0.85 : 200,
-        height: _fullScreen ? null : 200,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: _hasError
-              ? Container(
-                  width: 200,
-                  height: 200,
-                  color: const Color(0xFF2C2C2E),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.broken_image_outlined,
-                        color: Colors.white54,
-                        size: 36,
-                      ),
-                      SizedBox(height: 6),
-                      Text(
-                        'Failed to load',
-                        style: TextStyle(color: Colors.white38, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                )
-              : Stack(
-                  alignment: Alignment.center,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: _hasError
+            ? Container(
+                width: thumbW,
+                height: thumbH,
+                color: const Color(0xFF2C2C2E),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Image.network(
-                      widget.url,
-                      width: _fullScreen
-                          ? MediaQuery.of(context).size.width * 0.85
-                          : 200,
-                      height: _fullScreen ? null : 200,
-                      fit: BoxFit.cover,
-                      errorBuilder: (ctx, err, st) {
-                        WidgetsBinding.instance.addPostFrameCallback(
-                          (ts) {
-                            if (mounted) setState(() => _hasError = true);
-                          },
-                        );
-                        return const SizedBox.shrink();
-                      },
-                      loadingBuilder: (_, child, progress) {
-                        if (progress == null) {
-                          if (_isLoading) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) setState(() => _isLoading = false);
-                            });
-                          }
-                          return child;
+                    Icon(
+                      Icons.broken_image_outlined,
+                      color: Colors.white54,
+                      size: 36,
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Failed to load',
+                      style: TextStyle(color: Colors.white38, fontSize: 11),
+                    ),
+                  ],
+                ),
+              )
+            : Stack(
+                alignment: Alignment.center,
+                children: [
+                  Image.network(
+                    widget.url,
+                    width: _fullScreen ? fullW : thumbW,
+                    height: _fullScreen ? null : thumbH,
+                    fit: _fullScreen ? BoxFit.contain : BoxFit.cover,
+                    errorBuilder: (ctx, err, st) {
+                      WidgetsBinding.instance.addPostFrameCallback(
+                        (ts) {
+                          if (mounted) setState(() => _hasError = true);
+                        },
+                      );
+                      return SizedBox(width: thumbW, height: thumbH);
+                    },
+                    loadingBuilder: (_, child, progress) {
+                      if (progress == null) {
+                        if (_isLoading) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) setState(() => _isLoading = false);
+                          });
                         }
                         return child;
-                      },
+                      }
+                      return child;
+                    },
+                  ),
+                  if (_isLoading)
+                    Container(
+                      width: thumbW,
+                      height: thumbH,
+                      color: const Color(0xFF2C2C2E),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
                     ),
-                    if (_isLoading)
-                      Container(
-                        width: 200,
-                        height: 200,
-                        color: const Color(0xFF2C2C2E),
+                  // Saving overlay
+                  if (_isSaving)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black45,
                         child: const Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: AppTheme.primaryColor,
+                            color: Colors.white,
                           ),
                         ),
                       ),
-                    // Saving overlay
-                    if (_isSaving)
-                      Positioned.fill(
+                    ),
+                  // Download/save button (shown after image loads)
+                  if (!_isLoading && !_hasError && !_isSaving)
+                    Positioned(
+                      right: 6,
+                      bottom: 6,
+                      child: GestureDetector(
+                        onTap: _saveToGallery,
                         child: Container(
-                          color: Colors.black45,
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
+                            Icons.download_rounded,
+                            color: Colors.white,
+                            size: 16,
                           ),
                         ),
                       ),
-                    // Download/save button (shown after image loads)
-                    if (!_isLoading && !_hasError && !_isSaving)
-                      Positioned(
-                        right: 6,
-                        bottom: 6,
-                        child: GestureDetector(
-                          onTap: _saveToGallery,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.black54,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Icon(
-                              Icons.download_rounded,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-        ),
+                    ),
+                ],
+              ),
       ),
     );
   }
@@ -2453,12 +2537,22 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
   Future<void> _downloadAndOpen() async {
     if (_isDownloading) return;
     final url = widget.attachment.url;
-    if (url.isEmpty) return;
+    if (url.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Document URL is not available')),
+        );
+      }
+      return;
+    }
     setState(() {
       _isDownloading = true;
       _downloadProgress = 0.0;
     });
     try {
+      // Ensure media service is ready
+      await _media.init();
+
       // Use cache if available, otherwise download
       String? cachedPath = _media.getCachedPath(url, 'documents');
       if (cachedPath == null) {
@@ -2470,19 +2564,97 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
           },
         );
       }
+      if (cachedPath.isEmpty) {
+        throw Exception('Download returned empty path');
+      }
       await _media.openFile(cachedPath);
     } catch (e) {
+      debugPrint('Document open error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to open document: $e'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        _showDownloadFailedSheet(url, e.toString());
       }
     } finally {
       if (mounted) setState(() => _isDownloading = false);
     }
+  }
+
+  void _showDownloadFailedSheet(String url, String error) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 40),
+              const SizedBox(height: 12),
+              const Text(
+                'Could not open document',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Download failed. You can open it in your browser instead.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[400], fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _media.openUrlInBrowser(url);
+                  },
+                  icon: const Icon(Icons.open_in_browser, size: 18),
+                  label: const Text('Open in Browser'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _downloadAndOpen(); // retry
+                  },
+                  child: Text(
+                    'Retry Download',
+                    style: TextStyle(color: Colors.grey[400]),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -2605,6 +2777,8 @@ class _VideoBubbleState extends State<_VideoBubble> {
       _downloadProgress = 0.0;
     });
     try {
+      await _media.init();
+
       // Use cache if available, otherwise download
       String? cachedPath = _media.getCachedPath(url, 'videos');
       if (cachedPath == null) {
@@ -2618,13 +2792,22 @@ class _VideoBubbleState extends State<_VideoBubble> {
       }
       await _media.openFile(cachedPath);
     } catch (e) {
+      debugPrint('Video play error: $e');
       if (mounted) {
+        // Offer to open in browser as fallback
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to play video: $e'),
+            content: const Text('Failed to play video. Opening in browser…'),
+            backgroundColor: Colors.red.shade700,
             duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () => _media.openUrlInBrowser(url),
+            ),
           ),
         );
+        _media.openUrlInBrowser(url);
       }
     } finally {
       if (mounted) setState(() => _isDownloading = false);
@@ -2770,11 +2953,13 @@ class _MenuTile extends StatefulWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final Color? color;
 
   const _MenuTile({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.color,
   });
 
   @override
@@ -2802,11 +2987,11 @@ class _MenuTileState extends State<_MenuTile> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(
           children: [
-            Icon(widget.icon, color: Colors.white70, size: 22),
+            Icon(widget.icon, color: widget.color ?? Colors.white70, size: 22),
             const SizedBox(width: 16),
             Text(
               widget.label,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(color: widget.color ?? Colors.white, fontSize: 14),
             ),
           ],
         ),

@@ -342,198 +342,257 @@ class WelcomeCard extends StatelessWidget {
       
       // 3. Get user name
       final String userName = user?.name ?? 'User';
+      final locColor = checkInLocation == 'Main Building' ? Colors.green : Colors.orange;
 
       return Container(
-        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.green.withOpacity(0.25)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Good Morning, $userName!",
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              todayDate, // Dynamic Date
-              style: TextStyle(color: Colors.grey[400]),
-            ),
-            const SizedBox(height: 8),
-            
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check_circle_outline, color: Colors.green, size: 16),
-                const SizedBox(width: 5),
-                Text("Checked in at $timeString", style: const TextStyle(color: Colors.green, fontSize: 12)),
-              ],
-            ),
-            
-            // Display location if available
-            if (checkInLocation != null) ...[
-              const SizedBox(height: 6),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+            // ── Green top banner ─────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.12),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                border: Border(bottom: BorderSide(color: Colors.green.withOpacity(0.2))),
+              ),
+              child: Row(
                 children: [
-                  const Icon(Icons.location_on_outlined, color: Colors.grey, size: 14),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      checkInLocation!,
-                      style: TextStyle(color: Colors.grey[400], fontSize: 11),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Currently Working',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        Text(
+                          'Checked in at $timeString',
+                          style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.green.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text('Live', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ],
-            
-            const SizedBox(height: 16),
-            
-            // Check Out Button
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton.icon(
-                onPressed: onCheckInToggle,
-                icon: const Icon(
-                  Icons.timer_off_outlined, 
-                  color: Colors.white,
-                  size: 24,
-                ),
-                label: const Text(
-                  "Check Out", 
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-              ),
             ),
-            
-            // Display check-in location below check out button
-            if (checkInLocation != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.green.withOpacity(0.3), width: 1.5),
-                ),
-                child: Row(
-                  children: [
+
+            // ── Body ─────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hello, $userName!',
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(todayDate, style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+                  
+                  if (checkInLocation != null) ...[
+                    const SizedBox(height: 14),
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.2),
-                        shape: BoxShape.circle,
+                        color: locColor.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: locColor.withOpacity(0.25)),
                       ),
-                      child: const Icon(Icons.location_on, color: Colors.green, size: 18),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Text(
-                            'Check-In Location',
-                            style: TextStyle(
-                              color: Colors.green[300],
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: locColor.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              checkInLocation == 'Main Building' ? Icons.business_rounded : Icons.place_rounded,
+                              color: locColor,
+                              size: 20,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            checkInLocation!,
-                            style: TextStyle(
-                              color: Colors.grey[300],
-                              fontSize: 12,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Check-In Location', style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                              Text(
+                                checkInLocation!,
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                   ],
-                ),
+
+                  const SizedBox(height: 16),
+
+                  // Check Out Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: onCheckInToggle,
+                      icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                      label: const Text(
+                        'Check Out',
+                        style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ],
         ),
       );
     }
 
     // If user is NOT checked in and not showing photo UI, show regular welcome card
-    // 1. Get today's date dynamically (e.g., "Friday, February 6, 2026")
     final String todayDate = DateFormat('EEEE, MMMM d, y').format(DateTime.now());
     final String userName = user?.name ?? 'User';
 
     return Container(
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        runSpacing: 20,
+      child: Column(
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Good Morning, $userName!",
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                todayDate,
-                style: TextStyle(color: Colors.grey[400]),
-              ),
-              const SizedBox(height: 8),
-              
-              const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error_outline, color: Colors.grey, size: 16),
-                  SizedBox(width: 5),
-                  Text("Not checked in yet", style: TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
-              )
-            ],
+          // ── Top banner: Not Working ───────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.07))),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.schedule_rounded, color: Colors.grey[400], size: 22),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Not Checked In',
+                      style: TextStyle(
+                        color: Colors.grey[300],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Your shift has not started',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          
-          // Check In Button
-          ElevatedButton.icon(
-            onPressed: onCheckInToggle,
-            icon: const Icon(
-              Icons.timer_outlined, 
-              color: Colors.black
-            ),
-            label: const Text(
-              "Check In", 
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+
+          // ── Body ─────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Good Morning, $userName!',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 4),
+                Text(todayDate, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                const SizedBox(height: 20),
+
+                // Check In Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: onCheckInToggle,
+                    icon: const Icon(Icons.login_rounded, color: Colors.black, size: 20),
+                    label: const Text(
+                      'Check In',
+                      style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE8F5E9),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

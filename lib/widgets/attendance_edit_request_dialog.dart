@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../services/attendance_service.dart';
 import '../services/token_storage_service.dart';
+import '../theme/app_theme.dart';
 
 class AttendanceEditRequestDialog extends StatefulWidget {
   final String date;
@@ -87,7 +88,7 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.dark(
-              primary: Colors.pinkAccent,
+              primary: AppTheme.primaryColor,
               onPrimary: Colors.black,
               surface: Color(0xFF1A1A1A),
               onSurface: Colors.white,
@@ -427,7 +428,7 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.pinkAccent,
+                        backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -540,7 +541,7 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
               suffixIcon: IconButton(
                 icon: Icon(
                   Icons.access_time_rounded,
-                  color: Colors.pinkAccent.withOpacity(0.7),
+                  color: AppTheme.primaryColor.withOpacity(0.7),
                   size: 22,
                 ),
                 onPressed: () => _pickTime(controller),

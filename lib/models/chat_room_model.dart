@@ -317,7 +317,7 @@ class ChatMessage {
   bool get isMedia => messageType != 'text';
   bool get isTemp => id.isEmpty || id.startsWith('temp_');
 
-  ChatMessage copyWith({bool? isRead}) {
+  ChatMessage copyWith({bool? isRead, bool? isDeleted}) {
     return ChatMessage(
       id: id,
       chatRoom: chatRoom,
@@ -325,7 +325,7 @@ class ChatMessage {
       content: content,
       messageType: messageType,
       isRead: isRead ?? this.isRead,
-      isDeleted: isDeleted,
+      isDeleted: isDeleted ?? this.isDeleted,
       isGroupMessage: isGroupMessage,
       attachment: attachment,
       replyTo: replyTo,

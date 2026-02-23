@@ -24,9 +24,11 @@ import '../widgets/leave_statistics_section.dart';
 import '../widgets/dashboard_quick_stats_section.dart';
 import '../widgets/profile_card_widget.dart';
 import 'announcements_screen.dart';
+import 'notifications_screen.dart';
 // import 'employee_api_test_screen.dart';
 import 'apply_leave_screen.dart';
 import 'attendance_screen.dart';
+import '../theme/app_theme.dart';
 
 
 class DashboardScreen extends StatefulWidget {
@@ -193,7 +195,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (response != null && response.data != null && mounted) {
         setState(() {
           final attendanceData = response.data!;
-          _isCheckedIn = attendanceData.hasCheckedIn && !attendanceData.hasCheckedOut;
+          // Derive checked-in state: prefer model flags, fallback to
+          // actual checkIn/checkOut time presence.
+          final hasCheckedIn = attendanceData.hasCheckedIn ||
+              (attendanceData.checkIn?.time != null);
+          final hasCheckedOut = attendanceData.hasCheckedOut ||
+              (attendanceData.checkOut?.time != null);
+          _isCheckedIn = hasCheckedIn && !hasCheckedOut;
           
           try {
             print('Using attendance data from API');
@@ -201,7 +209,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             
             // Check if attendance is from today
             if (attendanceData.checkIn?.time != null) {
-              final checkInDateTime = DateTime.tryParse(attendanceData.checkIn!.time!);
+              final checkInDateTimeRaw = DateTime.tryParse(attendanceData.checkIn!.time!);
+              // Always compare in local time to avoid UTC vs local date mismatch
+              final checkInDateTime = checkInDateTimeRaw?.toLocal();
               if (checkInDateTime != null) {
                 final today = DateTime.now();
                 final isSameDay = checkInDateTime.year == today.year && 
@@ -216,9 +226,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   
                   // Set check-in location
                   if (attendanceData.checkIn?.location != null) {
-                    final lat = attendanceData.checkIn!.location!['latitude'] ?? 0.0;
-                    final lng = attendanceData.checkIn!.location!['longitude'] ?? 0.0;
-                    _checkInLocation = '${(lat as num).toDouble().toStringAsFixed(6)}, ${(lng as num).toDouble().toStringAsFixed(6)}';
+                    final lat = (attendanceData.checkIn!.location!['latitude'] as num).toDouble();
+                    final lng = (attendanceData.checkIn!.location!['longitude'] as num).toDouble();
+                    final d = Geolocator.distanceBetween(lat, lng, 26.816224, 75.845444);
+                    _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
                   }
                   
                   // Set check-out info if available
@@ -227,11 +238,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     if (checkOutDateTime != null) {
                       _checkOutTime = checkOutDateTime;
                       if (attendanceData.checkOut!.location != null) {
-                        final lat = attendanceData.checkOut!.location!['latitude'] ?? 0.0;
-                        final lng = attendanceData.checkOut!.location!['longitude'] ?? 0.0;
-                        _checkOutLocation = '${(lat as num).toDouble().toStringAsFixed(6)}, ${(lng as num).toDouble().toStringAsFixed(6)}';
+                        final lat = (attendanceData.checkOut!.location!['latitude'] as num).toDouble();
+                        final lng = (attendanceData.checkOut!.location!['longitude'] as num).toDouble();
+                        final d = Geolocator.distanceBetween(lat, lng, 26.816224, 75.845444);
+                        _checkOutLocation = d <= 100 ? 'Main Building' : 'Outside Building';
                       }
                     }
+                  } else {
+                    // Not checked out yet — explicitly clear any stale value
+                    _checkOutTime = null;
+                    _checkOutLocation = null;
                   }
                   
                   // Calculate worked duration
@@ -276,10 +292,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // Save the loaded state to local storage
         await _saveAttendanceState();
       } else {
-        print('Response is null - no attendance for today');
+        print('Response is null - no attendance for today, clearing stale state');
         setState(() {
           _isLoadingAttendance = false;
+          // No record from server means user hasn't checked in today.
+          // Clear any stale SharedPreferences data so "Day Complete" doesn't linger.
+          _isCheckedIn = false;
+          _checkInTime = null;
+          _checkOutTime = null;
+          _checkInLocation = null;
+          _checkOutLocation = null;
+          _workedDuration = const Duration(hours: 0, minutes: 0);
         });
+        await _saveAttendanceState();
       }
     } catch (e, stackTrace) {
       print('Error loading today attendance: $e');
@@ -495,6 +520,240 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // ── Notification icon + popup ────────────────────────────────────────────
+  Widget _buildNotificationIconButton(double iconSize) {
+    return IconButton(
+      onPressed: () => _showNotificationPopup(context),
+      icon: _unreadAnnouncementsCount > 0
+          ? Badge(
+              label: Text(_unreadAnnouncementsCount.toString()),
+              backgroundColor: Colors.red,
+              child: Icon(Icons.notifications_outlined, size: iconSize),
+            )
+          : Icon(Icons.notifications_outlined, size: iconSize),
+    );
+  }
+
+  void _showNotificationPopup(BuildContext ctx) {
+    final recent = _announcements.take(5).toList();
+    final userId = widget.user?.id;
+
+    showModalBottomSheet(
+      context: ctx,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.55,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF1A1A1A),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.notifications_outlined,
+                          color: AppTheme.primaryColor, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text('Notifications',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _unreadAnnouncementsCount > 0
+                        ? '$_unreadAnnouncementsCount unread'
+                        : 'All caught up!',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Divider(color: Colors.white.withOpacity(0.07), height: 1),
+              // Content
+              if (recent.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 40),
+                  child: Column(
+                    children: [
+                      Icon(Icons.notifications_off_outlined,
+                          color: Colors.grey[700], size: 44),
+                      const SizedBox(height: 10),
+                      Text('No notifications yet',
+                          style: TextStyle(
+                              color: Colors.grey[600], fontSize: 13)),
+                    ],
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    itemCount: recent.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 6),
+                    itemBuilder: (_, i) {
+                      final a = recent[i];
+                      final isRead =
+                          userId != null && a.readBy.contains(userId);
+                      final diff = DateTime.now().difference(a.createdAt);
+                      String time;
+                      if (diff.inMinutes < 60) {
+                        time = '${diff.inMinutes}m ago';
+                      } else if (diff.inHours < 24) {
+                        time = '${diff.inHours}h ago';
+                      } else {
+                        time = '${diff.inDays}d ago';
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isRead
+                              ? Colors.white.withOpacity(0.03)
+                              : Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isRead
+                                ? Colors.white.withOpacity(0.05)
+                                : AppTheme.primaryColor.withOpacity(0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: (a.priority == 'high'
+                                        ? Colors.redAccent
+                                        : a.priority == 'medium'
+                                            ? Colors.orangeAccent
+                                            : Colors.blueAccent)
+                                    .withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: Icon(
+                                a.priority == 'high'
+                                    ? Icons.warning_amber_rounded
+                                    : a.priority == 'medium'
+                                        ? Icons.info_outline
+                                        : Icons.campaign_outlined,
+                                color: a.priority == 'high'
+                                    ? Colors.redAccent
+                                    : a.priority == 'medium'
+                                        ? Colors.orangeAccent
+                                        : Colors.blueAccent,
+                                size: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(a.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: isRead
+                                            ? FontWeight.w400
+                                            : FontWeight.w600,
+                                      )),
+                                  const SizedBox(height: 2),
+                                  Text(time,
+                                      style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 10)),
+                                ],
+                              ),
+                            ),
+                            if (!isRead)
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              // View All button
+              Divider(color: Colors.white.withOpacity(0.07), height: 1),
+              InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const NotificationsScreen()),
+                  );
+                },
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('View All Notifications',
+                          style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500)),
+                      Icon(Icons.arrow_forward,
+                          color: Colors.grey[500], size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // Calculate unread announcements count
   int _calculateUnreadCount(List<Announcement> announcements) {
     if (widget.user == null) {
@@ -556,19 +815,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // Toggle Check-In / Check-Out
-  /// Navigate to Attendance Screen and trigger check-in or check-out flow.
+  /// For check-in → navigate to AttendanceScreen.
+  /// For check-out → call _handleCheckOut directly (inline GPS + API).
   void _toggleCheckIn() {
-    final action = _isCheckedIn ? 'checkOut' : 'checkIn';
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AttendanceScreen(initialAction: action),
-      ),
-    ).then((_) {
-      // Refresh dashboard state when returning from Attendance Screen
-      _loadTodayAttendance();
-      _loadDashboardStats();
-    });
+    if (_isCheckedIn) {
+      _handleCheckOut();
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AttendanceScreen(initialAction: 'checkIn'),
+        ),
+      ).then((_) {
+        _loadTodayAttendance();
+        _loadDashboardStats();
+      });
+    }
   }
 
   // Check location services before starting check-in
@@ -740,10 +1002,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
 
-      // Get location
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      // Get location — medium accuracy + 8s timeout + last-known fallback
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+        ).timeout(const Duration(seconds: 8));
+      } catch (_) {
+        position = await Geolocator.getLastKnownPosition();
+      }
+
+      if (position == null) {
+        if (mounted) {
+          try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {}
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not get location. Please try again.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
 
       print('=== Check-Out Process ===');
       print('Attempting check-out with token: ${widget.token!.substring(0, 20)}...');
@@ -768,19 +1048,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _showPhotoUI = false;
           _todayAttendance = response.data;
           
-          // Parse check-in data - time is already a DateTime in the model
+          // Parse check-in data
           _checkInTime = response.data.checkIn.time;
           if (response.data.checkIn.location != null) {
-            _checkInLocation = '${response.data.checkIn.location!.latitude.toStringAsFixed(6)}, ${response.data.checkIn.location!.longitude.toStringAsFixed(6)}';
+            final d = Geolocator.distanceBetween(
+              response.data.checkIn.location!.latitude,
+              response.data.checkIn.location!.longitude,
+              26.816224, 75.845444,
+            );
+            _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
           }
-          
+
           // Parse check-out data
           if (response.data.checkOut != null) {
             _checkOutTime = response.data.checkOut!.time;
             if (response.data.checkOut!.location != null) {
-              _checkOutLocation = '${response.data.checkOut!.location!.latitude.toStringAsFixed(6)}, ${response.data.checkOut!.location!.longitude.toStringAsFixed(6)}';
+              final d = Geolocator.distanceBetween(
+                response.data.checkOut!.location!.latitude,
+                response.data.checkOut!.location!.longitude,
+                26.816224, 75.845444,
+              );
+              _checkOutLocation = d <= 100 ? 'Main Building' : 'Outside Building';
             }
-            
             // Calculate worked duration
             if (_checkInTime != null) {
               _workedDuration = response.data.checkOut!.time.difference(_checkInTime!);
@@ -829,14 +1118,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Called when photo capture returns with result
   void _handleCheckInResult(dynamic result) async {
+    // Unpack Map format returned by one-tap camera flow
+    String? checkInAddress;
+    if (result is Map<String, dynamic> && result.containsKey('checkInAddress')) {
+      checkInAddress = result['checkInAddress'] as String?;
+      result = result['attendanceData'];
+    }
+
     if (result != null && result is AttendanceData) {
       setState(() {
         _isCheckedIn = true;
         _showPhotoUI = false;
         _checkInTime = result.checkIn.time;
+        // Clear any stale checkout — a new check-in means day is not complete yet
+        _checkOutTime = null;
+        _checkOutLocation = null;
         _todayAttendance = result;
-        if (result.checkIn.location != null) {
-          _checkInLocation = '${result.checkIn.location!.latitude.toStringAsFixed(6)}, ${result.checkIn.location!.longitude.toStringAsFixed(6)}';
+        if (checkInAddress != null && checkInAddress.isNotEmpty) {
+          _checkInLocation = checkInAddress;
+        } else if (result.checkIn.location != null) {
+          final double dIn = Geolocator.distanceBetween(
+            result.checkIn.location!.latitude,
+            result.checkIn.location!.longitude,
+            26.816224, 75.845444,
+          );
+          _checkInLocation = dIn <= 100 ? 'Main Building' : 'Outside Building';
         }
         _workedDuration = DateTime.now().difference(result.checkIn.time);
       });
@@ -929,21 +1235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     //   tooltip: 'Employee API Tests',
                     // ),
                     // --- NOTIFICATION ICON ---
-                    IconButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
-                        );
-                      },
-                      icon: _unreadAnnouncementsCount > 0
-                          ? Badge(
-                              label: Text(_unreadAnnouncementsCount.toString()),
-                              backgroundColor: Colors.red,
-                              child: Icon(Icons.notifications_outlined, size: iconSize),
-                            )
-                          : Icon(Icons.notifications_outlined, size: iconSize),
-                    ),
+                    _buildNotificationIconButton(iconSize),
                     // --- MORE OPTIONS (THREE-DOTS) ICON ---
                     Padding(
                       padding: EdgeInsets.only(right: isMobile ? 4.0 : 8.0),
@@ -993,21 +1285,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                IconButton(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
-                                    );
-                                  },
-                                  icon: _unreadAnnouncementsCount > 0
-                                      ? Badge(
-                                          label: Text(_unreadAnnouncementsCount.toString()),
-                                          backgroundColor: Colors.red,
-                                          child: Icon(Icons.notifications_outlined, size: iconSize),
-                                        )
-                                      : Icon(Icons.notifications_outlined, size: iconSize),
-                                ),
+                                _buildNotificationIconButton(iconSize),
                                 SizedBox(width: isMobile ? 4 : 8),
                                 IconButton(
                                   onPressed: _onApplyLeave,
@@ -1046,10 +1324,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                       SizedBox(height: verticalSpacing),
 
+
+                      // Profile Card
+                      ProfileCardWidget(
+                        name: widget.user?.name,
+                        role: widget.user?.role,
+                        department: widget.user?.department,
+                        phone: widget.user?.phone,
+                        email: widget.user?.email,
+                        address: widget.user?.address,
+                        dateOfBirth: widget.user?.dateOfBirth?.toIso8601String(),
+                        isActive: (widget.user?.status ?? '').toLowerCase() == 'active',
+                      ),
+                      SizedBox(height: verticalSpacing),
+
                       // Status Card (Updates based on timer)
                       StatusCard(
                         workedDuration: _workedDuration,
                         progress: progress,
+                        checkInTime: _checkInTime,
                       ),
                       SizedBox(height: verticalSpacing),
 
@@ -1072,30 +1365,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ))
                             : [
-                                StatCard(
-                                  title: "Casual Leave",
-                                  value: "${_dashboardStats?.leaveBalance.casual ?? 0} days",
-                                  icon: Icons.calendar_today,
-                                  isAlert: (_dashboardStats?.leaveBalance.casual ?? 0) < 2,
-                                ),
-                                StatCard(
-                                  title: "Active Tasks",
-                                  value: "${_dashboardStats?.activeTasks ?? 0}",
-                                  icon: Icons.assignment,
-                                  isAlert: (_dashboardStats?.activeTasks ?? 0) > 5,
-                                ),
-                                StatCard(
-                                  title: "Pending Expenses",
-                                  value: "₹${_dashboardStats?.pendingExpenses.toStringAsFixed(0) ?? '0'}",
-                                  icon: Icons.receipt_long,
-                                  isAlert: (_dashboardStats?.pendingExpenses ?? 0) > 0,
-                                ),
-                                StatCard(
-                                  title: "Month Attendance",
-                                  value: "${_dashboardStats?.attendancePercentage.toStringAsFixed(0) ?? '0'}%",
-                                  icon: Icons.access_time,
-                                  isAlert: (_dashboardStats?.attendancePercentage ?? 0) < 80,
-                                ),
+                                // StatCard(
+                                //   title: "Casual Leave",
+                                //   value: "${_dashboardStats?.leaveBalance.casual ?? 0} days",
+                                //   icon: Icons.calendar_today,
+                                //   isAlert: (_dashboardStats?.leaveBalance.casual ?? 0) < 2,
+                                // ),
+                                // StatCard(
+                                //   title: "Active Tasks",
+                                //   value: "${_dashboardStats?.activeTasks ?? 0}",
+                                //   icon: Icons.assignment,
+                                //   isAlert: (_dashboardStats?.activeTasks ?? 0) > 5,
+                                // ),
+                                // StatCard(
+                                //   title: "Pending Expenses",
+                                //   value: "₹${_dashboardStats?.pendingExpenses.toStringAsFixed(0) ?? '0'}",
+                                //   icon: Icons.receipt_long,
+                                //   isAlert: (_dashboardStats?.pendingExpenses ?? 0) > 0,
+                                // ),
+                                // StatCard(
+                                //   title: "Month Attendance",
+                                //   value: "${_dashboardStats?.attendancePercentage.toStringAsFixed(0) ?? '0'}%",
+                                //   icon: Icons.access_time,
+                                //   isAlert: (_dashboardStats?.attendancePercentage ?? 0) < 80,
+                                // ),
                               ],
                       ),
                       SizedBox(height: verticalSpacing),
@@ -1134,7 +1427,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Expanded(child: TasksSection()),
+                            Expanded(child: TasksSection(token: widget.token)),
                             SizedBox(width: verticalSpacing),
                             Expanded(
                               child: AnnouncementsSection(
@@ -1147,7 +1440,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         )
                       else ...[
-                        const TasksSection(),
+                        TasksSection(token: widget.token),
                         SizedBox(height: verticalSpacing),
                         AnnouncementsSection(
                           announcements: _announcements,
@@ -1158,17 +1451,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                       SizedBox(height: verticalSpacing),
 
-                      // Profile Card
-                      ProfileCardWidget(
-                        name: widget.user?.name,
-                        role: widget.user?.role,
-                        department: widget.user?.department,
-                        phone: widget.user?.phone,
-                        email: widget.user?.email,
-                        address: widget.user?.address,
-                        dateOfBirth: widget.user?.dateOfBirth?.toIso8601String(),
-                        isActive: (widget.user?.status ?? '').toLowerCase() == 'active',
-                      ),
+                      
                     ],
                   ),
                 ),

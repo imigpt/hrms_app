@@ -1,16 +1,19 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:gal/gal.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'token_storage_service.dart';
 
 /// Handles authenticated media download, caching, gallery saving, and opening.
 class ChatMediaService {
   static final ChatMediaService _instance = ChatMediaService._internal();
-  late Directory _cacheDir;
+  Directory? _cacheDir;
+  bool _initialized = false;
   final Map<String, double> _downloadProgress = {};
   final _storage = TokenStorageService();
 
@@ -20,7 +23,16 @@ class ChatMediaService {
   // ── Init ──────────────────────────────────────────────────────────────────
 
   Future<void> init() async {
+    if (_initialized) return;
     _cacheDir = await getApplicationCacheDirectory();
+    _initialized = true;
+  }
+
+  /// Ensure the service is ready (call init lazily if missed at startup).
+  Future<void> _ensureInitialized() async {
+    if (!_initialized || _cacheDir == null) {
+      await init();
+    }
   }
 
   // ── Auth header ───────────────────────────────────────────────────────────
@@ -72,19 +84,27 @@ class ChatMediaService {
 
   File _getCacheFile(String url, String mediaType) {
     final uri = Uri.parse(url);
-    final rawName = uri.pathSegments.lastWhere(
+    var rawName = uri.pathSegments.lastWhere(
       (s) => s.isNotEmpty,
       orElse: () => 'media_${DateTime.now().millisecondsSinceEpoch}',
     );
-    final typeDir = Directory('${_cacheDir.path}/$mediaType');
+    // Decode percent-encoded characters (e.g. %20 → space)
+    rawName = Uri.decodeComponent(rawName);
+    // Sanitize: replace characters that are invalid in file names
+    rawName = rawName.replaceAll(RegExp(r'[<>:"|?*\\]'), '_');
+    if (rawName.isEmpty) rawName = 'media_${DateTime.now().millisecondsSinceEpoch}';
+    final typeDir = Directory('${_cacheDir!.path}/$mediaType');
     if (!typeDir.existsSync()) typeDir.createSync(recursive: true);
     return File('${typeDir.path}/$rawName');
   }
 
-  bool isCached(String url, String mediaType) =>
-      _getCacheFile(url, mediaType).existsSync();
+  bool isCached(String url, String mediaType) {
+    if (!_initialized) return false;
+    return _getCacheFile(url, mediaType).existsSync();
+  }
 
   String? getCachedPath(String url, String mediaType) {
+    if (!_initialized) return null;
     final file = _getCacheFile(url, mediaType);
     return file.existsSync() ? file.path : null;
   }
@@ -139,110 +159,64 @@ class ChatMediaService {
 
   /// Downloads [url] with optional JWT auth to the local cache.
   /// For images & videos, also saves to device gallery.
+  /// Uses a multi-strategy approach: streamed download → simple GET fallback.
   Future<String> downloadMedia(
     String url,
     String mediaType, {
     void Function(double progress)? onProgress,
   }) async {
     if (!_isValidUrl(url)) {
-      print('❌ Invalid media URL: "$url"');
+      debugPrint('❌ Invalid media URL: "$url"');
       throw Exception('Invalid media URL');
     }
 
+    // Ensure cache directory is ready
+    await _ensureInitialized();
+
     final file = _getCacheFile(url, mediaType);
 
-    if (file.existsSync()) {
-      print('📦 Already cached: ${file.path}');
+    if (file.existsSync() && file.lengthSync() > 0) {
+      debugPrint('📦 Already cached: ${file.path}');
       return file.path;
     }
 
     try {
-      print('⬇️ Downloading: $url');
-      print('   Media Type: $mediaType');
+      debugPrint('⬇️ Downloading: $url');
+      debugPrint('   Media Type: $mediaType');
 
       final isCdn = _isCdnUrl(url);
-      final needsAuth = _requiresAuth(url); // ✅ FIXED
+      final needsAuth = _requiresAuth(url);
+      debugPrint('   CDN URL: $isCdn | Needs Auth: $needsAuth');
 
-      print('   CDN URL: $isCdn | Needs Auth: $needsAuth');
-
-      http.StreamedResponse response;
-
-      /// ── FIRST ATTEMPT ──
-      response = await _sendDownloadRequest(url, withAuth: needsAuth);
-
-      print('   📊 Response Code: ${response.statusCode}');
-
-      /// ── RETRY RULES ──
-
-      /// Case 1 → Sent auth but failed
-      if (response.statusCode == 401 && needsAuth) {
-        print('   🔄 401 with auth → retry WITHOUT auth');
-        await response.stream.drain();
-
-        response = await _sendDownloadRequest(url, withAuth: false);
-
-        print('   📊 Retry Response Code: ${response.statusCode}');
+      // ── Strategy 1: Simple http.get (most reliable for CDN URLs) ──
+      Uint8List? bytes;
+      try {
+        bytes = await _downloadSimple(url, needsAuth: needsAuth);
+      } catch (e) {
+        debugPrint('   ⚠️ Simple download failed: $e');
       }
 
-      /// Case 2 → Sent without auth but failed
-      if (response.statusCode == 401 && !needsAuth) {
-        print('   🔄 401 without auth → retry WITH auth');
-        await response.stream.drain();
-
-        response = await _sendDownloadRequest(url, withAuth: true);
-
-        print('   📊 Retry Response Code: ${response.statusCode}');
+      // ── Strategy 2: Streamed download with progress ──
+      if (bytes == null) {
+        try {
+          bytes = await _downloadStreamed(
+            url,
+            needsAuth: needsAuth,
+            onProgress: onProgress,
+          );
+        } catch (e) {
+          debugPrint('   ⚠️ Streamed download failed: $e');
+        }
       }
 
-      /// ── FINAL STATUS ──
-      if (response.statusCode != 200) {
-        final statusMsg = switch (response.statusCode) {
-          401 => 'Unauthorized – please log in again',
-          403 => 'Access denied',
-          404 => 'File not found',
-          >= 500 => 'Server error (${response.statusCode})',
-          _ => 'Download failed (${response.statusCode})',
-        };
-
-        print('   ❌ $statusMsg');
-        await response.stream.drain();
-        throw Exception(statusMsg);
-      }
-
-      print('   ✅ Download successful');
-
-      /// ── SAVE FILE ──
-      final contentLength = response.contentLength ?? 0;
-      var downloaded = 0;
-      final chunks = <List<int>>[];
-      final completer = Completer<void>();
-
-      response.stream.listen(
-        (chunk) {
-          chunks.add(chunk);
-          downloaded += chunk.length;
-
-          if (contentLength > 0) {
-            onProgress?.call(downloaded / contentLength);
-          }
-        },
-        onDone: completer.complete,
-        onError: completer.completeError,
-        cancelOnError: true,
-      );
-
-      await completer.future;
-
-      final bytes = chunks.expand((c) => c).toList();
-
-      if (bytes.isEmpty) {
-        throw Exception('Downloaded file empty');
+      if (bytes == null || bytes.isEmpty) {
+        throw Exception('Could not download file. Try opening in browser.');
       }
 
       await file.writeAsBytes(bytes);
 
-      print('   💾 Cached: ${file.path}');
-      print('   📏 Size: ${formatFileSize(bytes.length)}');
+      debugPrint('   💾 Cached: ${file.path}');
+      debugPrint('   📏 Size: ${formatFileSize(bytes.length)}');
 
       /// Save gallery if needed
       if (mediaType == 'images' || mediaType == 'videos') {
@@ -251,14 +225,115 @@ class ChatMediaService {
 
       return file.path;
     } catch (e) {
-      print('   ❌ Download error: $e');
-
+      debugPrint('   ❌ Download error: $e');
       if (file.existsSync()) {
         file.deleteSync();
       }
-
       rethrow;
     }
+  }
+
+  /// Strategy 1: Simple (non-streaming) GET — most reliable for CDN.
+  Future<Uint8List?> _downloadSimple(
+    String url, {
+    required bool needsAuth,
+  }) async {
+    debugPrint('   📥 Trying simple GET…');
+
+    // Attempt 1: based on needsAuth
+    var response = await _simpleGet(url, withAuth: needsAuth);
+    debugPrint('   📊 Simple GET status: ${response.statusCode}');
+
+    // If 401, try the opposite auth strategy
+    if (response.statusCode == 401) {
+      debugPrint('   🔄 Retrying with ${needsAuth ? 'no' : ''} auth…');
+      response = await _simpleGet(url, withAuth: !needsAuth);
+      debugPrint('   📊 Retry status: ${response.statusCode}');
+    }
+
+    // If 403, try without auth (some CDNs reject unknown auth headers)
+    if (response.statusCode == 403 && needsAuth) {
+      debugPrint('   🔄 403 with auth → retry without auth');
+      response = await _simpleGet(url, withAuth: false);
+      debugPrint('   📊 Retry status: ${response.statusCode}');
+    }
+
+    if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+      debugPrint('   ✅ Simple GET successful (${response.bodyBytes.length} bytes)');
+      return response.bodyBytes;
+    }
+
+    debugPrint('   ❌ Simple GET failed: status ${response.statusCode}');
+    return null;
+  }
+
+  Future<http.Response> _simpleGet(String url, {required bool withAuth}) async {
+    final headers = <String, String>{
+      'Accept': '*/*',
+    };
+    if (withAuth) {
+      final auth = await _authHeaders();
+      headers.addAll(auth);
+    }
+    return await http
+        .get(Uri.parse(url), headers: headers)
+        .timeout(const Duration(seconds: 120));
+  }
+
+  /// Strategy 2: Streamed download with progress reporting.
+  Future<Uint8List?> _downloadStreamed(
+    String url, {
+    required bool needsAuth,
+    void Function(double progress)? onProgress,
+  }) async {
+    debugPrint('   📥 Trying streamed download…');
+
+    var response = await _sendDownloadRequest(url, withAuth: needsAuth);
+    debugPrint('   📊 Stream status: ${response.statusCode}');
+
+    if (response.statusCode == 401) {
+      await response.stream.drain();
+      debugPrint('   🔄 Retrying with ${needsAuth ? 'no' : ''} auth…');
+      response = await _sendDownloadRequest(url, withAuth: !needsAuth);
+      debugPrint('   📊 Retry status: ${response.statusCode}');
+    }
+
+    if (response.statusCode == 403) {
+      await response.stream.drain();
+      response = await _sendDownloadRequest(url, withAuth: false);
+      debugPrint('   📊 No-auth retry status: ${response.statusCode}');
+    }
+
+    if (response.statusCode != 200) {
+      await response.stream.drain();
+      debugPrint('   ❌ Streamed download failed: ${response.statusCode}');
+      return null;
+    }
+
+    debugPrint('   ✅ Stream download successful');
+
+    final contentLength = response.contentLength ?? 0;
+    var downloaded = 0;
+    final chunks = <List<int>>[];
+    final completer = Completer<void>();
+
+    response.stream.listen(
+      (chunk) {
+        chunks.add(chunk);
+        downloaded += chunk.length;
+        if (contentLength > 0) {
+          onProgress?.call(downloaded / contentLength);
+        }
+      },
+      onDone: completer.complete,
+      onError: completer.completeError,
+      cancelOnError: true,
+    );
+
+    await completer.future;
+
+    final bytes = Uint8List.fromList(chunks.expand((c) => c).toList());
+    return bytes.isEmpty ? null : bytes;
   }
 
   /// Internal: fire a single GET request and return the streamed response.
@@ -266,26 +341,35 @@ class ChatMediaService {
     String url, {
     required bool withAuth,
   }) async {
-    print("🌍 Request URL => $url");
-
-    final headers = <String, String>{};
+    final headers = <String, String>{
+      'Accept': '*/*',
+    };
 
     if (withAuth) {
       final authHeaders = await _authHeaders();
       headers.addAll(authHeaders);
-      print('   🔐 Auth header attached');
-    } else {
-      print('   🌐 No auth (public URL)');
     }
 
     final client = http.Client();
-
     final request = http.Request('GET', Uri.parse(url))
       ..headers.addAll(headers)
       ..followRedirects = true
       ..maxRedirects = 5;
 
     return await client.send(request).timeout(const Duration(seconds: 120));
+  }
+
+  // ── Open in browser fallback ──────────────────────────────────────────────
+
+  /// Opens the URL directly in the device's browser as a last resort.
+  Future<bool> openUrlInBrowser(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('❌ Could not open in browser: $e');
+      return false;
+    }
   }
 
   // ── Gallery save ──────────────────────────────────────────────────────────
@@ -447,9 +531,9 @@ class ChatMediaService {
   }
 
   Future<void> clearCache() async {
-    if (_cacheDir.existsSync()) {
+    if (_cacheDir != null && _cacheDir!.existsSync()) {
       try {
-        _cacheDir.deleteSync(recursive: true);
+        _cacheDir!.deleteSync(recursive: true);
       } catch (e) {
         print('⚠️ Cache clear error: $e');
       }
@@ -458,9 +542,9 @@ class ChatMediaService {
 
   /// Get total cache size
   Future<int> getCacheSize() async {
-    if (!_cacheDir.existsSync()) return 0;
+    if (_cacheDir == null || !_cacheDir!.existsSync()) return 0;
     int size = 0;
-    for (final file in _cacheDir.listSync(recursive: true)) {
+    for (final file in _cacheDir!.listSync(recursive: true)) {
       if (file is File) size += file.lengthSync();
     }
     return size;

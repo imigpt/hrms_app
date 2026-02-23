@@ -9,6 +9,9 @@ import 'package:hrms_app/screen/login_screen.dart';
 import 'package:hrms_app/services/auth_service.dart';
 import 'package:hrms_app/services/token_storage_service.dart';
 import 'package:hrms_app/screen/chat_screen.dart';
+import 'package:hrms_app/screen/payroll_screen.dart';
+import 'package:hrms_app/screen/policies_screen.dart';
+import 'package:hrms_app/theme/app_theme.dart';
 
 class SidebarMenu extends StatefulWidget {
   final ProfileUser? user;
@@ -31,6 +34,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
     {"title": "Announcements", "icon": Icons.campaign_rounded},
+    {"title": "Payroll", "icon": Icons.payments_rounded},
+    {"title": "Policies", "icon": Icons.policy_rounded},
   ];
 
   @override
@@ -191,7 +196,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
                 border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
               child: const Center(
-                child: Icon(Icons.person_outline, size: 18, color: Colors.pinkAccent),
+                child: Icon(Icons.person_outline, size: 18, color: AppTheme.primaryColor),
               ),
             ),
             const SizedBox(width: 12),
@@ -325,10 +330,12 @@ class _SidebarMenuState extends State<SidebarMenu> {
     } else if (title == "Announcements") {
       Navigator.of(context).push(_createSmoothRoute(const AnnouncementsScreen()));
     } else if (title == "Chat") {
-      // Placeholder for Chat Screen
-      Navigator.of(context).push(_createSmoothRoute( const ChatScreen()));
-    }
-     else {
+      Navigator.of(context).push(_createSmoothRoute(const ChatScreen()));
+    } else if (title == "Payroll") {
+      Navigator.of(context).push(_createSmoothRoute(const PayrollScreen()));
+    } else if (title == "Policies") {
+      Navigator.of(context).push(_createSmoothRoute(const PoliciesScreen()));
+    } else {
       // For Dashboard and any other unimplemented screens
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('This screen is under development.')),

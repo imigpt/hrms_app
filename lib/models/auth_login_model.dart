@@ -98,6 +98,15 @@ class AuthUser {
     this.currentLocation,
   });
 
+  /// Extract display URL from profilePhoto (String, {url,publicId} Map, or null).
+  String get profilePhotoUrl {
+    if (profilePhoto is String) return profilePhoto as String;
+    if (profilePhoto is Map<String, dynamic>) {
+      return (profilePhoto as Map<String, dynamic>)['url'] as String? ?? '';
+    }
+    return '';
+  }
+
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
         id: json["id"] as String? ?? json["_id"] as String? ?? "",
         employeeId: json["employeeId"] as String? ?? "",

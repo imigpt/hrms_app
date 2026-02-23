@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../theme/app_theme.dart';
 
 class ProfileCardWidget extends StatelessWidget {
   final String? name;
@@ -47,16 +48,16 @@ class ProfileCardWidget extends StatelessWidget {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.pinkAccent.withOpacity(0.2),
+                  color: AppTheme.primaryColor.withOpacity(0.2),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.pinkAccent.withOpacity(0.5),
+                    color: AppTheme.primaryColor.withOpacity(0.5),
                     width: 2,
                   ),
                 ),
                 child: const Icon(
                   Icons.person_outline,
-                  color: Colors.pinkAccent,
+                  color: AppTheme.primaryColor,
                   size: 32,
                 ),
               ),
@@ -119,7 +120,7 @@ class ProfileCardWidget extends StatelessWidget {
           _buildInfoRow(
             Icons.phone_outlined,
             phone ?? 'N/A',
-            Colors.pinkAccent,
+            AppTheme.primaryColor,
           ),
           const SizedBox(height: 12),
           _buildInfoRow(

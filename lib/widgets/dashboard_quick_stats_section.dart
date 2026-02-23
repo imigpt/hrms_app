@@ -3,6 +3,7 @@ import 'package:hrms_app/services/token_storage_service.dart';
 import 'package:hrms_app/widgets/dashboard_stats_card.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:hrms_app/theme/app_theme.dart';
 
 class DashboardQuickStatsSection extends StatefulWidget {
   final String? userId;
@@ -183,7 +184,7 @@ class _DashboardQuickStatsSectionState
             padding: const EdgeInsets.symmetric(vertical: 40),
             alignment: Alignment.center,
             child: const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
             ),
           )
         else if (_error != null)
@@ -225,7 +226,7 @@ class _DashboardQuickStatsSectionState
               DashboardStatsCard(
                 value: _appreciations,
                 label: 'Appreciations',
-                icon: Icons.favorite_outline,
+                icon:Icons.accessibility,
                 iconColor: const Color(0xFFB66FD9),
                 backgroundColor: const Color(0xFFB66FD9),
               ),

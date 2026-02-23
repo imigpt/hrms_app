@@ -463,6 +463,36 @@ class AttendanceService {
     }
   }
 
+  // ── Half-Day Request ────────────────────────────────────────────────────
+
+  /// POST /api/attendance/half-day-request
+  static Future<Map<String, dynamic>> submitHalfDayRequest({
+    required String token,
+    required String date,
+    required String reason,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/attendance/half-day-request');
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'date': date, 'reason': reason}),
+      );
+
+      final decoded = json.decode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return decoded;
+      }
+      throw Exception(decoded['message'] ?? 'Failed to submit half-day request');
+    } catch (e) {
+      print('submitHalfDayRequest error: $e');
+      rethrow;
+    }
+  }
+
   // Get Dashboard Stats
   static Future<DashboardStatsResponse?> getDashboardStats({
     required String token,

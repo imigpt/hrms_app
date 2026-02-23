@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../models/attendance_edit_request_model.dart';
 import '../services/attendance_service.dart';
 import '../services/token_storage_service.dart';
+import '../theme/app_theme.dart';
 
 class EditRequestsScreen extends StatefulWidget {
   const EditRequestsScreen({super.key});
@@ -82,7 +83,7 @@ class _EditRequestsScreenState extends State<EditRequestsScreen> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.pinkAccent),
+        child: CircularProgressIndicator(color: AppTheme.primaryColor),
       );
     }
 
@@ -106,7 +107,7 @@ class _EditRequestsScreenState extends State<EditRequestsScreen> {
                 icon: const Icon(Icons.refresh, size: 16),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pinkAccent,
+                  backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                 ),
               ),

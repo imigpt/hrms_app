@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:hrms_app/services/attendance_service.dart';
 import 'package:hrms_app/services/token_storage_service.dart';
 import 'package:hrms_app/models/attendance_edit_request_model.dart';
+import 'package:hrms_app/theme/app_theme.dart';
 
 class AttendanceEditRequestsCard extends StatefulWidget {
   final String? userId;
@@ -93,7 +94,7 @@ class _AttendanceEditRequestsCardState
                 children: [
                   Icon(
                     Icons.edit_note_outlined,
-                    color: Colors.pinkAccent,
+                    color: AppTheme.primaryColor,
                     size: 24,
                   ),
                   const SizedBox(width: 12),
@@ -110,7 +111,7 @@ class _AttendanceEditRequestsCardState
               if (!_isLoading)
                 IconButton(
                   icon: const Icon(Icons.refresh,
-                      color: Colors.pinkAccent, size: 20),
+                      color: AppTheme.primaryColor, size: 20),
                   onPressed: _loadEditRequests,
                   tooltip: 'Refresh',
                 )
@@ -124,7 +125,7 @@ class _AttendanceEditRequestsCardState
               padding: const EdgeInsets.symmetric(vertical: 30),
               alignment: Alignment.center,
               child: const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
               ),
             )
           else if (_error != null)

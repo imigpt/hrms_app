@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:hrms_app/services/attendance_service.dart';
 import 'package:hrms_app/services/token_storage_service.dart';
 import 'package:hrms_app/models/attendance_summary_model.dart';
+import 'package:hrms_app/theme/app_theme.dart';
 
 class AttendanceStatisticsSection extends StatefulWidget {
   final String? userId;
@@ -107,7 +108,7 @@ class _AttendanceStatisticsSectionState
                 children: [
                   Icon(
                     Icons.calendar_month_outlined,
-                    color: Colors.pinkAccent,
+                    color: AppTheme.primaryColor,
                     size: 24,
                   ),
                   const SizedBox(width: 12),
@@ -136,7 +137,7 @@ class _AttendanceStatisticsSectionState
               if (!_isLoading)
                 IconButton(
                   icon: const Icon(Icons.refresh,
-                      color: Colors.pinkAccent, size: 20),
+                      color: AppTheme.primaryColor, size: 20),
                   onPressed: _loadAttendanceSummary,
                   tooltip: 'Refresh',
                 )
@@ -150,7 +151,7 @@ class _AttendanceStatisticsSectionState
               padding: const EdgeInsets.symmetric(vertical: 60),
               alignment: Alignment.center,
               child: const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.pinkAccent),
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
               ),
             )
           else if (_error != null)
@@ -183,7 +184,7 @@ class _AttendanceStatisticsSectionState
                   children: [
                     IconButton(
                       icon: const Icon(Icons.chevron_left,
-                          color: Colors.pinkAccent),
+                          color: AppTheme.primaryColor),
                       onPressed: () => _changeMonth(-1),
                     ),
                     Text(
@@ -196,7 +197,7 @@ class _AttendanceStatisticsSectionState
                     ),
                     IconButton(
                       icon: const Icon(Icons.chevron_right,
-                          color: Colors.pinkAccent),
+                          color: AppTheme.primaryColor),
                       onPressed: () => _changeMonth(1),
                     ),
                   ],

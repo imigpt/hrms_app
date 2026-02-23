@@ -89,11 +89,23 @@ class TodayAttendance {
     this.data,
   });
 
-  factory TodayAttendance.fromJson(Map<String, dynamic> json) =>
-      TodayAttendance(
-        success: json["success"] ?? false,
-        data: json["data"] != null ? AttendanceData.fromJson(json["data"]) : null,
-      );
+  factory TodayAttendance.fromJson(Map<String, dynamic> json) {
+    // hasCheckedIn / hasCheckedOut live at the RESPONSE root,
+    // not inside the nested "data" object. Merge them so
+    // AttendanceData.fromJson can pick them up.
+    Map<String, dynamic>? dataJson;
+    if (json["data"] != null) {
+      dataJson = Map<String, dynamic>.from(json["data"]);
+      dataJson["hasCheckedIn"] =
+          json["hasCheckedIn"] ?? dataJson["hasCheckedIn"] ?? false;
+      dataJson["hasCheckedOut"] =
+          json["hasCheckedOut"] ?? dataJson["hasCheckedOut"] ?? false;
+    }
+    return TodayAttendance(
+      success: json["success"] ?? false,
+      data: dataJson != null ? AttendanceData.fromJson(dataJson) : null,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         "success": success,

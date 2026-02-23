@@ -73,7 +73,7 @@ class ProfileService {
     required String userId,
     required Map<String, dynamic> payload,
   }) async {
-    final url = Uri.parse('$_baseUrl/employees/profile');
+    final url = Uri.parse('$_baseUrl/users/profile');
 
     try {
       final response = await http.put(
@@ -123,7 +123,7 @@ class ProfileService {
     required String token,
     required String imagePath,
   }) async {
-    final url = Uri.parse('$_baseUrl/employees/profile');
+    final url = Uri.parse('$_baseUrl/users/profile');
 
     try {
       var request = http.MultipartRequest('PUT', url);

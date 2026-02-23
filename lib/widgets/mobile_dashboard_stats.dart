@@ -98,11 +98,11 @@ class MobileDashboardStats extends StatelessWidget {
                     width: 2,
                   ),
                 ),
-                child: profile.profilePhoto != null && (profile.profilePhoto as String).isNotEmpty
+                child: profile.profilePhotoUrl.isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(50),
                         child: Image.network(
-                          profile.profilePhoto as String,
+                          profile.profilePhotoUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
                               const Icon(Icons.person, color: Colors.grey),

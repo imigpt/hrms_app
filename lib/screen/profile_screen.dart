@@ -44,27 +44,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     final user = widget.user;
     _currentUser = user;
-    _nameController = TextEditingController(text: user?.name ?? "Rahul Gupta");
-    _emailController = TextEditingController(text: user?.email ?? "rahul.gupta@aseleanetwork.com");
-    _phoneController = TextEditingController(text: user?.phone ?? "7014922901");
-    _addressController = TextEditingController(text: user?.address ?? "8, Gyan Vihar, Model town, Jagatpura, Jaipur, 302017");
-    _bioController = TextEditingController(text: "Passionate Flutter Developer building seamless cross-platform applications."); 
-    _emergencyNameController = TextEditingController(text: "-");
-    _emergencyPhoneController = TextEditingController(text: "-");
-    _dobController = TextEditingController(text: _formatDate(user?.dateOfBirth) ?? "-");
-
-    _profileImage = (user?.profilePhoto is String) ? (user?.profilePhoto as String) : "";
-    _initials = _buildInitials(user?.name ?? "Rahul Gupta");
-    _dob = _formatDate(user?.dateOfBirth) ?? "-";
+    // Create controllers once
+    _nameController = TextEditingController(text: user?.name ?? "");
+    _emailController = TextEditingController(text: user?.email ?? "");
+    _phoneController = TextEditingController(text: user?.phone ?? "");
+    _addressController = TextEditingController(text: user?.address ?? "");
+    _bioController = TextEditingController(text: "");
+    _emergencyNameController = TextEditingController(text: "");
+    _emergencyPhoneController = TextEditingController(text: "");
+    _dobController = TextEditingController(text: _formatDate(user?.dateOfBirth) ?? "");
+    _profileImage = user?.profilePhotoUrl ?? "";
+    _initials = _buildInitials(user?.name ?? "");
+    _dob = _formatDate(user?.dateOfBirth) ?? "";
     _employmentData = {
-      "Employee ID": user?.employeeId ?? "RG-008",
-      "Department": _titleCase(user?.department) ?? "Engineering",
-      "Position": user?.position ?? "Flutter Intern",
-      "Role": _titleCase(user?.role) ?? "Employee",
-      "Status": _titleCase(user?.status) ?? "Active",
-      "Join Date": _formatDate(user?.joinDate) ?? "February 3, 2026",
-    
+      "Employee ID": user?.employeeId ?? "",
+      "Department": _titleCase(user?.department) ?? "",
+      "Position": user?.position ?? "",
+      "Role": _titleCase(user?.role) ?? "",
+      "Status": _titleCase(user?.status) ?? "",
+      "Join Date": _formatDate(user?.joinDate) ?? "",
     };
+    // Fetch fresh data from API (shows latest saved values even after back+return)
+    _fetchFreshProfile();
+  }
+
+  /// Refreshes UI from a ProfileUser without recreating controllers.
+  void _applyUser(ProfileUser u) {
+    _currentUser = u;
+    _nameController.text = u.name;
+    _emailController.text = u.email;
+    _phoneController.text = u.phone;
+    _addressController.text = u.address;
+    _dobController.text = _formatDate(u.dateOfBirth) ?? "";
+    _profileImage = u.profilePhotoUrl;
+    _initials = _buildInitials(u.name);
+    _dob = _formatDate(u.dateOfBirth) ?? "";
+    _employmentData = {
+      "Employee ID": u.employeeId,
+      "Department": _titleCase(u.department) ?? "",
+      "Position": u.position,
+      "Role": _titleCase(u.role) ?? "",
+      "Status": _titleCase(u.status) ?? "",
+      "Join Date": _formatDate(u.joinDate) ?? "",
+    };
+  }
+
+  Future<void> _fetchFreshProfile() async {
+    if (widget.token == null || widget.token!.isEmpty) return;
+    try {
+      final freshUser = await _profileService.fetchProfile(widget.token!);
+      if (freshUser != null && mounted) {
+        setState(() => _applyUser(freshUser));
+      }
+    } catch (_) {
+      // Silently fall back to widget.user already shown
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -80,36 +114,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     setState(() => _isSaving = true);
 
-    // Parse date of birth from controller
-    DateTime? parsedDob;
-    if (_dobController.text.isNotEmpty && _dobController.text != "-") {
-      // Use the current user's dateOfBirth which gets updated in _selectDate
-      parsedDob = _currentUser?.dateOfBirth;
-    } else {
-      parsedDob = _currentUser?.dateOfBirth;
+    // Build only the fields the backend allows employees to update
+    // Only include fields that are non-empty to avoid validation errors
+    final Map<String, dynamic> payload = {};
+
+    final phone = _phoneController.text.trim();
+    final address = _addressController.text.trim();
+    if (phone.isNotEmpty) payload['phone'] = phone;
+    if (address.isNotEmpty) payload['address'] = address;
+
+    // Only include dateOfBirth when it has actually been selected/set
+    if (_currentUser!.dateOfBirth != null) {
+      payload['dateOfBirth'] = _currentUser!.dateOfBirth!.toIso8601String();
     }
 
-    final updatedUser = ProfileUser(
-      id: _currentUser!.id,
-      employeeId: _currentUser!.employeeId,
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      phone: _phoneController.text.trim(),
-      dateOfBirth: parsedDob ?? _currentUser!.dateOfBirth,
-      address: _addressController.text.trim(),
-      role: _currentUser!.role,
-      department: _currentUser!.department,
-      position: _currentUser!.position,
-      joinDate: _currentUser!.joinDate,
-      status: _currentUser!.status,
-      profilePhoto: _currentUser!.profilePhoto,
-      leaveBalance: _currentUser!.leaveBalance,
-    );
+    if (payload.isEmpty) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No changes to save.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     final result = await _profileService.updateProfile(
       token: widget.token!,
       userId: _currentUser!.id,
-      payload: updatedUser.toJson(),
+      payload: payload,
     );
 
     if (!mounted) {
@@ -123,28 +156,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (result['success'] == true) {
       final saved = result['user'] as ProfileUser;
       setState(() {
-        _currentUser = saved;
+        _applyUser(saved);
         _isEditing = false;
       });
-
-      _nameController.text = saved.name;
-      _emailController.text = saved.email;
-      _phoneController.text = saved.phone;
-      _addressController.text = saved.address;
-      _dobController.text = _formatDate(saved.dateOfBirth) ?? "-";
-      _profileImage = (saved.profilePhoto is String)
-          ? (saved.profilePhoto as String)
-          : "";
-      _initials = _buildInitials(saved.name);
-      _dob = _formatDate(saved.dateOfBirth) ?? "-";
-      _employmentData = {
-        "Employee ID": saved.employeeId,
-        "Department": _titleCase(saved.department) ?? "Engineering",
-        "Position": saved.position,
-        "Role": _titleCase(saved.role) ?? "Employee",
-        "Status": _titleCase(saved.status) ?? "Active",
-        "Join Date": _formatDate(saved.joinDate) ?? "-",
-      };
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -373,8 +387,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (updatedUser != null) {
         setState(() {
           _currentUser = updatedUser;
-          _profileImage = (updatedUser.profilePhoto is String) 
-              ? (updatedUser.profilePhoto as String) 
+          _profileImage = updatedUser.profilePhotoUrl.isNotEmpty 
+              ? updatedUser.profilePhotoUrl 
               : imagePath;
         });
       } else {
@@ -667,7 +681,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: "Personal Information",
       icon: Icons.person_outline_rounded,
       children: [
-        _buildFieldRow("Full Name", _nameController, isEditable: false),
+        _buildFieldRow("Full Name", _nameController, isEditable: true),
         _buildFieldRow("Email", _emailController, isEditable: false),
         _buildFieldRow("Phone", _phoneController, isEditable: true),
         _buildFieldRow("Address", _addressController, isEditable: true, maxLines: 2),

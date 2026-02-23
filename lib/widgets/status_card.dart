@@ -1,66 +1,158 @@
 import 'package:flutter/material.dart';
 
 class StatusCard extends StatelessWidget {
-  // 1. Accept dynamic data from the parent screen
   final Duration workedDuration;
-  final double progress; // Value between 0.0 and 1.0
+  final double progress; // 0.0 – 1.0
+  final Duration totalOfficeHours;
+  final DateTime? checkInTime;
 
   const StatusCard({
     super.key,
     required this.workedDuration,
     required this.progress,
+    this.totalOfficeHours = const Duration(hours: 8),
+    this.checkInTime,
   });
+
+  // ── helpers ───────────────────────────────────────────────────────────────
+  String _fmt(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60).abs();
+    if (h > 0 && m > 0) return '$h hrs $m mins';
+    if (h > 0) return '$h hrs';
+    return '$m mins';
+  }
+
+  Duration get _lateTime {
+    final diff = totalOfficeHours - workedDuration;
+    return diff.isNegative ? Duration.zero : diff;
+  }
 
   @override
   Widget build(BuildContext context) {
-    // 2. Format duration into readable text (e.g., "2h 34m")
-    String hours = workedDuration.inHours.toString();
-    String minutes = (workedDuration.inMinutes.remainder(60)).toString();
+    final clampedProgress = progress.clamp(0.0, 1.0);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header row ────────────────────────────────────────────────
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Today's Status", style: TextStyle(fontWeight: FontWeight.bold)),
-              // 3. Display the dynamic time string
-              Text(
-                "${hours}h ${minutes}m", 
-                style: const TextStyle(fontWeight: FontWeight.bold)
+              Icon(Icons.access_time_rounded,
+                  size: 18, color: Colors.redAccent.shade100),
+              const SizedBox(width: 6),
+              const Text(
+                'Working Hour Details',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Today',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white70,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          const Text("Working Hours", style: TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 8),
-          
-          // 4. Update the Progress Bar dynamically
-          LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0), // Prevents crash if progress > 100%
-            backgroundColor: Colors.grey[800],
-            color: Theme.of(context).primaryColor,
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(3),
+
+          const SizedBox(height: 16),
+
+          // ── Detail rows ───────────────────────────────────────────────
+          _DetailRow(
+            color: Colors.grey,
+            label: 'Total office time',
+            value: _fmt(totalOfficeHours),
           ),
-          
-          const SizedBox(height: 8),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("0h", style: TextStyle(fontSize: 10, color: Colors.grey)),
-              Text("8h target", style: TextStyle(fontSize: 10, color: Colors.grey)),
-            ],
-          )
+          const SizedBox(height: 10),
+          _DetailRow(
+            color: Colors.greenAccent,
+            label: 'Total worked time',
+            value: _fmt(workedDuration),
+          ),
+          const SizedBox(height: 10),
+          _DetailRow(
+            color: Colors.redAccent,
+            label: 'Total Late time',
+            value: _fmt(_lateTime),
+          ),
+
+          const SizedBox(height: 14),
+
+          // ── Progress bar ──────────────────────────────────────────────
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: clampedProgress,
+              backgroundColor: Colors.grey[800],
+              color: Colors.greenAccent,
+              minHeight: 5,
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Private helper widget ──────────────────────────────────────────────────
+class _DetailRow extends StatelessWidget {
+  final Color color;
+  final String label;
+  final String value;
+
+  const _DetailRow({
+    required this.color,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: Colors.grey),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

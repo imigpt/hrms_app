@@ -20,10 +20,11 @@ import '../widgets/welcome_card.dart';
 import '../widgets/location_permission_dialog.dart';
 import '../widgets/attendance_edit_request_dialog.dart';
 import 'edit_requests_screen.dart';
+import '../theme/app_theme.dart';
 // import 'attendance_api_test_screen.dart';
 
 // 1. Define Status Enum
-enum AttendanceStatus { present, absent, late, halfDay }
+enum AttendanceStatus { present, absent, late, halfDay, leave }
 
 /// [initialAction] can be 'checkIn' or 'checkOut' to immediately trigger
 /// the respective flow when the screen opens from the dashboard.
@@ -123,7 +124,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (mounted && todayAttendance != null && todayAttendance.data != null) {
         setState(() {
           final data = todayAttendance.data!;
-          _isCheckedIn = data.hasCheckedIn && !data.hasCheckedOut;
+          // Derive checked-in state: prefer model flags, fallback to actual data presence
+          final hasCheckedIn = data.hasCheckedIn || (data.checkIn?.time != null);
+          final hasCheckedOut = data.hasCheckedOut || (data.checkOut?.time != null);
+          _isCheckedIn = hasCheckedIn && !hasCheckedOut;
           
           // Parse check-in and check-out times from AttendanceCheckPoint objects
           try {
@@ -139,16 +143,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               _checkOutTime = _formatTime(checkOutTime);
             }
             
-            // Set location addresses if available
+            // Set location labels based on distance from office
             if (data.checkIn?.location != null) {
-              final lat = data.checkIn!.location!['latitude'] ?? 0.0;
-              final lng = data.checkIn!.location!['longitude'] ?? 0.0;
-              _checkInLocation = '${(lat as num).toDouble().toStringAsFixed(6)}, ${(lng as num).toDouble().toStringAsFixed(6)}';
+              final lat = (data.checkIn!.location!['latitude'] as num).toDouble();
+              final lng = (data.checkIn!.location!['longitude'] as num).toDouble();
+              final d = Geolocator.distanceBetween(lat, lng, 26.816224, 75.845444);
+              _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
             }
             if (data.checkOut?.location != null) {
-              final lat = data.checkOut!.location!['latitude'] ?? 0.0;
-              final lng = data.checkOut!.location!['longitude'] ?? 0.0;
-              _checkOutLocation = '${(lat as num).toDouble().toStringAsFixed(6)}, ${(lng as num).toDouble().toStringAsFixed(6)}';
+              final lat = (data.checkOut!.location!['latitude'] as num).toDouble();
+              final lng = (data.checkOut!.location!['longitude'] as num).toDouble();
+              final d = Geolocator.distanceBetween(lat, lng, 26.816224, 75.845444);
+              _checkOutLocation = d <= 100 ? 'Main Building' : 'Outside Building';
             }
             
             // Calculate worked duration
@@ -254,7 +260,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               case 'halfday':
               case 'half_day':
               case 'half day':
+              case 'half-day':
                 status = AttendanceStatus.halfDay;
+                break;
+              case 'leave':
+              case 'on leave':
+                status = AttendanceStatus.leave;
                 break;
               default:
                 print('⚠️ Unknown status: ${record.status}');
@@ -409,8 +420,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         if (checkInAddress != null && checkInAddress.isNotEmpty) {
           _checkInLocation = checkInAddress;
         } else if (result.checkIn.location != null) {
-          _checkInLocation = '${result.checkIn.location!.latitude.toStringAsFixed(6)}, ${result.checkIn.location!.longitude.toStringAsFixed(6)}';
-        }
+            final d = Geolocator.distanceBetween(
+              result.checkIn.location!.latitude,
+              result.checkIn.location!.longitude,
+              26.816224, 75.845444,
+            );
+            _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
+          }
         
         _workedDuration = DateTime.now().difference(result.checkIn.time);
       });
@@ -674,46 +690,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       print('📍 [CHECK-OUT] Altitude: ${position.altitude}m');
       print('📡 [CHECK-OUT] Calling check-out API with location...');
 
-      // Get human-readable address from coordinates
-      String checkOutAddress = 'Address not found';
-      try {
-        List<Placemark> placemarks = await placemarkFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
-        
-        if (placemarks.isNotEmpty) {
-          final placemark = placemarks.first;
-          
-          // Build address string from placemark
-          List<String> addressParts = [];
-          if (placemark.name != null && placemark.name!.isNotEmpty) {
-            addressParts.add(placemark.name!);
-          }
-          if (placemark.street != null && placemark.street!.isNotEmpty && 
-              placemark.street != placemark.name) {
-            addressParts.add(placemark.street!);
-          }
-          if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
-            addressParts.add(placemark.subLocality!);
-          }
-          if (placemark.locality != null && placemark.locality!.isNotEmpty) {
-            addressParts.add(placemark.locality!);
-          }
-          if (placemark.administrativeArea != null && placemark.administrativeArea!.isNotEmpty) {
-            addressParts.add(placemark.administrativeArea!);
-          }
-          
-          checkOutAddress = addressParts.take(3).join(', '); // Take first 3 parts to keep it concise
-          if (checkOutAddress.isEmpty) {
-            checkOutAddress = '${placemark.locality ?? 'Unknown'}, ${placemark.administrativeArea ?? 'Unknown'}';
-          }
-        }
-        print('📍 [CHECK-OUT] Address resolved: $checkOutAddress');
-      } catch (e) {
-        print('⚠️ [CHECK-OUT] Error getting address: $e');
-        // Keep default "Address not found" if reverse geocoding fails
-      }
+      // Determine check-out location label based on distance from office
+      final double distMeters = Geolocator.distanceBetween(
+        position.latitude, position.longitude, 26.816224, 75.845444,
+      );
+      final String checkOutAddress =
+          distMeters <= 100 ? 'Main Building' : 'Outside Building';
 
       // Call check-out API
       final response = await AttendanceService.checkOut(
@@ -1174,6 +1156,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final kOrangeText = Colors.orangeAccent;
     final kAmberBg = const Color(0xFF3E3520);
     final kAmberText = Colors.amberAccent;
+    final kPurpleBg = const Color(0xFF2A1A3E);
+    final kPurpleText = const Color(0xFFCE93D8);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1246,6 +1230,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   textColor = kAmberText;
                   icon = Icons.timelapse;
                   break;
+                case AttendanceStatus.leave:
+                  bgColor = kPurpleBg;
+                  textColor = kPurpleText;
+                  icon = Icons.event_busy_outlined;
+                  break;
               }
               
               return Container(
@@ -1254,7 +1243,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   color: bgColor,
                   borderRadius: BorderRadius.circular(8),
                   border: isSelected 
-                      ? Border.all(color: Colors.pinkAccent, width: 2)
+                      ? Border.all(color: AppTheme.primaryColor, width: 2)
                       : (isToday ? Border.all(color: Colors.blueAccent, width: 2) : null),
                 ),
                 child: Column(
@@ -1302,7 +1291,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             return Container(
               margin: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.pinkAccent, width: 2),
+                border: Border.all(color: AppTheme.primaryColor, width: 2),
                 shape: BoxShape.circle,
               ),
               child: Center(child: Text('${day.day}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
@@ -1334,9 +1323,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildLegendItem(Icons.check, const Color(0xFF4CAF50), 'Present'),
-              _buildLegendItem(Icons.access_time, Colors.orangeAccent, 'Late'),
+              _buildLegendItem(Icons.check_circle_outline, const Color(0xFF4CAF50), 'Present'),
               _buildLegendItem(Icons.close, const Color(0xFFE57373), 'Absent'),
+              _buildLegendItem(Icons.access_time, Colors.orangeAccent, 'Late'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildLegendItem(Icons.timelapse, Colors.amberAccent, 'Half Day'),
+              _buildLegendItem(Icons.event_busy_outlined, const Color(0xFFCE93D8), 'Leave'),
+              const SizedBox(width: 60),  // spacer for alignment
             ],
           ),
         ],
@@ -1442,8 +1440,41 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  String _statusLabel(String raw) {
+    switch (raw.toLowerCase().trim()) {
+      case 'present':   return 'Present';
+      case 'absent':    return 'Absent';
+      case 'late':      return 'Late';
+      case 'leave':
+      case 'on leave':  return 'Leave';
+      case 'halfday':
+      case 'half_day':
+      case 'half day':
+      case 'half-day':  return 'Half Day';
+      default:
+        return raw.isNotEmpty
+            ? raw[0].toUpperCase() + raw.substring(1)
+            : raw;
+    }
+  }
+
+  IconData _statusIcon(String raw) {
+    switch (raw.toLowerCase().trim()) {
+      case 'present':   return Icons.check_circle_outline;
+      case 'absent':    return Icons.cancel_outlined;
+      case 'late':      return Icons.access_time;
+      case 'leave':
+      case 'on leave':  return Icons.event_busy_outlined;
+      case 'halfday':
+      case 'half_day':
+      case 'half day':
+      case 'half-day':  return Icons.timelapse;
+      default:          return Icons.help_outline;
+    }
+  }
+
   Widget _buildAttendanceRecordCard(records.AttendanceRecord record) {
-    final status = record.status.substring(0, 1).toUpperCase() + record.status.substring(1);
+    final status = _statusLabel(record.status);
     
     // Format times
     final checkInTime = DateFormat('hh:mm a').format(record.checkIn.time.toLocal());
@@ -1475,25 +1506,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     switch (status.toLowerCase()) {
       case 'present':
-        statusColor = Colors.green;
-        statusBgColor = Colors.green.withOpacity(0.15);
+        statusColor = const Color(0xFF4CAF50);
+        statusBgColor = const Color(0xFF1B3A24);
         break;
       case 'absent':
-        statusColor = Colors.red;
-        statusBgColor = Colors.red.withOpacity(0.15);
+        statusColor = const Color(0xFFE57373);
+        statusBgColor = const Color(0xFF3A1B1B);
         break;
       case 'late':
-        statusColor = Colors.orange;
-        statusBgColor = Colors.orange.withOpacity(0.15);
+        statusColor = Colors.orangeAccent;
+        statusBgColor = const Color(0xFF3E2723);
         break;
       case 'leave':
-        statusColor = Colors.purple;
-        statusBgColor = Colors.purple.withOpacity(0.15);
+        statusColor = const Color(0xFFCE93D8);
+        statusBgColor = const Color(0xFF2A1A3E);
         break;
-      case 'halfday':
-      case 'half_day':
-        statusColor = Colors.amber;
-        statusBgColor = Colors.amber.withOpacity(0.15);
+      case 'half day':
+        statusColor = Colors.amberAccent;
+        statusBgColor = const Color(0xFF3E3520);
         break;
       default:
         statusColor = Colors.grey;
@@ -1527,18 +1557,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   // Status Badge
                   if (status != '-')
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: statusBgColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        status,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: statusColor.withOpacity(0.35),
+                          width: 1,
                         ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_statusIcon(record.status),
+                              color: statusColor, size: 13),
+                          const SizedBox(width: 5),
+                          Text(
+                            status,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   const SizedBox(width: 8),
@@ -1739,7 +1782,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: CircularProgressIndicator(color: Colors.pinkAccent, strokeWidth: 2),
+          child: CircularProgressIndicator(color: AppTheme.primaryColor, strokeWidth: 2),
         ),
       );
     }

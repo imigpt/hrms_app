@@ -344,3 +344,62 @@ class LeaveStatistics {
     );
   }
 }
+
+// --- HALF DAY RESPONSE ---
+class ApplyHalfDayResponse {
+  bool success;
+  String message;
+  HalfDayData data;
+
+  ApplyHalfDayResponse({
+    required this.success,
+    required this.message,
+    required this.data,
+  });
+
+  factory ApplyHalfDayResponse.fromJson(Map<String, dynamic> json) => 
+      ApplyHalfDayResponse(
+        success: json["success"] ?? true,
+        message: json["message"] ?? "Half day request submitted",
+        data: HalfDayData.fromJson(json["data"] ?? {}),
+      );
+
+  Map<String, dynamic> toJson() => {
+        "success": success,
+        "message": message,
+        "data": data.toJson(),
+      };
+}
+
+class HalfDayData {
+  String user;
+  String date;
+  String reason;
+  String status;
+  String id;
+
+  HalfDayData({
+    required this.user,
+    required this.date,
+    required this.reason,
+    required this.status,
+    required this.id,
+  });
+
+  factory HalfDayData.fromJson(Map<String, dynamic> json) => 
+      HalfDayData(
+        user: json["user"] ?? "",
+        date: json["date"] ?? "",
+        reason: json["reason"] ?? "",
+        status: json["status"] ?? "pending",
+        id: json["_id"] ?? json["id"] ?? "",
+      );
+
+  Map<String, dynamic> toJson() => {
+        "user": user,
+        "date": date,
+        "reason": reason,
+        "status": status,
+        "id": id,
+      };
+}

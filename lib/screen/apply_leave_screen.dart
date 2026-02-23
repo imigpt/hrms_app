@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/leave_service.dart';
 import '../services/token_storage_service.dart';
-import '../models/apply_leave_model.dart';
 import '../utils/responsive_utils.dart';
 // import 'leave_api_test_screen.dart';
 
@@ -83,14 +82,12 @@ final Color kBorderGrey = const Color(0xFF333333);
     try {
       final storage = TokenStorageService();
       final token = await storage.getToken();
-      final userId = await storage.getUserId();
-      if (token == null || userId == null) {
+      if (token == null) {
         throw Exception('Authentication data not found');
       }
 
       final response = await LeaveService.getLeaveBalance(
         token: token,
-        userId: userId,
       );
 
       if (response.success && response.data != null) {
@@ -178,6 +175,23 @@ final Color kBorderGrey = const Color(0xFF333333);
       context: context,
       builder: (BuildContext context) {
         return ApplyLeaveDialog(
+          onSubmit: (LeaveRequest newRequest) {
+            setState(() {
+              _leaveRequests.insert(0, newRequest);
+            });
+            // Optionally reload from server to get updated data
+            _loadLeaveRequests();
+          },
+        );
+      },
+    );
+  }
+
+  void _openApplyHalfDayDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ApplyHalfDayDialog(
           onSubmit: (LeaveRequest newRequest) {
             setState(() {
               _leaveRequests.insert(0, newRequest);
@@ -324,23 +338,34 @@ final Color kBorderGrey = const Color(0xFF333333);
                       ),
                       SizedBox(width: responsive.spacing),
                       SizedBox(
-                        width: 180,
+                        width: 140,
                         child: _buildApplyButton(responsive),
+                      ),
+                      SizedBox(width: responsive.smallSpacing),
+                      SizedBox(
+                        width: 160,
+                        child: _buildApplyHalfDayButton(responsive),
                       ),
                     ],
                   )
-                : Row(
+                : Column(
                     children: [
                       // Filter Dropdown
-                      Expanded(
-                        child: _buildFilterDropdown(responsive),
-                      ),
+                      _buildFilterDropdown(responsive),
                       
-                      SizedBox(width: responsive.smallSpacing),
+                      SizedBox(height: responsive.smallSpacing),
 
-                      // Apply Leave Button
-                      Expanded(
-                        child: _buildApplyButton(responsive),
+                      // Apply Buttons Row
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildApplyButton(responsive),
+                          ),
+                          SizedBox(width: responsive.smallSpacing),
+                          Expanded(
+                            child: _buildApplyHalfDayButton(responsive),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -436,6 +461,28 @@ final Color kBorderGrey = const Color(0xFF333333);
       icon: Icon(Icons.add, size: responsive.smallIconSize),
       label: Text(
         "Apply", 
+        style: TextStyle(
+          fontWeight: FontWeight.bold, 
+          fontSize: responsive.bodyFontSize,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildApplyHalfDayButton(ResponsiveUtils responsive) {
+    return ElevatedButton.icon(
+      onPressed: _openApplyHalfDayDialog,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFFFFA726),
+        foregroundColor: Colors.black,
+        padding: EdgeInsets.symmetric(vertical: responsive.spacing * 0.875),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(responsive.cardBorderRadius)),
+        elevation: 0,
+        minimumSize: Size(0, responsive.buttonHeight),
+      ),
+      icon: Icon(Icons.schedule, size: responsive.smallIconSize),
+      label: Text(
+        "Half Day", 
         style: TextStyle(
           fontWeight: FontWeight.bold, 
           fontSize: responsive.bodyFontSize,
@@ -630,7 +677,7 @@ class ApplyLeaveDialog extends StatefulWidget {
 class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
   final _formKey = GlobalKey<FormState>();
   String _selectedLeaveType = 'Paid Leave';
-  final List<String> _leaveTypes = ['Paid Leave', 'Sick Leave', 'Casual Leave'];
+  final List<String> _leaveTypes = ['Paid Leave', 'Sick Leave', 'Unpaid Leave'];
   DateTime? _fromDate;
   DateTime? _toDate;
   final _reasonController = TextEditingController();
@@ -832,15 +879,19 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              date == null ? 'Select date' : DateFormat('dd MMM yyyy').format(date), 
-              style: TextStyle(
-                color: date == null ? Colors.grey : Colors.white, 
-                fontSize: 15
-              )
+            Flexible(
+              child: Text(
+                date == null ? 'Select date' : DateFormat('dd MMM yyyy').format(date), 
+                style: TextStyle(
+                  color: date == null ? Colors.grey : Colors.white, 
+                  fontSize: 15
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            const SizedBox(width: 12),
             const Icon(Icons.calendar_today, color: Colors.white54, size: 18),
           ],
         ),
@@ -913,6 +964,343 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
           content: Text(response.message),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+}
+
+// --- APPLY HALF DAY DIALOG ---
+class ApplyHalfDayDialog extends StatefulWidget {
+  final Function(LeaveRequest) onSubmit;
+
+  const ApplyHalfDayDialog({super.key, required this.onSubmit});
+
+  @override
+  State<ApplyHalfDayDialog> createState() => _ApplyHalfDayDialogState();
+}
+
+class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
+  final _formKey = GlobalKey<FormState>();
+  DateTime? _selectedDate;
+  final _reasonController = TextEditingController();
+  bool _isSubmitting = false;
+
+  // Dialog Colors
+  final Color kDialogBg = const Color(0xFF1A1A1A);
+  final Color kInputBg = const Color(0xFF2C2C2C);
+  final Color kOrangeAccent = const Color(0xFFFFA726);
+
+  @override
+  void initState() {
+    super.initState();
+    _reasonController.addListener(() {
+      setState(() {}); // Rebuild to update character counter
+    });
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: kOrangeAccent,
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: const Color(0xFF222222),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final maxHeight = mediaQuery.size.height * 0.75;
+    
+    return Dialog(
+      backgroundColor: kDialogBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header with Icon
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: kOrangeAccent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.schedule, color: Colors.white, size: 22),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Apply Half Day',
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Submit a half day request. HR will review and approve your request.',
+                            style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                _buildLabel('Date'),
+                _buildDateField(context),
+                const SizedBox(height: 20),
+
+                _buildLabel('Reason'),
+                TextFormField(
+                  controller: _reasonController,
+                  maxLines: 4,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'Explain why you need a half day (minimum 10 characters)',
+                    hintStyle: TextStyle(color: Colors.grey.withOpacity(0.5)),
+                    filled: true,
+                    fillColor: kInputBg,
+                    contentPadding: const EdgeInsets.all(16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12), 
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12), 
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12), 
+                      borderSide: BorderSide(color: kOrangeAccent.withOpacity(0.5)),
+                    ),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) return 'Reason is required';
+                    if (val.length < 10) return 'Reason must be at least 10 characters';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${_reasonController.text.length}/10 characters minimum',
+                  style: TextStyle(
+                    color: _reasonController.text.length >= 10 ? Colors.green : Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 28),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Colors.grey[800],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _submitHalfDayRequest,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kOrangeAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(Icons.send, size: 18, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Text("Submit Request", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10.0),
+      child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  Widget _buildDateField(BuildContext context) {
+    return InkWell(
+      onTap: () => _selectDate(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: kInputBg, 
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                _selectedDate == null ? 'dd-mm-yyyy' : DateFormat('dd-MM-yyyy').format(_selectedDate!), 
+                style: TextStyle(
+                  color: _selectedDate == null ? Colors.grey[600] : Colors.white, 
+                  fontSize: 15
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Icon(Icons.calendar_today, color: Colors.white54, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitHalfDayRequest() async {
+    // Validate form and date
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a date')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      // Get token
+      final token = await TokenStorageService().getToken();
+      if (token == null) {
+        throw Exception('Authentication token not found');
+      }
+
+      // Call API to apply half day (use regular leave endpoint with 0.5 days)
+      final response = await LeaveService.applyLeave(
+        token: token,
+        leaveType: 'Paid Leave', // Default to paid leave for half day
+        startDate: _selectedDate!,
+        endDate: _selectedDate!, // Same date for half day
+        reason: 'HALF DAY: ${_reasonController.text}', // Prefix to indicate half day
+        days: 0.5, // Half day
+      );
+
+      if (!mounted) return;
+
+      // Capitalize status for consistency
+      String capitalizedStatus = response.data.status.isEmpty 
+          ? 'Pending' 
+          : response.data.status[0].toUpperCase() + response.data.status.substring(1).toLowerCase();
+
+      // Success - add to local list and close dialog
+      widget.onSubmit(LeaveRequest(
+        type: 'Half Day',
+        fromDate: _selectedDate!,
+        toDate: _selectedDate!,
+        reason: _reasonController.text,
+        status: capitalizedStatus,
+      ));
+
+      Navigator.pop(context);
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Half day request submitted successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
         ),
       );
     } catch (e) {

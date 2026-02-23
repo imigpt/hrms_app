@@ -10,7 +10,7 @@ class LeaveService {
         'Authorization': 'Bearer $token',
       };
 
-  // ── POST /api/leaves ─────────────────────────────────────────────────────
+  // ── POST /api/leave ─────────────────────────────────────────────────────
   /// Apply for leave. Returns [ApplyLeaveResponse] on success, throws on error.
   static Future<ApplyLeaveResponse> applyLeave({
     required String token,
@@ -18,11 +18,12 @@ class LeaveService {
     required DateTime startDate,
     required DateTime endDate,
     required String reason,
+    double? days, // Optional parameter for custom days (e.g., 0.5 for half day)
   }) async {
     // Strip trailing " Leave" suffix and lowercase (backend expects e.g. "annual")
     final normalizedType =
         leaveType.replaceAll(RegExp(r'\s*[Ll]eave$'), '').toLowerCase();
-    final days = endDate.difference(startDate).inDays + 1;
+    final calculatedDays = days ?? (endDate.difference(startDate).inDays + 1);
 
     final response = await http.post(
       Uri.parse('$baseUrl/leaves'),
@@ -31,7 +32,7 @@ class LeaveService {
         'leaveType': normalizedType,
         'startDate': startDate.toIso8601String(),
         'endDate': endDate.toIso8601String(),
-        'days': days,
+        'days': calculatedDays,
         'reason': reason,
       }),
     );
@@ -96,14 +97,18 @@ class LeaveService {
         _errorMessage(response.body) ?? 'Failed to fetch leave request');
   }
 
-  // ── GET /api/leave-balance/:userId ──────────────────────────────────────
+  // ── GET /api/leave-balance/me ───────────────────────────────────────────
   /// Returns the current employee's leave balance (paid/sick/unpaid + used counts).
   static Future<LeaveBalanceResponse> getLeaveBalance({
     required String token,
-    required String userId,
+    String? userId,
   }) async {
+    // Prefer /me which always works; fall back to /:userId for admin use
+    final path = (userId != null && userId.isNotEmpty)
+        ? '$baseUrl/leave-balance/$userId'
+        : '$baseUrl/leave-balance/me';
     final response = await http.get(
-      Uri.parse('$baseUrl/leave-balance/$userId'),
+      Uri.parse(path),
       headers: {'Authorization': 'Bearer $token'},
     );
 

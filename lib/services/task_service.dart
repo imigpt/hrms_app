@@ -302,6 +302,25 @@ class TaskService {
 
   // ─── DELETE ENDPOINTS ──────────────────────────────────────────────────────
 
+  /// Delete attachment from task
+  /// DELETE /api/tasks/:taskId/attachments/:attachmentId
+  static Future<void> deleteAttachment(String token, String taskId, String attachmentId) async {
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/tasks/$taskId/attachments/$attachmentId'),
+            headers: _getHeaders(token),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (!(response.statusCode >= 200 && response.statusCode < 300)) {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to delete attachment: $e');
+    }
+  }
+
   /// Delete task (Managers/Task creators only)
   static Future<void> deleteTask(String token, String taskId) async {
     try {

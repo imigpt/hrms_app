@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import '../services/attendance_service.dart';
 import '../services/token_storage_service.dart';
 import '../widgets/location_permission_dialog.dart';
@@ -18,6 +17,7 @@ class _CameraScreenState extends State<CameraScreen> {
   CameraController? _controller;
   Future<void>? _initializeControllerFuture;
   bool _isLoading = true;
+  bool _isSubmitting = false;
   String? _error;
   String? _capturedImagePath;
   Position? _capturedLocation;
@@ -78,6 +78,7 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> _takePicture() async {
+    if (_isSubmitting) return;
     try {
       // Check if location service is enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -138,74 +139,98 @@ class _CameraScreenState extends State<CameraScreen> {
       // Ensure the camera is initialized
       await _initializeControllerFuture;
 
-      // Take the picture first
+      // Take the picture
       final image = await _controller!.takePicture();
       print('Photo captured: ${image.path}');
 
-      // Get current location after photo is taken
+      // Show loading overlay IMMEDIATELY — before slow GPS call
+      if (mounted) {
+        setState(() => _isSubmitting = true);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) =>
+              const Center(child: CircularProgressIndicator(color: Colors.white)),
+        );
+      }
+
+      // Get current location (medium accuracy is faster; timeout fallback to last known)
       print('Getting current location...');
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      Position position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+        ).timeout(const Duration(seconds: 8));
+      } catch (_) {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last == null) {
+          throw Exception('Could not get location. Please check GPS settings.');
+        }
+        position = last;
+      }
       print('Location captured: ${position.latitude}, ${position.longitude}');
 
-      // Get address from coordinates using reverse geocoding
-      String address = 'Address not found';
-      try {
-        List<Placemark> placemarks = await placemarkFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
-        
-        if (placemarks.isNotEmpty) {
-          final placemark = placemarks.first;
-          
-          // Build address string from placemark
-          List<String> addressParts = [];
-          if (placemark.name != null && placemark.name!.isNotEmpty) {
-            addressParts.add(placemark.name!);
-          }
-          if (placemark.street != null && placemark.street!.isNotEmpty && 
-              placemark.street != placemark.name) {
-            addressParts.add(placemark.street!);
-          }
-          if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
-            addressParts.add(placemark.subLocality!);
-          }
-          if (placemark.locality != null && placemark.locality!.isNotEmpty) {
-            addressParts.add(placemark.locality!);
-          }
-          if (placemark.administrativeArea != null && placemark.administrativeArea!.isNotEmpty) {
-            addressParts.add(placemark.administrativeArea!);
-          }
-          
-          address = addressParts.take(3).join(', '); // Take first 3 parts to keep it concise
-          if (address.isEmpty) {
-            address = '${placemark.locality ?? 'Unknown'}, ${placemark.administrativeArea ?? 'Unknown'}';
-          }
-        }
-        print('Address resolved: $address');
-      } catch (e) {
-        print('Error getting address: $e');
-        // Keep default "Address not found" if reverse geocoding fails
-      }
+      // Determine location label — within 100 m of office = Main Building
+      final double distMeters = Geolocator.distanceBetween(
+        position.latitude, position.longitude, 26.816224, 75.845444,
+      );
+      final String locationLabel =
+          distMeters <= 100 ? 'Main Building' : 'Outside Building';
+
+      // Get auth token
+      final token = await TokenStorageService().getToken();
+      if (token == null) throw Exception('No authentication token found');
+
+      // Call check-in API
+      final response = await AttendanceService.checkIn(
+        token: token,
+        photoFile: File(image.path),
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
 
       if (mounted) {
-        setState(() {
-          _capturedImagePath = image.path;
-          _capturedLocation = position;
-          _capturedAddress = address;
-        });
-      }
-    } catch (e) {
-      print('Error in _takePicture: $e');
-      if (mounted) {
+        Navigator.pop(context); // close loading overlay
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
+            content: Text(response.message),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
           ),
         );
+        await Future.delayed(const Duration(milliseconds: 400));
+        if (mounted) {
+          Navigator.pop(context, {
+            'attendanceData': response.data,
+            'checkInAddress': locationLabel,
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        try {
+          Navigator.pop(context);
+        } catch (_) {}
+        setState(() => _isSubmitting = false);
+        if (e.toString().toLowerCase().contains('already checked in')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You are already checked in. Refreshing...'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) Navigator.pop(context, 'refresh');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Check-in failed: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
     }
   }
@@ -472,23 +497,30 @@ class _CameraScreenState extends State<CameraScreen> {
               // Capture Button
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _takePicture,
+                  onPressed: _isSubmitting ? null : _takePicture,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: const Color(0xFFFF8B94),
+                    disabledBackgroundColor:
+                        const Color(0xFFFF8B94).withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     elevation: 0,
                   ),
-                  icon: const Icon(
-                    Icons.camera_alt,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                  label: const Text(
-                    'Capture',
-                    style: TextStyle(
+                  icon: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : const Icon(Icons.camera_alt, color: Colors.white, size: 22),
+                  label: Text(
+                    _isSubmitting ? 'Submitting...' : 'Capture',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

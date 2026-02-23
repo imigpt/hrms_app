@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class StatCard extends StatelessWidget {
   final String title;
@@ -19,9 +20,9 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Define the color based on alert status
-    final Color iconColor = isAlert ? Colors.pinkAccent : Colors.white70;
+    final Color iconColor = isAlert ? AppTheme.primaryColor : Colors.white70;
     final Color iconBgColor = isAlert 
-        ? Colors.pinkAccent.withOpacity(0.15) 
+        ? AppTheme.primaryColor.withOpacity(0.15) 
         : Colors.white.withOpacity(0.05);
 
     return Material(

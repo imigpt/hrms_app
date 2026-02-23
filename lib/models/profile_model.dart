@@ -42,6 +42,23 @@ class ProfileUser {
   final dynamic profilePhoto;
   final LeaveBalance? leaveBalance;
 
+  /// Extract the display URL from profilePhoto.
+  /// Backend can return String, {url, publicId} Map, or null.
+  String get profilePhotoUrl {
+    if (profilePhoto is String) return profilePhoto as String;
+    if (profilePhoto is Map<String, dynamic>) {
+      return (profilePhoto as Map<String, dynamic>)['url'] as String? ?? '';
+    }
+    return '';
+  }
+
+  /// Static helper for use outside model instances.
+  static String extractPhotoUrl(dynamic raw) {
+    if (raw is String) return raw;
+    if (raw is Map<String, dynamic>) return raw['url'] as String? ?? '';
+    return '';
+  }
+
   ProfileUser({
     required this.id,
     required this.employeeId,
