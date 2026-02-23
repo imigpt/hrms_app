@@ -11,6 +11,7 @@ import '../services/chat_service.dart';
 import '../services/chat_socket_service.dart';
 import '../services/token_storage_service.dart';
 import '../services/notification_service.dart';
+import '../services/chat_media_service.dart';
 import 'chat_api_test_screen.dart';
 
 // ─── Chat List Screen ─────────────────────────────────────────────────────────
@@ -2286,11 +2287,42 @@ class _ImageBubbleState extends State<_ImageBubble> {
   bool _isLoading = true;
   bool _hasError = false;
   bool _fullScreen = false;
+  bool _isSaving = false;
+
+  final _media = ChatMediaService();
+
+  Future<void> _saveToGallery() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+    try {
+      await _media.downloadMedia(widget.url, 'images');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image saved to gallery'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save: $e'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => setState(() => _fullScreen = !_fullScreen),
+      onLongPress: _saveToGallery,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: _fullScreen ? MediaQuery.of(context).size.width * 0.85 : 200,
@@ -2360,6 +2392,40 @@ class _ImageBubbleState extends State<_ImageBubble> {
                           ),
                         ),
                       ),
+                    // Saving overlay
+                    if (_isSaving)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black45,
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    // Download/save button (shown after image loads)
+                    if (!_isLoading && !_hasError && !_isSaving)
+                      Positioned(
+                        right: 6,
+                        bottom: 6,
+                        child: GestureDetector(
+                          onTap: _saveToGallery,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(
+                              Icons.download_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
         ),
@@ -2379,10 +2445,50 @@ class _DocumentBubble extends StatefulWidget {
 
 class _DocumentBubbleState extends State<_DocumentBubble> {
   bool _pressed = false;
+  bool _isDownloading = false;
+  double _downloadProgress = 0.0;
+
+  final _media = ChatMediaService();
+
+  Future<void> _downloadAndOpen() async {
+    if (_isDownloading) return;
+    final url = widget.attachment.url;
+    if (url.isEmpty) return;
+    setState(() {
+      _isDownloading = true;
+      _downloadProgress = 0.0;
+    });
+    try {
+      // Use cache if available, otherwise download
+      String? cachedPath = _media.getCachedPath(url, 'documents');
+      if (cachedPath == null) {
+        cachedPath = await _media.downloadMedia(
+          url,
+          'documents',
+          onProgress: (p) {
+            if (mounted) setState(() => _downloadProgress = p);
+          },
+        );
+      }
+      await _media.openFile(cachedPath);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open document: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTap: _downloadAndOpen,
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),
@@ -2395,47 +2501,78 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
           borderRadius: BorderRadius.circular(10),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                Icons.insert_drive_file_rounded,
-                key: ValueKey(_pressed),
-                color: widget.isMine
-                    ? (_pressed ? Colors.white : Colors.white70)
-                    : (_pressed ? Colors.white70 : Colors.grey[400]),
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    widget.attachment.name ?? 'Document',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (widget.attachment.mimeType != null)
-                    Text(
-                      widget.attachment.mimeType!,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 10,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _isDownloading
+                      ? SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            value: _downloadProgress > 0 ? _downloadProgress : null,
+                            strokeWidth: 2.5,
+                            color: widget.isMine
+                                ? Colors.white70
+                                : AppTheme.primaryColor,
+                          ),
+                        )
+                      : Icon(
+                          Icons.insert_drive_file_rounded,
+                          key: ValueKey(_pressed),
+                          color: widget.isMine
+                              ? (_pressed ? Colors.white : Colors.white70)
+                              : (_pressed ? Colors.white70 : Colors.grey[400]),
+                          size: 28,
+                        ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.attachment.name ?? 'Document',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                ],
-              ),
+                      if (widget.attachment.mimeType != null)
+                        Text(
+                          widget.attachment.mimeType!,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 10,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
+            if (_isDownloading && _downloadProgress > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: _downloadProgress,
+                    minHeight: 3,
+                    backgroundColor: Colors.white12,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -2454,10 +2591,50 @@ class _VideoBubble extends StatefulWidget {
 
 class _VideoBubbleState extends State<_VideoBubble> {
   bool _pressed = false;
+  bool _isDownloading = false;
+  double _downloadProgress = 0.0;
+
+  final _media = ChatMediaService();
+
+  Future<void> _downloadAndPlay() async {
+    if (_isDownloading) return;
+    final url = widget.url;
+    if (url.isEmpty) return;
+    setState(() {
+      _isDownloading = true;
+      _downloadProgress = 0.0;
+    });
+    try {
+      // Use cache if available, otherwise download
+      String? cachedPath = _media.getCachedPath(url, 'videos');
+      if (cachedPath == null) {
+        cachedPath = await _media.downloadMedia(
+          url,
+          'videos',
+          onProgress: (p) {
+            if (mounted) setState(() => _downloadProgress = p);
+          },
+        );
+      }
+      await _media.openFile(cachedPath);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to play video: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTap: _downloadAndPlay,
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),
@@ -2469,23 +2646,60 @@ class _VideoBubbleState extends State<_VideoBubble> {
           color: _pressed ? const Color(0xFF3A3A3C) : const Color(0xFF2C2C2E),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            AnimatedScale(
-              scale: _pressed ? 0.88 : 1.0,
-              duration: const Duration(milliseconds: 120),
-              child: Icon(
-                Icons.play_circle_fill_rounded,
-                color: AppTheme.primaryColor,
-                size: 48,
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedScale(
+                  scale: _pressed ? 0.88 : 1.0,
+                  duration: const Duration(milliseconds: 120),
+                  child: Icon(
+                    _isDownloading
+                        ? Icons.hourglass_top_rounded
+                        : Icons.play_circle_fill_rounded,
+                    color: _isDownloading
+                        ? Colors.white38
+                        : AppTheme.primaryColor,
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _isDownloading ? 'Downloading...' : 'Video',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                ),
+              ],
+            ),
+            // Progress ring overlay while downloading
+            if (_isDownloading)
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: CircularProgressIndicator(
+                  value: _downloadProgress > 0 ? _downloadProgress : null,
+                  strokeWidth: 3,
+                  backgroundColor: Colors.white12,
+                  color: AppTheme.primaryColor,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Video',
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-            ),
+            // Progress bar at bottom
+            if (_isDownloading && _downloadProgress > 0)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 10,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: _downloadProgress,
+                    minHeight: 3,
+                    backgroundColor: Colors.white12,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -19,6 +19,10 @@ import '../widgets/stat_card.dart';
 import '../widgets/tasks_section.dart';
 import '../widgets/announcements_section.dart';
 import '../widgets/location_permission_dialog.dart';
+import '../widgets/attendance_statistics_section.dart';
+import '../widgets/leave_statistics_section.dart';
+import '../widgets/dashboard_quick_stats_section.dart';
+import '../widgets/profile_card_widget.dart';
 import 'announcements_screen.dart';
 // import 'employee_api_test_screen.dart';
 import 'apply_leave_screen.dart';
@@ -181,80 +185,89 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
 
       print('API Response received: ${response != null}');
-      if (response != null) {
-        print('hasCheckedIn: ${response.hasCheckedIn}, hasCheckedOut: ${response.hasCheckedOut}');
+      if (response != null && response.data != null) {
+        print('hasCheckedIn: ${response.data!.hasCheckedIn}, hasCheckedOut: ${response.data!.hasCheckedOut}');
         print('data: ${response.data}');
       }
 
-      if (response != null && mounted) {
+      if (response != null && response.data != null && mounted) {
         setState(() {
-          _isCheckedIn = response.hasCheckedIn && !response.hasCheckedOut;
+          final attendanceData = response.data!;
+          _isCheckedIn = attendanceData.hasCheckedIn && !attendanceData.hasCheckedOut;
           
-          // Parse attendance data if available
-          if (response.data != null && response.data is Map) {
-            try {
-              final attendanceData = AttendanceData.fromJson(response.data);
-              _todayAttendance = attendanceData;
-              
-              print('Parsed attendance data successfully');
-              print('Check-in time: ${attendanceData.checkIn.time}');
-              
-              // Check if attendance is from today
-              final checkInDate = attendanceData.checkIn.time;
-              final today = DateTime.now();
-              final isSameDay = checkInDate.year == today.year && 
-                                checkInDate.month == today.month && 
-                                checkInDate.day == today.day;
-              
-              print('Is same day: $isSameDay');
-              
-              // Only set check-in/out times if they're from today
-              if (isSameDay) {
-                _checkInTime = attendanceData.checkIn.time;
+          try {
+            print('Using attendance data from API');
+            print('Check-in time string: ${attendanceData.checkIn?.time}');
+            
+            // Check if attendance is from today
+            if (attendanceData.checkIn?.time != null) {
+              final checkInDateTime = DateTime.tryParse(attendanceData.checkIn!.time!);
+              if (checkInDateTime != null) {
+                final today = DateTime.now();
+                final isSameDay = checkInDateTime.year == today.year && 
+                                  checkInDateTime.month == today.month && 
+                                  checkInDateTime.day == today.day;
                 
-                // Set check-in location
-                if (attendanceData.checkIn.location != null) {
-                  _checkInLocation = '${attendanceData.checkIn.location!.latitude.toStringAsFixed(6)}, ${attendanceData.checkIn.location!.longitude.toStringAsFixed(6)}';
-                }
+                print('Is same day: $isSameDay');
                 
-                // Set check-out info if available
-                if (attendanceData.checkOut != null) {
-                  _checkOutTime = attendanceData.checkOut!.time;
-                  if (attendanceData.checkOut!.location != null) {
-                    _checkOutLocation = '${attendanceData.checkOut!.location!.latitude.toStringAsFixed(6)}, ${attendanceData.checkOut!.location!.longitude.toStringAsFixed(6)}';
+                // Only set check-in/out times if they're from today
+                if (isSameDay) {
+                  _checkInTime = checkInDateTime;
+                  
+                  // Set check-in location
+                  if (attendanceData.checkIn?.location != null) {
+                    final lat = attendanceData.checkIn!.location!['latitude'] ?? 0.0;
+                    final lng = attendanceData.checkIn!.location!['longitude'] ?? 0.0;
+                    _checkInLocation = '${(lat as num).toDouble().toStringAsFixed(6)}, ${(lng as num).toDouble().toStringAsFixed(6)}';
                   }
+                  
+                  // Set check-out info if available
+                  if (attendanceData.checkOut?.time != null) {
+                    final checkOutDateTime = DateTime.tryParse(attendanceData.checkOut!.time!);
+                    if (checkOutDateTime != null) {
+                      _checkOutTime = checkOutDateTime;
+                      if (attendanceData.checkOut!.location != null) {
+                        final lat = attendanceData.checkOut!.location!['latitude'] ?? 0.0;
+                        final lng = attendanceData.checkOut!.location!['longitude'] ?? 0.0;
+                        _checkOutLocation = '${(lat as num).toDouble().toStringAsFixed(6)}, ${(lng as num).toDouble().toStringAsFixed(6)}';
+                      }
+                    }
+                  }
+                  
+                  // Calculate worked duration
+                  if (_isCheckedIn) {
+                    _workedDuration = DateTime.now().difference(checkInDateTime);
+                  } else if (attendanceData.checkOut?.time != null) {
+                    final checkOutDateTime = DateTime.tryParse(attendanceData.checkOut!.time!);
+                    if (checkOutDateTime != null) {
+                      _workedDuration = checkOutDateTime.difference(checkInDateTime);
+                    }
+                  }
+                  
+                  print('State updated - _isCheckedIn: $_isCheckedIn, checkInTime: $_checkInTime, checkOutTime: $_checkOutTime');
+                } else {
+                  // Attendance is from a previous day - reset state for new day
+                  print('Attendance is from previous day - resetting state');
+                  _checkInTime = null;
+                  _checkOutTime = null;
+                  _checkInLocation = null;
+                  _checkOutLocation = null;
+                  _workedDuration = const Duration(hours: 0, minutes: 0);
+                  _isCheckedIn = false;
                 }
-                
-                // Calculate worked duration
-                if (_isCheckedIn) {
-                  _workedDuration = DateTime.now().difference(attendanceData.checkIn.time);
-                } else if (attendanceData.checkOut != null) {
-                  _workedDuration = attendanceData.checkOut!.time.difference(attendanceData.checkIn.time);
-                }
-                
-                print('State updated - _isCheckedIn: $_isCheckedIn, checkInTime: $_checkInTime, checkOutTime: $_checkOutTime');
-              } else {
-                // Attendance is from a previous day - reset state for new day
-                print('Attendance is from previous day - resetting state');
-                _checkInTime = null;
-                _checkOutTime = null;
-                _checkInLocation = null;
-                _checkOutLocation = null;
-                _workedDuration = const Duration(hours: 0, minutes: 0);
-                _isCheckedIn = false;
               }
-            } catch (e) {
-              print('Error parsing attendance data: $e');
-              print('Stack trace: ${StackTrace.current}');
+            } else {
+              // No attendance data - reset state
+              print('No attendance data in response');
+              _checkInTime = null;
+              _checkOutTime = null;
+              _checkInLocation = null;
+              _checkOutLocation = null;
+              _workedDuration = const Duration(hours: 0, minutes: 0);
             }
-          } else {
-            // No attendance data - reset state
-            print('No attendance data in response');
-            _checkInTime = null;
-            _checkOutTime = null;
-            _checkInLocation = null;
-            _checkOutLocation = null;
-            _workedDuration = const Duration(hours: 0, minutes: 0);
+          } catch (e) {
+            print('Error parsing attendance data: $e');
+            print('Stack trace: ${StackTrace.current}');
           }
           
           _isLoadingAttendance = false;
@@ -755,18 +768,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _showPhotoUI = false;
           _todayAttendance = response.data;
           
-          // Ensure check-in data is maintained
+          // Parse check-in data - time is already a DateTime in the model
           _checkInTime = response.data.checkIn.time;
           if (response.data.checkIn.location != null) {
             _checkInLocation = '${response.data.checkIn.location!.latitude.toStringAsFixed(6)}, ${response.data.checkIn.location!.longitude.toStringAsFixed(6)}';
           }
           
-          // Set check-out data
-          _checkOutTime = response.data.checkOut!.time;
-          if (response.data.checkOut!.location != null) {
-            _checkOutLocation = '${response.data.checkOut!.location!.latitude.toStringAsFixed(6)}, ${response.data.checkOut!.location!.longitude.toStringAsFixed(6)}';
+          // Parse check-out data
+          if (response.data.checkOut != null) {
+            _checkOutTime = response.data.checkOut!.time;
+            if (response.data.checkOut!.location != null) {
+              _checkOutLocation = '${response.data.checkOut!.location!.latitude.toStringAsFixed(6)}, ${response.data.checkOut!.location!.longitude.toStringAsFixed(6)}';
+            }
+            
+            // Calculate worked duration
+            if (_checkInTime != null) {
+              _workedDuration = response.data.checkOut!.time.difference(_checkInTime!);
+            }
           }
-          _workedDuration = response.data.checkOut!.time.difference(response.data.checkIn.time);
         });
 
         // Save the updated state to local storage
@@ -1081,6 +1100,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       SizedBox(height: verticalSpacing),
 
+                      // Quick Stats: Appreciations, Warnings, Expenses, Complaints
+                      DashboardQuickStatsSection(userId: widget.user?.id),
+                      SizedBox(height: verticalSpacing),
+
+                      // Attendance Statistics + Leave Statistics
+                      if (isDesktopDevice)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: AttendanceStatisticsSection(
+                                userId: widget.user?.id,
+                              ),
+                            ),
+                            SizedBox(width: verticalSpacing),
+                            Expanded(
+                              child: LeaveStatisticsSection(
+                                userId: widget.user?.id,
+                              ),
+                            ),
+                          ],
+                        )
+                      else ...[
+                        AttendanceStatisticsSection(userId: widget.user?.id),
+                        SizedBox(height: verticalSpacing),
+                        LeaveStatisticsSection(userId: widget.user?.id),
+                      ],
+                      SizedBox(height: verticalSpacing),
+
                       // Responsive Bottom Section
                       if (isDesktopDevice)
                         Row(
@@ -1108,6 +1156,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onAnnouncementTap: _markAnnouncementAsRead,
                         ),
                       ],
+                      SizedBox(height: verticalSpacing),
+
+                      // Profile Card
+                      ProfileCardWidget(
+                        name: widget.user?.name,
+                        role: widget.user?.role,
+                        department: widget.user?.department,
+                        phone: widget.user?.phone,
+                        email: widget.user?.email,
+                        address: widget.user?.address,
+                        dateOfBirth: widget.user?.dateOfBirth?.toIso8601String(),
+                        isActive: (widget.user?.status ?? '').toLowerCase() == 'active',
+                      ),
                     ],
                   ),
                 ),

@@ -96,17 +96,20 @@ class LeaveService {
         _errorMessage(response.body) ?? 'Failed to fetch leave request');
   }
 
-  // ── GET /api/leaves/balance ──────────────────────────────────────────────
-  /// Returns the current employee's leave balance per leave type.
-  static Future<Map<String, dynamic>> getLeaveBalance({
+  // ── GET /api/leave-balance/:userId ──────────────────────────────────────
+  /// Returns the current employee's leave balance (paid/sick/unpaid + used counts).
+  static Future<LeaveBalanceResponse> getLeaveBalance({
     required String token,
+    required String userId,
   }) async {
     final response = await http.get(
-      Uri.parse('$baseUrl/leaves/balance'),
+      Uri.parse('$baseUrl/leave-balance/$userId'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
-    if (response.statusCode == 200) return json.decode(response.body);
+    if (response.statusCode == 200) {
+      return LeaveBalanceResponse.fromJson(json.decode(response.body));
+    }
     throw Exception(
         _errorMessage(response.body) ?? 'Failed to fetch leave balance');
   }

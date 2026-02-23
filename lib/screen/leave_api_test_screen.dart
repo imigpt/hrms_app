@@ -186,18 +186,26 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
   // ── Individual test implementations ────────────────────────────────────────
 
   Future<void> _testGetLeaveBalance(_ApiTest test) async {
-    final raw = await LeaveService.getLeaveBalance(token: _token!);
-    final resp = LeaveBalanceResponse.fromJson(raw);
+    final userId = await TokenStorageService().getUserId();
+    if (userId == null) {
+      _setFailed(test, 'User ID not found');
+      return;
+    }
+    final resp = await LeaveService.getLeaveBalance(
+      token: _token!,
+      userId: userId,
+    );
     if (!resp.success) {
-      _setFailed(test, raw['message'] ?? 'success=false');
+      _setFailed(test, 'success=false');
       return;
     }
     final b = resp.data;
     _setPassed(test, [
-      'annual: ${b?.annual ?? 0}',
+      'paid: ${b?.paid ?? 0}',
       'sick: ${b?.sick ?? 0}',
-      'casual: ${b?.casual ?? 0}',
       'unpaid: ${b?.unpaid ?? 0}',
+      'usedPaid: ${b?.usedPaid ?? 0}',
+      'usedSick: ${b?.usedSick ?? 0}',
     ].join(' | '));
   }
 

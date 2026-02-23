@@ -257,29 +257,35 @@ class LeaveBalanceResponse {
 }
 
 class LeaveBalance {
-  final int annual;
+  final String id;
+  final String user;
+  final int paid;
   final int sick;
-  final int casual;
-  final int maternity;
-  final int paternity;
   final int unpaid;
+  final int usedPaid;
+  final int usedSick;
+  final int usedUnpaid;
 
   LeaveBalance({
-    required this.annual,
+    required this.id,
+    required this.user,
+    required this.paid,
     required this.sick,
-    required this.casual,
-    required this.maternity,
-    required this.paternity,
     required this.unpaid,
+    required this.usedPaid,
+    required this.usedSick,
+    required this.usedUnpaid,
   });
 
   factory LeaveBalance.fromJson(Map<String, dynamic> json) => LeaveBalance(
-        annual: (json['annual'] ?? 0) as int,
+        id: (json['_id'] ?? '') as String,
+        user: (json['user'] ?? '') as String,
+        paid: (json['paid'] ?? 0) as int,
         sick: (json['sick'] ?? 0) as int,
-        casual: (json['casual'] ?? 0) as int,
-        maternity: (json['maternity'] ?? 0) as int,
-        paternity: (json['paternity'] ?? 0) as int,
         unpaid: (json['unpaid'] ?? 0) as int,
+        usedPaid: (json['usedPaid'] ?? 0) as int,
+        usedSick: (json['usedSick'] ?? 0) as int,
+        usedUnpaid: (json['usedUnpaid'] ?? 0) as int,
       );
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hrms_app/models/apply_leave_model.dart';
 import 'package:hrms_app/services/leave_service.dart';
 import 'package:hrms_app/services/token_storage_service.dart';
 
@@ -16,7 +17,7 @@ class LeaveStatisticsSection extends StatefulWidget {
 
 class _LeaveStatisticsSectionState extends State<LeaveStatisticsSection> {
   bool _isLoading = true;
-  Map<String, dynamic>? _leaveBalance;
+  LeaveBalance? _leaveBalance;
   String? _error;
 
   @override
@@ -32,18 +33,25 @@ class _LeaveStatisticsSectionState extends State<LeaveStatisticsSection> {
         _error = null;
       });
 
-      final token = await TokenStorageService().getToken();
-      if (token == null) {
-        throw Exception('Authentication token not found');
+      final storage = TokenStorageService();
+      final token = await storage.getToken();
+      final userId = widget.userId ?? await storage.getUserId();
+      if (token == null || userId == null) {
+        throw Exception('Authentication data not found');
       }
 
-      final response = await LeaveService.getLeaveBalance(token: token);
+      final response = await LeaveService.getLeaveBalance(
+        token: token,
+        userId: userId,
+      );
 
-      if (response['success'] == true && response['data'] != null) {
+      if (response.success && response.data != null) {
         setState(() {
-          _leaveBalance = response['data'];
+          _leaveBalance = response.data;
           _isLoading = false;
         });
+      } else {
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       setState(() {
@@ -157,34 +165,34 @@ class _LeaveStatisticsSectionState extends State<LeaveStatisticsSection> {
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _buildStatCard(
-                      'Total Leaves',
-                      _getTotalLeaves().toString(),
+                      'Paid Balance',
+                      _leaveBalance!.paid.toString(),
                       Colors.purpleAccent,
                     ),
                     _buildStatCard(
-                      'Approved',
-                      '0',
+                      'Sick Balance',
+                      _leaveBalance!.sick.toString(),
                       Colors.green,
                     ),
                     _buildStatCard(
-                      'Rejected',
-                      '0',
-                      Colors.red,
-                    ),
-                    _buildStatCard(
-                      'Pending',
-                      '0',
+                      'Unpaid Balance',
+                      _leaveBalance!.unpaid.toString(),
                       Colors.orange,
                     ),
                     _buildStatCard(
-                      'Paid Leaves',
-                      _getPaidLeaves().toString(),
+                      'Used Paid',
+                      _leaveBalance!.usedPaid.toString(),
                       Colors.blue,
                     ),
                     _buildStatCard(
-                      'Unpaid Leaves',
-                      _getUnpaidLeaves().toString(),
-                      Colors.orange,
+                      'Used Sick',
+                      _leaveBalance!.usedSick.toString(),
+                      Colors.red,
+                    ),
+                    _buildStatCard(
+                      'Used Unpaid',
+                      _leaveBalance!.usedUnpaid.toString(),
+                      Colors.amber,
                     ),
                   ],
                 ),
@@ -270,46 +278,5 @@ class _LeaveStatisticsSectionState extends State<LeaveStatisticsSection> {
         ],
       ),
     );
-  }
-
-  int _getTotalLeaves() {
-    final balanceData = _leaveBalance ?? {};
-    int total = 0;
-    // Sum all leave types
-    for (var type in ['annual', 'sick', 'casual', 'maternity', 'paternity', 'unpaid']) {
-      if (balanceData.containsKey(type)) {
-        final value = balanceData[type];
-        if (value is num) {
-          total += value.toInt();
-        }
-      }
-    }
-    return total;
-  }
-
-  int _getPaidLeaves() {
-    final balanceData = _leaveBalance ?? {};
-    // Paid leaves are annual, sick, casual, maternity, paternity
-    int total = 0;
-    for (var type in ['annual', 'sick', 'casual', 'maternity', 'paternity']) {
-      if (balanceData.containsKey(type)) {
-        final value = balanceData[type];
-        if (value is num) {
-          total += value.toInt();
-        }
-      }
-    }
-    return total;
-  }
-
-  int _getUnpaidLeaves() {
-    final balanceData = _leaveBalance ?? {};
-    if (balanceData.containsKey('unpaid')) {
-      final value = balanceData['unpaid'];
-      if (value is num) {
-        return value.toInt();
-      }
-    }
-    return 0;
   }
 }

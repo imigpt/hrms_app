@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hrms_app/screen/auth_check_screen.dart';
 import 'package:hrms_app/services/notification_service.dart';
+import 'package:hrms_app/services/chat_media_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -26,13 +27,21 @@ Future<void> main() async {
     debugPrint('Error initializing notifications: $e');
   }
 
-  // 4. Set System UI Overlay (Optional: makes status bar transparent)
+  // 4. Initialize ChatMediaService (sets up local cache directory)
+  try {
+    await ChatMediaService().init();
+    debugPrint('ChatMediaService initialized');
+  } catch (e) {
+    debugPrint('Error initializing ChatMediaService: $e');
+  }
+
+  // 5. Set System UI Overlay (Optional: makes status bar transparent)
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
   ));
 
-  // 5. Run App with cameras
+  // 6. Run App with cameras
   runApp(HrmsApp(cameras: cameras));
 }
 

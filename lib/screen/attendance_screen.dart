@@ -11,7 +11,7 @@ import 'attendance_history_screen.dart';
 import '../services/attendance_service.dart';
 import '../services/token_storage_service.dart';
 import '../models/attendance_summary_model.dart';
-import '../models/today_attendance_model.dart';
+import '../models/today_attendance_model.dart' as today;
 import '../models/attendance_checkin_model.dart';
 import '../models/attendance_history_model.dart' as history;
 import '../models/attendance_records_model.dart' as records;
@@ -47,7 +47,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   DateTime? _checkInDateTime;
   DateTime? _checkOutDateTime;
   Duration _workedDuration = const Duration(hours: 0, minutes: 0);
-  AttendanceData? _todayAttendanceData;
+  today.AttendanceData? _todayAttendanceData;
   String? _token;
 
   // --- Location State ---
@@ -120,40 +120,45 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         token: token,
       );
 
-      if (mounted && todayAttendance != null) {
+      if (mounted && todayAttendance != null && todayAttendance.data != null) {
         setState(() {
-          _isCheckedIn = todayAttendance.hasCheckedIn && !todayAttendance.hasCheckedOut;
+          final data = todayAttendance.data!;
+          _isCheckedIn = data.hasCheckedIn && !data.hasCheckedOut;
           
-          // If data is not null, parse check-in and check-out times
-          if (todayAttendance.data != null && todayAttendance.data is Map) {
-            try {
-              final attendanceData = AttendanceData.fromJson(todayAttendance.data);
-              _todayAttendanceData = attendanceData;
-              _checkInDateTime = attendanceData.checkIn.time;
-              _checkInTime = _formatTime(attendanceData.checkIn.time);
-              
-              if (attendanceData.checkOut != null) {
-                _checkOutDateTime = attendanceData.checkOut!.time;
-                _checkOutTime = _formatTime(attendanceData.checkOut!.time);
-              }
-              
-              // Set location addresses if available
-              if (attendanceData.checkIn.location != null) {
-                _checkInLocation = '${attendanceData.checkIn.location!.latitude.toStringAsFixed(6)}, ${attendanceData.checkIn.location!.longitude.toStringAsFixed(6)}';
-              }
-              if (attendanceData.checkOut?.location != null) {
-                _checkOutLocation = '${attendanceData.checkOut!.location!.latitude.toStringAsFixed(6)}, ${attendanceData.checkOut!.location!.longitude.toStringAsFixed(6)}';
-              }
-              
-              // Calculate worked duration
-              if (_isCheckedIn) {
-                _workedDuration = DateTime.now().difference(attendanceData.checkIn.time);
-              } else if (attendanceData.checkOut != null) {
-                _workedDuration = attendanceData.checkOut!.time.difference(attendanceData.checkIn.time);
-              }
-            } catch (e) {
-              print('Error parsing attendance data: $e');
+          // Parse check-in and check-out times from AttendanceCheckPoint objects
+          try {
+            if (data.checkIn != null && data.checkIn!.time != null) {
+              final checkInTime = DateTime.tryParse(data.checkIn!.time!) ?? DateTime.now();
+              _checkInDateTime = checkInTime;
+              _checkInTime = _formatTime(checkInTime);
             }
+            
+            if (data.checkOut != null && data.checkOut!.time != null) {
+              final checkOutTime = DateTime.tryParse(data.checkOut!.time!) ?? DateTime.now();
+              _checkOutDateTime = checkOutTime;
+              _checkOutTime = _formatTime(checkOutTime);
+            }
+            
+            // Set location addresses if available
+            if (data.checkIn?.location != null) {
+              final lat = data.checkIn!.location!['latitude'] ?? 0.0;
+              final lng = data.checkIn!.location!['longitude'] ?? 0.0;
+              _checkInLocation = '${(lat as num).toDouble().toStringAsFixed(6)}, ${(lng as num).toDouble().toStringAsFixed(6)}';
+            }
+            if (data.checkOut?.location != null) {
+              final lat = data.checkOut!.location!['latitude'] ?? 0.0;
+              final lng = data.checkOut!.location!['longitude'] ?? 0.0;
+              _checkOutLocation = '${(lat as num).toDouble().toStringAsFixed(6)}, ${(lng as num).toDouble().toStringAsFixed(6)}';
+            }
+            
+            // Calculate worked duration
+            if (_isCheckedIn && _checkInDateTime != null) {
+              _workedDuration = DateTime.now().difference(_checkInDateTime!);
+            } else if (_checkOutDateTime != null && _checkInDateTime != null) {
+              _workedDuration = _checkOutDateTime!.difference(_checkInDateTime!);
+            }
+          } catch (e) {
+            print('Error parsing attendance data: $e');
           }
         });
       }
@@ -731,7 +736,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
         setState(() {
           _isCheckedIn = false;
-          _todayAttendanceData = response.data;
           _checkOutDateTime = response.data.checkOut!.time;
           _checkOutTime = _formatTime(response.data.checkOut!.time);
           

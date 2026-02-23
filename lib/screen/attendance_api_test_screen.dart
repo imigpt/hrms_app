@@ -171,10 +171,8 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
             test,
             200,
             result != null
-                ? 'hasCheckedIn: ${result.hasCheckedIn}\n'
-                    'hasCheckedOut: ${result.hasCheckedOut}\n'
-                    'data: ${_prettyPreview(result.toJson())}'
-                : '{ "data": null, "hasCheckedIn": false }',
+                ? 'data: ${_prettyPreview(result.toJson())}'
+                : '{ "data": null }',
           );
           break;
 

@@ -53,11 +53,8 @@ class LeaveScreen extends StatefulWidget {
 
 class _LeaveScreenState extends State<LeaveScreen> {
   // --- DATA ---
-  final List<LeaveBalance> _leaveBalances = [
-    LeaveBalance(type: 'Paid', remaining: 21, used: 0, total: 21),
-    LeaveBalance(type: 'Sick', remaining: 14, used: 0, total: 14),
-    LeaveBalance(type: 'Casual', remaining: 7, used: 0, total: 7),
-  ];
+  List<LeaveBalance> _leaveBalances = [];
+  bool _isLoadingBalance = false;
 
   final List<LeaveRequest> _leaveRequests = [];
   bool _isLoadingRequests = false;
@@ -77,7 +74,55 @@ final Color kBorderGrey = const Color(0xFF333333);
   @override
   void initState() {
     super.initState();
+    _loadLeaveBalance();
     _loadLeaveRequests();
+  }
+
+  Future<void> _loadLeaveBalance() async {
+    setState(() => _isLoadingBalance = true);
+    try {
+      final storage = TokenStorageService();
+      final token = await storage.getToken();
+      final userId = await storage.getUserId();
+      if (token == null || userId == null) {
+        throw Exception('Authentication data not found');
+      }
+
+      final response = await LeaveService.getLeaveBalance(
+        token: token,
+        userId: userId,
+      );
+
+      if (response.success && response.data != null) {
+        final d = response.data!;
+        setState(() {
+          _leaveBalances = [
+            LeaveBalance(
+              type: 'Paid',
+              remaining: d.paid,
+              used: d.usedPaid,
+              total: d.paid + d.usedPaid,
+            ),
+            LeaveBalance(
+              type: 'Sick',
+              remaining: d.sick,
+              used: d.usedSick,
+              total: d.sick + d.usedSick,
+            ),
+            LeaveBalance(
+              type: 'Unpaid',
+              remaining: d.unpaid,
+              used: d.usedUnpaid,
+              total: d.unpaid + d.usedUnpaid,
+            ),
+          ];
+        });
+      }
+    } catch (e) {
+      print('Error loading leave balance: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingBalance = false);
+    }
   }
 
   Future<void> _loadLeaveRequests() async {
@@ -185,7 +230,9 @@ final Color kBorderGrey = const Color(0xFF333333);
         // ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadLeaveRequests,
+        onRefresh: () async {
+          await Future.wait([_loadLeaveBalance(), _loadLeaveRequests()]);
+        },
         color: kPinkAccent,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -194,8 +241,25 @@ final Color kBorderGrey = const Color(0xFF333333);
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Leave Balances Grid (Responsive layout)
-              responsive.isDesktopDevice 
-                ? GridView.builder(
+              if (_isLoadingBalance)
+                Container(
+                  height: 120,
+                  alignment: Alignment.center,
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(kPinkAccent),
+                  ),
+                )
+              else if (_leaveBalances.isEmpty)
+                Container(
+                  height: 80,
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Balance not available',
+                    style: TextStyle(color: kTextGrey, fontSize: 14),
+                  ),
+                )
+              else if (responsive.isDesktopDevice)
+                GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -209,7 +273,8 @@ final Color kBorderGrey = const Color(0xFF333333);
                       return _buildLeaveBalanceCard(_leaveBalances[index], responsive);
                     },
                   )
-                : SizedBox(
+              else
+                SizedBox(
                     height: responsive.scaledSize(120),
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,

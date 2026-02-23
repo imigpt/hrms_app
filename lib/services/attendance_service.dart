@@ -177,6 +177,8 @@ class AttendanceService {
     try {
       final uri = Uri.parse('$baseUrl/attendance/today');
       
+      print('📅 [TODAY\'S ATTENDANCE] Fetching: $uri');
+      
       final response = await http.get(
         uri,
         headers: {
@@ -184,15 +186,28 @@ class AttendanceService {
         },
       );
       
+      print('📅 [TODAY\'S ATTENDANCE] Status: ${response.statusCode}');
+      print('📅 [TODAY\'S ATTENDANCE] Response: ${response.body}');
+      
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        return TodayAttendance.fromJson(jsonData);
+        final todayAttendance = TodayAttendance.fromJson(jsonData);
+        
+        print('✅ [TODAY\'S ATTENDANCE] Parsed successfully');
+        print('   - Success: ${todayAttendance.success}');
+        print('   - Has Check-in: ${todayAttendance.data?.hasCheckedIn}');
+        print('   - Has Check-out: ${todayAttendance.data?.hasCheckedOut}');
+        print('   - Status: ${todayAttendance.data?.status}');
+        print('   - Work Hours: ${todayAttendance.data?.workHours}');
+        
+        return todayAttendance;
       } else if (response.statusCode == 404) {
         // No attendance record for today
+        print('📅 [TODAY\'S ATTENDANCE] No record found (404)');
         return null;
       } else {
         final errorBody = response.body;
-        print('Get attendance failed with status ${response.statusCode}');
+        print('❌ [TODAY\'S ATTENDANCE] Failed with status ${response.statusCode}');
         print('Response body: $errorBody');
         
         try {
@@ -203,6 +218,7 @@ class AttendanceService {
         }
       }
     } catch (e) {
+      print('❌ [TODAY\'S ATTENDANCE] Exception: $e');
       throw Exception('Get attendance error: $e');
     }
   }

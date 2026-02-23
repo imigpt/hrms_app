@@ -138,11 +138,43 @@ class DashboardStats {
   double pendingExpenses;
   double attendancePercentage;
 
+  // Attendance breakdown fields
+  int totalAttendance;
+  int presentDays;
+  int absentDays;
+  int leaveDays;
+  int halfDayCount;
+
+  // Leave summary fields
+  int totalLeaves;
+  int approvedLeaves;
+  int rejectedLeaves;
+  int pendingLeaves;
+
+  // Quick stats fields
+  int onTimeCount;
+  int lateCount;
+  int earlyCheckout;
+  double totalWorkHours;
+
   DashboardStats({
     required this.leaveBalance,
     required this.activeTasks,
     required this.pendingExpenses,
     required this.attendancePercentage,
+    this.totalAttendance = 0,
+    this.presentDays = 0,
+    this.absentDays = 0,
+    this.leaveDays = 0,
+    this.halfDayCount = 0,
+    this.totalLeaves = 0,
+    this.approvedLeaves = 0,
+    this.rejectedLeaves = 0,
+    this.pendingLeaves = 0,
+    this.onTimeCount = 0,
+    this.lateCount = 0,
+    this.earlyCheckout = 0,
+    this.totalWorkHours = 0.0,
   });
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
@@ -153,6 +185,19 @@ class DashboardStats {
         activeTasks: json["activeTasks"] ?? 0,
         pendingExpenses: (json["pendingExpenses"] ?? 0).toDouble(),
         attendancePercentage: (json["attendancePercentage"] ?? 0).toDouble(),
+        totalAttendance: json["totalAttendance"] ?? 0,
+        presentDays: json["presentDays"] ?? 0,
+        absentDays: json["absentDays"] ?? 0,
+        leaveDays: json["leaveDays"] ?? 0,
+        halfDayCount: json["halfDayCount"] ?? 0,
+        totalLeaves: json["totalLeaves"] ?? 0,
+        approvedLeaves: json["approvedLeaves"] ?? 0,
+        rejectedLeaves: json["rejectedLeaves"] ?? 0,
+        pendingLeaves: json["pendingLeaves"] ?? 0,
+        onTimeCount: json["onTimeCount"] ?? 0,
+        lateCount: json["lateCount"] ?? 0,
+        earlyCheckout: json["earlyCheckout"] ?? 0,
+        totalWorkHours: (json["totalWorkHours"] ?? 0).toDouble(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -160,6 +205,19 @@ class DashboardStats {
         "activeTasks": activeTasks,
         "pendingExpenses": pendingExpenses,
         "attendancePercentage": attendancePercentage,
+        "totalAttendance": totalAttendance,
+        "presentDays": presentDays,
+        "absentDays": absentDays,
+        "leaveDays": leaveDays,
+        "halfDayCount": halfDayCount,
+        "totalLeaves": totalLeaves,
+        "approvedLeaves": approvedLeaves,
+        "rejectedLeaves": rejectedLeaves,
+        "pendingLeaves": pendingLeaves,
+        "onTimeCount": onTimeCount,
+        "lateCount": lateCount,
+        "earlyCheckout": earlyCheckout,
+        "totalWorkHours": totalWorkHours,
       };
 }
 
