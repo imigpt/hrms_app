@@ -2621,26 +2621,31 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
 
       // Use cache if available, otherwise download
       String? cachedPath = _media.getCachedPath(url, 'documents');
-      if (cachedPath == null) {
+      if (cachedPath == null || !File(cachedPath).existsSync()) {
         cachedPath = await _media.downloadMedia(
           url,
           'documents',
           onProgress: (p) {
-            if (mounted) setState(() => _downloadProgress = p);
+            if (mounted) {
+              setState(() => _downloadProgress = p.clamp(0.0, 1.0));
+            }
           },
         );
       }
       if (cachedPath.isEmpty) {
         throw Exception('Download returned empty path');
       }
+      // Small delay so the user can see download completion
+      await Future.delayed(const Duration(milliseconds: 150));
+      if (mounted) setState(() => _isDownloading = false);
+
       await _media.openFile(cachedPath);
     } catch (e) {
       debugPrint('Document open error: $e');
       if (mounted) {
+        setState(() => _isDownloading = false);
         _showDownloadFailedSheet(url, e.toString());
       }
-    } finally {
-      if (mounted) setState(() => _isDownloading = false);
     }
   }
 

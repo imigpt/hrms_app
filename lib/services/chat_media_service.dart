@@ -195,7 +195,7 @@ class ChatMediaService {
 
   /// Downloads [url] with optional JWT auth to the local cache.
   /// For images & videos, also saves to device gallery.
-  /// Uses a multi-strategy approach: streamed download → simple GET fallback.
+  /// Uses a multi-strategy approach: streamed (with progress) first → simple GET fallback.
   Future<String> downloadMedia(
     String url,
     String mediaType, {
@@ -235,24 +235,27 @@ class ChatMediaService {
         debugPrint('   🔑 Token: ${token?.substring(0, 20)}...');
       }
 
-      // ── Strategy 1: Simple http.get (most reliable for CDN URLs) ──
       Uint8List? bytes;
+
+      // ── Strategy 1: Streamed download WITH progress (preferred) ──
       try {
-        bytes = await _downloadSimple(url, needsAuth: needsAuth);
+        bytes = await _downloadStreamed(
+          url,
+          needsAuth: needsAuth,
+          onProgress: onProgress,
+        );
       } catch (e) {
-        debugPrint('   ⚠️ Simple download failed: $e');
+        debugPrint('   ⚠️ Streamed download failed: $e');
       }
 
-      // ── Strategy 2: Streamed download with progress ──
+      // ── Strategy 2: Simple http.get fallback (no progress but reliable) ──
       if (bytes == null) {
+        debugPrint('   🔄 Falling back to simple GET…');
+        onProgress?.call(-1); // indeterminate
         try {
-          bytes = await _downloadStreamed(
-            url,
-            needsAuth: needsAuth,
-            onProgress: onProgress,
-          );
+          bytes = await _downloadSimple(url, needsAuth: needsAuth);
         } catch (e) {
-          debugPrint('   ⚠️ Streamed download failed: $e');
+          debugPrint('   ⚠️ Simple download failed: $e');
         }
       }
 
@@ -263,6 +266,7 @@ class ChatMediaService {
         );
       }
 
+      onProgress?.call(1.0); // signal 100%
       await file.writeAsBytes(bytes);
 
       debugPrint('   💾 Cached: ${file.path}');
@@ -508,44 +512,87 @@ class ChatMediaService {
 
   // ── Open ──────────────────────────────────────────────────────────────────
 
+  /// Opens a file using the system "Open with" dialog.
+  /// Copies file to a shareable temp directory first so external apps
+  /// can access it (app-internal cache is not accessible to other apps).
   Future<void> openFile(String filePath) async {
-    print('📂 Opening file: $filePath');
+    debugPrint('📂 Opening file: $filePath');
     final file = File(filePath);
 
     if (!file.existsSync()) {
-      print('   ❌ File not found: $filePath');
+      debugPrint('   ❌ File not found: $filePath');
       throw Exception('File not found: $filePath');
     }
 
-    print('   ✅ File exists');
-    print('   📏 File size: ${formatFileSize(file.lengthSync())}');
+    if (file.lengthSync() == 0) {
+      debugPrint('   ❌ File is empty (0 bytes)');
+      throw Exception('Downloaded file is empty');
+    }
 
-    final fileName = file.path.split('/').last;
+    debugPrint('   ✅ File exists');
+    debugPrint('   📏 File size: ${formatFileSize(file.lengthSync())}');
+
+    final fileName = file.path.split(Platform.pathSeparator).last;
     final mimeType = getMimeType(fileName);
     final ext = fileName.contains('.') ? '.${fileName.split('.').last}' : '';
-    print('   📋 File name: $fileName');
-    print('   🏷️ MIME type: $mimeType');
+    debugPrint('   📋 File name: $fileName');
+    debugPrint('   🏷️ MIME type: $mimeType');
+
+    // Copy to temp directory so external apps can read it.
+    // App-internal cache (getApplicationCacheDirectory) is sandboxed
+    // and other apps cannot read from it on modern Android.
+    String openPath = filePath;
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final shareDir = Directory('${tempDir.path}/open_files');
+      if (!shareDir.existsSync()) shareDir.createSync(recursive: true);
+      final shareFile = File('${shareDir.path}/$fileName');
+      await file.copy(shareFile.path);
+      openPath = shareFile.path;
+      debugPrint('   📋 Copied to shareable path: $openPath');
+    } catch (e) {
+      debugPrint('   ⚠️ Could not copy to temp dir, using original: $e');
+    }
 
     try {
-      print('   🚀 Launching app to open file...');
-      final result = await OpenFile.open(filePath, type: mimeType);
-      print('   📊 Result type: ${result.type}');
-      print('   📝 Result message: ${result.message}');
+      debugPrint('   🚀 Launching app to open file...');
+      final result = await OpenFile.open(openPath, type: mimeType);
+      debugPrint('   📊 Result type: ${result.type}');
+      debugPrint('   📝 Result message: ${result.message}');
 
       if (result.type.index != 0) {
-        // Type 0 = success, anything else = error
+        // Type 0 = done (success), anything else = error
         final errorMsg = result.message.isNotEmpty
             ? result.message
             : 'No app found to open $ext files';
-        print('   ❌ Failed to open: $errorMsg');
+        debugPrint('   ❌ open_file returned error: $errorMsg');
+
+        // Fallback: try opening the original URL in browser
+        debugPrint('   🔄 Trying browser fallback...');
+        final originalUrl = _tryRecoverUrl(filePath);
+        if (originalUrl != null) {
+          final launched = await openUrlInBrowser(originalUrl);
+          if (launched) {
+            debugPrint('   ✅ Opened in browser');
+            return;
+          }
+        }
         throw Exception(errorMsg);
       }
 
-      print('   ✅ File opened successfully');
+      debugPrint('   ✅ File opened successfully');
     } catch (e) {
-      print('   ❌ Open error: $e');
+      debugPrint('   ❌ Open error: $e');
       rethrow;
     }
+  }
+
+  /// Try to recover the original URL from the cached file path.
+  /// Returns null if not possible.
+  String? _tryRecoverUrl(String filePath) {
+    // The file name is derived from the URL's last path segment.
+    // We can't fully recover the URL, but this is used as a hint.
+    return null;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
