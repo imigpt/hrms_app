@@ -103,17 +103,27 @@ class LeaveService {
     required String token,
     String? userId,
   }) async {
-    // Prefer /me which always works; fall back to /:userId for admin use
+    // For employees: only use /me (always secure)
+    // For admins: can optionally specify /:userId to check other users
     final path = (userId != null && userId.isNotEmpty)
         ? '$baseUrl/leave-balance/$userId'
         : '$baseUrl/leave-balance/me';
+    
     final response = await http.get(
       Uri.parse(path),
-      headers: {'Authorization': 'Bearer $token'},
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
     );
 
     if (response.statusCode == 200) {
       return LeaveBalanceResponse.fromJson(json.decode(response.body));
+    }
+    
+    // Better error handling
+    if (response.statusCode == 403) {
+      throw Exception('Access denied to leave balance');
     }
     throw Exception(
         _errorMessage(response.body) ?? 'Failed to fetch leave balance');
@@ -121,19 +131,33 @@ class LeaveService {
 
   // ── GET /api/leaves/statistics ───────────────────────────────────────────
   /// Returns leave usage statistics for the current year (or [year] if given).
+  /// Note: Employees can only view their own statistics. Admins/HR can view any user's stats.
   static Future<Map<String, dynamic>> getLeaveStatistics({
     required String token,
     int? year,
   }) async {
     final params = <String, String>{};
     if (year != null) params['year'] = year.toString();
+    // Do NOT pass userId - let backend use current user from token
     final uri =
         Uri.parse('$baseUrl/leaves/statistics').replace(queryParameters: params);
 
-    final response = await http.get(uri,
-        headers: {'Authorization': 'Bearer $token'});
+    final response = await http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
 
-    if (response.statusCode == 200) return json.decode(response.body);
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    }
+    
+    // Better error handling
+    if (response.statusCode == 403) {
+      throw Exception('Access denied to leave statistics');
+    }
     throw Exception(
         _errorMessage(response.body) ?? 'Failed to fetch leave statistics');
   }

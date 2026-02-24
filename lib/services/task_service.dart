@@ -194,7 +194,7 @@ class TaskService {
 
   /// Update task progress/status
   /// [status] - pending, in-progress, completed, cancelled
-  /// [completionPercentage] - Progress from 0 to 100
+  /// [progress] - Progress from 0 to 100
   static Future<dynamic> updateTaskProgress(
     String token,
     String taskId, {
@@ -205,7 +205,7 @@ class TaskService {
     try {
       final body = <String, dynamic>{
         'status': ?status,
-        'completionPercentage': ?completionPercentage,
+        'progress': ?completionPercentage,  // API expects 'progress'
         'notes': ?notes,
       };
 

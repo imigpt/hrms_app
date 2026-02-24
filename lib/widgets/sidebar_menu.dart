@@ -11,7 +11,11 @@ import 'package:hrms_app/services/token_storage_service.dart';
 import 'package:hrms_app/screen/chat_screen.dart';
 import 'package:hrms_app/screen/payroll_screen.dart';
 import 'package:hrms_app/screen/policies_screen.dart';
+import 'package:hrms_app/screen/pre_payments_screen.dart';
+import 'package:hrms_app/screen/increment_promotion_screen.dart';
+import 'package:hrms_app/screen/my_salary_screen.dart';
 import 'package:hrms_app/theme/app_theme.dart';
+import 'package:hrms_app/screen/settings_screen.dart';
 
 class SidebarMenu extends StatefulWidget {
   final ProfileUser? user;
@@ -25,6 +29,7 @@ class SidebarMenu extends StatefulWidget {
 
 class _SidebarMenuState extends State<SidebarMenu> {
   int _selectedIndex = 0;
+  bool _payrollExpanded = false;
 
   final List<Map<String, dynamic>> _menuItems = [
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
@@ -34,8 +39,16 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
     {"title": "Announcements", "icon": Icons.campaign_rounded},
-    {"title": "Payroll", "icon": Icons.payments_rounded},
+    {"title": "Payroll", "icon": Icons.payments_rounded, "hasSubmenu": true},
     {"title": "Policies", "icon": Icons.policy_rounded},
+    {"title": "Settings", "icon": Icons.settings_rounded},
+  ];
+
+  final List<Map<String, dynamic>> _payrollSubItems = [
+    {"title": "Pre Payments", "icon": Icons.payment_rounded},
+    {"title": "Increment/Promotion", "icon": Icons.trending_up_rounded},
+    {"title": "Payroll", "icon": Icons.payments_rounded},
+    {"title": "My Salary", "icon": Icons.money_rounded},
   ];
 
   @override
@@ -54,17 +67,43 @@ class _SidebarMenuState extends State<SidebarMenu> {
 
           // --- MENU ITEMS ---
           Expanded(
-            child: ListView.builder(
+            child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _menuItems.length,
-              itemBuilder: (context, index) {
-                return _buildMenuItem(
-                  context, 
-                  index: index,
-                  title: _menuItems[index]['title'], 
-                  icon: _menuItems[index]['icon']
-                );
-              },
+              children: [
+                // Build all menu items in order
+                ..._menuItems.asMap().entries.map((entry) {
+                  int idx = entry.key;
+                  Map<String, dynamic> menuItem = entry.value;
+                  
+                  // If this is Payroll with submenu
+                  if (menuItem['title'] == 'Payroll' && menuItem['hasSubmenu'] == true) {
+                    return Column(
+                      children: [
+                        _buildMenuItemWithSubmenu(
+                          context, 
+                          index: idx,
+                          title: menuItem['title'], 
+                          icon: menuItem['icon']
+                        ),
+                        // Insert submenu items right after Payroll
+                        if (_payrollExpanded)
+                          ..._payrollSubItems.asMap().entries.map((subEntry) {
+                            int subIdx = subEntry.key;
+                            return _buildPayrollSubMenuItem(context, subIdx);
+                          }).toList(),
+                      ],
+                    );
+                  }
+                  
+                  // Regular menu item
+                  return _buildMenuItem(
+                    context, 
+                    index: idx,
+                    title: menuItem['title'], 
+                    icon: menuItem['icon']
+                  );
+                }).toList(),
+              ],
             ),
           ),
           
@@ -97,6 +136,126 @@ class _SidebarMenuState extends State<SidebarMenu> {
             )
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMenuItemWithSubmenu(BuildContext context, {
+    required int index, 
+    required String title, 
+    required IconData icon
+  }) {
+    Color primaryColor = Theme.of(context).primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() => _payrollExpanded = !_payrollExpanded);
+          },
+          borderRadius: BorderRadius.circular(12),
+          hoverColor: Colors.white.withOpacity(0.03),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: _payrollExpanded ? primaryColor.withOpacity(0.12) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: _payrollExpanded 
+                  ? Border.all(color: primaryColor.withOpacity(0.1), width: 1)
+                  : Border.all(color: Colors.transparent),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon, 
+                  color: _payrollExpanded ? primaryColor : Colors.grey[600],
+                  size: 22,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    title, 
+                    style: TextStyle(
+                      color: _payrollExpanded ? Colors.white : Colors.grey[500],
+                      fontWeight: _payrollExpanded ? FontWeight.w600 : FontWeight.w500,
+                      fontSize: 14,
+                      letterSpacing: 0.3,
+                    )
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _payrollExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 300),
+                  child: Icon(
+                    Icons.expand_more_rounded,
+                    color: _payrollExpanded ? Theme.of(context).primaryColor : Colors.grey[600],
+                    size: 20,
+                  ),
+                ),
+                if (_payrollExpanded)
+                  const SizedBox(width: 8)
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPayrollSubMenuItem(BuildContext context, int index) {
+    final subItem = _payrollSubItems[index];
+    Color primaryColor = Theme.of(context).primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0, left: 16.0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _handlePayrollSubMenuClick(context, subItem['title']),
+          borderRadius: BorderRadius.circular(10),
+          hoverColor: Colors.white.withOpacity(0.03),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(
+                  subItem['icon'],
+                  color: Colors.grey[500],
+                  size: 18,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    subItem['title'],
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -331,15 +490,35 @@ class _SidebarMenuState extends State<SidebarMenu> {
       Navigator.of(context).push(_createSmoothRoute(const AnnouncementsScreen()));
     } else if (title == "Chat") {
       Navigator.of(context).push(_createSmoothRoute(const ChatScreen()));
-    } else if (title == "Payroll") {
-      Navigator.of(context).push(_createSmoothRoute(const PayrollScreen()));
     } else if (title == "Policies") {
       Navigator.of(context).push(_createSmoothRoute(const PoliciesScreen()));
+    } else if (title == "Settings") {
+      Navigator.of(context).push(_createSmoothRoute(
+        SettingsScreen(user: widget.user, token: widget.token),
+      ));
     } else {
       // For Dashboard and any other unimplemented screens
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('This screen is under development.')),
       );
+    }
+  }
+
+  void _handlePayrollSubMenuClick(BuildContext context, String title) {
+    // Close Drawer if open (Mobile)
+    if (Scaffold.of(context).hasDrawer && Scaffold.of(context).isDrawerOpen) {
+      Navigator.pop(context);
+    }
+
+    // Navigate to appropriate payroll subscreen
+    if (title == "Pre Payments") {
+      Navigator.of(context).push(_createSmoothRoute(const PrePaymentsScreen()));
+    } else if (title == "Increment/Promotion") {
+      Navigator.of(context).push(_createSmoothRoute(const IncrementPromotionScreen()));
+    } else if (title == "Payroll") {
+      Navigator.of(context).push(_createSmoothRoute(const PayrollScreen()));
+    } else if (title == "My Salary") {
+      Navigator.of(context).push(_createSmoothRoute(const MySalaryScreen()));
     }
   }
 

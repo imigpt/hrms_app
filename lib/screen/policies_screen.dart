@@ -93,7 +93,7 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: TextField(
               controller: _searchController,
-              onSubmitted: _onSearch,
+              onChanged: _onSearch,
               style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
                 hintText: 'Search policies...',

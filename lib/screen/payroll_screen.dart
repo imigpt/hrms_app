@@ -104,29 +104,121 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       backgroundColor: const Color(0xFF050505),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A0A0A),
-        title: const Text('Payroll', style: TextStyle(fontWeight: FontWeight.w600)),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: Theme.of(context).primaryColor,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.grey,
-          tabAlignment: TabAlignment.start,
-          tabs: const [
-            Tab(text: 'Salary'),
-            Tab(text: 'Payslips'),
-            Tab(text: 'Pre-Payments'),
-            Tab(text: 'Increments'),
-          ],
+        elevation: 0,
+        title: const Text('Payroll', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 22)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildSalaryTab(),
-          _buildPayslipsTab(),
-          _buildPrePaymentsTab(),
-          _buildIncrementsTab(),
+          // Statistics Cards
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildStatisticsCards(),
+          ),
+          // Tab Bar
+          Container(
+            color: const Color(0xFF0A0A0A),
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              indicatorColor: Theme.of(context).primaryColor,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.grey,
+              tabAlignment: TabAlignment.start,
+              tabs: const [
+                Tab(text: 'Salary'),
+                Tab(text: 'Payslips'),
+                Tab(text: 'Pre-Payments'),
+                Tab(text: 'Increments'),
+              ],
+            ),
+          ),
+          // Tab Views
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildSalaryTab(),
+                _buildPayslipsTab(),
+                _buildPrePaymentsTab(),
+                _buildIncrementsTab(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatisticsCards() {
+    int generated = _payrolls.where((p) => p.status == 'generated').length;
+    int paid = _payrolls.where((p) => p.status == 'paid').length;
+    int pending = _payrolls.where((p) => p.status == 'pending').length;
+    double totalPaid = _payrolls
+        .where((p) => p.status == 'paid')
+        .fold<double>(0, (sum, p) => sum + p.netSalary);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildStatCard('Generated', generated.toString(), Icons.file_present_rounded, Colors.blue),
+          const SizedBox(width: 12),
+          _buildStatCard('Paid', paid.toString(), Icons.check_circle_rounded, Colors.green),
+          const SizedBox(width: 12),
+          _buildStatCard('Pending', pending.toString(), Icons.schedule_rounded, Colors.orange),
+          const SizedBox(width: 12),
+          _buildStatCard('Total Paid', _currency(totalPaid), Icons.currency_rupee_rounded, Colors.purple),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      width: 140,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[900]!, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(icon, size: 16, color: color),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -139,50 +231,256 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     if (_salary == null) return _emptyState('No salary information found');
 
     final s = _salary!;
+    final ctc = s.basicSalary + s.totalAllowances;
+    
     return RefreshIndicator(
       onRefresh: () => _fetchSalary(_token!),
-      child: ListView(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        children: [
-          // Salary overview card
-          _card(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    _statusBadge(s.status, s.status == 'active' ? Colors.greenAccent : Colors.grey),
-                    const Spacer(),
-                    if (s.salaryGroup != null)
-                      Text(s.salaryGroup!, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Main CTC Card with gradient
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.blue[900]?.withOpacity(0.3) ?? Colors.transparent,
+                    Colors.blue[700]?.withOpacity(0.2) ?? Colors.transparent,
                   ],
                 ),
-                const SizedBox(height: 16),
-                _labelValue('Basic Salary', _currency(s.basicSalary)),
-                const Divider(color: Colors.white12, height: 24),
-                _labelValue('Total Allowances', _currency(s.totalAllowances), valueColor: Colors.greenAccent),
-                _labelValue('Total Deductions', '- ${_currency(s.totalDeductions)}', valueColor: Colors.redAccent),
-                const Divider(color: Colors.white12, height: 24),
-                _labelValue('Net Salary', _currency(s.netSalary),
-                    valueColor: Colors.white, valueBold: true, large: true),
-                if (s.effectiveFrom != null) ...[
-                  const SizedBox(height: 12),
-                  Text('Effective from ${DateFormat('dd MMM yyyy').format(s.effectiveFrom!)}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.blue.withOpacity(0.2), width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cost to Company',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _currency(ctc),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.payments_rounded, color: Colors.blue[300], size: 32),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildSalaryBreakdown('Basic', s.basicSalary),
+                      _buildSalaryBreakdown('Allowances', s.totalAllowances),
+                      _buildSalaryBreakdown('Deductions', s.totalDeductions),
+                    ],
+                  ),
+                  if (s.effectiveFrom != null) ...[
+                    const SizedBox(height: 12),
+                    Text('Effective from ${DateFormat('dd MMM yyyy').format(s.effectiveFrom!)}',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                  ],
                 ],
-              ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Earnings Section
+            if (s.allowances.isNotEmpty) ...[
+              const Text(
+                'Earnings',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _card(
+                child: Column(
+                  children: [
+                    _salaryRow('Basic Salary', s.basicSalary, Colors.green),
+                    if (s.allowances.isNotEmpty)
+                      const Divider(color: Colors.white12, height: 16),
+                    ...s.allowances
+                        .map((a) => _salaryRow(a.name, a.amount, Colors.greenAccent))
+                        .toList(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+            
+            // Deductions Section
+            if (s.deductions.isNotEmpty) ...[
+              const Text(
+                'Deductions',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _card(
+                child: Column(
+                  children: [
+                    ...s.deductions
+                        .asMap()
+                        .entries
+                        .map((e) => Column(
+                          children: [
+                            _salaryRow(e.value.name, e.value.amount, Colors.redAccent, isDeduction: true),
+                            if (e.key < s.deductions.length - 1)
+                              const Divider(color: Colors.white12, height: 16),
+                          ],
+                        ))
+                        .toList(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+            
+            // Net Salary Summary
+            _card(
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Gross Salary',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        _currency(s.basicSalary + s.totalAllowances),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white12, height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Net Monthly Salary',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        _currency(s.netSalary),
+                        style: const TextStyle(
+                          color: Colors.greenAccent,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSalaryBreakdown(String label, double amount) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          _currency(amount),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _salaryRow(String label, double amount, Color color, {bool isDeduction = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          if (s.allowances.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _sectionTitle('Allowances'),
-            ...s.allowances.map((a) => _componentTile(a.name, a.amount, a.type, Colors.greenAccent)),
-          ],
-          if (s.deductions.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _sectionTitle('Deductions'),
-            ...s.deductions.map((d) => _componentTile(d.name, d.amount, d.type, Colors.redAccent)),
-          ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              (isDeduction ? '- ' : '') + _currency(amount),
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -201,44 +499,108 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
         itemCount: _payrolls.length,
         itemBuilder: (_, i) {
           final p = _payrolls[i];
+          final statusColor = _payrollStatusColor(p.status);
+          
           return _card(
             margin: const EdgeInsets.only(bottom: 12),
             onTap: () => _showPayslipDetail(p),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header with month and status
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.15),
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text('${p.monthName} ${p.year}',
                           style: TextStyle(
                             color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
                           )),
                     ),
                     const Spacer(),
-                    _statusBadge(p.status, _payrollStatusColor(p.status)),
+                    _statusBadge(p.status, statusColor),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                
+                // Summary stats row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _miniStat('Gross', _currency(p.grossSalary)),
-                    _miniStat('Deductions', _currency(p.totalDeductions)),
-                    _miniStat('Net', _currency(p.netSalary), highlight: true),
+                    _buildPayslipStat('Gross Salary', _currency(p.grossSalary), Colors.blue),
+                    _buildPayslipStat('Deductions', '- ${_currency(p.totalDeductions)}', Colors.red),
+                    _buildPayslipStat('Net Salary', _currency(p.netSalary), Colors.green, highlight: true),
                   ],
                 ),
+                const SizedBox(height: 12),
+                
+                // Payment date if available
+                if (p.paymentDate != null)
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded, size: 14, color: Colors.grey[600]),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Paid on ${DateFormat('dd MMM yyyy').format(p.paymentDate!)}',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, size: 14, color: Colors.orange[400]),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Payment pending',
+                        style: TextStyle(color: Colors.orange[400], fontSize: 12),
+                      ),
+                    ],
+                  ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildPayslipStat(String label, String value, Color color, {bool highlight = false}) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: highlight ? color.withOpacity(0.2) : Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              value,
+              style: TextStyle(
+                color: highlight ? Colors.greenAccent : color.withOpacity(0.8),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -311,51 +673,185 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     if (_isLoadingPrePayments) return _loader();
     if (_prePayments.isEmpty) return _emptyState('No pre-payments found');
 
+    // Calculate total approved and pending amounts
+    final totalApproved = _prePayments
+        .where((p) => p.status == 'approved')
+        .fold<double>(0, (sum, p) => sum + p.amount);
+    final totalPending = _prePayments
+        .where((p) => p.status == 'pending')
+        .fold<double>(0, (sum, p) => sum + p.amount);
+    final totalRejected = _prePayments
+        .where((p) => p.status == 'rejected')
+        .fold<double>(0, (sum, p) => sum + p.amount);
+
     return RefreshIndicator(
       onRefresh: () => _fetchPrePayments(_token!),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _prePayments.length,
-        itemBuilder: (_, i) {
-          final pp = _prePayments[i];
-          return _card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: _prePaymentColor(pp.status).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.payments_outlined, color: _prePaymentColor(pp.status), size: 22),
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                // Summary Cards
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildPrePaymentStat('Approved', _currency(totalApproved), Colors.green),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildPrePaymentStat('Pending', _currency(totalPending), Colors.orange),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildPrePaymentStat('Rejected', _currency(totalRejected), Colors.red),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_currency(pp.amount),
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.white)),
-                      const SizedBox(height: 2),
-                      Text(pp.deductMonth != null ? 'Deduct: ${pp.deductMonth}' : 'No deduction month',
-                          style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                      if (pp.description != null && pp.description!.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(pp.description!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Colors.grey[600], fontSize: 11)),
-                        ),
-                    ],
+                const SizedBox(height: 20),
+                const Text(
+                  'Pre-Payment History',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                _statusBadge(pp.status, _prePaymentColor(pp.status)),
-              ],
+                const SizedBox(height: 12),
+              ]),
             ),
-          );
-        },
+          ),
+          
+          // Pre-payments list
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) {
+                  final pp = _prePayments[i];
+                  final color = _prePaymentColor(pp.status);
+                  
+                  return _card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header with amount and status
+                        Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.payments_outlined, color: color, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _currency(pp.amount),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    pp.deductMonth ?? 'No deduction month',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            _statusBadge(pp.status, color),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        
+                        // Description if available
+                        if (pp.description != null && pp.description!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900]?.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              pp.description!,
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        
+                        // Date information
+                        const SizedBox(height: 8),
+                        if (pp.createdAt != null)
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today_rounded, size: 12, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Requested on ${DateFormat('dd MMM yyyy').format(pp.createdAt!)}',
+                                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  );
+                },
+                childCount: _prePayments.length,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrePaymentStat(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -366,67 +862,315 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     if (_isLoadingIncrements) return _loader();
     if (_increments.isEmpty) return _emptyState('No increment / promotion records');
 
+    // Count statistics
+    final increments = _increments.where((ip) => ip.type == 'increment').length;
+    final promotions = _increments.where((ip) => ip.type == 'promotion').length;
+    final others = _increments.where((ip) => ip.type != 'increment' && ip.type != 'promotion').length;
+
     return RefreshIndicator(
       onRefresh: () => _fetchIncrements(_token!),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _increments.length,
-        itemBuilder: (_, i) {
-          final ip = _increments[i];
-          return _card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                // Summary cards
                 Row(
                   children: [
-                    _typeBadge(ip),
-                    const Spacer(),
-                    if (ip.effectiveDate != null)
-                      Text(DateFormat('dd MMM yyyy').format(ip.effectiveDate!),
-                          style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                    Expanded(
+                      child: _buildIncrementStat('Increments', increments.toString(), Colors.green),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildIncrementStat('Promotions', promotions.toString(), Colors.blue),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildIncrementStat('Others', others.toString(), Colors.purple),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Text(ip.currentDesignation,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-                if (ip.newDesignation != null && ip.newDesignation!.isNotEmpty)
-                  Row(
-                    children: [
-                      Icon(Icons.arrow_forward, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Text(ip.newDesignation!, style: const TextStyle(color: Colors.greenAccent)),
-                    ],
+                const SizedBox(height: 20),
+                const Text(
+                  'Career Progress',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
-                if (ip.previousCTC != null || ip.newCTC != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      if (ip.previousCTC != null)
-                        Text('CTC: ${_currency(ip.previousCTC!)}',
-                            style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                      if (ip.previousCTC != null && ip.newCTC != null)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          child: Icon(Icons.arrow_forward, size: 12, color: Colors.grey[600]),
-                        ),
-                      if (ip.newCTC != null)
-                        Text(_currency(ip.newCTC!),
-                            style: const TextStyle(color: Colors.greenAccent, fontSize: 12, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ],
-                if (ip.reason != null && ip.reason!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(ip.reason!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12)),
-                ],
-              ],
+                ),
+                const SizedBox(height: 12),
+              ]),
             ),
-          );
-        },
+          ),
+          
+          // Increments list
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) {
+                  final ip = _increments[i];
+                  final isPositive = ip.type == 'increment' || ip.type == 'promotion';
+                  final ctcChange = ip.newCTC != null && ip.previousCTC != null
+                      ? ip.newCTC! - ip.previousCTC!
+                      : 0.0;
+                  
+                  return _card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header with type badge and date
+                        Row(
+                          children: [
+                            _typeBadge(ip),
+                            const Spacer(),
+                            if (ip.effectiveDate != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[800],
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  DateFormat('dd MMM yyyy').format(ip.effectiveDate!),
+                                  style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        
+                        // Designation change
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Current Designation',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              ip.currentDesignation,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        if (ip.newDesignation != null && ip.newDesignation!.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'New Designation',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      ip.newDesignation!,
+                                      style: const TextStyle(
+                                        color: Colors.greenAccent,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[800],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(Icons.arrow_forward_rounded, 
+                                  color: Colors.grey[600], size: 18),
+                              ),
+                            ],
+                          ),
+                        ],
+                        
+                        // CTC change
+                        if (ip.previousCTC != null && ip.newCTC != null) ...[
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isPositive 
+                                ? Colors.greenAccent.withOpacity(0.1)
+                                : Colors.redAccent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isPositive 
+                                  ? Colors.greenAccent.withOpacity(0.3)
+                                  : Colors.redAccent.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Previous CTC',
+                                      style: TextStyle(
+                                        color: Colors.grey[500],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      _currency(ip.previousCTC!),
+                                      style: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(Icons.trending_up,
+                                      color: isPositive ? Colors.greenAccent : Colors.redAccent,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'New CTC',
+                                            style: TextStyle(
+                                              color: Colors.grey[400],
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          Text(
+                                            _currency(ip.newCTC!),
+                                            style: TextStyle(
+                                              color: isPositive ? Colors.greenAccent : Colors.redAccent,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (ctcChange != 0) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${isPositive ? '+' : ''} ${_currency(ctcChange)} change',
+                                    style: TextStyle(
+                                      color: isPositive ? Colors.greenAccent : Colors.redAccent,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                        
+                        // Reason if available
+                        if (ip.reason != null && ip.reason!.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900]?.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Reason',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  ip.reason!,
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+                childCount: _increments.length,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIncrementStat(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

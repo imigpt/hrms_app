@@ -702,7 +702,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Future<void> _loadMessages({bool initial = false}) async {
     if (initial) {
       setState(() {
-        // _isLoading = true;
         _error = null;
       });
     }
@@ -714,9 +713,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       );
       if (!mounted) return;
       setState(() {
-        _messages = res.data.reversed.toList(); // oldest → top, newest → bottom
+        // FIX: API ke data ko reverse karna zaroori hai taki newest message index 0 par aaye
+        _messages = res.data.reversed.toList(); 
         _hasMore = res.hasMore;
-        // _isLoading = false;
       });
       _scrollToBottom(jump: true);
       _socket.markRead(widget.room.id);
@@ -724,7 +723,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (!mounted) return;
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
-        // _isLoading = false;
       });
     }
   }
@@ -733,7 +731,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     if (!_hasMore || _isLoadingOlder || _messages.isEmpty) return;
     setState(() => _isLoadingOlder = true);
     try {
-      final oldest = _messages.first.createdAt.toUtc().toIso8601String();
+      // Kyunki list reversed hai, oldest message ab list ke last mein hoga
+      final oldest = _messages.last.createdAt.toUtc().toIso8601String();
       final res = await ChatService.getRoomMessages(
         token: _token!,
         roomId: widget.room.id,
@@ -741,14 +740,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         before: oldest,
       );
       if (!mounted) return;
-      final older = res.data.reversed.toList();
+      
+      // FIX: Purane messages ko bhi reverse karein aur list ke end me (addAll) jod dein
+      final olderReversed = res.data.reversed.toList(); 
       final prevHeight = _scrollController.position.extentTotal;
       setState(() {
-        _messages = [...older, ..._messages];
+        _messages.addAll(olderReversed);
         _hasMore = res.hasMore;
         _isLoadingOlder = false;
       });
-      // Keep scroll position stable after prepending
+      // Scroll position ko maintain rakhne ke liye
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           final newHeight = _scrollController.position.extentTotal;
@@ -818,13 +819,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _subs.add(
       _socket.onNewMessage.listen((msg) {
         if (!mounted) return;
-        // Only handle messages belonging to this room
         if (msg.chatRoom != widget.room.id) return;
-        // Skip our own messages — handled via onMessageSent (socket) or REST response
         if (msg.sender?.id == _currentUserId) return;
-        // Deduplicate by id
         if (_messages.any((m) => m.id == msg.id)) return;
-        setState(() => _messages.add(msg));
+        
+        // FIX: Naye message ko list ke top (index 0) par daalein taki bottom me dikhe
+        setState(() => _messages.insert(0, msg));
         _scrollToBottom();
         _socket.markRead(widget.room.id);
       }),
@@ -916,6 +916,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
 
     // Optimistic bubble
+    // Jab optimistic banate hain (baaki upar ka same rakhein)
     final optimistic = ChatMessage(
       id: tempId,
       chatRoom: widget.room.id,
@@ -932,7 +933,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             )
           : null,
     );
-    setState(() => _messages.add(optimistic));
+    // FIX: Naye bhejey gaye message ko zero index par insert karein
+    setState(() => _messages.insert(0, optimistic));
     _scrollToBottom();
 
     if (_socket.isConnected) {
@@ -980,6 +982,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Future<void> _sendMedia(File file, String messageType) async {
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
     final ext = file.path.split('.').last.toLowerCase();
+    // Jab media optimistic banate hain (baaki upar ka same rakhein)
     final optimistic = ChatMessage(
       id: tempId,
       chatRoom: widget.room.id,
@@ -989,7 +992,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       updatedAt: DateTime.now(),
       tempId: tempId,
     );
-    setState(() => _messages.add(optimistic));
+    // FIX: insert use karein
+    setState(() => _messages.insert(0, optimistic));
     _scrollToBottom();
 
     try {
@@ -1538,29 +1542,34 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
 
     return ListView.builder(
-      reverse: true, // 👈 Bottom-to-top messaging: newest at top, oldest at bottom
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      physics: const BouncingScrollPhysics(),
-      itemCount: _messages.length + (_someoneTyping ? 1 : 0),
-      itemBuilder: (context, index) {
-        // Typing bubble at the very end
-        if (_someoneTyping && index == _messages.length) {
-          return _TypingBubble(name: _typingUserName);
-        }
-        final msg = _messages[index];
-        // Show date separator
-        final showDate =
-            index == 0 ||
-            !_isSameDay(_messages[index - 1].createdAt, msg.createdAt);
-        return Column(
-          children: [
-            if (showDate) _DateDivider(date: msg.createdAt),
-            _buildSwipeable(msg),
-          ],
-        );
-      },
+  reverse: true, // 👈 Bottom-to-top messaging
+  controller: _scrollController,
+  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  physics: const BouncingScrollPhysics(),
+  itemCount: _messages.length + (_someoneTyping ? 1 : 0),
+  itemBuilder: (context, index) {
+    
+    // FIX 1: Typing indicator hamesha sabse niche (index 0) hona chahiye
+    if (_someoneTyping && index == 0) {
+      return _TypingBubble(name: _typingUserName);
+    }
+    
+    // FIX 2: Agar koi type kar raha hai, toh message ka index 1 se start hoga
+    final msgIndex = _someoneTyping ? index - 1 : index;
+    final msg = _messages[msgIndex];
+    
+    // FIX 3: Date separator ab list reverse hone ke karan theek se show hoga
+    final showDate = msgIndex == _messages.length - 1 || 
+                     !_isSameDay(_messages[msgIndex + 1].createdAt, msg.createdAt);
+
+    return Column(
+      children: [
+        if (showDate) _DateDivider(date: msg.createdAt),
+        _buildSwipeable(msg),
+      ],
     );
+  },
+);
   }
 
   bool _isSameDay(DateTime a, DateTime b) =>
@@ -2374,8 +2383,37 @@ class _ImageBubbleState extends State<_ImageBubble> {
   bool _hasError = false;
   bool _fullScreen = false;
   bool _isSaving = false;
+  String? _localPath; // Cached local file path for auth-required images
 
   final _media = ChatMediaService();
+
+  @override
+  void initState() {
+    super.initState();
+    // If Image.network might fail (non-CDN URL), pre-download with auth
+    _tryAuthDownload();
+  }
+
+  /// For URLs that may need authentication, download to local cache first.
+  Future<void> _tryAuthDownload() async {
+    // First check if url is a CDN url (public) — Image.network will work fine
+    if (_media.isCdnUrl(widget.url)) return;
+
+    // Non-CDN url: download with auth to local cache
+    try {
+      await _media.init();
+      final path = await _media.downloadMedia(widget.url, 'images');
+      if (mounted && path.isNotEmpty) {
+        setState(() {
+          _localPath = path;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Image auth download failed: $e');
+      // Let Image.network try as fallback
+    }
+  }
 
   Future<void> _saveToGallery() async {
     if (_isSaving) return;
@@ -2411,6 +2449,58 @@ class _ImageBubbleState extends State<_ImageBubble> {
     final thumbH = 200.0;
     final fullW = screenWidth * 0.85;
 
+    // If we have a locally-cached version, use Image.file instead
+    Widget imageWidget;
+    if (_localPath != null) {
+      imageWidget = Image.file(
+        File(_localPath!),
+        width: _fullScreen ? fullW : thumbW,
+        height: _fullScreen ? null : thumbH,
+        fit: _fullScreen ? BoxFit.contain : BoxFit.cover,
+        errorBuilder: (ctx, err, st) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _hasError = true);
+          });
+          return SizedBox(width: thumbW, height: thumbH);
+        },
+      );
+    } else {
+      imageWidget = Image.network(
+        widget.url,
+        width: _fullScreen ? fullW : thumbW,
+        height: _fullScreen ? null : thumbH,
+        fit: _fullScreen ? BoxFit.contain : BoxFit.cover,
+        errorBuilder: (ctx, err, st) {
+          debugPrint('Image.network error for: ${widget.url} — $err');
+          // On error, try authenticated download as fallback
+          if (_localPath == null && !_hasError) {
+            _tryAuthDownload().then((_) {
+              if (_localPath == null && mounted) {
+                setState(() => _hasError = true);
+              }
+            });
+          }
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _localPath == null) {
+              setState(() => _hasError = true);
+            }
+          });
+          return SizedBox(width: thumbW, height: thumbH);
+        },
+        loadingBuilder: (_, child, progress) {
+          if (progress == null) {
+            if (_isLoading) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) setState(() => _isLoading = false);
+              });
+            }
+            return child;
+          }
+          return child;
+        },
+      );
+    }
+
     return GestureDetector(
       onTap: () => setState(() => _fullScreen = !_fullScreen),
       onLongPress: _saveToGallery,
@@ -2440,31 +2530,7 @@ class _ImageBubbleState extends State<_ImageBubble> {
             : Stack(
                 alignment: Alignment.center,
                 children: [
-                  Image.network(
-                    widget.url,
-                    width: _fullScreen ? fullW : thumbW,
-                    height: _fullScreen ? null : thumbH,
-                    fit: _fullScreen ? BoxFit.contain : BoxFit.cover,
-                    errorBuilder: (ctx, err, st) {
-                      WidgetsBinding.instance.addPostFrameCallback(
-                        (ts) {
-                          if (mounted) setState(() => _hasError = true);
-                        },
-                      );
-                      return SizedBox(width: thumbW, height: thumbH);
-                    },
-                    loadingBuilder: (_, child, progress) {
-                      if (progress == null) {
-                        if (_isLoading) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) setState(() => _isLoading = false);
-                          });
-                        }
-                        return child;
-                      }
-                      return child;
-                    },
-                  ),
+                  imageWidget,
                   if (_isLoading)
                     Container(
                       width: thumbW,

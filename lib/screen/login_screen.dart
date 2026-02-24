@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hrms_app/models/profile_model.dart';
 import 'package:hrms_app/screen/dashboard_screen.dart';
+import 'package:hrms_app/screen/forgot_password_screen.dart';
 import 'package:hrms_app/services/auth_service.dart';
 import 'package:hrms_app/services/profile_service.dart';
 import 'package:hrms_app/services/token_storage_service.dart';
@@ -300,7 +301,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 // 6. Forgot Password Link
                 TextButton(
                   onPressed: () {
-                    // Handle forgot password navigation
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordScreen(),
+                      ),
+                    );
                   },
                   child: Text(
                     "Forgot password?",
