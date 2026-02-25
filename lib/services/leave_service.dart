@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import '../models/apply_leave_model.dart';
 
 class LeaveService {
@@ -10,7 +11,58 @@ class LeaveService {
         'Authorization': 'Bearer $token',
       };
 
-  // ── POST /api/leave ─────────────────────────────────────────────────────
+  // ── POST /api/leaves/half-day ──────────────────────────────────────────────
+  /// Apply for half-day leave. Returns [ApplyLeaveResponse] on success.
+  static Future<ApplyLeaveResponse> applyHalfDayLeave({
+    required String token,
+    required DateTime date,
+    required String session, // 'morning' or 'afternoon'
+    required String reason,
+    String leaveType = 'paid', // 'paid' or 'unpaid'
+  }) async {
+    // Format date as yyyy-MM-dd
+    final dateStr = DateFormat('yyyy-MM-dd').format(date);
+    
+    final payload = {
+      'startDate': dateStr,
+      'endDate': dateStr,
+      'session': session.toLowerCase(),
+      'leaveType': leaveType.toLowerCase(),
+      'reason': reason,
+    };
+    print('[HalfDayLeave] Payload: ' + jsonEncode(payload));
+    final response = await http.post(
+      Uri.parse('$baseUrl/leaves/half-day'),
+      headers: _authHeaders(token),
+      body: jsonEncode(payload),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return applyLeaveResponseFromJson(response.body);
+    }
+
+    // Parse error message from body
+    try {
+      final body = json.decode(response.body) as Map<String, dynamic>;
+      final message =
+          body['message'] ?? body['error'] ?? 'Failed to apply half-day leave';
+      if (body['errors'] != null) {
+        final e = body['errors'];
+        final detail = e is Map
+            ? e.values.join(', ')
+            : e is List
+                ? (e).join(', ')
+                : '';
+        throw Exception('$message: $detail');
+      }
+      throw Exception(message);
+    } catch (e) {
+      if (e is FormatException) throw Exception('Server error (${response.statusCode})');
+      rethrow;
+    }
+  }
+
+  // ── POST /api/leaves ────────────────────────────────────────────────────
   /// Apply for leave. Returns [ApplyLeaveResponse] on success, throws on error.
   static Future<ApplyLeaveResponse> applyLeave({
     required String token,
@@ -20,22 +72,37 @@ class LeaveService {
     required String reason,
     double? days, // Optional parameter for custom days (e.g., 0.5 for half day)
   }) async {
+    print('🔵 [ApplyLeave] Input dates: startDate=$startDate, endDate=$endDate');
+    
     // Strip trailing " Leave" suffix and lowercase (backend expects e.g. "annual")
     final normalizedType =
         leaveType.replaceAll(RegExp(r'\s*[Ll]eave$'), '').toLowerCase();
     final calculatedDays = days ?? (endDate.difference(startDate).inDays + 1);
 
+    // Format dates as yyyy-MM-dd
+    final startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
+    final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
+
+    print('✅ [ApplyLeave] Formatted dates: startDate=$startDateStr, endDate=$endDateStr, type=$normalizedType, days=$calculatedDays, reason=$reason');
+
+    final body = {
+      'leaveType': normalizedType,
+      'startDate': startDateStr,
+      'endDate': endDateStr,
+      'days': calculatedDays,
+      'reason': reason,
+    };
+    
+    print('📤 [ApplyLeave] Request body: ${jsonEncode(body)}');
+
     final response = await http.post(
       Uri.parse('$baseUrl/leaves'),
       headers: _authHeaders(token),
-      body: jsonEncode({
-        'leaveType': normalizedType,
-        'startDate': startDate.toIso8601String(),
-        'endDate': endDate.toIso8601String(),
-        'days': calculatedDays,
-        'reason': reason,
-      }),
+      body: jsonEncode(body),
     );
+
+    print('📥 [ApplyLeave] Response status: ${response.statusCode}');
+    print('📥 [ApplyLeave] Response body: ${response.body}');
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return applyLeaveResponseFromJson(response.body);

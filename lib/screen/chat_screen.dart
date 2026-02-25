@@ -12,7 +12,7 @@ import '../services/chat_socket_service.dart';
 import '../services/token_storage_service.dart';
 import '../services/notification_service.dart';
 import '../services/chat_media_service.dart';
-import 'chat_api_test_screen.dart';
+// import 'chat_api_test_screen.dart';
 
 // ─── Chat List Screen ─────────────────────────────────────────────────────────
 
@@ -190,16 +190,6 @@ class _ChatScreenState extends State<ChatScreen> {
             fontSize: 22,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.api_outlined, color: AppTheme.primaryColor),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ChatApiTestScreen()),
-            ),
-            tooltip: 'Chat API Tests',
-          ),
-        ],
       ),
       body: Column(
         children: [

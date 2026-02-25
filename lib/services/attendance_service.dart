@@ -179,12 +179,12 @@ class AttendanceService {
       
       print('📅 [TODAY\'S ATTENDANCE] Fetching: $uri');
       
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await http
+          .get(uri, headers: {'Authorization': 'Bearer $token'})
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw Exception('Attendance request timed out'),
+          );
       
       print('📅 [TODAY\'S ATTENDANCE] Status: ${response.statusCode}');
       print('📅 [TODAY\'S ATTENDANCE] Response: ${response.body}');
@@ -240,8 +240,27 @@ class AttendanceService {
       );
       
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        return AttendanceSummary.fromJson(jsonData);
+        try {
+          final jsonData = json.decode(response.body);
+          return AttendanceSummary.fromJson(jsonData);
+        } catch (parseError) {
+          print('❌ Error parsing attendance summary: $parseError');
+          print('Response body: ${response.body}');
+          // Return default/empty summary on parse error
+          return AttendanceSummary(
+            success: false,
+            data: AttendanceSummaryData(
+              present: 0,
+              absent: 0,
+              late: 0,
+              halfDay: 0,
+              wfh: 0,
+              totalWorkHours: 0.0,
+              averageWorkHours: '0h 0m',
+              totalDays: 0,
+            ),
+          );
+        }
       } else {
         final errorBody = response.body;
         print('Get attendance summary failed with status ${response.statusCode}');
@@ -292,24 +311,30 @@ class AttendanceService {
       print('📅 [HISTORY] Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        // Parse as full AttendanceRecords and convert to lightweight AttendanceHistory
-        final records = AttendanceRecords.fromJson(jsonData);
+        try {
+          final jsonData = json.decode(response.body);
+          // Parse as full AttendanceRecords and convert to lightweight AttendanceHistory
+          final records = AttendanceRecords.fromJson(jsonData);
 
-        final historyRecords = records.data
-            .map((r) => history_model.AttendanceRecord(
-                  id: r.id,
-                  date: r.date,
-                  status: r.status,
-                  workHours: r.workHours,
-                ))
-            .toList();
+          final historyRecords = records.data
+              .map((r) => history_model.AttendanceRecord(
+                    id: r.id,
+                    date: r.date,
+                    status: r.status,
+                    workHours: r.workHours,
+                  ))
+              .toList();
 
-        print('📅 [HISTORY] Converted ${historyRecords.length} records for calendar');
-        return history_model.AttendanceHistory(
-          success: records.success,
-          data: historyRecords,
-        );
+          print('📅 [HISTORY] Converted ${historyRecords.length} records for calendar');
+          return history_model.AttendanceHistory(
+            success: records.success,
+            data: historyRecords,
+          );
+        } catch (parseError) {
+          print('❌ [HISTORY] Error parsing response: $parseError');
+          print('Response body: ${response.body}');
+          return history_model.AttendanceHistory(success: false, data: []);
+        }
       } else {
         final errorBody = response.body;
         print('❌ [HISTORY] Failed with status ${response.statusCode}');
@@ -363,10 +388,17 @@ class AttendanceService {
       print('Response body: ${response.body}');
       
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        final records = AttendanceRecords.fromJson(jsonData);
-        print('Parsed ${records.count} records successfully');
-        return records;
+        try {
+          final jsonData = json.decode(response.body);
+          final records = AttendanceRecords.fromJson(jsonData);
+          print('Parsed ${records.count} records successfully');
+          return records;
+        } catch (parseError) {
+          print('❌ Error parsing attendance records: $parseError');
+          print('Response body: ${response.body}');
+          // Return empty records on parse error
+          return AttendanceRecords(success: false, count: 0, data: []);
+        }
       } else {
         final errorBody = response.body;
         print('Get attendance records failed with status ${response.statusCode}');
@@ -503,13 +535,18 @@ class AttendanceService {
       print('Fetching dashboard stats:');
       print('URL: $uri');
       
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw Exception('Dashboard stats request timed out'),
+          );
       
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');

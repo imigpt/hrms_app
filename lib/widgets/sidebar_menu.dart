@@ -16,6 +16,7 @@ import 'package:hrms_app/screen/increment_promotion_screen.dart';
 import 'package:hrms_app/screen/my_salary_screen.dart';
 import 'package:hrms_app/theme/app_theme.dart';
 import 'package:hrms_app/screen/settings_screen.dart';
+import 'package:hrms_app/screen/hr_accounts_screen.dart';
 
 class SidebarMenu extends StatefulWidget {
   final ProfileUser? user;
@@ -30,8 +31,16 @@ class SidebarMenu extends StatefulWidget {
 class _SidebarMenuState extends State<SidebarMenu> {
   int _selectedIndex = 0;
   bool _payrollExpanded = false;
+  late String _userRole;
 
-  final List<Map<String, dynamic>> _menuItems = [
+  @override
+  void initState() {
+    super.initState();
+    // Determine user role
+    _userRole = (widget.user?.role?.toLowerCase() == 'admin') ? 'admin' : 'employee';
+  }
+
+  late final List<Map<String, dynamic>> _employeeMenuItems = [
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
     {"title": "My Profile", "icon": Icons.person_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded},
@@ -39,17 +48,39 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
     {"title": "Announcements", "icon": Icons.campaign_rounded},
+    {"title": "Company Policy", "icon": Icons.policy_rounded},
     {"title": "Payroll", "icon": Icons.payments_rounded, "hasSubmenu": true},
-    {"title": "Policies", "icon": Icons.policy_rounded},
     {"title": "Settings", "icon": Icons.settings_rounded},
   ];
 
-  final List<Map<String, dynamic>> _payrollSubItems = [
+  late final List<Map<String, dynamic>> _adminMenuItems = [
+    {"title": "Dashboard", "icon": Icons.grid_view_rounded},
+    {"title": "HR Accounts", "icon": Icons.manage_accounts_rounded},
+    {"title": "Attendance", "icon": Icons.schedule_rounded},
+    {"title": "Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
+    {"title": "Chat", "icon": Icons.chat_bubble_rounded},
+    {"title": "Announcements", "icon": Icons.campaign_rounded},
+    {"title": "Company Policy", "icon": Icons.policy_rounded},
+    {"title": "Payroll", "icon": Icons.payments_rounded, "hasSubmenu": true},
+    {"title": "Edit Request", "icon": Icons.description_rounded},
+    {"title": "Clients", "icon": Icons.business_rounded},
+    {"title": "Employees", "icon": Icons.people_rounded},
+    {"title": "Leaves", "icon": Icons.calendar_month_rounded},
+    {"title": "Settings", "icon": Icons.settings_rounded},
+  ];
+
+  late final List<Map<String, dynamic>> _payrollSubItems = [
     {"title": "Pre Payments", "icon": Icons.payment_rounded},
     {"title": "Increment/Promotion", "icon": Icons.trending_up_rounded},
     {"title": "Payroll", "icon": Icons.payments_rounded},
     {"title": "My Salary", "icon": Icons.money_rounded},
   ];
+
+  /// Get the appropriate menu items based on user role
+  List<Map<String, dynamic>> get _menuItems {
+    return _userRole == 'admin' ? _adminMenuItems : _employeeMenuItems;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -476,31 +507,83 @@ class _SidebarMenuState extends State<SidebarMenu> {
     }
 
     // Smooth Navigation
-    if (title == "My Profile") {
-      Navigator.of(context).push(
-        _createSmoothRoute(ProfileScreen(user: widget.user, token: widget.token)),
-      );
-    } else if (title == "Attendance") {
-      Navigator.of(context).push(_createSmoothRoute(const AttendanceScreen()));
-    } else if (title == "Tasks") {
-      Navigator.of(context).push(_createSmoothRoute(const TasksScreen()));
-    } else if (title == "Expenses") {
-      Navigator.of(context).push(_createSmoothRoute(const ExpensesScreen()));
-    } else if (title == "Announcements") {
-      Navigator.of(context).push(_createSmoothRoute(const AnnouncementsScreen()));
-    } else if (title == "Chat") {
-      Navigator.of(context).push(_createSmoothRoute(const ChatScreen()));
-    } else if (title == "Policies") {
-      Navigator.of(context).push(_createSmoothRoute(const PoliciesScreen()));
-    } else if (title == "Settings") {
-      Navigator.of(context).push(_createSmoothRoute(
-        SettingsScreen(user: widget.user, token: widget.token),
-      ));
-    } else {
-      // For Dashboard and any other unimplemented screens
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This screen is under development.')),
-      );
+    switch(title) {
+      case "Dashboard":
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You are already on the Dashboard.')),
+        );
+        break;
+        
+      case "My Profile":
+        Navigator.of(context).push(_createSmoothRoute(
+          ProfileScreen(user: widget.user, token: widget.token),
+        ));
+        break;
+        
+      case "Attendance":
+        Navigator.of(context).push(_createSmoothRoute(const AttendanceScreen()));
+        break;
+        
+      case "Tasks":
+        Navigator.of(context).push(_createSmoothRoute(const TasksScreen()));
+        break;
+        
+      case "Expenses":
+        Navigator.of(context).push(_createSmoothRoute(const ExpensesScreen()));
+        break;
+        
+      case "Chat":
+        Navigator.of(context).push(_createSmoothRoute(const ChatScreen()));
+        break;
+        
+      case "Announcements":
+        Navigator.of(context).push(_createSmoothRoute(const AnnouncementsScreen()));
+        break;
+        
+      case "Company Policy":
+        Navigator.of(context).push(_createSmoothRoute(const PoliciesScreen()));
+        break;
+        
+      case "Settings":
+        Navigator.of(context).push(_createSmoothRoute(
+          SettingsScreen(user: widget.user, token: widget.token),
+        ));
+        break;
+        
+      case "Edit Request":
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Edit Request management is under development.')),
+        );
+        break;
+        
+      case "Clients":
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Clients management is under development.')),
+        );
+        break;
+        
+      case "Employees":
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Employees management is under development.')),
+        );
+        break;
+        
+      case "HR Accounts":
+        Navigator.of(context).push(_createSmoothRoute(
+          HRAccountsScreen(token: widget.token),
+        ));
+        break;
+        
+      case "Leaves":
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Leaves management is under development.')),
+        );
+        break;
+        
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('This screen is under development.')),
+        );
     }
   }
 

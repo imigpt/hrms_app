@@ -69,18 +69,18 @@ class AttendanceRecord {
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) => 
       AttendanceRecord(
         id: json["_id"] ?? "",
-        user: User.fromJson(json["user"] ?? {}),
+        user: json["user"] != null ? User.fromJson(json["user"]) : User.fromJson({}),
         company: json["company"],
-        date: DateTime.parse(json["date"]),
-        checkIn: RecordCheckIn.fromJson(json["checkIn"]),
+        date: json["date"] != null ? DateTime.parse(json["date"]) : DateTime.now(),
+        checkIn: json["checkIn"] != null ? RecordCheckIn.fromJson(json["checkIn"]) : RecordCheckIn.fromJson({}),
         checkOut: json["checkOut"] != null 
             ? RecordCheckOut.fromJson(json["checkOut"]) 
             : null,
         status: json["status"] ?? "unknown",
         workHours: ((json["workHours"] ?? 0) as num).toDouble(),
         isManualEntry: json["isManualEntry"] ?? false,
-        createdAt: DateTime.parse(json["createdAt"]),
-        updatedAt: DateTime.parse(json["updatedAt"]),
+        createdAt: json["createdAt"] != null ? DateTime.parse(json["createdAt"]) : DateTime.now(),
+        updatedAt: json["updatedAt"] != null ? DateTime.parse(json["updatedAt"]) : DateTime.now(),
         v: json["__v"] ?? 0,
       );
 
@@ -113,11 +113,11 @@ class RecordCheckIn {
 
   factory RecordCheckIn.fromJson(Map<String, dynamic> json) => 
       RecordCheckIn(
-        time: DateTime.parse(json["time"]).toLocal(),
+        time: json["time"] != null ? DateTime.parse(json["time"]).toLocal() : DateTime.now(),
         location: json["location"] != null 
             ? RecordLocation.fromJson(json["location"]) 
             : null,
-        photo: RecordPhoto.fromJson(json["photo"] ?? {}),
+        photo: json["photo"] != null ? RecordPhoto.fromJson(json["photo"]) : RecordPhoto.fromJson({}),
       );
 
   Map<String, dynamic> toJson() => {
@@ -138,7 +138,7 @@ class RecordCheckOut {
 
   factory RecordCheckOut.fromJson(Map<String, dynamic> json) => 
       RecordCheckOut(
-        time: DateTime.parse(json["time"]).toLocal(),
+        time: json["time"] != null ? DateTime.parse(json["time"]).toLocal() : DateTime.now(),
         location: json["location"] != null 
             ? RecordLocation.fromJson(json["location"]) 
             : null,

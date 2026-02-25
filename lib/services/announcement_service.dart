@@ -24,13 +24,18 @@ class AnnouncementService {
       print('=== FETCH ANNOUNCEMENTS ===');
       print('URL: $uri');
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () => throw Exception('Announcements request timed out'),
+          );
 
       print('Status: ${response.statusCode}');
       print('Response body: ${response.body}');
@@ -61,13 +66,18 @@ class AnnouncementService {
     try {
       final uri = Uri.parse('$baseUrl/announcements/unread/count');
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(
+            const Duration(seconds: 8),
+            onTimeout: () => throw Exception('Unread count timed out'),
+          );
 
       print('Unread count status: ${response.statusCode}');
       print('Unread count body: ${response.body}');

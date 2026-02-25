@@ -10,6 +10,7 @@ import 'package:hrms_app/services/announcement_websocket_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import '../services/auth_service.dart';
 
 // Import our custom widgets
 import '../widgets/sidebar_menu.dart';
@@ -42,6 +43,14 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  // ── THEME COLORS ────────────────────────────────────────────────────────────
+  final Color _bgDark = const Color(0xFF050505);
+  final Color _cardDark = const Color(0xFF141414);
+  final Color _accentPink = const Color(0xFFFF8FA3);
+  final Color _accentGreen = const Color(0xFF00C853);
+  final Color _accentBlue = const Color(0xFF1E88E5);
+  final Color _accentOrange = const Color(0xFFFF9800);
+  
   // --- STATE VARIABLES ---
   bool _isCheckedIn = false;
   bool _showPhotoUI = false;
@@ -67,26 +76,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // WebSocket service for real-time announcements
   final AnnouncementWebSocketService _wsService = AnnouncementWebSocketService();
   StreamSubscription<List<Announcement>>? _announcementsSubscription;
+  
+  // ── ADMIN DASHBOARD STATE ───────────────────────────────────────────────────
+  Map<String, dynamic> _adminDashboard = {};
+  List<dynamic> _recentActivity = [];
+  bool _isLoadingAdminData = true;
+  String _userRole = 'employee';
 
   @override
   void initState() {
     super.initState();
-    _loadCachedAttendanceState();  // Load cached state first
-    _loadPersistedReadIds();           // Load persisted read announcements
-    _loadTodayAttendance();
-    _loadDashboardStats();  // Load dashboard statistics
     
-    // Load unread count from API (fast badge update)
-    _loadUnreadCount();
+    // Determine user role
+    _userRole = (widget.user?.role?.toLowerCase() == 'admin') ? 'admin' : 'employee';
+    
+    if (_userRole == 'admin') {
+      // Load admin dashboard data
+      _loadAdminDashboard();
+    } else {
+      // Load employee dashboard data
+      _loadCachedAttendanceState();  // Load cached state first
+      _loadPersistedReadIds();           // Load persisted read announcements
+      _loadTodayAttendance();
+      _loadDashboardStats();  // Load dashboard statistics
+      
+      // Load unread count from API (fast badge update)
+      _loadUnreadCount();
 
-    // Load announcements immediately via REST API for quick display
-    _loadAnnouncementsFallback();
-    
-    // Also connect to WebSocket for real-time updates
-    _connectToAnnouncementsWebSocket();
-    
-    // Start the timer to simulate working hours increasing
-    _startTimer();
+      // Load announcements immediately via REST API for quick display
+      _loadAnnouncementsFallback();
+      
+      // Also connect to WebSocket for real-time updates
+      _connectToAnnouncementsWebSocket();
+      
+      // Start the timer to simulate working hours increasing
+      _startTimer();
+    }
   }
 
   // Save attendance state to local storage
@@ -329,9 +354,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       print('Connecting to announcements WebSocket...');
       
-      // Set a timeout - if no data received in 10 seconds, use REST API fallback
+      // Set a timeout - if no data received in 4 seconds, use REST API fallback
       bool dataReceived = false;
-      Timer? timeoutTimer = Timer(const Duration(seconds: 10), () {
+      Timer? timeoutTimer = Timer(const Duration(seconds: 4), () {
         if (!dataReceived && mounted && _isLoadingAnnouncements) {
           print('WebSocket timeout - falling back to REST API');
           _loadAnnouncementsFallback();
@@ -515,6 +540,86 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         setState(() {
           _isLoadingStats = false;
+        });
+      }
+    }
+  }
+
+  // ── LOAD ADMIN DASHBOARD ────────────────────────────────────────────────────
+  Future<void> _loadAdminDashboard() async {
+    if (widget.token == null) {
+      setState(() {
+        _isLoadingAdminData = false;
+      });
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoadingAdminData = true;
+      });
+    }
+
+    try {
+      final authService = AuthService();
+
+      // Fetch stats and activity in parallel
+      final results = await Future.wait([
+        authService.getAdminDashboardStats(widget.token!),
+        authService.getAdminRecentActivity(widget.token!, limit: 8),
+      ]);
+
+      final stats = results[0] as Map<String, dynamic>;
+      final activity = results[1] as List<Map<String, dynamic>>;
+
+      // Map activity items with icons
+      final IconData Function(String) iconForType = (String type) {
+        switch (type) {
+          case 'leave':
+            return Icons.calendar_today;
+          case 'task':
+            return Icons.assignment;
+          case 'expense':
+            return Icons.receipt_long;
+          case 'attendance':
+            return Icons.access_time;
+          default:
+            return Icons.info_outline;
+        }
+      };
+
+      final mappedActivity = activity.map((a) {
+        return {
+          'type': a['type'] ?? '',
+          'message': '${a['action'] ?? ''} — ${a['user'] ?? ''}',
+          'timestamp': DateTime.tryParse(a['time']?.toString() ?? '') ??
+              DateTime.now(),
+          'icon': iconForType(a['type']?.toString() ?? ''),
+          'status': a['status'] ?? '',
+        };
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _adminDashboard = {
+            'totalCompanies': stats['totalCompanies'] ?? 0,
+            'totalHRAccounts': stats['totalHR'] ?? 0,
+            'totalEmployees': stats['totalEmployees'] ?? 0,
+            'activeToday': stats['activeToday'] ?? 0,
+            'pendingLeaves': stats['pendingLeaves'] ?? 0,
+            'activeTasks': stats['activeTasks'] ?? 0,
+            'pendingExpenses': stats['pendingExpensesCount'] ?? 0,
+            'totalExpenseAmount': stats['pendingExpenses'] ?? 0,
+          };
+          _recentActivity = mappedActivity;
+          _isLoadingAdminData = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading admin dashboard: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingAdminData = false;
         });
       }
     }
@@ -1167,6 +1272,785 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // ─── ADMIN DASHBOARD WIDGETS ─────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildAdminScaffold({
+    required BuildContext context,
+    required bool isMobile,
+    required bool isTablet,
+    required bool isDesktopDevice,
+    required double sidebarWidth,
+    required double horizontalPadding,
+    required double verticalSpacing,
+    required double titleFontSize,
+    required double iconSize,
+  }) {
+    return Scaffold(
+      appBar: isDesktopDevice
+          ? null
+          : AppBar(
+              title: Text(
+                "Admin Panel",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: titleFontSize,
+                ),
+              ),
+              backgroundColor: _cardDark,
+              elevation: 0,
+              actions: [
+                IconButton(
+                    onPressed: () {},
+                    icon: Icon(Icons.notifications_outlined, size: iconSize),
+                    tooltip: 'Notification',
+                  ),
+                
+              ],
+            ),
+      drawer: !isDesktopDevice
+          ? Drawer(child: SidebarMenu(user: widget.user, token: widget.token))
+          : null,
+      backgroundColor: _bgDark,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isDesktopDevice)
+            SizedBox(
+              width: sidebarWidth,
+              child: SidebarMenu(user: widget.user, token: widget.token),
+            ),
+          Expanded(
+            child: _isLoadingAdminData
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _loadAdminDashboard,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.all(horizontalPadding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Desktop Header ──
+                          if (isDesktopDevice) ...[  
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Admin Panel",
+                                      style: TextStyle(
+                                        fontSize: titleFontSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Welcome back, ${widget.user?.name ?? 'Admin'}",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      onPressed: _loadAdminDashboard,
+                                      icon: Icon(Icons.refresh, size: iconSize, color: Colors.grey[400]),
+                                      tooltip: 'Refresh',
+                                    ),
+                                    SizedBox(width: isMobile ? 4 : 8),
+                                    IconButton(
+                                      onPressed: () {},
+                                      icon: Icon(Icons.settings_outlined, size: iconSize, color: Colors.grey[400]),
+                                      tooltip: 'Settings',
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: verticalSpacing),
+                          ] else ...[  
+                            // Mobile welcome
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                "Welcome back, ${widget.user?.name ?? 'Admin'}",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: verticalSpacing),
+                          ],
+
+                          // ── System Overview ──
+                          _buildSectionHeader('System Overview', Icons.dashboard, _accentBlue),
+                          const SizedBox(height: 12),
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: isMobile ? 2 : (isTablet ? 3 : 4),
+                            crossAxisSpacing: isMobile ? 10 : 12,
+                            mainAxisSpacing: isMobile ? 10 : 12,
+                            childAspectRatio: isMobile ? 1.2 : (isTablet ? 1.35 : 1.5),
+                            children: [
+                              _buildAdminStatCard(
+                                'Total Companies',
+                                '${_adminDashboard['totalCompanies'] ?? 0}',
+                                Icons.business,
+                                _accentBlue,
+                                isMobile: isMobile,
+                              ),
+                              _buildAdminStatCard(
+                                'HR Accounts',
+                                '${_adminDashboard['totalHRAccounts'] ?? 0}',
+                                Icons.admin_panel_settings,
+                                _accentPink,
+                                isMobile: isMobile,
+                              ),
+                              _buildAdminStatCard(
+                                'Total Employees',
+                                '${_adminDashboard['totalEmployees'] ?? 0}',
+                                Icons.people,
+                                _accentGreen,
+                                isMobile: isMobile,
+                              ),
+                              _buildAdminStatCard(
+                                'Active Today',
+                                '${_adminDashboard['activeToday'] ?? 0}',
+                                Icons.trending_up,
+                                _accentOrange,
+                                isMobile: isMobile,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: verticalSpacing),
+
+                          // ── Quick Stats ──
+                          _buildSectionHeader('Quick Stats', Icons.speed, _accentPink),
+                          const SizedBox(height: 12),
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: isMobile ? 2 : (isTablet ? 3 : 4),
+                            crossAxisSpacing: isMobile ? 10 : 12,
+                            mainAxisSpacing: isMobile ? 10 : 12,
+                            childAspectRatio: isMobile ? 1.2 : (isTablet ? 1.35 : 1.5),
+                            children: [
+                              _buildAdminStatCard(
+                                'Pending Leaves',
+                                '${_adminDashboard['pendingLeaves'] ?? 0}',
+                                Icons.calendar_today,
+                                Colors.amber,
+                                isMobile: isMobile,
+                              ),
+                              _buildAdminStatCard(
+                                'Active Tasks',
+                                '${_adminDashboard['activeTasks'] ?? 0}',
+                                Icons.assignment,
+                                _accentBlue,
+                                isMobile: isMobile,
+                              ),
+                              _buildAdminStatCard(
+                                'Pending Expenses',
+                                '${_adminDashboard['pendingExpenses'] ?? 0}',
+                                Icons.receipt_long,
+                                Colors.redAccent,
+                                isMobile: isMobile,
+                              ),
+                              _buildAdminStatCard(
+                                'Total Amount',
+                                '₹${_formatAmount(_adminDashboard['totalExpenseAmount'] ?? 0)}',
+                                Icons.account_balance_wallet,
+                                _accentGreen,
+                                isMobile: isMobile,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: verticalSpacing),
+
+                          // ── Recent Activity + System Alerts ──
+                          if (isDesktopDevice)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(flex: 1, child: _buildRecentActivitySection()),
+                                const SizedBox(width: 16),
+                                Expanded(flex: 1, child: _buildSystemAlertsSection()),
+                              ],
+                            )
+                          else ...[  
+                            _buildRecentActivitySection(),
+                            SizedBox(height: verticalSpacing),
+                            _buildSystemAlertsSection(),
+                          ],
+                          SizedBox(height: verticalSpacing),
+                          
+                          // ── Quick Actions ──
+                          _buildQuickActionsSection(isMobile),
+                          SizedBox(height: verticalSpacing),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Section Header ──
+  Widget _buildSectionHeader(String title, IconData icon, Color color) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 16),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey[300],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Format Amount ──
+  String _formatAmount(dynamic amount) {
+    if (amount is int) {
+      if (amount >= 100000) {
+        return '${(amount / 100000).toStringAsFixed(1)}L';
+      } else if (amount >= 1000) {
+        return '${(amount / 1000).toStringAsFixed(1)}K';
+      }
+      return amount.toString();
+    }
+    return amount.toString();
+  }
+
+  // ── Admin Stat Card ──
+  Widget _buildAdminStatCard(String title, String value, IconData icon, Color color, {bool isMobile = false}) {
+    final cardPadding = isMobile ? 12.0 : 16.0;
+    final iconSize = isMobile ? 18.0 : 22.0;
+    final iconPadding = isMobile ? 8.0 : 10.0;
+    final valueFontSize = isMobile ? 18.0 : 22.0;
+    final titleFontSize = isMobile ? 11.0 : 12.0;
+    final spacerHeight = isMobile ? 8.0 : 12.0;
+    final borderRadius = isMobile ? 12.0 : 16.0;
+    
+    return Container(
+      padding: EdgeInsets.all(cardPadding),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(color: color.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Icon Container
+          Container(
+            padding: EdgeInsets.all(iconPadding),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(isMobile ? 8 : 12),
+              border: Border.all(
+                color: color.withOpacity(0.2),
+                width: 0.5,
+              ),
+            ),
+            child: Icon(icon, color: color, size: iconSize),
+          ),
+          SizedBox(height: spacerHeight),
+          
+          // Value Text
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: valueFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: isMobile ? 2 : 4),
+                
+                // Title Text
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: titleFontSize,
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Recent Activity Section ──
+  Widget _buildRecentActivitySection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _accentBlue.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.trending_up, color: _accentBlue, size: 18),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Recent Activity',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Text(
+                'Latest actions across the system',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          // Activity List
+          if (_recentActivity.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 30),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.inbox, color: Colors.grey[700], size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No recent activity',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Column(
+              children: [
+                ..._recentActivity.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final activity = entry.value;
+                  final timestamp = activity['timestamp'] as DateTime;
+                  final diff = DateTime.now().difference(timestamp);
+                  String timeStr;
+                  if (diff.inMinutes < 1) {
+                    timeStr = 'Just now';
+                  } else if (diff.inMinutes < 60) {
+                    timeStr = '${diff.inMinutes}m ago';
+                  } else if (diff.inHours < 24) {
+                    timeStr = '${diff.inHours}h ago';
+                  } else {
+                    timeStr = '${diff.inDays}d ago';
+                  }
+                  
+                  return Column(
+                    children: [
+                      if (i > 0)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Divider(
+                            color: Colors.white.withOpacity(0.04),
+                            height: 1,
+                          ),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          children: [
+                            // Status indicator
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: _accentGreen.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _accentGreen.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  activity['icon'] as IconData,
+                                  color: _accentGreen,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            
+                            // Message & User
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    activity['message'] as String,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    activity['user'] ?? 'System',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            
+                            // Time
+                            Text(
+                              timeStr,
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 11,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── System Alerts Section ──
+  Widget _buildSystemAlertsSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'System Alerts',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Items requiring attention',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          // No Alerts Message
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _accentGreen.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _accentGreen.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, color: _accentGreen, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'No alerts',
+                    style: TextStyle(
+                      color: _accentGreen,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // System Health Section
+          Text(
+            'System Health',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Server Load
+          _buildHealthMetric(
+            label: 'Server Load',
+            percentage: 88,
+            color: Colors.redAccent,
+          ),
+          const SizedBox(height: 14),
+          
+          // Database
+          _buildHealthMetric(
+            label: 'Database',
+            percentage: 0,
+            color: _accentGreen,
+          ),
+          const SizedBox(height: 14),
+          
+          // Storage
+          _buildHealthMetric(
+            label: 'Storage',
+            percentage: 1,
+            color: _accentGreen,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Health Metric Widget ──
+  Widget _buildHealthMetric({
+    required String label,
+    required int percentage,
+    required Color color,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+            Text(
+              '$percentage%',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        // Progress Bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: percentage / 100,
+            minHeight: 6,
+            backgroundColor: Colors.white.withOpacity(0.1),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Quick Actions Section ──
+  Widget _buildQuickActionsSection(bool isMobile) {
+    final actions = [
+      {'icon': Icons.person_add, 'label': 'Add Employee', 'color': _accentGreen},
+      {'icon': Icons.add_task, 'label': 'Create Task', 'color': _accentBlue},
+      {'icon': Icons.calendar_month, 'label': 'Leave Requests', 'color': _accentOrange},
+      {'icon': Icons.receipt_long, 'label': 'Expenses', 'color': _accentPink},
+      {'icon': Icons.campaign, 'label': 'Announcement', 'color': Colors.amber},
+      {'icon': Icons.bar_chart, 'label': 'Reports', 'color': Colors.tealAccent},
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _accentOrange.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.flash_on, color: _accentOrange, size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Quick Actions',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: isMobile ? 2 : 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: isMobile ? 2.2 : 2.5,
+            children: actions.map((action) {
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {},
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: (action['color'] as Color).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: (action['color'] as Color).withOpacity(0.15),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          action['icon'] as IconData,
+                          color: action['color'] as Color,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            action['label'] as String,
+                            style: TextStyle(
+                              color: action['color'] as Color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Navigate to apply leave screen
   void _onApplyLeave() {
     Navigator.push(
@@ -1208,6 +2092,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Calculate work hours as double for welcome card
     double workHours = _workedDuration.inMinutes / 60.0;
 
+    // ── ADMIN PANEL ── Route to admin scaffold if user is admin
+    if (_userRole == 'admin') {
+      return _buildAdminScaffold(
+        context: context,
+        isMobile: isMobile,
+        isTablet: isTablet,
+        isDesktopDevice: isDesktopDevice,
+        sidebarWidth: sidebarWidth,
+        horizontalPadding: horizontalPadding,
+        verticalSpacing: verticalSpacing,
+        titleFontSize: titleFontSize,
+        iconSize: iconSize,
+      );
+    }
+
+    // ── EMPLOYEE PANEL ──
     return LayoutBuilder(
       builder: (context, constraints) {
         return Scaffold(
@@ -1225,26 +2125,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   backgroundColor: Theme.of(context).cardColor,
                   elevation: 0,
                   actions: [
-                    // --- EMPLOYEE API TEST ---
-                    // IconButton(
-                    //   icon: const Icon(Icons.api_outlined, color: Colors.pinkAccent),
-                    //   onPressed: () => Navigator.push(
-                    //     context,
-                    //     MaterialPageRoute(builder: (_) => const EmployeeApiTestScreen()),
-                    //   ),
-                    //   tooltip: 'Employee API Tests',
-                    // ),
-                    // --- NOTIFICATION ICON ---
                     _buildNotificationIconButton(iconSize),
-                    // --- MORE OPTIONS (THREE-DOTS) ICON ---
-                    Padding(
-                      padding: EdgeInsets.only(right: isMobile ? 4.0 : 8.0),
-                      child: IconButton(
-                        onPressed: _onApplyLeave,
-                        icon: Icon(Icons.more_vert, size: iconSize),
-                        tooltip: 'More options',
-                      ),
-                    ),
                   ],
                 ),
           

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart'; // Needed for date formatting
 import '../screen/camera_screen.dart';
 import '../models/profile_model.dart';
 import '../models/attendance_checkin_model.dart';
+import '../theme/app_theme.dart'; // Import AppTheme
 
 class WelcomeCard extends StatelessWidget {
   // Add these variables to receive data from DashboardScreen
@@ -586,7 +587,7 @@ class WelcomeCard extends StatelessWidget {
                       style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w700),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE8F5E9),
+                      backgroundColor: AppTheme.primaryColor,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),

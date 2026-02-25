@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hrms_app/models/profile_model.dart';
 import 'package:hrms_app/services/profile_service.dart';
 import 'package:hrms_app/services/token_storage_service.dart';
+import 'package:hrms_app/theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point
@@ -119,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${item.title} — coming soon'),
-          backgroundColor: const Color(0xFF1E1E1E),
+          backgroundColor: AppTheme.surface,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
@@ -145,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final grouped = _grouped;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF050505),
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -159,7 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF111111),
+                  color: AppTheme.cardColor,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.white.withOpacity(0.07)),
                 ),
@@ -261,7 +262,7 @@ class _Header extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF111111),
+                color: AppTheme.cardColor,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
@@ -270,7 +271,7 @@ class _Header extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -280,7 +281,7 @@ class _Header extends StatelessWidget {
                         fontSize: 20,
                         fontWeight: FontWeight.w700)),
                 Text('Manage your account & preferences',
-                    style: TextStyle(color: Color(0xFF666666), fontSize: 12)),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12)),
               ],
             ),
           ),
@@ -290,7 +291,7 @@ class _Header extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF1A1A1A),
+              color: AppTheme.cardColor,
               border: Border.all(
                   color: Colors.white.withOpacity(0.08), width: 1.5),
               image: photo.isNotEmpty
@@ -350,7 +351,7 @@ class _SectionGroup extends StatelessWidget {
           ),
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF0E0E0E),
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(16),
               border:
                   Border.all(color: Colors.white.withOpacity(0.05), width: 1),
@@ -595,7 +596,7 @@ class _ProfileSettingsScreenState extends State<_ProfileSettingsScreen> {
                 child: Text(msg, style: const TextStyle(color: Colors.white))),
           ],
         ),
-        backgroundColor: isSuccess ? const Color(0xFF10B981) : Colors.redAccent,
+        backgroundColor: isSuccess ? AppTheme.successColor : AppTheme.errorColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
@@ -616,7 +617,7 @@ class _ProfileSettingsScreenState extends State<_ProfileSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050505),
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -625,7 +626,7 @@ class _ProfileSettingsScreenState extends State<_ProfileSettingsScreen> {
               title: 'Profile',
               subtitle: 'Your admin profile information',
               icon: Icons.person_rounded,
-              iconColor: const Color(0xFF3B82F6),
+              iconColor: AppTheme.primaryColor,
               trailing: _saving
                   ? const SizedBox(
                       width: 20,
@@ -634,7 +635,7 @@ class _ProfileSettingsScreenState extends State<_ProfileSettingsScreen> {
                   : _ActionButton(
                       label: 'Update',
                       icon: Icons.save_rounded,
-                      color: const Color(0xFFEC4899),
+                      color: AppTheme.primaryColor,
                       onTap: _save,
                     ),
             ),
@@ -744,7 +745,7 @@ class _AvatarCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E0E0E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
@@ -757,7 +758,7 @@ class _AvatarCard extends StatelessWidget {
                 height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF1A1A1A),
+                  color: AppTheme.cardColor,
                   border: Border.all(
                       color: Colors.white.withOpacity(0.1), width: 2),
                   image: photo.isNotEmpty
@@ -792,8 +793,8 @@ class _AvatarCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   _titleCase(user?.role ?? 'Employee'),
-                  style: const TextStyle(
-                      color: Color(0xFF888888),
+                  style: TextStyle(
+                      color: Colors.grey[500],
                       fontSize: 13,
                       fontWeight: FontWeight.w500),
                 ),
@@ -863,7 +864,7 @@ class _InfoGrid extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0E0E0E),
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
@@ -1017,7 +1018,7 @@ class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050505),
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -1183,7 +1184,7 @@ class _StrengthBarState extends State<_StrengthBar> {
               height: 4,
               margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
               decoration: BoxDecoration(
-                color: i < score ? colors[score] : const Color(0xFF1A1A1A),
+                color: i < score ? colors[score] : AppTheme.surfaceVariant,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -1315,7 +1316,7 @@ class _SubScreenHeader extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               margin: const EdgeInsets.only(top: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFF111111),
+                color: AppTheme.cardColor,
                 borderRadius: BorderRadius.circular(10),
                 border:
                     Border.all(color: Colors.white.withOpacity(0.06)),
@@ -1351,8 +1352,8 @@ class _SubScreenHeader extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                      color: Color(0xFF666666), fontSize: 12),
+                  style: TextStyle(
+                      color: Colors.grey[500], fontSize: 12),
                   maxLines: 2,
                 ),
               ],
@@ -1439,7 +1440,7 @@ class _PasswordField extends StatelessWidget {
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
         filled: true,
-        fillColor: const Color(0xFF0E0E0E),
+        fillColor: AppTheme.surfaceVariant,
         suffixIcon: IconButton(
           icon: Icon(
             show ? Icons.visibility_off_rounded : Icons.visibility_rounded,
@@ -1517,8 +1518,8 @@ class _FormField extends StatelessWidget {
             hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
             filled: true,
             fillColor: readOnly
-                ? const Color(0xFF0A0A0A)
-                : const Color(0xFF0E0E0E),
+                ? AppTheme.background
+                : AppTheme.surfaceVariant,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),

@@ -349,7 +349,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         _buildStatCard("Pending", "$pending", Icons.access_time_filled, _accentOrange),
         _buildStatCard("Approved", "$approved", Icons.check_circle, _accentGreen),
         _buildStatCard("Rejected", "$rejected", Icons.cancel, _accentRed),
-        _buildStatCard("Total Approved", "\$${total.toStringAsFixed(0)}", Icons.attach_money, _accentPink),
+        _buildStatCard("Total Approved", "\₹${total.toStringAsFixed(0)}", Icons.currency_rupee, _accentPink),
       ],
     );
   }

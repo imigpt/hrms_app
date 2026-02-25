@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hrms_app/models/profile_model.dart';
 import 'package:hrms_app/screen/dashboard_screen.dart';
@@ -29,6 +30,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final TokenStorageService _tokenStorage = TokenStorageService();
 
   bool _isLoading = false;
+  String _loadingMessage = 'Signing in...';
+  Timer? _loadingTimer;
 
   // State for toggling password visibility
   bool _isPasswordVisible = false;
@@ -44,9 +47,38 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    _loadingTimer?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _startLoadingTimer() {
+    _loadingMessage = 'Signing in...';
+    _loadingTimer?.cancel();
+    // Progressive messages as server wakes up
+    _loadingTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      final secs = t.tick;
+      String msg;
+      if (secs < 5) {
+        msg = 'Signing in...';
+      } else if (secs < 15) {
+        msg = 'Connecting to server...';
+      } else if (secs < 30) {
+        msg = 'Server is waking up...';
+      } else {
+        msg = 'Almost there, please wait...';
+      }
+      if (msg != _loadingMessage) {
+        setState(() => _loadingMessage = msg);
+      }
+    });
+  }
+
+  void _stopLoadingTimer() {
+    _loadingTimer?.cancel();
+    _loadingTimer = null;
   }
 
   @override
@@ -220,6 +252,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       setState(() {
                         _isLoading = true;
                       });
+                      _startLoadingTimer();
 
                       // Capture context-dependent objects before async gaps
                       final navigator = Navigator.of(context);
@@ -232,23 +265,32 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
 
                         if (!mounted) return;
+                        _stopLoadingTimer();
                         setState(() => _isLoading = false);
 
-                        // Save token and user info
-                        await _tokenStorage.saveLoginData(
+                        // Save token and user info (fire-and-forget)
+                        _tokenStorage.saveLoginData(
                           token: result.token,
                           userId: result.user.id,
                           email: result.user.email,
                           name: result.user.name,
                         );
+
+                        // Navigate immediately with data from login response.
+                        // Profile enrichment (phone, address, etc.) happens
+                        // lazily in the background on the dashboard.
+                        final user = ProfileUser.fromAuth(result.user);
+
                         if (!mounted) return;
 
-                        final profile = await _profileService.fetchProfile(
-                          result.token,
-                        );
-                        final user =
-                            profile ?? ProfileUser.fromAuth(result.user);
-                        if (!mounted) return;
+                        // For employees, start background profile fetch so
+                        // the dashboard can update once it arrives.
+                        if (result.user.role.toLowerCase() != 'admin') {
+                          _profileService
+                              .fetchProfile(result.token)
+                              .then((_) {}) // result wired up inside DashboardScreen
+                              .catchError((_) {});
+                        }
 
                         navigator.pushReplacement(
                           MaterialPageRoute(
@@ -258,6 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                       } catch (e) {
                         if (!mounted) return;
+                        _stopLoadingTimer();
                         final message = e
                             .toString()
                             .replaceFirst('Exception: ', '');
@@ -283,14 +326,28 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     child: _isLoading
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.black),
-                            ),
+                        ? Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(Colors.black),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _loadingMessage,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.black54,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           )
                         : const Text("Sign In"),
                   ),

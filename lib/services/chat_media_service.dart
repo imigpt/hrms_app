@@ -124,39 +124,26 @@ class ChatMediaService {
 
   /// Fix common URL issues like double slashes and Cloudinary typos.
   String _normalizeUrl(String url) {
-    try {
-      final uri = Uri.parse(url);
+  try {
+    final uri = Uri.parse(url);
 
-      // Fix double slashes in path (e.g., /v123//chat/... → /v123/chat/...)
-      var path = uri.path.replaceAll(RegExp(r'/+'), '/');
+    var path = uri.path;
 
-      // Fix Cloudinary-specific malformations stored in older DB records:
-      //   • /image/uploadd/ → /image/upload/   (extra 'd' typo)
-      //   • /video/uploadd/ → /video/upload/
-      //   • /raw/uploadd/   → /raw/upload/
-      //   • /auto/uploadd/  → /auto/upload/
-      if (uri.host.contains('cloudinary.com')) {
-        path = path
-            .replaceAll('/image/uploadd/', '/image/upload/')
-            .replaceAll('/video/uploadd/', '/video/upload/')
-            .replaceAll('/raw/uploadd/', '/raw/upload/')
-            .replaceAll('/auto/uploadd/', '/auto/upload/');
-      }
-
-      // Rebuild the URL with the normalised path
-      final normalized = uri.replace(path: path).toString();
-
-      if (normalized != url) {
-        debugPrint('🔧 URL normalized:  $url');
-        debugPrint('               → $normalized');
-      }
-
-      return normalized;
-    } catch (e) {
-      debugPrint('⚠️ URL normalization failed: $e');
-      return url;
+    if (uri.host.contains('cloudinary.com')) {
+      path = path
+          .replaceAll('/iimage/', '/image/')   // ⭐ ADD THIS
+          .replaceAll('/image/uploadd/', '/image/upload/')
+          .replaceAll('/video/uploadd/', '/video/upload/')
+          .replaceAll('/raw/uploadd/', '/raw/upload/')
+          .replaceAll('/auto/uploadd/', '/auto/upload/');
     }
+
+    return uri.replace(path: path).toString();
+  } catch (_) {
+    return url;
   }
+}
+
 
   /// Check if URL is a public CDN URL (no auth needed)
   bool isCdnUrl(String url) {

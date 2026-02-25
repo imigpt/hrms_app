@@ -49,11 +49,13 @@ class AuthService {
     };
 
     try {
-      final response = await http.post(
-        url,
-        headers: _headers(),
-        body: jsonEncode(body),
-      );
+      final response = await http
+          .post(url, headers: _headers(), body: jsonEncode(body))
+          .timeout(
+            const Duration(seconds: 65),
+            onTimeout: () => throw Exception(
+                'Could not reach the server. Please check your connection and try again.'),
+          );
 
       if (response.statusCode == 200) {
         return authLoginResponseFromJson(response.body);
@@ -113,6 +115,52 @@ class AuthService {
         return updateLocationFromJson(response.body);
       }
       throw Exception(_errorMessage(response, 'Failed to update location'));
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
+  // ── Admin: Get dashboard stats ─────────────────────────────────────────────
+  /// Calls `GET /api/admin/dashboard`. Returns the `data.stats` map.
+  Future<Map<String, dynamic>> getAdminDashboardStats(String token) async {
+    final url = Uri.parse('$_baseUrl/admin/dashboard');
+    try {
+      final response = await http
+          .get(url, headers: _headers(token: token))
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = body['data'] as Map<String, dynamic>? ?? {};
+        return data['stats'] as Map<String, dynamic>? ?? {};
+      }
+      throw Exception(_errorMessage(response, 'Failed to fetch admin stats'));
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
+  // ── Admin: Get recent activity ─────────────────────────────────────────────
+  /// Calls `GET /api/admin/activity`. Returns the list of activity items.
+  Future<List<Map<String, dynamic>>> getAdminRecentActivity(String token,
+      {int limit = 10}) async {
+    final url = Uri.parse('$_baseUrl/admin/activity?limit=$limit');
+    try {
+      final response = await http
+          .get(url, headers: _headers(token: token))
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = body['data'];
+        if (data is List) {
+          return data.cast<Map<String, dynamic>>();
+        }
+        return [];
+      }
+      throw Exception(_errorMessage(response, 'Failed to fetch activity'));
     } on Exception {
       rethrow;
     } catch (e) {

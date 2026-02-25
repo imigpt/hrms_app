@@ -143,74 +143,17 @@ class _CameraScreenState extends State<CameraScreen> {
       final image = await _controller!.takePicture();
       print('Photo captured: ${image.path}');
 
-      // Show loading overlay IMMEDIATELY — before slow GPS call
+      // Show preview immediately without waiting for location
       if (mounted) {
-        setState(() => _isSubmitting = true);
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) =>
-              const Center(child: CircularProgressIndicator(color: Colors.white)),
-        );
+        setState(() {
+          _capturedImagePath = image.path;
+        });
       }
 
-      // Get current location (medium accuracy is faster; timeout fallback to last known)
-      print('Getting current location...');
-      Position position;
-      try {
-        position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.medium,
-        ).timeout(const Duration(seconds: 8));
-      } catch (_) {
-        final last = await Geolocator.getLastKnownPosition();
-        if (last == null) {
-          throw Exception('Could not get location. Please check GPS settings.');
-        }
-        position = last;
-      }
-      print('Location captured: ${position.latitude}, ${position.longitude}');
-
-      // Determine location label — within 100 m of office = Main Building
-      final double distMeters = Geolocator.distanceBetween(
-        position.latitude, position.longitude, 26.816224, 75.845444,
-      );
-      final String locationLabel =
-          distMeters <= 100 ? 'Main Building' : 'Outside Building';
-
-      // Get auth token
-      final token = await TokenStorageService().getToken();
-      if (token == null) throw Exception('No authentication token found');
-
-      // Call check-in API
-      final response = await AttendanceService.checkIn(
-        token: token,
-        photoFile: File(image.path),
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-
-      if (mounted) {
-        Navigator.pop(context); // close loading overlay
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-        await Future.delayed(const Duration(milliseconds: 400));
-        if (mounted) {
-          Navigator.pop(context, {
-            'attendanceData': response.data,
-            'checkInAddress': locationLabel,
-          });
-        }
-      }
+      // Fetch location in background
+      _fetchLocationAsync();
     } catch (e) {
       if (mounted) {
-        try {
-          Navigator.pop(context);
-        } catch (_) {}
         setState(() => _isSubmitting = false);
         if (e.toString().toLowerCase().contains('already checked in')) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -231,6 +174,52 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           );
         }
+      }
+    }
+  }
+
+  // Fetch location asynchronously in background
+  Future<void> _fetchLocationAsync() async {
+    try {
+      print('Getting location in background...');
+      Position position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+        );
+      } catch (_) {
+        final last = await Geolocator.getLastKnownPosition();
+        if (last == null) {
+          throw Exception('Could not get location. Please check GPS settings.');
+        }
+        position = last;
+      }
+      print('Location captured: ${position.latitude}, ${position.longitude}');
+
+      // Determine location label — within 100 m of office = Main Building
+      final double distMeters = Geolocator.distanceBetween(
+        position.latitude, position.longitude, 26.816224, 75.845444,
+      );
+      final String locationLabel =
+          distMeters <= 100 ? 'Main Building' : 'Outside Building';
+
+      // Update state with location data
+      if (mounted) {
+        setState(() {
+          _capturedLocation = position;
+          _capturedAddress = locationLabel;
+        });
+      }
+    } catch (e) {
+      print('Error fetching location: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Location error: $e'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -258,16 +247,7 @@ class _CameraScreenState extends State<CameraScreen> {
       print('Photo path: $_capturedImagePath');
       print('Location: Lat=${_capturedLocation!.latitude}, Long=${_capturedLocation!.longitude}');
       
-      // Show loading indicator
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          ),
-        );
-      }
+      setState(() => _isSubmitting = true);
 
       // Get token from storage
       final token = await TokenStorageService().getToken();
@@ -289,37 +269,18 @@ class _CameraScreenState extends State<CameraScreen> {
       print('Response message: ${response.message}');
 
       if (mounted) {
-        // Close loading dialog
-        Navigator.pop(context);
-
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-
-        // Wait a moment for the snackbar
-        await Future.delayed(const Duration(milliseconds: 500));
+        setState(() => _isSubmitting = false);
         
         // Return attendance data with address to caller
-        if (mounted) {
-          // Include the human-readable address with the response data
-          final dataWithAddress = {
-            'attendanceData': response.data,
-            'checkInAddress': _capturedAddress,
-          };
-          Navigator.pop(context, dataWithAddress);
-        }
+        final dataWithAddress = {
+          'attendanceData': response.data,
+          'checkInAddress': _capturedAddress,
+        };
+        Navigator.pop(context, dataWithAddress);
       }
     } catch (e) {
       if (mounted) {
-        // Close loading dialog if open
-        try {
-          Navigator.pop(context);
-        } catch (_) {}
+        setState(() => _isSubmitting = false);
         
         String errorMessage = e.toString();
         
@@ -548,7 +509,7 @@ class _CameraScreenState extends State<CameraScreen> {
             alignment: Alignment.topRight,
             child: IconButton(
               icon: const Icon(Icons.close, color: Colors.white, size: 28),
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: _isSubmitting ? null : () => Navigator.pop(context, false),
             ),
           ),
 
@@ -614,7 +575,7 @@ class _CameraScreenState extends State<CameraScreen> {
                             size: 16,
                           ),
                         ),
-                        onPressed: _retakePhoto,
+                        onPressed: _isSubmitting ? null : _retakePhoto,
                       ),
                     ),
                   ],
@@ -641,23 +602,33 @@ class _CameraScreenState extends State<CameraScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _confirmCheckIn,
+              onPressed: _isSubmitting ? null : _confirmCheckIn,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: const Color(0xFFFF8B94),
+                disabledBackgroundColor: const Color(0xFFFF8B94).withValues(alpha: 0.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 elevation: 0,
               ),
-              icon: const Icon(
-                Icons.login,
-                color: Colors.white,
-                size: 22,
-              ),
-              label: const Text(
-                'Confirm Check In',
-                style: TextStyle(
+              icon: _isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.login,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+              label: Text(
+                _isSubmitting ? 'Checking in...' : 'Confirm Check In',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
