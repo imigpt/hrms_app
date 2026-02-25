@@ -22,6 +22,7 @@ class _CameraScreenState extends State<CameraScreen> {
   String? _capturedImagePath;
   Position? _capturedLocation;
   String? _capturedAddress;
+  Future<void>? _locationFuture;
 
   @override
   void initState() {
@@ -150,8 +151,8 @@ class _CameraScreenState extends State<CameraScreen> {
         });
       }
 
-      // Fetch location in background
-      _fetchLocationAsync();
+      // Fetch location in background and store the future
+      _locationFuture = _fetchLocationAsync();
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -225,24 +226,31 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> _confirmCheckIn() async {
-    if (_capturedImagePath == null || _capturedLocation == null || _capturedAddress == null) {
-      print('ERROR: Check-in failed - missing photo, location, or address');
-      print('Photo path: $_capturedImagePath');
-      print('Location: $_capturedLocation');
-      print('Address: $_capturedAddress');
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Missing photo or location data. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (_capturedImagePath == null) {
+      print('ERROR: No photo captured');
       return;
     }
 
     try {
+      // If location hasn't arrived yet, wait for it silently
+      if (_capturedLocation == null && _locationFuture != null) {
+        print('Waiting for location to finish...');
+        await _locationFuture;
+      }
+
+      // If still no location after waiting, show error
+      if (_capturedLocation == null || _capturedAddress == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not get location. Please retake photo.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       print('=== Starting Check-In ===');
       print('Photo path: $_capturedImagePath');
       print('Location: Lat=${_capturedLocation!.latitude}, Long=${_capturedLocation!.longitude}');
