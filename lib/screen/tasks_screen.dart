@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../services/task_service.dart';
 import '../services/token_storage_service.dart';
 import '../services/admin_employees_service.dart';
+import '../theme/app_theme.dart';
 
 class TasksScreen extends StatefulWidget {
   final String? token;
@@ -27,6 +28,7 @@ class _TasksScreenState extends State<TasksScreen>
   final Color _textGrey = const Color(0xFF9E9E9E);
 
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _token;
   String? _userId;
@@ -65,6 +67,9 @@ class _TasksScreenState extends State<TasksScreen>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
+    _searchController.addListener(() {
+      setState(() => _searchQuery = _searchController.text);
+    });
     _init();
   }
 
@@ -72,6 +77,7 @@ class _TasksScreenState extends State<TasksScreen>
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -1274,26 +1280,36 @@ class _TasksScreenState extends State<TasksScreen>
           // Search bar
           Container(
             height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: _inputDark,
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _accentPink.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: _searchQuery.isNotEmpty
+                    ? AppTheme.primaryColor.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.08),
+              ),
             ),
             child: TextField(
+              controller: _searchController,
               style: const TextStyle(color: Colors.white, fontSize: 15),
-              onChanged: (v) => setState(() => _searchQuery = v),
               decoration: InputDecoration(
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 hintText: 'Search tasks, employees...',
-                hintStyle: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 14),
-                prefixIcon: Icon(Icons.search, color: _accentPink, size: 20),
-                prefixIconConstraints: const BoxConstraints(minWidth: 44),
+                hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: _searchQuery.isNotEmpty ? AppTheme.primaryColor : Colors.grey[600],
+                  size: 20,
+                ),
+                prefixIconConstraints: const BoxConstraints(minWidth: 46),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.close, color: _textGrey, size: 18),
-                        onPressed: () => setState(() => _searchQuery = ''),
+                        icon: Icon(Icons.close_rounded, color: Colors.grey[600], size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
                       )
                     : null,
               ),
@@ -2359,27 +2375,45 @@ class _TasksScreenState extends State<TasksScreen>
     );
   }
 
-  Widget _buildSearchBar() => Container(
-        height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: _inputDark,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+  Widget _buildSearchBar() {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _searchQuery.isNotEmpty
+              ? AppTheme.primaryColor.withOpacity(0.5)
+              : Colors.white.withOpacity(0.08),
         ),
-        child: TextField(
-          style: const TextStyle(color: Colors.white, fontSize: 15),
-          onChanged: (v) => setState(() => _searchQuery = v),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            hintText: 'Search tasks...',
-            hintStyle: TextStyle(color: _textGrey.withOpacity(0.5), fontSize: 14),
-            prefixIcon: Icon(Icons.search, color: _textGrey, size: 20),
-            prefixIconConstraints: const BoxConstraints(minWidth: 40),
+      ),
+      child: TextField(
+        controller: _searchController,
+        style: const TextStyle(color: Colors.white, fontSize: 15),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          hintText: 'Search tasks...',
+          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: _searchQuery.isNotEmpty ? AppTheme.primaryColor : Colors.grey[600],
+            size: 20,
           ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 46),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.close_rounded, color: Colors.grey[600], size: 18),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
         ),
-      );
+      ),
+    );
+  }
 
   Widget _buildDesktopStats() => Row(
         children: [

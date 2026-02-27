@@ -24,9 +24,6 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
   }
 
   Future<void> _checkAuthStatus() async {
-    // Add a small delay for splash effect
-    await Future.delayed(const Duration(seconds: 1));
-
     // Check if user is logged in
     final isLoggedIn = await _tokenStorage.isLoggedIn();
 
@@ -85,34 +82,9 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF000000),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo
-            Image.asset(
-              'assets/images/aselea-logo.png',
-              height: 80,
-              width: 140,
-            ),
-            const SizedBox(height: 30),
-            // Loading indicator
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF88899)),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Loading...',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const Scaffold(
+      backgroundColor: Color(0xFF000000),
+      body: SizedBox.expand(),
     );
   }
 }

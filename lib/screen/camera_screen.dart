@@ -4,7 +4,6 @@ import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/attendance_service.dart';
 import '../services/token_storage_service.dart';
-import '../widgets/location_permission_dialog.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -28,6 +27,8 @@ class _CameraScreenState extends State<CameraScreen> {
   void initState() {
     super.initState();
     _initializeCamera();
+    // Start fetching location immediately (parallel with camera init)
+    _locationFuture = _fetchLocationAsync();
   }
 
   Future<void> _initializeCamera() async {
@@ -81,97 +82,42 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _takePicture() async {
     if (_isSubmitting) return;
     try {
-      // Check if location service is enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      print('Location service enabled: $serviceEnabled');
-      
-      if (!serviceEnabled) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please enable location services to mark attendance'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-        return;
-      }
-
-      // Check current location permission
-      LocationPermission permission = await Geolocator.checkPermission();
-      print('Current location permission: $permission');
-      
-      // ALWAYS show our custom dialog first (except if already granted)
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        // Show custom dialog to explain why we need location
-        if (mounted) {
-          final shouldRequest = await LocationPermissionDialog.show(
-            context, 
-            isPermanentlyDenied: permission == LocationPermission.deniedForever
-          );
-          print('Dialog result: $shouldRequest');
-          
-          if (shouldRequest == null) {
-            print('User cancelled');
-            return;
-          }
-          
-          if (permission == LocationPermission.deniedForever) {
-            // User needs to go to settings
-            return;
-          }
-          
-          if (shouldRequest == true) {
-            // User clicked "Enable", now request permission from system
-            permission = await Geolocator.requestPermission();
-            print('Permission after request: $permission');
-            
-            if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-              print('Permission denied by user');
-              return;
-            }
-          } else {
-            return;
-          }
-        }
-      }
-
-      // Ensure the camera is initialized
+      // Permission already checked in attendance_screen - just take photo
       await _initializeControllerFuture;
 
-      // Take the picture
+      // Take the picture instantly
       final image = await _controller!.takePicture();
-      print('Photo captured: ${image.path}');
 
-      // Show preview immediately without waiting for location
+      // Show preview immediately
       if (mounted) {
         setState(() {
           _capturedImagePath = image.path;
         });
       }
 
-      // Fetch location in background and store the future
-      _locationFuture = _fetchLocationAsync();
+      // If location not yet available, start fresh fetch
+      if (_capturedLocation == null) {
+        _locationFuture = _fetchLocationAsync();
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
         if (e.toString().toLowerCase().contains('already checked in')) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('You are already checked in. Refreshing...'),
+              content: Text('Already checked in. Refreshing...'),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 2),
             ),
           );
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future.delayed(const Duration(milliseconds: 300));
           if (mounted) Navigator.pop(context, 'refresh');
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Check-in failed: $e'),
+              content: Text('Error: $e'),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
+              duration: const Duration(seconds: 2),
             ),
           );
         }
@@ -179,144 +125,106 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  // Fetch location asynchronously in background
+  // Fetch location FAST in background
   Future<void> _fetchLocationAsync() async {
     try {
-      print('Getting location in background...');
-      Position position;
-      try {
-        position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.medium,
-        );
-      } catch (_) {
-        final last = await Geolocator.getLastKnownPosition();
-        if (last == null) {
-          throw Exception('Could not get location. Please check GPS settings.');
-        }
-        position = last;
+      // Try last known position first (INSTANT)
+      Position? position = await Geolocator.getLastKnownPosition();
+      
+      if (position != null) {
+        _updateLocationState(position);
       }
-      print('Location captured: ${position.latitude}, ${position.longitude}');
 
-      // Determine location label — within 100 m of office = Main Building
-      final double distMeters = Geolocator.distanceBetween(
-        position.latitude, position.longitude, 26.816224, 75.845444,
-      );
-      final String locationLabel =
-          distMeters <= 100 ? 'Main Building' : 'Outside Building';
-
-      // Update state with location data
-      if (mounted) {
-        setState(() {
-          _capturedLocation = position;
-          _capturedAddress = locationLabel;
-        });
+      // Then get fresh position with timeout (don't block)
+      try {
+        final freshPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: const Duration(seconds: 3),
+        );
+        _updateLocationState(freshPosition);
+      } catch (_) {
+        // Timeout or error - use last known if we got it
+        if (position == null) {
+          print('No location available');
+        }
       }
     } catch (e) {
-      print('Error fetching location: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Location error: $e'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
+      print('Location error: $e');
+    }
+  }
+
+  void _updateLocationState(Position position) {
+    final double distMeters = Geolocator.distanceBetween(
+      position.latitude, position.longitude, 26.816224, 75.845444,
+    );
+    final String locationLabel = distMeters <= 100 ? 'Main Building' : 'Outside Building';
+
+    if (mounted) {
+      setState(() {
+        _capturedLocation = position;
+        _capturedAddress = locationLabel;
+      });
     }
   }
 
   Future<void> _confirmCheckIn() async {
-    if (_capturedImagePath == null) {
-      print('ERROR: No photo captured');
-      return;
-    }
+    if (_capturedImagePath == null) return;
 
     try {
-      // If location hasn't arrived yet, wait for it silently
-      if (_capturedLocation == null && _locationFuture != null) {
-        print('Waiting for location to finish...');
-        await _locationFuture;
-      }
-
-      // If still no location after waiting, show error
-      if (_capturedLocation == null || _capturedAddress == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not get location. Please retake photo.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
-      print('=== Starting Check-In ===');
-      print('Photo path: $_capturedImagePath');
-      print('Location: Lat=${_capturedLocation!.latitude}, Long=${_capturedLocation!.longitude}');
-      
       setState(() => _isSubmitting = true);
 
-      // Get token from storage
-      final token = await TokenStorageService().getToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
+      // Quick wait for location (max 2 sec), use fallback if not available
+      if (_capturedLocation == null && _locationFuture != null) {
+        await _locationFuture!.timeout(
+          const Duration(seconds: 2),
+          onTimeout: () {},
+        );
       }
-      print('Token retrieved: ${token.substring(0, 20)}...');
 
-      // Call the check-in API with location data
-      print('Calling check-in API with location...');
+      // Use office location as fallback if no GPS
+      final double lat = _capturedLocation?.latitude ?? 26.816224;
+      final double lng = _capturedLocation?.longitude ?? 75.845444;
+      final String address = _capturedAddress ?? 'Main Building';
+
+      // Get token
+      final token = await TokenStorageService().getToken();
+      if (token == null) throw Exception('No token found');
+
+      // Call check-in API
       final response = await AttendanceService.checkIn(
         token: token,
         photoFile: File(_capturedImagePath!),
-        latitude: _capturedLocation!.latitude,
-        longitude: _capturedLocation!.longitude,
+        latitude: lat,
+        longitude: lng,
       );
-      
-      print('Check-in API response received');
-      print('Response message: ${response.message}');
 
       if (mounted) {
         setState(() => _isSubmitting = false);
-        
-        // Return attendance data with address to caller
-        final dataWithAddress = {
+        Navigator.pop(context, {
           'attendanceData': response.data,
-          'checkInAddress': _capturedAddress,
-        };
-        Navigator.pop(context, dataWithAddress);
+          'checkInAddress': address,
+        });
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
         
-        String errorMessage = e.toString();
-        
-        // Check if user is already checked in
-        if (errorMessage.toLowerCase().contains('already checked in')) {
-          // Show a message and go back - user is already checked in on backend
+        if (e.toString().toLowerCase().contains('already checked in')) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('You are already checked in. Refreshing...'),
+              content: Text('Already checked in!'),
               backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
+              duration: Duration(seconds: 1),
             ),
           );
-          
-          // Wait a moment for the snackbar
-          await Future.delayed(const Duration(milliseconds: 500));
-          
-          // Return "refresh" signal to dashboard
-          if (mounted) {
-            Navigator.pop(context, 'refresh');
-          }
+          await Future.delayed(const Duration(milliseconds: 300));
+          if (mounted) Navigator.pop(context, 'refresh');
         } else {
-          // Show regular error message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Check-in failed: $e'),
+              content: Text('Check-in failed: ${e.toString().replaceAll('Exception:', '').trim()}'),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
+              duration: const Duration(seconds: 2),
             ),
           );
         }

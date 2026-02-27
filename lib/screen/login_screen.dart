@@ -274,6 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           userId: result.user.id,
                           email: result.user.email,
                           name: result.user.name,
+                          role: result.user.role,
                         );
 
                         // Navigate immediately with data from login response.

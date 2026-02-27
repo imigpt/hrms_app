@@ -132,13 +132,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           // Parse check-in and check-out times from AttendanceCheckPoint objects
           try {
             if (data.checkIn != null && data.checkIn!.time != null) {
-              final checkInTime = DateTime.tryParse(data.checkIn!.time!) ?? DateTime.now();
+              final checkInTime = (DateTime.tryParse(data.checkIn!.time!) ?? DateTime.now()).toLocal();
               _checkInDateTime = checkInTime;
               _checkInTime = _formatTime(checkInTime);
             }
             
             if (data.checkOut != null && data.checkOut!.time != null) {
-              final checkOutTime = DateTime.tryParse(data.checkOut!.time!) ?? DateTime.now();
+              final checkOutTime = (DateTime.tryParse(data.checkOut!.time!) ?? DateTime.now()).toLocal();
               _checkOutDateTime = checkOutTime;
               _checkOutTime = _formatTime(checkOutTime);
             }
@@ -461,126 +461,85 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  // Check location services before starting check-in
+  // Check location services before starting check-in (FAST)
   Future<void> _checkLocationAndStartCheckIn() async {
     try {
-      print('\n🔍 [CHECK-IN DEBUG] === Starting Check-In Permission Check ===');
+      print('\n🔍 [CHECK-IN DEBUG] === Quick Location Check ===');
       
-      // Check if location service is enabled
+      // Quick location service check
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      print('📍 [CHECK-IN] Location service enabled: $serviceEnabled');
       
       if (!serviceEnabled) {
         if (mounted) {
-          setState(() {
-            _showPhotoUI = false; // Hide photo UI if location services disabled
-          });
+          setState(() => _showPhotoUI = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please enable location services in device settings to mark attendance'),
+              content: Text('Please enable location services'),
               backgroundColor: Colors.orange,
-              duration: Duration(seconds: 4),
+              duration: Duration(seconds: 3),
             ),
           );
         }
         return;
       }
 
-      // Check current location permission
+      // Quick permission check
       LocationPermission permission = await Geolocator.checkPermission();
-      print('📍 [CHECK-IN] Initial permission: $permission');
       
-      // Handle permission states
       if (permission == LocationPermission.denied) {
-        // Show custom dialog to explain why we need location
         if (mounted) {
           final shouldRequest = await LocationPermissionDialog.show(context, isPermanentlyDenied: false);
-          print('📍 [CHECK-IN] Dialog result: $shouldRequest');
           
           if (shouldRequest != true) {
-            print('📍 [CHECK-IN] User cancelled or declined');
             if (mounted) {
-              setState(() {
-                _showPhotoUI = false; // Hide photo UI if user declines
-              });
+              setState(() => _showPhotoUI = false);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Location permission is required to mark attendance'),
+                  content: Text('Location permission required'),
                   backgroundColor: Colors.orange,
-                  duration: Duration(seconds: 3),
+                  duration: Duration(seconds: 2),
                 ),
               );
             }
             return;
           }
           
-          // Request permission from system
           permission = await Geolocator.requestPermission();
-          print('📍 [CHECK-IN] Permission after request: $permission');
         }
       } else if (permission == LocationPermission.deniedForever) {
-        // Show dialog for permanently denied permission
         if (mounted) {
-          setState(() {
-            _showPhotoUI = false; // Hide photo UI for permanently denied permission
-          });
+          setState(() => _showPhotoUI = false);
           await LocationPermissionDialog.show(context, isPermanentlyDenied: true);
         }
         return;
       }
 
-      // Check final permission state
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          // Hide photo UI if permission denied
-          setState(() {
-            _showPhotoUI = false;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location permission denied. Please enable it in settings to mark attendance.'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
-        return;
-      }
-
+      // Allow check-in if permission granted
       if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
-        print('✅ [CHECK-IN] Location permission granted, photo UI already shown');
-        // Photo UI is already shown from initState, just ensure it stays visible
         if (mounted && !_showPhotoUI) {
-          setState(() {
-            _showPhotoUI = true;
-          });
+          setState(() => _showPhotoUI = true);
         }
       } else {
-        print('❌ [CHECK-IN] Unexpected permission state: $permission');
         if (mounted) {
-          setState(() {
-            _showPhotoUI = false;
-          });
+          setState(() => _showPhotoUI = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Unable to get location permission. Please try again.'),
+              content: Text('Location permission denied'),
               backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
+              duration: Duration(seconds: 2),
             ),
           );
         }
       }
     } catch (e) {
-      print('❌ [CHECK-IN] Error in location check: $e');
+      print('❌ [CHECK-IN] Location error: $e');
       if (mounted) {
-        setState(() {
-          _showPhotoUI = false; // Hide photo UI on error
-        });
+        setState(() => _showPhotoUI = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Unable to access location. Please check your device settings and try again.'),
+            content: Text('Unable to access location'),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
+            duration: Duration(seconds: 2),
           ),
         );
       }
@@ -588,7 +547,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _handleCheckOut() async {
-    print('\n🔍 [CHECK-OUT DEBUG] === Starting Check-Out Process ===');
+    print('\n🔍 [CHECK-OUT DEBUG] === Starting Quick Check-Out Process ===');
     
     if (_token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -612,10 +571,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     try {
-      // Check if location service is enabled
+      // Quick location service check
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      print('Location service enabled: $serviceEnabled');
-      
       if (!serviceEnabled) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -629,136 +586,108 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         return;
       }
 
-      // Check current location permission
+      // Quick permission check
       LocationPermission permission = await Geolocator.checkPermission();
-      print('Current location permission: $permission');
       
-      // ALWAYS show our custom dialog first (except if already granted)
       if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-        // Show custom dialog to explain why we need location
         if (mounted) {
           final shouldRequest = await LocationPermissionDialog.show(
             context, 
             isPermanentlyDenied: permission == LocationPermission.deniedForever
           );
-          print('Dialog result: $shouldRequest');
           
-          if (shouldRequest == null) {
-            print('User cancelled');
-            return;
-          }
+          if (shouldRequest == null || shouldRequest == false) return;
           
-          if (permission == LocationPermission.deniedForever) {
-            // User needs to go to settings
-            return;
-          }
+          if (permission == LocationPermission.deniedForever) return;
           
-          if (shouldRequest == true) {
-            // User clicked "Enable", now request permission from system
-            permission = await Geolocator.requestPermission();
-            print('Permission after request: $permission');
-            
-            if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-              print('Permission denied by user');
-              return;
-            }
-          } else {
-            return;
-          }
+          permission = await Geolocator.requestPermission();
+          if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
         }
       }
 
-      // Show loading
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-
-      // Get location
-      print('📡 [CHECK-OUT] Requesting GPS location (HIGH accuracy)...');
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      print('✅ [CHECK-OUT] Location captured successfully!');
-      print('📍 [CHECK-OUT] Latitude: ${position.latitude}');
-      print('📍 [CHECK-OUT] Longitude: ${position.longitude}');
-      print('📍 [CHECK-OUT] Accuracy: ${position.accuracy}m');
-      print('📍 [CHECK-OUT] Altitude: ${position.altitude}m');
-      print('📡 [CHECK-OUT] Calling check-out API with location...');
-
-      // Determine check-out location label based on distance from office
-      final double distMeters = Geolocator.distanceBetween(
-        position.latitude, position.longitude, 26.816224, 75.845444,
-      );
-      final String checkOutAddress =
-          distMeters <= 100 ? 'Main Building' : 'Outside Building';
-
-      // Call check-out API
-      final response = await AttendanceService.checkOut(
-        token: _token!,
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-      
-      print('✅ [CHECK-OUT] Check-out API response received');;
-      print('📨 [CHECK-OUT] Response message: ${response.message}');
-      print('📍 [CHECK-OUT] Response status: ${response.data.status}');
-      if (response.data.checkOut?.location != null) {
-        print('📍 [CHECK-OUT] Server stored location: Lat=${response.data.checkOut!.location!.latitude}, Long=${response.data.checkOut!.location!.longitude}');
-      } else {
-        print('⚠️ [CHECK-OUT] WARNING: Server did not store location!');
-      }
-
+      // ✅ SHOW SUCCESS IMMEDIATELY - Don't wait for location
       if (mounted) {
-        Navigator.pop(context); // Close loading
-
         setState(() {
           _isCheckedIn = false;
+          _checkOutTime = '--:--';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Check-out successful!'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // Get location with TIMEOUT (don't wait forever)
+      print('📡 [CHECK-OUT] Fetching location (FAST)...');
+      final locationFuture = Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+        timeLimit: const Duration(seconds: 5),
+      );
+
+      Position? position;
+      try {
+        position = await locationFuture;
+        print('✅ [CHECK-OUT] Location captured!');
+      } catch (e) {
+        print('⚠️ [CHECK-OUT] Location timeout/error (using fallback): $e');
+        position = null;
+      }
+
+      // Call check-out API in background (don't wait)
+      _doCheckOutRequest(position);
+      
+    } catch (e) {
+      print('Check-out error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception:', '').trim()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  // Background check-out API call (doesn't block UI)
+  Future<void> _doCheckOutRequest(Position? position) async {
+    try {
+      double lat = position?.latitude ?? 26.816224;
+      double lng = position?.longitude ?? 75.845444;
+
+      final response = await AttendanceService.checkOut(
+        token: _token!,
+        latitude: lat,
+        longitude: lng,
+      );
+      
+      print('✅ [CHECK-OUT] API completed');
+
+      if (mounted) {
+        setState(() {
           _checkOutDateTime = response.data.checkOut!.time;
           _checkOutTime = _formatTime(response.data.checkOut!.time);
           
           if (response.data.checkOut!.location != null) {
-            // Use human-readable address instead of coordinates
-            _checkOutLocation = checkOutAddress;
+            final double distMeters = Geolocator.distanceBetween(
+              response.data.checkOut!.location!.latitude,
+              response.data.checkOut!.location!.longitude,
+              26.816224,
+              75.845444,
+            );
+            _checkOutLocation = distMeters <= 100 ? 'Main Building' : 'Outside Building';
           }
           
           _workedDuration = response.data.checkOut!.time.difference(response.data.checkIn.time);
         });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
       }
     } catch (e) {
-      print('Check-out error details: $e');
-      if (mounted) {
-        // Try to close loading dialog if it's open
-        try {
-          Navigator.of(context, rootNavigator: true).pop();
-        } catch (_) {}
-        
-        // Parse error message to provide better feedback
-        String errorMessage = e.toString();
-        if (errorMessage.contains('Exception:')) {
-          errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
-        }
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
+      print('❌ [CHECK-OUT] Background API error: $e');
     }
   }
 

@@ -164,6 +164,68 @@ class ChatService {
     throw Exception(_msg(response.body, 'Failed to fetch group details'));
   }
 
+  /// POST /api/chat/groups — create a new group chat
+  /// [name] is the group name; [memberIds] are user IDs to add to the group
+  static Future<Map<String, dynamic>> createGroup({
+    required String token,
+    required String name,
+    required List<String> memberIds,
+  }) async {
+    final response = await http
+        .post(
+          Uri.parse('$_baseUrl/chat/groups'),
+          headers: _headers(token),
+          body: jsonEncode({
+            'name': name,
+            'memberIds': memberIds,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200 || response.statusCode == 201) return decoded;
+    throw Exception(_msg(response.body, 'Failed to create group'));
+  }
+
+  /// POST /api/chat/groups/:groupId/members — add a member to a group
+  /// [userId] is the user ID to add to the group
+  static Future<Map<String, dynamic>> addGroupMember({
+    required String token,
+    required String groupId,
+    required String userId,
+  }) async {
+    final response = await http
+        .post(
+          Uri.parse('$_baseUrl/chat/groups/$groupId/members'),
+          headers: _headers(token),
+          body: jsonEncode({
+            'userId': userId,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200 || response.statusCode == 201) return decoded;
+    throw Exception(_msg(response.body, 'Failed to add member to group'));
+  }
+
+  /// DELETE /api/chat/groups/:groupId — delete a group chat
+  static Future<Map<String, dynamic>> deleteGroup({
+    required String token,
+    required String groupId,
+  }) async {
+    final response = await http
+        .delete(
+          Uri.parse('$_baseUrl/chat/groups/$groupId'),
+          headers: _headers(token),
+        )
+        .timeout(const Duration(seconds: 30));
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode == 200) return decoded;
+    throw Exception(_msg(response.body, 'Failed to delete group'));
+  }
+
   /// POST /api/chat/groups/:groupId/leave — leave a group chat
   static Future<Map<String, dynamic>> leaveGroup({
     required String token,

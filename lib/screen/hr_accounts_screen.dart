@@ -32,13 +32,21 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   List<dynamic> _hrAccounts = [];
   List<dynamic> _filteredAccounts = [];
   String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
   String? _token;
 
   @override
   void initState() {
     super.initState();
     _token = widget.token;
+    _searchController.addListener(() => _onSearchChanged(_searchController.text));
     _loadHRAccounts();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadHRAccounts() async {
@@ -649,7 +657,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                         Row(
                           children: [
                             Expanded(
-                              child: _buildEditField('Date of Birth', _dobController, helperText: 'dd-mm-yyyy'),
+                              child: _buildDateField('Date of Birth', _dobController, context, helperText: 'dd-MM-yyyy'),
                             ),
                           ],
                         ),
@@ -665,7 +673,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: _buildEditField('Job Date', _jobDateController, helperText: 'dd-mm-yyyy'),
+                              child: _buildDateField('Job Date', _jobDateController, context, helperText: 'dd-MM-yyyy'),
                             ),
                           ],
                         ),
@@ -976,6 +984,107 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     );
   }
 
+  Widget _buildDateField(
+    String label,
+    TextEditingController controller,
+    BuildContext context, {
+    String? helperText,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: _textLight,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () async {
+              try {
+                DateTime? initialDate;
+                if (controller.text.isNotEmpty) {
+                  try {
+                    initialDate = DateFormat('dd-MM-yyyy').parse(controller.text);
+                  } catch (_) {
+                    initialDate = DateTime.now();
+                  }
+                } else {
+                  initialDate = DateTime.now();
+                }
+
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: initialDate,
+                  firstDate: DateTime(1990),
+                  lastDate: DateTime.now(),
+                  builder: (BuildContext context, Widget? child) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: ColorScheme.light(
+                          primary: _primaryAccent,
+                          onPrimary: Colors.white,
+                          surface: _section,
+                          onSurface: _textLight,
+                          outline: _border,
+                        ),
+                        textTheme: Theme.of(context).textTheme.copyWith(
+                          bodyLarge: const TextStyle(color: _textLight),
+                        ),
+                      ),
+                      child: child!,
+                    );
+                  },
+                );
+
+                if (picked != null) {
+                  controller.text = DateFormat('dd-MM-yyyy').format(picked);
+                }
+              } catch (e) {
+                debugPrint('Date picker error: $e');
+              }
+            },
+            borderRadius: BorderRadius.circular(11),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+              decoration: BoxDecoration(
+                color: _input,
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: _border.withOpacity(0.6), width: 1),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      controller.text.isEmpty ? 'Select date' : controller.text,
+                      style: TextStyle(
+                        color: controller.text.isEmpty ? _textGrey : _textLight,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.calendar_today_rounded, color: _primaryAccent, size: 18),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (helperText != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            helperText,
+            style: TextStyle(color: _textGrey, fontSize: 11),
+          ),
+        ],
+      ],
+    );
+  }
+
   String _formatDate(dynamic dateStr) {
     if (dateStr == null) return '-';
     try {
@@ -1022,101 +1131,280 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     final responsive = ResponsiveUtils(context);
     final isMobile = responsive.isMobile;
 
+    final total = _hrAccounts.length;
+    final active = _hrAccounts.where((a) => (a['status'] ?? '').toString().toLowerCase() == 'active').length;
+    final inactive = total - active;
+
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
         backgroundColor: _section,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: _textLight),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'HR Managers',
-          style: TextStyle(
-            color: _textLight,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            letterSpacing: -0.3,
-          ),
+        titleSpacing: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'HR Accounts',
+              style: TextStyle(
+                color: _textLight,
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                letterSpacing: -0.3,
+              ),
+            ),
+            Text(
+              'Manage HR manager accounts',
+              style: TextStyle(color: _textGrey, fontSize: 11),
+            ),
+          ],
         ),
-        centerTitle: true,
+        centerTitle: false,
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Center(
-              child: GestureDetector(
-                onTap: _showAddManagerDialog,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [_primaryAccent, _primaryAccent.withOpacity(0.85)],
+            padding: const EdgeInsets.only(right: 14),
+            child: GestureDetector(
+              onTap: _showAddManagerDialog,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_primaryAccent, _primaryAccent.withOpacity(0.8)],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _primaryAccent.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
                     ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add_rounded, color: Colors.white, size: 18),
-                      SizedBox(width: 6),
-                      Text(
-                        'Add Manager',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_rounded, color: Colors.white, size: 17),
+                    SizedBox(width: 6),
+                    Text(
+                      'Add HR Manager',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Divider(height: 1, color: _border.withOpacity(0.4)),
+        ),
       ),
-    
+
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Container(
-                height: 50,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: _input,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _border.withOpacity(0.6), width: 1),
-                ),
-                child: TextField(
-                  style: const TextStyle(color: _textLight, fontSize: 14),
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Search by name, email, company...',
-                    hintStyle: TextStyle(color: _textGrey, fontSize: 13),
-                    border: InputBorder.none,
-                    prefixIcon: Icon(Icons.search_rounded, color: _textGrey, size: 20),
-                    prefixIconConstraints: const BoxConstraints(minWidth: 40),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+            // Stats Section
+            if (!_isLoading && _error == null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Row(
+                  children: [
+                    _buildStatCard('Total HR Managers', '$total',
+                        Icons.people_rounded, _primaryAccent),
+                    const SizedBox(width: 10),
+                    _buildStatCard('Active', '$active',
+                        Icons.check_circle_rounded, _secondaryAccent),
+                    const SizedBox(width: 10),
+                    _buildStatCard('Inactive', '$inactive',
+                        Icons.cancel_outlined, _textGrey),
+                    const SizedBox(width: 10),
+                    _buildStatCard('Employees\nManaged', '-',
+                        Icons.manage_accounts_rounded, _orange),
+                  ],
                 ),
               ),
+
+            // Section header + search
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!_isLoading && _error == null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: _section,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(13),
+                          topRight: Radius.circular(13),
+                        ),
+                        border: Border(
+                          top: BorderSide(color: _border.withOpacity(0.5)),
+                          left: BorderSide(color: _border.withOpacity(0.5)),
+                          right: BorderSide(color: _border.withOpacity(0.5)),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: _primaryAccent,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          const Text(
+                            'All HR Managers',
+                            style: TextStyle(
+                              color: _textLight,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (_filteredAccounts.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: _primaryAccent.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '${_filteredAccounts.length} total',
+                                style: TextStyle(
+                                  color: _primaryAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  // Search bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: _input,
+                      borderRadius: BorderRadius.only(
+                        topLeft: (_isLoading || _error != null)
+                            ? const Radius.circular(13)
+                            : Radius.zero,
+                        topRight: (_isLoading || _error != null)
+                            ? const Radius.circular(13)
+                            : Radius.zero,
+                        bottomLeft: const Radius.circular(13),
+                        bottomRight: const Radius.circular(13),
+                      ),
+                      border: Border.all(color: _border.withOpacity(0.5), width: 1),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(color: _textLight, fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Search by name, email, company...',
+                        hintStyle: TextStyle(color: _textGrey, fontSize: 13),
+                        border: InputBorder.none,
+                        prefixIcon: Icon(
+                          Icons.search_rounded,
+                          color: _searchQuery.isNotEmpty ? _primaryAccent : _textGrey,
+                          size: 20,
+                        ),
+                        prefixIconConstraints: const BoxConstraints(minWidth: 46),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.close_rounded, color: _textGrey, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                    _filteredAccounts = _hrAccounts;
+                                  });
+                                },
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
+
+            const SizedBox(height: 8),
 
             // Content
             Expanded(
               child: _isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(color: _primaryAccent),
-                    )
+                  ? Center(child: CircularProgressIndicator(color: _primaryAccent))
                   : _error != null
                       ? _buildErrorWidget()
                       : _filteredAccounts.isEmpty
                           ? _buildEmptyWidget()
                           : _buildAccountsList(isMobile),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          color: _section,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: _border.withOpacity(0.5), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, color: color, size: 16),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                color: _textLight,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                height: 1,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(color: _textGrey, fontSize: 10, height: 1.3),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -1206,7 +1494,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
 
   Widget _buildAccountsList(bool isMobile) {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       itemCount: _filteredAccounts.length,
       itemBuilder: (context, index) {
         final account = _filteredAccounts[index] as Map<String, dynamic>;
@@ -1218,219 +1506,250 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   Widget _buildAccountCard(Map<String, dynamic> account, bool isMobile) {
     final status = (account['status'] ?? 'unknown').toString().toLowerCase();
     final statusColor = status == 'active' ? _secondaryAccent : _orange;
+    final joinDate = account['joinDate'] != null ? _formatDate(account['joinDate']) : null;
 
-    return GestureDetector(
-      onTap: () => _showDetailsDialog(account),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        decoration: BoxDecoration(
-          color: _section,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border.withOpacity(0.6), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Avatar, Name, Status, Actions
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Avatar
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_primaryAccent.withOpacity(0.3), _primaryAccent.withOpacity(0.2)],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _primaryAccent.withOpacity(0.3), width: 1),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _getInitials(account['name'] ?? 'HR'),
-                        style: const TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  // Name, Email, Status
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          account['name'] ?? 'Unknown',
-                          style: const TextStyle(
-                            color: _textLight,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            letterSpacing: -0.2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          account['email'] ?? '-',
-                          style: TextStyle(
-                            color: _textGrey,
-                            fontSize: 12,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: statusColor.withOpacity(0.3),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            status.toUpperCase(),
-                            style: TextStyle(
-                              color: statusColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: _section,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border.withOpacity(0.5), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // ── Header row ──────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 10, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Avatar
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _primaryAccent.withOpacity(0.28),
+                        _primaryAccent.withOpacity(0.12),
                       ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(color: _primaryAccent.withOpacity(0.35), width: 1.2),
+                  ),
+                  child: Center(
+                    child: Text(
+                      _getInitials(account['name'] ?? 'HR'),
+                      style: const TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
-                  // Action Buttons
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
+                ),
+                const SizedBox(width: 12),
+                // Name + since date
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: _primaryAccent.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
+                      Text(
+                        account['name'] ?? 'Unknown',
+                        style: const TextStyle(
+                          color: _textLight,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          letterSpacing: -0.2,
                         ),
-                        child: IconButton(
-                          onPressed: () => _showEditManagerDialog(account),
-                          icon: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor, size: 18),
-                          tooltip: 'Edit',
-                          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                          padding: EdgeInsets.zero,
-                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: _red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: IconButton(
-                          onPressed: () => _showDeleteConfirmDialog(account),
-                          icon: const Icon(Icons.delete_rounded, color: _red, size: 18),
-                          tooltip: 'Delete',
-                          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                          padding: EdgeInsets.zero,
-                        ),
+                      const SizedBox(height: 3),
+                      Text(
+                        joinDate != null ? 'Since $joinDate' : account['email'] ?? '-',
+                        style: TextStyle(color: _textGrey, fontSize: 11),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              // Details Row
-              isMobile ? _buildMobileDetails(account) : _buildDesktopDetails(account),
-            ],
+                ),
+                const SizedBox(width: 8),
+                // Status pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor.withOpacity(0.35), width: 1),
+                  ),
+                  child: Text(
+                    status == 'active' ? 'Active' : 'Inactive',
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Action buttons
+                _buildActionBtn(Icons.remove_red_eye_rounded, _textGrey,
+                    () => _showDetailsDialog(account), 'View'),
+                const SizedBox(width: 4),
+                _buildActionBtn(Icons.edit_rounded, _primaryAccent,
+                    () => _showEditManagerDialog(account), 'Edit'),
+                const SizedBox(width: 4),
+                _buildActionBtn(Icons.delete_rounded, _red,
+                    () => _showDeleteConfirmDialog(account), 'Delete'),
+              ],
+            ),
           ),
+          // ── Divider ─────────────────────────────────
+          Divider(color: _border.withOpacity(0.4), height: 1),
+          // ── Info grid ───────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildInfoTile(
+                        Icons.badge_outlined,
+                        'Login ID',
+                        account['employeeId'] ?? '-',
+                        _primaryAccent,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildInfoTile(
+                        Icons.business_outlined,
+                        'Company',
+                        account['company']?['name'] ?? 'N/A',
+                        _textGrey,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildInfoTile(
+                        Icons.phone_outlined,
+                        'Contact',
+                        account['phone'] ?? '-',
+                        _textGrey,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildInfoTile(
+                        Icons.work_outline_rounded,
+                        'Position',
+                        account['department'] ?? 'HR Manager',
+                        _textGrey,
+                      ),
+                    ),
+                  ],
+                ),
+                if (account['email'] != null) ...[
+                  const SizedBox(height: 10),
+                  _buildInfoTile(
+                    Icons.email_outlined,
+                    'Email',
+                    account['email'] ?? '-',
+                    _textGrey,
+                    fullWidth: true,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBtn(
+      IconData icon, Color color, VoidCallback onTap, String tooltip) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Center(child: Icon(icon, color: color, size: 16)),
         ),
       ),
     );
   }
 
-  Widget _buildMobileDetails(Map<String, dynamic> account) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildDetailItem('department', account['department'] ?? '-', isMobile: true),
-        const SizedBox(height: 8),
-        _buildDetailItem('company', account['company']?['name'] ?? '-', isMobile: true),
-        const SizedBox(height: 8),
-        _buildDetailItem('phone', account['phone'] ?? '-', isMobile: true),
-        const SizedBox(height: 8),
-        _buildDetailItem('id', account['employeeId'] ?? '-', isMobile: true),
-      ],
-    );
-  }
-
-  Widget _buildDesktopDetails(Map<String, dynamic> account) {
+  Widget _buildInfoTile(
+    IconData icon,
+    String label,
+    String value,
+    Color iconColor, {
+    bool fullWidth = false,
+  }) {
     return Row(
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDetailItem('department', account['department'] ?? '-'),
-              const SizedBox(height: 8),
-              _buildDetailItem('company', account['company']?['name'] ?? '-'),
-            ],
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: _input,
+            borderRadius: BorderRadius.circular(8),
           ),
+          child: Icon(icon, color: iconColor, size: 13),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDetailItem('phone', account['phone'] ?? '-'),
-              const SizedBox(height: 8),
-              _buildDetailItem('id', account['employeeId'] ?? '-'),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailItem(String type, String value, {bool isMobile = false}) {
-    final icons = {
-      'department': Icons.work_outline_rounded,
-      'company': Icons.business_outlined,
-      'phone': Icons.phone_outlined,
-      'id': Icons.badge_outlined,
-    };
-
-    return Row(
-      children: [
-        Icon(icons[type] ?? Icons.info_outlined, color: _textGrey, size: 16),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              color: _textGrey,
-              fontSize: isMobile ? 12 : 13,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: _textGrey,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: _textLight,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ],
     );
   }
+
+
 
   String _getInitials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));

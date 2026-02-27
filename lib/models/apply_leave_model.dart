@@ -41,11 +41,11 @@ class LeaveData {
   String leaveType;
   DateTime startDate;
   DateTime endDate;
-  int days;
+  double days;
   String reason;
   String status;
   List<dynamic> attachments;
-  int balanceDeducted;
+  double balanceDeducted;
   bool balanceRestored;
   String id;
   DateTime createdAt;
@@ -76,11 +76,11 @@ class LeaveData {
         leaveType: json["leaveType"],
         startDate: DateTime.parse(json["startDate"]),
         endDate: DateTime.parse(json["endDate"]),
-        days: json["days"],
+        days: (json["days"] as num?)?.toDouble() ?? 0.0,
         reason: json["reason"],
         status: json["status"],
         attachments: List<dynamic>.from(json["attachments"].map((x) => x)),
-        balanceDeducted: json["balanceDeducted"],
+        balanceDeducted: (json["balanceDeducted"] as num?)?.toDouble() ?? 0.0,
         balanceRestored: json["balanceRestored"],
         id: json["_id"],
         createdAt: DateTime.parse(json["createdAt"]),
@@ -168,10 +168,10 @@ class LeaveItem {
   final String leaveType;
   final DateTime startDate;
   final DateTime endDate;
-  final int days;
+  final double days;
   final String reason;
   final String status; // pending | approved | rejected | cancelled
-  final int balanceDeducted;
+  final double balanceDeducted;
   final bool balanceRestored;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -205,10 +205,10 @@ class LeaveItem {
         leaveType: json['leaveType'] ?? '',
         startDate: DateTime.tryParse(json['startDate'] ?? '') ?? DateTime.now(),
         endDate: DateTime.tryParse(json['endDate'] ?? '') ?? DateTime.now(),
-        days: (json['days'] ?? 0) as int,
+        days: (json['days'] as num?)?.toDouble() ?? 0.0,
         reason: json['reason'] ?? '',
         status: json['status'] ?? 'pending',
-        balanceDeducted: (json['balanceDeducted'] ?? 0) as int,
+        balanceDeducted: (json['balanceDeducted'] as num?)?.toDouble() ?? 0.0,
         balanceRestored: json['balanceRestored'] ?? false,
         createdAt:
             DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
@@ -316,8 +316,8 @@ class LeaveStatistics {
   final int approved;
   final int rejected;
   final int cancelled;
-  final int daysTaken;
-  final Map<String, int> byType;
+  final double daysTaken;
+  final Map<String, double> byType;
 
   LeaveStatistics({
     required this.total,
@@ -332,14 +332,14 @@ class LeaveStatistics {
   factory LeaveStatistics.fromJson(Map<String, dynamic> json) {
     final rawByType = json['byType'] as Map<String, dynamic>? ?? {};
     final byType =
-        rawByType.map((k, v) => MapEntry(k, (v ?? 0) as int));
+        rawByType.map((k, v) => MapEntry(k, (v as num?)?.toDouble() ?? 0.0));
     return LeaveStatistics(
-      total: (json['total'] ?? 0) as int,
-      pending: (json['pending'] ?? 0) as int,
-      approved: (json['approved'] ?? 0) as int,
-      rejected: (json['rejected'] ?? 0) as int,
-      cancelled: (json['cancelled'] ?? 0) as int,
-      daysTaken: (json['daysTaken'] ?? 0) as int,
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      pending: (json['pending'] as num?)?.toInt() ?? 0,
+      approved: (json['approved'] as num?)?.toInt() ?? 0,
+      rejected: (json['rejected'] as num?)?.toInt() ?? 0,
+      cancelled: (json['cancelled'] as num?)?.toInt() ?? 0,
+      daysTaken: (json['daysTaken'] as num?)?.toDouble() ?? 0.0,
       byType: byType,
     );
   }

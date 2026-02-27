@@ -804,13 +804,13 @@ class _AvatarCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withOpacity(0.15),
+                      color: AppTheme.primaryColor.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       _titleCase(user!.department),
-                      style: const TextStyle(
-                        color: Color(0xFF3B82F6),
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1006,7 +1006,7 @@ class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
           ],
         ),
         backgroundColor:
-            isSuccess ? const Color(0xFF10B981) : Colors.redAccent,
+            isSuccess ? AppTheme.successColor : AppTheme.errorColor,
         behavior: SnackBarBehavior.floating,
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1028,7 +1028,7 @@ class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
               subtitle:
                   "Update your account password. You'll need your current password to make changes.",
               icon: Icons.lock_rounded,
-              iconColor: const Color(0xFFEC4899),
+              iconColor: AppTheme.primaryColor,
             ),
 
             Expanded(
@@ -1112,7 +1112,7 @@ class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
                         child: ElevatedButton(
                           onPressed: _loading ? null : _submit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFEC4899),
+                            backgroundColor: AppTheme.primaryColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
@@ -1167,10 +1167,10 @@ class _StrengthBarState extends State<_StrengthBar> {
     int score = _score(widget.password);
     final colors = [
       Colors.transparent,
-      Colors.redAccent,
+      AppTheme.errorColor,
       Colors.orange,
       Colors.amber,
-      const Color(0xFF10B981),
+      AppTheme.successColor,
     ];
     final labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 
@@ -1234,10 +1234,10 @@ class _PasswordHintCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFEC4899).withOpacity(0.08),
+        color: AppTheme.primaryColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: const Color(0xFFEC4899).withOpacity(0.2), width: 1),
+            color: AppTheme.primaryColor.withOpacity(0.2), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1245,12 +1245,12 @@ class _PasswordHintCard extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.shield_rounded,
-                  color: const Color(0xFFEC4899), size: 18),
+                  color: AppTheme.primaryColor, size: 18),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Password Tips',
                 style: TextStyle(
-                  color: Color(0xFFEC4899),
+                  color: AppTheme.primaryColor,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
@@ -1301,7 +1301,7 @@ class _SubScreenHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF050505),
+        color: AppTheme.background,
         border: Border(
           bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
         ),
@@ -1460,11 +1460,11 @@ class _PasswordField extends StatelessWidget {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: Color(0xFFEC4899), width: 1.5),
+              BorderSide(color: AppTheme.primaryColor, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.redAccent),
+          borderSide: BorderSide(color: AppTheme.errorColor),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1531,11 +1531,11 @@ class _FormField extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
-                  const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+                  BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Colors.redAccent),
+              borderSide: BorderSide(color: AppTheme.errorColor),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

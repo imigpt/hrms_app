@@ -7,6 +7,7 @@ class TokenStorageService {
   static const String _userIdKey = 'user_id';
   static const String _userEmailKey = 'user_email';
   static const String _userNameKey = 'user_name';
+  static const String _userRoleKey = 'user_role'; // employee, admin, hr
 
   // Save token and user info after login
   Future<void> saveLoginData({
@@ -14,6 +15,7 @@ class TokenStorageService {
     required String userId,
     required String email,
     String? name,
+    String? role, // 'employee', 'admin', or 'hr'
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
@@ -21,6 +23,9 @@ class TokenStorageService {
     await prefs.setString(_userEmailKey, email);
     if (name != null) {
       await prefs.setString(_userNameKey, name);
+    }
+    if (role != null) {
+      await prefs.setString(_userRoleKey, role);
     }
   }
 
@@ -48,10 +53,34 @@ class TokenStorageService {
     return prefs.getString(_userNameKey);
   }
 
+  // Get stored role (employee, admin, or hr)
+  Future<String?> getUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userRoleKey);
+  }
+
   // Check if user is logged in
   Future<bool> isLoggedIn() async {
     final token = await getToken();
     return token != null && token.isNotEmpty;
+  }
+
+  // Check if user is admin
+  Future<bool> isAdmin() async {
+    final role = await getUserRole();
+    return role == 'admin';
+  }
+
+  // Check if user is employee
+  Future<bool> isEmployee() async {
+    final role = await getUserRole();
+    return role == 'employee';
+  }
+
+  // Check if user is HR
+  Future<bool> isHR() async {
+    final role = await getUserRole();
+    return role == 'hr';
   }
 
   // Clear all stored data on logout
@@ -61,6 +90,7 @@ class TokenStorageService {
     await prefs.remove(_userIdKey);
     await prefs.remove(_userEmailKey);
     await prefs.remove(_userNameKey);
+    await prefs.remove(_userRoleKey);
   }
 
   // Get all login data as a map
@@ -70,6 +100,7 @@ class TokenStorageService {
       'userId': await getUserId(),
       'email': await getUserEmail(),
       'name': await getUserName(),
+      'role': await getUserRole(),
     };
   }
 }

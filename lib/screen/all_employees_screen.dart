@@ -589,15 +589,7 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Company',
-          style: TextStyle(
-            color: _textLight,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
-          ),
-        ),
+        
         const SizedBox(height: 8),
         _dropdownField<String>(
           value: _selectedCompanyId.isEmpty ? '' : _selectedCompanyId,

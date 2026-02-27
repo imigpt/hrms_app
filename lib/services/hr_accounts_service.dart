@@ -78,4 +78,53 @@ class HRAccountsService {
       throw Exception('Error resetting password: ${e.toString()}');
     }
   }
+
+  /// Create new HR account (registration with admin/hr role)
+  static Future<Map<String, dynamic>> createHRAccount(
+    String token, {
+    required String name,
+    required String email,
+    required String password,
+    String? department,
+    String? position,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/auth/register'),
+      );
+
+      // Add auth headers
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Add form fields
+      request.fields['name'] = name;
+      request.fields['email'] = email;
+      request.fields['password'] = password;
+      request.fields['role'] = 'hr'; // Creating HR account
+
+      if (department != null && department.isNotEmpty) {
+        request.fields['department'] = department;
+      }
+      if (position != null && position.isNotEmpty) {
+        request.fields['position'] = position;
+      }
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 400) {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Invalid account data');
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized: Invalid or expired token');
+      } else {
+        throw Exception('Failed to create HR account: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error creating HR account: ${e.toString()}');
+    }
+  }
 }

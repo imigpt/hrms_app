@@ -62,14 +62,14 @@ class _LeaveScreenState extends State<LeaveScreen> {
   String _selectedFilter = 'All';
   final List<String> _filterOptions = ['All', 'Pending', 'Approved', 'Rejected'];
 
-// --- COLORS (Matched to Screenshots) ---
-final Color kBackground = const Color(0xFF000000); // Pitch Black
-final Color kCardColor = const Color(0xFF111111); // Dark Grey Card
-final Color kPinkAccent = const Color(0xFFFF80AB); // The main pink button color
-final Color kTextRed = const Color(0xFFFF5252); // The number color in cards
-final Color kTextWhite = const Color(0xFFFFFFFF);
-final Color kTextGrey = const Color(0xFF9E9E9E);
-final Color kBorderGrey = const Color(0xFF333333);
+// --- COLORS ---
+Color get kBackground => AppTheme.background;
+Color get kCardColor => AppTheme.cardColor;
+Color get kPinkAccent => AppTheme.primaryColor;
+Color get kTextRed => AppTheme.errorColor;
+Color get kTextWhite => Colors.white;
+Color get kTextGrey => Colors.grey;
+Color get kBorderGrey => AppTheme.outline;
 
   @override
   void initState() {
@@ -208,7 +208,6 @@ final Color kBorderGrey = const Color(0xFF333333);
   @override
   Widget build(BuildContext context) {
     final responsive = ResponsiveUtils(context);
-    final kPinkAccent = Theme.of(context).primaryColor;
     
     List<LeaveRequest> filteredRequests = _leaveRequests.where((request) {
       if (_selectedFilter == 'All') return true;
@@ -565,16 +564,16 @@ final Color kBorderGrey = const Color(0xFF333333);
     
     switch (request.status) {
       case 'Approved':
-        statusColor = const Color(0xFF66BB6A); // Green
-        statusBg = const Color(0xFF1B5E20).withOpacity(0.3);
+        statusColor = AppTheme.successColor;
+        statusBg = AppTheme.successColor.withOpacity(0.15);
         break;
       case 'Rejected':
-        statusColor = const Color(0xFFEF5350); // Red
-        statusBg = const Color(0xFFB71C1C).withOpacity(0.3);
+        statusColor = AppTheme.errorColor;
+        statusBg = AppTheme.errorColor.withOpacity(0.15);
         break;
       default:
-        statusColor = const Color(0xFFFFA726); // Orange
-        statusBg = const Color(0xFFE65100).withOpacity(0.3);
+        statusColor = AppTheme.warningColor;
+        statusBg = AppTheme.warningColor.withOpacity(0.15);
     }
 
     return Container(
@@ -595,7 +594,7 @@ final Color kBorderGrey = const Color(0xFF333333);
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1F1F1F),
+                  color: AppTheme.cardColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(Icons.description_outlined, color: kPinkAccent, size: 24),
@@ -685,9 +684,9 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
   bool _isSubmitting = false;
 
   // Dialog Colors
-  final Color kDialogBg = const Color(0xFF1A1A1A);
-  final Color kInputBg = const Color(0xFF2C2C2C);
-  final Color kPinkAccent = const Color(0xFFFF80AB);
+  Color get kDialogBg => AppTheme.surface;
+  Color get kInputBg => AppTheme.surfaceVariant;
+  Color get kPinkAccent => AppTheme.primaryColor;
 
   Future<void> _selectDate(BuildContext context, bool isFromDate) async {
     final DateTime? picked = await showDatePicker(
@@ -701,10 +700,10 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
             colorScheme: ColorScheme.dark(
               primary: kPinkAccent,
               onPrimary: Colors.black,
-              surface: const Color(0xFF222222),
+              surface: AppTheme.surface,
               onSurface: Colors.white,
             ),
-            dialogBackgroundColor: const Color(0xFF222222),
+            dialogBackgroundColor: AppTheme.surface,
           ),
           child: child!,
         );
@@ -981,7 +980,7 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(response.message),
-          backgroundColor: Colors.green,
+          backgroundColor: AppTheme.successColor,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -994,7 +993,7 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
           duration: const Duration(seconds: 4),
         ),
       );
@@ -1126,7 +1125,7 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                             Text(
                               'Request a half-day off (0.5 days)',
                               style: TextStyle(
-                                color: const Color(0xFF9E9E9E),
+                                color: Colors.grey,
                                 fontSize: 12,
                               ),
                             ),
@@ -1490,7 +1489,7 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('❌ Please fill all required fields'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
           duration: Duration(seconds: 2),
         ),
       );
@@ -1501,7 +1500,7 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('❌ Please select a date for the half-day leave'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
           duration: Duration(seconds: 2),
         ),
       );
@@ -1553,7 +1552,7 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('✅ Half-day request submitted successfully'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppTheme.successColor,
           duration: Duration(seconds: 3),
         ),
       );
@@ -1564,7 +1563,7 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ ' + e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: Colors.red,
+          backgroundColor: AppTheme.errorColor,
           duration: const Duration(seconds: 4),
         ),
       );

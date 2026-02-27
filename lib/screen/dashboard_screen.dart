@@ -11,6 +11,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
+import '../services/chat_service.dart';
 
 // Import our custom widgets
 import '../widgets/sidebar_menu.dart';
@@ -26,6 +27,7 @@ import '../widgets/dashboard_quick_stats_section.dart';
 import '../widgets/profile_card_widget.dart';
 import 'announcements_screen.dart';
 import 'notifications_screen.dart';
+import 'chat_screen.dart';
 // import 'employee_api_test_screen.dart';
 import 'apply_leave_screen.dart';
 import 'attendance_screen.dart';
@@ -65,6 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Announcement> _announcements = [];
   bool _isLoadingAnnouncements = true;
   int _unreadAnnouncementsCount = 0;
+  int _unreadChatCount = 0; // Unread chat messages count
   
   // Dashboard stats
   DashboardStats? _dashboardStats;
@@ -89,6 +92,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     
     // Determine user role
     _userRole = (widget.user?.role.toLowerCase() == 'admin') ? 'admin' : 'employee';
+    
+    // Load unread chat count for both admin and employee
+    _loadUnreadChatCount();
     
     if (_userRole == 'admin') {
       // Load admin dashboard data
@@ -454,6 +460,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // Load unread chat count
+  Future<void> _loadUnreadChatCount() async {
+    if (widget.token == null) return;
+    try {
+      final count = await ChatService.getUnreadCount(token: widget.token!);
+      if (mounted) {
+        setState(() {
+          _unreadChatCount = count.count;
+        });
+        print('Unread chat count from API: ${count.count}');
+      }
+    } catch (e) {
+      print('Error loading unread chat count: $e');
+      // Silently fail - badge will show 0
+    }
+  }
+
   Future<void> _loadAnnouncementsFallback() async {
     if (widget.token == null) return;
 
@@ -636,6 +659,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Icon(Icons.notifications_outlined, size: iconSize),
             )
           : Icon(Icons.notifications_outlined, size: iconSize),
+    );
+  }
+
+  Widget _buildChatIconButton(double iconSize) {
+    return IconButton(
+      icon: _unreadChatCount > 0
+          ? Badge(
+              label: Text(_unreadChatCount.toString()),
+              backgroundColor: Colors.red,
+              child: Icon(Icons.chat_rounded, size: iconSize, color: Colors.white),
+            )
+          : Icon(Icons.chat_rounded, size: iconSize, color: Colors.white),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ChatScreen()),
+        );
+      },
+      tooltip: 'Chat',
     );
   }
 
@@ -1301,6 +1343,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: _cardDark,
               elevation: 0,
               actions: [
+                _buildChatIconButton(iconSize),
                 IconButton(
                     onPressed: () {},
                     icon: Icon(Icons.notifications_outlined, size: iconSize),
@@ -2125,6 +2168,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   backgroundColor: Theme.of(context).cardColor,
                   elevation: 0,
                   actions: [
+                    _buildChatIconButton(iconSize),
                     _buildNotificationIconButton(iconSize),
                   ],
                 ),

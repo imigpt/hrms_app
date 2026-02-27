@@ -26,8 +26,7 @@ class LeaveService {
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
     
     final payload = {
-      'startDate': dateStr,
-      'endDate': dateStr,
+      'date': dateStr,
       'session': session.toLowerCase(),
       'leaveType': leaveType.toLowerCase(),
       'reason': reason,

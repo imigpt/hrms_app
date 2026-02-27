@@ -27,18 +27,26 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _searchController = TextEditingController();
   final _socket = ChatSocketService();
   final List<StreamSubscription<dynamic>> _subs = [];
+  final _storage = TokenStorageService();
 
   List<ChatRoom> _allRooms = [];
   List<ChatRoom> _filtered = [];
   bool _isLoading = true;
   String? _error;
   String? _token;
+  String? _userRole; // 'employee', 'admin', or 'hr'
 
   @override
   void initState() {
     super.initState();
+    _loadUserRole();
     _loadRooms();
     _initSocket();
+  }
+
+  Future<void> _loadUserRole() async {
+    _userRole = await _storage.getUserRole();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -154,8 +162,8 @@ class _ChatScreenState extends State<ChatScreen> {
   String _formatTime(DateTime? dt) {
     if (dt == null) return '';
     final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inDays == 0) return DateFormat('hh:mm a').format(dt);
+    final diff = now.difference(dt.toLocal());
+    if (diff.inDays == 0) return DateFormat('hh:mm a').format(dt.toLocal());
     if (diff.inDays == 1) return 'Yesterday';
     return DateFormat('MMM d').format(dt);
   }
@@ -190,6 +198,14 @@ class _ChatScreenState extends State<ChatScreen> {
             fontSize: 22,
           ),
         ),
+        actions: [
+          if (_userRole == 'admin')
+            IconButton(
+              icon: const Icon(Icons.group_add, color: Colors.white, size: 22),
+              onPressed: _showCreateGroupDialog,
+              tooltip: 'Create Group',
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -577,6 +593,23 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
+  void _showCreateGroupDialog() async {
+    final token = _token ?? await TokenStorageService().getToken();
+    if (token == null) return;
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (_) => _CreateGroupDialog(
+        token: token,
+        onGroupCreated: () {
+          Navigator.pop(context);
+          _loadRooms();
+        },
+      ),
+    );
+  }
 }
 
 // ─── Chat Detail Screen ───────────────────────────────────────────────────────
@@ -619,6 +652,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   String? _error;
   String? _currentUserId;
   String? _token;
+  String? _userRole; // 'employee', 'admin', or 'hr'
 
   // Online status: userId -> isOnline
   final Map<String, bool> _onlineUsers = {};
@@ -667,6 +701,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   Future<void> _init() async {
     _currentUserId = await _storage.getUserId();
     _token = await _storage.getToken();
+    _userRole = await _storage.getUserRole();
     if (_token == null) {
       setState(() {
         _error = 'Not logged in';
@@ -1122,6 +1157,181 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
   }
 
+  Future<void> _showAddMemberDialog() async {
+    final groupId = widget.room.id;
+    List<ChatUser> allUsers = [];
+    List<ChatUser> filtered = [];
+    final searchCtrl = TextEditingController();
+
+    try {
+      final res = await ChatService.getCompanyUsers(token: _token!);
+      allUsers = res.data;
+      filtered = res.data;
+    } catch (e) {
+      _showSnack('Failed to load users: ${e.toString().replaceFirst('Exception: ', '')}');
+      return;
+    }
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: const Color(0xFF1C1C1E),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Add Member',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white, size: 22),
+                      onPressed: () => Navigator.pop(ctx),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Color(0xFF3C3C3E), height: 1),
+
+              // Search
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: TextField(
+                  controller: searchCtrl,
+                  onChanged: (q) {
+                    final query = q.toLowerCase();
+                    setState(() {
+                      filtered = query.isEmpty
+                          ? allUsers
+                          : allUsers
+                                .where(
+                                  (u) =>
+                                      u.name.toLowerCase().contains(query) ||
+                                      u.email.toLowerCase().contains(query),
+                                )
+                                .toList();
+                    });
+                  },
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Search users...',
+                    hintStyle: TextStyle(color: Colors.grey[600]),
+                    prefixIcon: Icon(Icons.search, color: Colors.grey[600], size: 18),
+                    filled: true,
+                    fillColor: const Color(0xFF2C2C2E),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+
+              // User list
+              Flexible(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) {
+                    final user = filtered[i];
+                    return ListTile(
+                      title: Text(
+                        user.name,
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        user.position ?? user.role,
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                      ),
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        await _addGroupMember(groupId, user.id);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addGroupMember(String groupId, String userId) async {
+    try {
+      await ChatService.addGroupMember(
+        token: _token!,
+        groupId: groupId,
+        userId: userId,
+      );
+      if (!mounted) return;
+      _showSnack('Member added successfully');
+    } catch (e) {
+      _showSnack('Failed to add member: ${e.toString().replaceFirst('Exception: ', '')}');
+    }
+  }
+
+  Future<void> _showDeleteGroupConfirm() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C1E),
+        title: const Text('Delete Group', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Are you sure you want to delete "${widget.room.name}"? This action cannot be undone.',
+          style: TextStyle(color: Colors.grey[400]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    await _deleteGroup();
+  }
+
+  Future<void> _deleteGroup() async {
+    try {
+      await ChatService.deleteGroup(
+        token: _token!,
+        groupId: widget.room.id,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnack('Group deleted successfully');
+    } catch (e) {
+      _showSnack('Failed to delete group: ${e.toString().replaceFirst('Exception: ', '')}');
+    }
+  }
+
   void _showGroupInfo() async {
     // Use participants already in the room model; optionally refresh from API
     final members = widget.room.participants;
@@ -1325,9 +1535,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         isPersonal &&
         otherUserId != null &&
         (_onlineUsers[otherUserId] ?? false);
-    final subTitle = isPersonal
-        ? (isOtherOnline ? 'Online' : 'Offline')
-        : '${widget.room.participants.length} members';
+    
+    // Use role-aware subtitle
+    final subTitle = _getSubtitleByRole();
     final subColor = isPersonal
         ? (isOtherOnline ? Colors.greenAccent : Colors.grey[500])
         : Colors.grey[500];
@@ -1382,14 +1592,55 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    displayName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  // Display name with role badge
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Role badge
+                      if (_userRole != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _userRole == 'admin'
+                                ? Colors.red.withOpacity(0.3)
+                                : _userRole == 'employee'
+                                    ? Colors.blue.withOpacity(0.3)
+                                    : Colors.orange.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _userRole == 'admin'
+                                  ? Colors.red.withOpacity(0.6)
+                                  : _userRole == 'employee'
+                                      ? Colors.blue.withOpacity(0.6)
+                                      : Colors.orange.withOpacity(0.6),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Text(
+                            _userRole?.toUpperCase() ?? '',
+                            style: TextStyle(
+                              color: _userRole == 'admin'
+                                  ? Colors.red
+                                  : _userRole == 'employee'
+                                      ? Colors.blue
+                                      : Colors.orange,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   if (_someoneTyping)
                     Text(
@@ -1420,6 +1671,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               ),
               onSelected: (val) {
                 if (val == 'info') _showGroupInfo();
+                if (val == 'add_member') _showAddMemberDialog();
+                if (val == 'delete') _showDeleteGroupConfirm();
                 if (val == 'leave') _leaveGroup();
               },
               itemBuilder: (_) => [
@@ -1440,6 +1693,42 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     ],
                   ),
                 ),
+                if (_userRole == 'admin') ...[
+                  PopupMenuItem(
+                    value: 'add_member',
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.person_add_rounded,
+                          color: Colors.lightBlueAccent,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Add Member',
+                          style: TextStyle(color: Colors.lightBlueAccent),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.delete_rounded,
+                          color: Colors.redAccent,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Delete Group',
+                          style: TextStyle(color: Colors.redAccent),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 PopupMenuItem(
                   value: 'leave',
                   child: Row(
@@ -1481,6 +1770,38 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         ],
       ),
     );
+  }
+
+  // ── Role-based subtitle ────────────────────────────────────────────────────
+  /// Returns the subtitle text based on user role and online status
+  String _getSubtitleByRole() {
+    if (widget.room.type == 'personal') {
+      final otherUserId = widget.room.otherUser?.id;
+      final isOtherOnline = otherUserId != null && (_onlineUsers[otherUserId] ?? false);
+      
+      String baseStatus = isOtherOnline ? 'Online' : 'Offline';
+      
+      // Add role info to subtitle for admins
+      if (_userRole == 'admin') {
+        return '$baseStatus • Admin Chat';
+      } else if (_userRole == 'employee') {
+        return '$baseStatus • Employee Chat';
+      } else if (_userRole == 'hr') {
+        return '$baseStatus • HR Chat';
+      }
+      
+      return baseStatus;
+    } else {
+      String groupInfo = '${widget.room.participants.length} members';
+      
+      if (_userRole == 'admin') {
+        return '$groupInfo • Admin Group';
+      } else if (_userRole == 'employee') {
+        return '$groupInfo • Employee Group';
+      }
+      
+      return groupInfo;
+    }
   }
 
   // ── Message area ─────────────────────────────────────────────────────────
@@ -3431,6 +3752,317 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                       );
                     },
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Create Group Dialog ──────────────────────────────────────────────────────
+
+class _CreateGroupDialog extends StatefulWidget {
+  final String token;
+  final VoidCallback onGroupCreated;
+
+  const _CreateGroupDialog({
+    required this.token,
+    required this.onGroupCreated,
+  });
+
+  @override
+  State<_CreateGroupDialog> createState() => _CreateGroupDialogState();
+}
+
+class _CreateGroupDialogState extends State<_CreateGroupDialog> {
+  final TextEditingController _nameCtrl = TextEditingController();
+  final TextEditingController _searchCtrl = TextEditingController();
+  List<ChatUser> _allUsers = [];
+  List<ChatUser> _filtered = [];
+  Set<String> _selectedMemberIds = {};
+  bool _loadingUsers = true;
+  bool _isCreating = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadUsers() async {
+    setState(() {
+      _loadingUsers = true;
+      _error = null;
+    });
+    try {
+      final res = await ChatService.getCompanyUsers(token: widget.token);
+      if (!mounted) return;
+      setState(() {
+        _allUsers = res.data;
+        _filtered = res.data;
+        _loadingUsers = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loadingUsers = false;
+      });
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    final q = query.toLowerCase();
+    setState(() {
+      _filtered = q.isEmpty
+          ? _allUsers
+          : _allUsers
+                .where(
+                  (u) =>
+                      u.name.toLowerCase().contains(q) ||
+                      u.email.toLowerCase().contains(q) ||
+                      (u.position ?? '').toLowerCase().contains(q),
+                )
+                .toList();
+    });
+  }
+
+  Future<void> _createGroup() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a group name')),
+      );
+      return;
+    }
+    if (_selectedMemberIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one member')),
+      );
+      return;
+    }
+
+    setState(() => _isCreating = true);
+    try {
+      await ChatService.createGroup(
+        token: widget.token,
+        name: name,
+        memberIds: _selectedMemberIds.toList(),
+      );
+      if (!mounted) return;
+      widget.onGroupCreated();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Group created successfully')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_error ?? 'Failed to create group')),
+      );
+    } finally {
+      if (mounted) setState(() => _isCreating = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      backgroundColor: const Color(0xFF1C1C1E),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Header ─────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Create Group',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white, size: 22),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Group name input
+                TextField(
+                  controller: _nameCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Group name',
+                    hintStyle: TextStyle(color: Colors.grey[600]),
+                    filled: true,
+                    fillColor: const Color(0xFF2C2C2E),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Color(0xFF3C3C3E), height: 1),
+
+          // ── Search and member selection ────────────────────────────────
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: _onSearchChanged,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Search members...',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Colors.grey[600],
+                        size: 18,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF2C2C2E),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _loadingUsers
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: AppTheme.primaryColor,
+                          ),
+                        )
+                      : _error != null
+                          ? Center(
+                              child: Text(
+                                _error!,
+                                style: TextStyle(color: Colors.grey[500]),
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              itemCount: _filtered.length,
+                              itemBuilder: (_, i) {
+                                final user = _filtered[i];
+                                final isSelected = _selectedMemberIds.contains(user.id);
+                                return CheckboxListTile(
+                                  value: isSelected,
+                                  onChanged: (_) {
+                                    setState(() {
+                                      if (isSelected) {
+                                        _selectedMemberIds.remove(user.id);
+                                      } else {
+                                        _selectedMemberIds.add(user.id);
+                                      }
+                                    });
+                                  },
+                                  title: Text(
+                                    user.name,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    user.position ?? user.role,
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  checkboxShape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  activeColor: AppTheme.primaryColor,
+                                  tileColor: const Color(0xFF2C2C2E),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  dense: true,
+                                );
+                              },
+                            ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Footer ─────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: _isCreating ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _isCreating ? null : _createGroup,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _isCreating
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        )
+                      : const Text('Create'),
+                ),
+              ],
+            ),
           ),
         ],
       ),

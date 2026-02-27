@@ -86,17 +86,10 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/images/aselea-logo.png"
   min_sdk_android: 21
-
-flutter_native_splash:
-  color: "#000000"
-  color_dark: "#000000"
-  image: assets/images/aselea-logo.png
-  android_12:
-    color: "#000000"
-    image: assets/images/aselea-logo.png
-  android: true
-  ios: true
-  web: false
+  background_color_ios: "#000000"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/images/aselea-logo.png"
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
