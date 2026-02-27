@@ -8,7 +8,8 @@ import '../services/token_storage_service.dart';
 // import 'expense_api_test_screen.dart';
 
 class ExpensesScreen extends StatefulWidget {
-  const ExpensesScreen({super.key});
+  final String? role;
+  const ExpensesScreen({super.key, this.role});
 
   @override
   State<ExpensesScreen> createState() => _ExpensesScreenState();
@@ -27,6 +28,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   final Color _textGrey = const Color(0xFF9E9E9E);
 
   // -- State --
+  bool get _isAdmin => widget.role?.toLowerCase() == 'admin' || widget.role?.toLowerCase() == 'hr';
   String _selectedFilter = "All";
   bool _isLoading = true;
   List<Expense> _expenses = [];
@@ -263,7 +265,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               //     ),
               //   ),
               // ),
-              if (!isMobile)
+              if (!isMobile && !_isAdmin)
                 ElevatedButton.icon(
                   onPressed: () => _handleCreateExpense(context),
                   icon: const Icon(Icons.add, size: 18),
@@ -319,7 +321,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
             ),
             
-            if (isMobile) ...[
+            if (isMobile && !_isAdmin) ...[
               const SizedBox(width: 10),
               IconButton(
                 onPressed: () => _handleCreateExpense(context),

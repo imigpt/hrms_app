@@ -129,6 +129,49 @@ class AnnouncementService {
     }
   }
 
+  // ── POST /api/announcements ────────────────────────────────────────────────
+  static Future<void> createAnnouncement({
+    required String token,
+    required String title,
+    required String content,
+    required String priority, // 'low' | 'medium' | 'high'
+    String? category,
+    String? targetDepartment,
+    DateTime? expiryDate,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'title': title,
+        'content': content,
+        'priority': priority,
+      };
+      if (category != null && category.isNotEmpty) {
+        body['category'] = category.toLowerCase();
+      }
+      if (targetDepartment != null && targetDepartment.isNotEmpty) {
+        body['targetDepartment'] = targetDepartment;
+      }
+      if (expiryDate != null) {
+        body['expiryDate'] = expiryDate.toIso8601String();
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/announcements'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(body),
+      );
+
+      if (response.statusCode == 201) return;
+      final err = json.decode(response.body);
+      throw Exception(err['message'] ?? 'Failed to create announcement (${response.statusCode})');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // ── PUT /api/announcements/:id/read ────────────────────────────────────────
   static Future<bool> markAsRead({
     required String token,

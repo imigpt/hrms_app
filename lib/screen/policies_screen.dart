@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 import '../models/policy_model.dart';
 import '../services/policy_service.dart';
 import '../services/token_storage_service.dart';
 
 class PoliciesScreen extends StatefulWidget {
-  const PoliciesScreen({super.key});
+  final String? role;
+  final String? token;
+  const PoliciesScreen({super.key, this.role, this.token});
 
   @override
   State<PoliciesScreen> createState() => _PoliciesScreenState();
 }
 
 class _PoliciesScreenState extends State<PoliciesScreen> {
+  bool get _isAdmin => widget.role?.toLowerCase() == 'admin' || widget.role?.toLowerCase() == 'hr';
+
   String? _token;
   List<CompanyPolicy> _policies = [];
   bool _isLoading = true;
@@ -32,7 +38,7 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
   }
 
   Future<void> _loadPolicies() async {
-    final token = await TokenStorageService().getToken();
+    final token = widget.token ?? await TokenStorageService().getToken();
     if (token == null || !mounted) return;
     setState(() { _token = token; _isLoading = true; });
 
@@ -82,6 +88,15 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF050505),
+      floatingActionButton: _isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: _showCreatePolicyDialog,
+              backgroundColor: const Color(0xFFFF8FA3),
+              foregroundColor: Colors.black,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Policy', style: TextStyle(fontWeight: FontWeight.bold)),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A0A0A),
         title: const Text('Company Policies', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -137,6 +152,266 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
         ],
       ),
     );
+  }
+
+  // ── Create Policy Dialog ───────────────────────────────────────────────
+  Future<void> _showCreatePolicyDialog() async {
+    const kCard = Color(0xFF141414);
+    const kInput = Color(0xFF1F1F1F);
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final locationCtrl = TextEditingController(text: 'Head Office');
+    File? pickedFile;
+    String? pickedFileName;
+    bool submitting = false;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: kCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => StatefulBuilder(builder: (_, ss) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+            left: 20, right: 20, top: 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4,
+                    decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Row(children: [
+                  const Icon(Icons.policy_outlined, color: Color(0xFFFF8FA3), size: 22),
+                  const SizedBox(width: 10),
+                  const Text('Add Policy', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(
+                      onPressed: () => Navigator.pop(sheetCtx),
+                      icon: const Icon(Icons.close, color: Colors.white54, size: 20)),
+                ]),
+                const SizedBox(height: 20),
+                // Title
+                const Text('Title *', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Policy title',
+                    hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                    filled: true, fillColor: kInput,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Description
+                const Text('Description', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 3,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Brief description (optional)',
+                    hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                    filled: true, fillColor: kInput,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Location
+                const Text('Location', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: locationCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Head Office',
+                    hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                    filled: true, fillColor: kInput,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // File picker
+                const Text('Attachment', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () async {
+                    final result = await FilePicker.platform.pickFiles(
+                      type: FileType.custom,
+                      allowedExtensions: ['pdf', 'doc', 'docx', 'xlsx', 'xls', 'ppt', 'pptx'],
+                    );
+                    if (result != null && result.files.single.path != null) {
+                      ss(() {
+                        pickedFile = File(result.files.single.path!);
+                        pickedFileName = result.files.single.name;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: kInput,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: pickedFile != null
+                            ? const Color(0xFF00C853).withValues(alpha: 0.5)
+                            : Colors.white.withValues(alpha: 0.07),
+                      ),
+                    ),
+                    child: Row(children: [
+                      Icon(
+                        pickedFile != null ? Icons.attach_file_rounded : Icons.upload_file_outlined,
+                        color: pickedFile != null ? const Color(0xFF00C853) : Colors.grey,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          pickedFileName ?? 'Tap to attach a file (PDF, DOCX, XLSX...)',
+                          style: TextStyle(
+                            color: pickedFile != null ? Colors.white : Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (pickedFile != null)
+                        GestureDetector(
+                          onTap: () => ss(() { pickedFile = null; pickedFileName = null; }),
+                          child: const Icon(Icons.close, color: Colors.white38, size: 16),
+                        ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity, height: 52,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF8FA3),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    onPressed: submitting ? null : () async {
+                      final title = titleCtrl.text.trim();
+                      if (title.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter a title'), backgroundColor: Colors.red));
+                        return;
+                      }
+                      final token = widget.token ?? _token ?? await TokenStorageService().getToken();
+                      if (token == null) return;
+                      ss(() => submitting = true);
+                      try {
+                        await PolicyService.createPolicy(
+                          token: token,
+                          title: title,
+                          description: descCtrl.text.trim(),
+                          location: locationCtrl.text.trim().isEmpty ? 'Head Office' : locationCtrl.text.trim(),
+                          file: pickedFile,
+                          fileName: pickedFileName,
+                        );
+                        if (sheetCtx.mounted) Navigator.pop(sheetCtx, true);
+                      } catch (e) {
+                        if (sheetCtx.mounted) ss(() => submitting = false);
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(e.toString().replaceAll('Exception: ', '')),
+                            backgroundColor: Colors.red));
+                      }
+                    },
+                    icon: submitting
+                        ? const SizedBox(width: 18, height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                        : const Icon(Icons.save_rounded, size: 18),
+                    label: Text(submitting ? 'Saving...' : 'Save Policy',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
+                ),
+                const SizedBox(height: 28),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+
+    titleCtrl.dispose();
+    descCtrl.dispose();
+    locationCtrl.dispose();
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Policy created!'),
+        backgroundColor: Color(0xFF00C853),
+      ));
+      _loadPolicies();
+    }
+  }
+
+  Future<void> _confirmDeletePolicy(CompanyPolicy policy) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Policy', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Are you sure you want to delete "\${policy.title}"? This cannot be undone.',
+          style: const TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 0,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final token = widget.token ?? _token ?? await TokenStorageService().getToken();
+    if (token == null) return;
+
+    try {
+      await PolicyService.deletePolicy(token: token, id: policy.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Policy deleted'),
+          backgroundColor: Colors.redAccent,
+        ));
+        _loadPolicies();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
   }
 
   Widget _buildPolicyCard(CompanyPolicy policy) {
@@ -209,13 +484,30 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
               ),
             ),
 
-            // Download button
-            if (hasFile)
-              IconButton(
-                onPressed: () => _downloadPolicy(policy),
-                icon: Icon(Icons.download_rounded, color: Theme.of(context).primaryColor, size: 22),
-                tooltip: 'Download',
-              ),
+            // Download + Delete buttons
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (hasFile)
+                  IconButton(
+                    onPressed: () => _downloadPolicy(policy),
+                    icon: Icon(Icons.download_rounded, color: Theme.of(context).primaryColor, size: 22),
+                    tooltip: 'Download',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                if (_isAdmin) ...[  
+                  if (hasFile) const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: () => _confirmDeletePolicy(policy),
+                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 22),
+                    tooltip: 'Delete',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ),
@@ -285,7 +577,7 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
               Text(policy.description, style: TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.5)),
             ],
             if (policy.hasFile) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -294,10 +586,29 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
                     _downloadPolicy(policy);
                   },
                   icon: const Icon(Icons.download_rounded),
-                  label: Text('Download ${policy.file!.displayName}'),
+                  label: Text('Download \${policy.file!.displayName}'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).primaryColor,
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+            if (_isAdmin) ...[              
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _confirmDeletePolicy(policy);
+                  },
+                  icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                  label: const Text('Delete Policy', style: TextStyle(color: Colors.redAccent)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.redAccent, width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),

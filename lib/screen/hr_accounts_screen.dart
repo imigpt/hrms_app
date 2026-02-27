@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/hr_accounts_service.dart';
 import '../utils/responsive_utils.dart';
+import '../theme/app_theme.dart';
 
 class HRAccountsScreen extends StatefulWidget {
   final String? token;
@@ -13,14 +14,17 @@ class HRAccountsScreen extends StatefulWidget {
 }
 
 class _HRAccountsScreenState extends State<HRAccountsScreen> {
-  // Theme colors
-  final Color _bgDark = const Color(0xFF050505);
-  final Color _cardDark = const Color(0xFF141414);
-  final Color _inputDark = const Color(0xFF1F1F1F);
-  final Color _accentBlue = const Color(0xFF1E88E5);
-  final Color _accentGreen = const Color(0xFF00C853);
-  final Color _accentPink = const Color(0xFFFF8FA3);
-  final Color _textGrey = const Color(0xFF9E9E9E);
+  // Use App Theme Colors
+  static const Color _bg = AppTheme.background;
+  static const Color _section = AppTheme.surface;
+  static const Color _input = AppTheme.surfaceVariant;
+  static const Color _border = AppTheme.outline;
+  static const Color _primaryAccent = AppTheme.primaryColor; // Brand Pink
+  static const Color _secondaryAccent = AppTheme.secondaryColor; // Green
+  static const Color _textGrey = Color(0xFF8E8E93);
+  static const Color _textLight = AppTheme.onSurface;
+  static const Color _red = AppTheme.errorColor;
+  static const Color _orange = AppTheme.warningColor;
 
   // State
   bool _isLoading = true;
@@ -93,41 +97,132 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   Future<void> _showDetailsDialog(Map<String, dynamic> account) async {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: _cardDark,
-        title: Text(
-          account['name'] ?? 'HR Account',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDetailRow('Employee ID', account['employeeId'] ?? '-'),
-              _buildDetailRow('Email', account['email'] ?? '-'),
-              _buildDetailRow('Phone', account['phone'] ?? '-'),
-              _buildDetailRow('Department', account['department'] ?? '-'),
-              _buildDetailRow('Company', account['company']?['name'] ?? '-'),
-              _buildDetailRow('Status', account['status'] ?? '-'),
-              _buildDetailRow('Join Date', _formatDate(account['joinDate'])),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: _section,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _border.withOpacity(0.5), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
             ],
           ),
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: _primaryAccent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _primaryAccent.withOpacity(0.3), width: 1),
+                        ),
+                        child: const Icon(Icons.info_rounded, color: AppTheme.primaryColor, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              account['name'] ?? 'Manager Details',
+                              style: const TextStyle(
+                                color: _textLight,
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Complete information',
+                              style: TextStyle(color: _textGrey, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: _border.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.close_rounded, color: _textGrey, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Divider(color: _border.withOpacity(0.4), height: 1),
+                  const SizedBox(height: 18),
+                  // Details
+                  _buildDetailRow('Name', account['name'] ?? '-'),
+                  _buildDetailRow('Employee ID', account['employeeId'] ?? '-'),
+                  _buildDetailRow('Email', account['email'] ?? '-'),
+                  _buildDetailRow('Phone', account['phone'] ?? '-'),
+                  _buildDetailRow('Department', account['department'] ?? '-'),
+                  _buildDetailRow('Company', account['company']?['name'] ?? '-'),
+                  _buildDetailRow('Status', account['status'] ?? '-'),
+                  _buildDetailRow('Join Date', _formatDate(account['joinDate'])),
+                  const SizedBox(height: 20),
+                  // Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded),
+                          label: const Text('Close'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _textLight,
+                            side: BorderSide(color: _border.withOpacity(0.8), width: 1.5),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _showResetPasswordDialog(account);
+                          },
+                          icon: const Icon(Icons.vpn_key_rounded, size: 17),
+                          label: const Text('Reset Password'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _orange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showResetPasswordDialog(account);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: _accentPink),
-            child: const Text('Reset Password', style: TextStyle(color: Colors.black)),
-          ),
-        ],
       ),
     );
   }
@@ -135,24 +230,76 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   Future<void> _showResetPasswordDialog(Map<String, dynamic> account) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: _cardDark,
-        title: const Text('Reset Password?', style: TextStyle(color: Colors.white)),
-        content: Text(
-          'Reset password for ${account['name']}? A new temporary password will be sent to their email.',
-          style: const TextStyle(color: Colors.white70),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: _section,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _border.withOpacity(0.5), width: 1),
+          ),
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _orange.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.vpn_key_rounded, color: _orange, size: 24),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Reset Password?',
+                  style: const TextStyle(
+                    color: _textLight,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'A new temporary password will be sent to ${account['email']}.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: _textGrey, fontSize: 13),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: _border.withOpacity(0.8), width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                        ),
+                        child: const Text('Reset'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Reset', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
 
@@ -178,7 +325,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Password reset sent to $hrName'),
-            backgroundColor: _accentGreen,
+            backgroundColor: _secondaryAccent,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -189,12 +336,644 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: _red,
             duration: const Duration(seconds: 3),
           ),
         );
       }
     }
+  }
+
+  Future<void> _showEditManagerDialog(Map<String, dynamic> manager) async {
+    final _nameController = TextEditingController(text: manager['name'] ?? '');
+    final _emailController = TextEditingController(text: manager['email'] ?? '');
+    final _phoneController = TextEditingController(text: manager['phone'] ?? '');
+    final _departmentController = TextEditingController(text: manager['department'] ?? '');
+    var _selectedStatus = manager['status'] ?? 'active';
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: StatefulBuilder(
+          builder: (context, setState) => Container(
+            decoration: BoxDecoration(
+              color: _section,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _border.withOpacity(0.5), width: 1),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 20)],
+            ),
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: _primaryAccent.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _primaryAccent.withOpacity(0.3), width: 1),
+                          ),
+                          child: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Edit Manager',
+                                style: TextStyle(
+                                  color: _textLight,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Update manager information',
+                                style: TextStyle(color: _textGrey, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: _border.withOpacity(0.6),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.close_rounded, color: _textGrey, size: 18),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Divider(color: _border.withOpacity(0.4), height: 1),
+                    const SizedBox(height: 18),
+                    _buildEditField('Full Name', _nameController),
+                    const SizedBox(height: 14),
+                    _buildEditField('Email', _emailController),
+                    const SizedBox(height: 14),
+                    _buildEditField('Phone', _phoneController),
+                    const SizedBox(height: 14),
+                    _buildEditField('Department', _departmentController),
+                    const SizedBox(height: 14),
+                    _buildStatusSelector(_selectedStatus, (v) => setState(() => _selectedStatus = v)),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _textLight,
+                              side: BorderSide(color: _border.withOpacity(0.8), width: 1.5),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                            ),
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [_primaryAccent, _primaryAccent.withOpacity(0.85)],
+                              ),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () async {
+                                  // TODO: Implement update API call
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text('Manager updated successfully'),
+                                      backgroundColor: _secondaryAccent,
+                                    ),
+                                  );
+                                  _loadHRAccounts();
+                                },
+                                borderRadius: BorderRadius.circular(11),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.check_rounded, size: 17),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Update Manager',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAddManagerDialog() async {
+    final _nameController = TextEditingController();
+    final _employeeIdController = TextEditingController();
+    final _passwordController = TextEditingController();
+    final _emailController = TextEditingController();
+    final _phoneController = TextEditingController();
+    final _dobController = TextEditingController();
+    final _addressController = TextEditingController();
+    final _departmentController = TextEditingController();
+    final _positionController = TextEditingController();
+    final _jobDateController = TextEditingController();
+    var _selectedStatus = 'active';
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: StatefulBuilder(
+          builder: (context, setState) => Container(
+            decoration: BoxDecoration(
+              color: _section,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _border.withOpacity(0.5), width: 1),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 20)],
+            ),
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_primaryAccent.withOpacity(0.15), _primaryAccent.withOpacity(0.08)],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                      border: Border(bottom: BorderSide(color: _border.withOpacity(0.3), width: 1)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Add New HR Manager',
+                              style: TextStyle(
+                                color: _textLight,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Create a new HR manager account with complete details',
+                              style: TextStyle(color: _textGrey, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: _border.withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.close_rounded, color: _textLight, size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Content
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Profile Photo Section
+                        Center(
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [_primaryAccent.withOpacity(0.3), _primaryAccent.withOpacity(0.1)],
+                                  ),
+                                  border: Border.all(color: _primaryAccent.withOpacity(0.4), width: 2),
+                                ),
+                                child: Center(
+                                  child: Icon(Icons.person_add_rounded, color: _primaryAccent, size: 40),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Profile Photo',
+                                style: TextStyle(color: _textLight, fontSize: 13, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 4),
+                              GestureDetector(
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Photo upload feature coming soon')),
+                                  );
+                                },
+                                child: Text(
+                                  'Click to upload photo\nPNG, JPG up to 5MB',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: _textGrey, fontSize: 11),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        // Form Fields
+                        _buildEditField('Full Name', _nameController),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildEditField('Employee ID', _employeeIdController, helperText: 'Used for login'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        _buildEditField('Password', _passwordController,
+                            obscure: true,
+                            helperText: 'Create password for HR manager'),
+                        const SizedBox(height: 14),
+                        _buildEditField('Email', _emailController),
+                        const SizedBox(height: 14),
+                        _buildEditField('Phone', _phoneController),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildEditField('Date of Birth', _dobController, helperText: 'dd-mm-yyyy'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        _buildEditField('Address', _addressController, maxLines: 3),
+                        const SizedBox(height: 14),
+                        _buildEditField('Department', _departmentController),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildEditField('Position', _positionController),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildEditField('Job Date', _jobDateController, helperText: 'dd-mm-yyyy'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        // Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: _textLight,
+                                  side: BorderSide(color: _border.withOpacity(0.8), width: 1.5),
+                                  padding: const EdgeInsets.symmetric(vertical: 13),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                                ),
+                                child: const Text('Cancel', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [_primaryAccent, _primaryAccent.withOpacity(0.85)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(11),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _primaryAccent.withOpacity(0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () async {
+                                      // TODO: Implement create API call
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: const Text('Manager created successfully'),
+                                          backgroundColor: _secondaryAccent,
+                                        ),
+                                      );
+                                      _loadHRAccounts();
+                                    },
+                                    borderRadius: BorderRadius.circular(11),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 13),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Create Account',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDeleteConfirmDialog(Map<String, dynamic> account) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: _section,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _border.withOpacity(0.5), width: 1),
+          ),
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _red.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.delete_rounded, color: _red, size: 24),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Delete Manager?',
+                  style: TextStyle(
+                    color: _textLight,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                    style: TextStyle(color: _textGrey, fontSize: 13),
+                    children: [
+                      const TextSpan(text: 'Are you sure you want to delete '),
+                      TextSpan(
+                        text: account['name'] ?? 'this manager',
+                        style: const TextStyle(color: _textLight, fontWeight: FontWeight.w600),
+                      ),
+                      const TextSpan(text: '? This action cannot be undone.'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: _border.withOpacity(0.8), width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                        ),
+                        child: const Text('Delete'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    _deleteManager(account['_id'], account['name']);
+  }
+
+  Future<void> _deleteManager(String managerId, String managerName) async {
+    if (_token == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // TODO: Implement delete API call
+      // await HRAccountsService.deleteHRAccount(_token!, managerId);
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$managerName deleted successfully'),
+            backgroundColor: _secondaryAccent,
+          ),
+        );
+        _loadHRAccounts();
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: _red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildEditField(String label, TextEditingController controller, {
+    String? helperText,
+    bool obscure = false,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: _textLight,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: obscure,
+          maxLines: obscure ? 1 : maxLines,
+          minLines: maxLines > 1 ? 3 : 1,
+          style: const TextStyle(color: _textLight, fontSize: 14),
+          decoration: InputDecoration(
+            helperText: helperText,
+            helperStyle: TextStyle(color: _textGrey, fontSize: 11),
+            hintStyle: TextStyle(color: _textGrey, fontSize: 13),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+            filled: true,
+            fillColor: _input,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(11),
+              borderSide: BorderSide(color: _border.withOpacity(0.6), width: 1),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(11),
+              borderSide: BorderSide(color: _border.withOpacity(0.6), width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(11),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusSelector(String value, Function(String) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Status',
+          style: TextStyle(
+            color: _textLight,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: _input,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: _border.withOpacity(0.6), width: 1),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              items: const [
+                DropdownMenuItem(
+                  value: 'active',
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: Text('Active', style: TextStyle(color: _textLight, fontSize: 14)),
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'inactive',
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 6),
+                    child: Text('Inactive', style: TextStyle(color: _textLight, fontSize: 14)),
+                  ),
+                ),
+              ],
+              onChanged: (v) => onChanged(v ?? 'active'),
+              dropdownColor: _section,
+              iconEnabledColor: _textGrey,
+              style: const TextStyle(color: _textLight, fontSize: 14),
+              isExpanded: true,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   String _formatDate(dynamic dateStr) {
@@ -209,22 +988,28 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: 110,
             child: Text(
               label,
-              style: TextStyle(color: _textGrey, fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: _textGrey,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+              style: const TextStyle(color: _textLight, fontSize: 13),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -238,17 +1023,60 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     final isMobile = responsive.isMobile;
 
     return Scaffold(
-      backgroundColor: _bgDark,
+      backgroundColor: _bg,
       appBar: AppBar(
-        backgroundColor: _cardDark,
+        backgroundColor: _section,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_rounded, color: _textLight),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('HR Accounts', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'HR Managers',
+          style: TextStyle(
+            color: _textLight,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            letterSpacing: -0.3,
+          ),
+        ),
         centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(
+              child: GestureDetector(
+                onTap: _showAddManagerDialog,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [_primaryAccent, _primaryAccent.withOpacity(0.85)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                      SizedBox(width: 6),
+                      Text(
+                        'Add Manager',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
+    
       body: SafeArea(
         child: Column(
           children: [
@@ -259,19 +1087,20 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                 height: 50,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: _inputDark,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                  color: _input,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _border.withOpacity(0.6), width: 1),
                 ),
                 child: TextField(
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  style: const TextStyle(color: _textLight, fontSize: 14),
                   onChanged: _onSearchChanged,
                   decoration: InputDecoration(
-                    hintText: 'Search by name, email, or company...',
-                    hintStyle: TextStyle(color: _textGrey.withOpacity(0.6)),
+                    hintText: 'Search by name, email, company...',
+                    hintStyle: TextStyle(color: _textGrey, fontSize: 13),
                     border: InputBorder.none,
                     prefixIcon: Icon(Icons.search_rounded, color: _textGrey, size: 20),
                     prefixIconConstraints: const BoxConstraints(minWidth: 40),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
               ),
@@ -281,7 +1110,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
             Expanded(
               child: _isLoading
                   ? Center(
-                      child: CircularProgressIndicator(color: _accentBlue),
+                      child: CircularProgressIndicator(color: _primaryAccent),
                     )
                   : _error != null
                       ? _buildErrorWidget()
@@ -302,11 +1131,15 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
+            Icon(Icons.error_outline_rounded, color: _red, size: 64),
             const SizedBox(height: 16),
-            Text(
-              'Error Loading Accounts',
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            const Text(
+              'Error Loading Managers',
+              style: TextStyle(
+                color: _textLight,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -317,9 +1150,12 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadHRAccounts,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh_rounded),
               label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(backgroundColor: _accentBlue),
+              style: ElevatedButton.styleFrom(
+              backgroundColor: _primaryAccent,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -334,19 +1170,33 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, color: _textGrey, size: 64),
+            Icon(Icons.people_outline_rounded, color: _textGrey, size: 64),
             const SizedBox(height: 16),
             Text(
-              _searchQuery.isEmpty ? 'No HR Accounts Found' : 'No Results Found',
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              _searchQuery.isEmpty ? 'No HR Managers Found' : 'No Results Found',
+              style: const TextStyle(
+                color: _textLight,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               _searchQuery.isEmpty
-                  ? 'No HR accounts are currently registered.'
-                  : 'No HR accounts match your search criteria.',
+                  ? 'No HR managers are currently registered.'
+                  : 'No HR managers match your search criteria.',
               textAlign: TextAlign.center,
               style: TextStyle(color: _textGrey, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _showAddManagerDialog,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Manager'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryAccent,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -367,103 +1217,146 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
 
   Widget _buildAccountCard(Map<String, dynamic> account, bool isMobile) {
     final status = (account['status'] ?? 'unknown').toString().toLowerCase();
-    final statusColor = status == 'active' ? _accentGreen : Colors.orange;
+    final statusColor = status == 'active' ? _secondaryAccent : _orange;
 
     return GestureDetector(
       onTap: () => _showDetailsDialog(account),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          color: _cardDark,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.06)),
+          color: _section,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _border.withOpacity(0.6), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header: Name and Status
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Avatar
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: _accentBlue.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _getInitials(account['name'] ?? 'HR'),
-                      style: TextStyle(
-                        color: _accentBlue,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Avatar, Name, Status, Actions
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Avatar
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_primaryAccent.withOpacity(0.3), _primaryAccent.withOpacity(0.2)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _primaryAccent.withOpacity(0.3), width: 1),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _getInitials(account['name'] ?? 'HR'),
+                        style: const TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                // Name and Status
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        account['name'] ?? 'Unknown',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          status.toUpperCase(),
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 11,
+                  const SizedBox(width: 14),
+                  // Name, Email, Status
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          account['name'] ?? 'Unknown',
+                          style: const TextStyle(
+                            color: _textLight,
                             fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                            fontSize: 15,
+                            letterSpacing: -0.2,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          account['email'] ?? '-',
+                          style: TextStyle(
+                            color: _textGrey,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: statusColor.withOpacity(0.3),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            status.toUpperCase(),
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Action Buttons
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _primaryAccent.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: IconButton(
+                          onPressed: () => _showEditManagerDialog(account),
+                          icon: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor, size: 18),
+                          tooltip: 'Edit',
+                          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: IconButton(
+                          onPressed: () => _showDeleteConfirmDialog(account),
+                          icon: const Icon(Icons.delete_rounded, color: _red, size: 18),
+                          tooltip: 'Delete',
+                          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                          padding: EdgeInsets.zero,
                         ),
                       ),
                     ],
                   ),
-                ),
-                // Quick Action Button
-                IconButton(
-                  onPressed: () => _showResetPasswordDialog(account),
-                  icon: const Icon(Icons.vpn_key_rounded, color: Colors.orange, size: 20),
-                  tooltip: 'Reset Password',
-                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                  padding: EdgeInsets.zero,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Details Grid
-            isMobile ? _buildMobileDetails(account) : _buildDesktopDetails(account),
-            const SizedBox(height: 12),
-            // Footer: View Details Link
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                'Tap to view details →',
-                style: TextStyle(color: _accentBlue, fontSize: 12, fontWeight: FontWeight.w600),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 14),
+              // Details Row
+              isMobile ? _buildMobileDetails(account) : _buildDesktopDetails(account),
+            ],
+          ),
         ),
       ),
     );
@@ -473,13 +1366,13 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDetailItem('📧', account['email'] ?? '-', isMobile: true),
+        _buildDetailItem('department', account['department'] ?? '-', isMobile: true),
         const SizedBox(height: 8),
-        _buildDetailItem('🏢', account['company']?['name'] ?? '-', isMobile: true),
+        _buildDetailItem('company', account['company']?['name'] ?? '-', isMobile: true),
         const SizedBox(height: 8),
-        _buildDetailItem('👔', account['department'] ?? '-', isMobile: true),
+        _buildDetailItem('phone', account['phone'] ?? '-', isMobile: true),
         const SizedBox(height: 8),
-        _buildDetailItem('🆔', account['employeeId'] ?? '-', isMobile: true),
+        _buildDetailItem('id', account['employeeId'] ?? '-', isMobile: true),
       ],
     );
   }
@@ -491,9 +1384,9 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDetailItem('📧', account['email'] ?? '-'),
-              const SizedBox(height: 6),
-              _buildDetailItem('🏢', account['company']?['name'] ?? '-'),
+              _buildDetailItem('department', account['department'] ?? '-'),
+              const SizedBox(height: 8),
+              _buildDetailItem('company', account['company']?['name'] ?? '-'),
             ],
           ),
         ),
@@ -502,9 +1395,9 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDetailItem('👔', account['department'] ?? '-'),
-              const SizedBox(height: 6),
-              _buildDetailItem('🆔', account['employeeId'] ?? '-'),
+              _buildDetailItem('phone', account['phone'] ?? '-'),
+              const SizedBox(height: 8),
+              _buildDetailItem('id', account['employeeId'] ?? '-'),
             ],
           ),
         ),
@@ -512,10 +1405,17 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     );
   }
 
-  Widget _buildDetailItem(String icon, String value, {bool isMobile = false}) {
+  Widget _buildDetailItem(String type, String value, {bool isMobile = false}) {
+    final icons = {
+      'department': Icons.work_outline_rounded,
+      'company': Icons.business_outlined,
+      'phone': Icons.phone_outlined,
+      'id': Icons.badge_outlined,
+    };
+
     return Row(
       children: [
-        Text(icon, style: const TextStyle(fontSize: 14)),
+        Icon(icons[type] ?? Icons.info_outlined, color: _textGrey, size: 16),
         const SizedBox(width: 8),
         Expanded(
           child: Text(

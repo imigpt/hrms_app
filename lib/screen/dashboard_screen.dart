@@ -88,7 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     
     // Determine user role
-    _userRole = (widget.user?.role?.toLowerCase() == 'admin') ? 'admin' : 'employee';
+    _userRole = (widget.user?.role.toLowerCase() == 'admin') ? 'admin' : 'employee';
     
     if (_userRole == 'admin') {
       // Load admin dashboard data

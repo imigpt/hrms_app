@@ -495,6 +495,112 @@ class AttendanceService {
     }
   }
 
+  // Get Pending Edit Requests (Admin / HR)
+  static Future<AdminEditRequestsList> getPendingAdminEditRequests({
+    required String token,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/attendance/edit-requests/pending');
+      print('📋 [ADMIN EDIT REQUESTS PENDING] Fetching: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📋 [ADMIN EDIT REQUESTS PENDING] Status: ${response.statusCode}');
+      print('📋 [ADMIN EDIT REQUESTS PENDING] Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        return AdminEditRequestsList.fromJson(jsonData);
+      } else {
+        final errorBody = json.decode(response.body);
+        throw Exception(errorBody['message'] ?? 'Failed to fetch pending edit requests');
+      }
+    } catch (e) {
+      print('❌ [ADMIN EDIT REQUESTS PENDING] Error: $e');
+      throw Exception('Failed to fetch pending edit requests: $e');
+    }
+  }
+
+  // Get All Edit Requests (Admin / HR) - reuses same endpoint but returns all
+  static Future<List<AdminEditRequestData>> getAllAdminEditRequests({
+    required String token,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/attendance/edit-requests');
+      print('📋 [ADMIN ALL EDIT REQUESTS] Fetching: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📋 [ADMIN ALL EDIT REQUESTS] Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        final list = (jsonData["data"] as List<dynamic>? ?? [])
+            .map((e) => AdminEditRequestData.fromJson(e as Map<String, dynamic>))
+            .toList();
+        return list;
+      } else {
+        final errorBody = json.decode(response.body);
+        throw Exception(errorBody['message'] ?? 'Failed to fetch edit requests');
+      }
+    } catch (e) {
+      print('❌ [ADMIN ALL EDIT REQUESTS] Error: $e');
+      throw Exception('Failed to fetch edit requests: $e');
+    }
+  }
+
+  // Review Edit Request – approve or reject (Admin / HR)
+  static Future<Map<String, dynamic>> reviewEditRequest({
+    required String token,
+    required String requestId,
+    required String action, // 'approved' | 'rejected'
+    String? reviewNote,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/attendance/edit-requests/$requestId');
+      print('📝 [REVIEW EDIT REQUEST] PUT $uri  action=$action');
+
+      final body = <String, dynamic>{'action': action};
+      if (reviewNote != null && reviewNote.isNotEmpty) {
+        body['reviewNote'] = reviewNote;
+      }
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(body),
+      );
+
+      print('📝 [REVIEW EDIT REQUEST] Status: ${response.statusCode}');
+      print('📝 [REVIEW EDIT REQUEST] Body: ${response.body}');
+
+      final decoded = json.decode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200) {
+        return decoded;
+      } else {
+        throw Exception(decoded['message'] ?? 'Failed to review edit request');
+      }
+    } catch (e) {
+      print('❌ [REVIEW EDIT REQUEST] Error: $e');
+      throw Exception('Failed to review edit request: $e');
+    }
+  }
+
   // ── Half-Day Request ────────────────────────────────────────────────────
 
   /// POST /api/attendance/half-day-request
@@ -562,6 +668,40 @@ class AttendanceService {
       print('Get dashboard stats error: $e');
       print('Error stack trace: ${StackTrace.current}');
       return null;
+    }
+  }
+
+  /// GET /api/attendance — Admin/HR: all company attendance records
+  /// Optional query params: startDate, endDate (yyyy-MM-dd)
+  static Future<Map<String, dynamic>> getAllAttendance(
+    String token, {
+    String? startDate,
+    String? endDate,
+  }) async {
+    try {
+      final params = <String, String>{};
+      if (startDate != null) params['startDate'] = startDate;
+      if (endDate != null) params['endDate'] = endDate;
+
+      final uri = Uri.parse('$baseUrl/attendance').replace(queryParameters: params.isNotEmpty ? params : null);
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return {'success': true, 'data': json['data'] ?? [], 'count': json['count'] ?? 0};
+      } else {
+        final err = jsonDecode(response.body);
+        return {'success': false, 'message': err['message'] ?? 'Failed to fetch attendance', 'data': []};
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString(), 'data': []};
     }
   }
 }

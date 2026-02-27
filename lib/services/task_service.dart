@@ -398,4 +398,37 @@ class TaskService {
       notes: reason,
     );
   }
+
+  /// Add or update review on a task (Admin/HR only)
+  /// PUT /api/tasks/:id/review
+  /// [comment] - Review comment text
+  /// [rating]  - Rating from 1 to 5
+  static Future<dynamic> addReview(
+    String token,
+    String taskId, {
+    required String comment,
+    required int rating,
+  }) async {
+    try {
+      final body = {
+        'comment': comment,
+        'rating': rating,
+      };
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/tasks/$taskId/review'),
+            headers: _getHeaders(token),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to submit review: $e');
+    }
+  }
 }

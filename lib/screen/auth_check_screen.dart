@@ -1,7 +1,6 @@
 // lib/screen/auth_check_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:hrms_app/models/profile_model.dart';
 import 'package:hrms_app/screen/dashboard_screen.dart';
 import 'package:hrms_app/screen/login_screen.dart';
 import 'package:hrms_app/services/profile_service.dart';

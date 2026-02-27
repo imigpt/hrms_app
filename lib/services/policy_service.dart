@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/policy_model.dart';
 
@@ -67,8 +68,66 @@ class PolicyService {
   /// Returns the download URL for a policy file: GET /api/policies/:id/download
   static String getDownloadUrl(String id) => '$_baseUrl/policies/$id/download';
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Create Policy (admin only) ─────────────────────────────────────────
 
+  /// POST /api/policies  (multipart/form-data)
+  /// [file] is optional — PDF, DOCX, etc.
+  static Future<void> createPolicy({
+    required String token,
+    required String title,
+    String description = '',
+    String location = 'Head Office',
+    File? file,
+    String? fileName,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/policies');
+      final request = http.MultipartRequest('POST', uri)
+        ..headers['Authorization'] = 'Bearer $token'
+        ..fields['title'] = title
+        ..fields['description'] = description
+        ..fields['location'] = location;
+
+      if (file != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'file',
+          file.path,
+          filename: fileName ?? file.path.split('/').last.split('\\').last,
+        ));
+      }
+
+      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final response = await http.Response.fromStream(streamed);
+
+      if (response.statusCode == 201) return;
+      throw Exception(_extractError(response, 'Failed to create policy'));
+    } catch (e) {
+      print('PolicyService.createPolicy error: $e');
+      rethrow;
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  // ── Delete Policy (admin only) ─────────────────────────────────────────
+
+  /// DELETE /api/policies/:id
+  static Future<void> deletePolicy({
+    required String token,
+    required String id,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/policies/$id');
+      final response = await http
+          .delete(uri, headers: _headers(token))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) return;
+      throw Exception(_extractError(response, 'Failed to delete policy'));
+    } catch (e) {
+      print('PolicyService.deletePolicy error: $e');
+      rethrow;
+    }
+  }
   static String _extractError(http.Response response, String fallback) {
     try {
       final body = json.decode(response.body);

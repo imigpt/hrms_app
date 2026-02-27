@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import '../models/apply_leave_model.dart';
+import '../models/leave_balance_model.dart';
+import '../models/leave_management_model.dart';
 
 class LeaveService {
   static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
@@ -252,6 +254,137 @@ class LeaveService {
       return decoded['message'] as String?;
     } catch (_) {
       return null;
+    }
+  }
+
+  // ── GET /api/leaves  (admin - all company leaves) ─────────────────────────
+  /// Admin: fetch all leave requests for the company, optional [status] filter.
+  static Future<AdminLeavesResponse> getAdminLeaves({
+    required String token,
+    String? status,
+  }) async {
+    final params = <String, String>{};
+    if (status != null && status.isNotEmpty) params['status'] = status;
+    final uri =
+        Uri.parse('$baseUrl/leaves').replace(queryParameters: params);
+
+    final response = await http.get(
+      uri,
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      return adminLeavesResponseFromJson(response.body);
+    }
+    throw Exception(
+        _errorMessage(response.body) ?? 'Failed to fetch leave requests');
+  }
+
+  // ── PUT /api/leaves/:id/approve ────────────────────────────────────────────
+  /// Admin/HR: approve a leave request.
+  static Future<void> approveAdminLeave({
+    required String token,
+    required String leaveId,
+    String? reviewNote,
+  }) async {
+    final body = <String, dynamic>{};
+    if (reviewNote != null && reviewNote.isNotEmpty) body['reviewNote'] = reviewNote;
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/leaves/$leaveId/approve'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+          _errorMessage(response.body) ?? 'Failed to approve leave request');
+    }
+  }
+
+  // ── PUT /api/leaves/:id/reject ─────────────────────────────────────────────
+  /// Admin/HR: reject a leave request.
+  static Future<void> rejectAdminLeave({
+    required String token,
+    required String leaveId,
+    String? reviewNote,
+  }) async {
+    final body = <String, dynamic>{};
+    if (reviewNote != null && reviewNote.isNotEmpty) body['reviewNote'] = reviewNote;
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/leaves/$leaveId/reject'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+          _errorMessage(response.body) ?? 'Failed to reject leave request');
+    }
+  }
+
+  // ── Leave Balance (admin) ─────────────────────────────────────────────────
+
+  /// GET /api/leave-balance?role=&search=
+  static Future<LeaveBalanceListResponse> getLeaveBalances({
+    required String token,
+    String role   = 'all',
+    String search = '',
+  }) async {
+    final params = <String, String>{};
+    if (role.isNotEmpty && role != 'all') params['role'] = role;
+    if (search.isNotEmpty) params['search'] = search;
+
+    final uri = Uri.parse('$baseUrl/leave-balance')
+        .replace(queryParameters: params.isEmpty ? null : params);
+
+    final response = await http.get(uri,
+        headers: {'Authorization': 'Bearer $token'});
+
+    if (response.statusCode == 200) {
+      return LeaveBalanceListResponse.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw Exception(_errorMessage(response.body) ??
+        'Failed to fetch leave balances');
+  }
+
+  /// PUT /api/leave-balance/:userId  — assign / update balance
+  static Future<void> assignLeaveBalance({
+    required String token,
+    required String userId,
+    required int paid,
+    required int sick,
+    required int unpaid,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/leave-balance/$userId'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode({'paid': paid, 'sick': sick, 'unpaid': unpaid}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(_errorMessage(response.body) ??
+          'Failed to assign leave balance');
+    }
+  }
+
+  /// POST /api/leave-balance/bulk  — bulk assign
+  static Future<void> bulkAssignLeaveBalance({
+    required String token,
+    required List<String> userIds,
+    required int paid,
+    required int sick,
+    required int unpaid,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/leave-balance/bulk'),
+      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      body: jsonEncode({'userIds': userIds, 'paid': paid, 'sick': sick, 'unpaid': unpaid}),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(_errorMessage(response.body) ??
+          'Failed to bulk assign balances');
     }
   }
 }

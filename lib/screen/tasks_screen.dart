@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/task_service.dart';
 import '../services/token_storage_service.dart';
+import '../services/admin_employees_service.dart';
 
 class TasksScreen extends StatefulWidget {
   final String? token;
-  const TasksScreen({super.key, this.token});
+  final String? role;
+  const TasksScreen({super.key, this.token, this.role});
 
   @override
   State<TasksScreen> createState() => _TasksScreenState();
@@ -28,6 +30,7 @@ class _TasksScreenState extends State<TasksScreen>
   String _searchQuery = '';
   String? _token;
   String? _userId;
+  bool _isAdmin = false;
 
   // ── API state ──────────────────────────────────────────────────────────────
   bool _isLoading = true;
@@ -43,6 +46,12 @@ class _TasksScreenState extends State<TasksScreen>
     'highPriority': 0,
     'averageProgress': 0,
   };
+
+  // ── Admin state ────────────────────────────────────────────────────────────
+  List<dynamic> _employees = [];
+  String? _adminStatusFilter;
+  String? _adminPriorityFilter;
+  String? _adminEmployeeFilter; // employee _id
 
   void _onTabChanged() {
     // Tab changed - no action needed
@@ -75,7 +84,24 @@ class _TasksScreenState extends State<TasksScreen>
     if ((_userId == null || _userId!.isEmpty) && _token != null) {
       _userId = _decodeUserIdFromJwt(_token!);
     }
-    await _loadData();
+    _isAdmin = (widget.role?.toLowerCase() == 'admin');
+    if (_isAdmin) {
+      await Future.wait([_loadData(), _loadEmployees()]);
+    } else {
+      await _loadData();
+    }
+  }
+
+  Future<void> _loadEmployees() async {
+    if (_token == null) return;
+    try {
+      final res = await AdminEmployeesService.getAllEmployees(_token!);
+      if (res['success'] == true && mounted) {
+        setState(() {
+          _employees = (res['data'] as List<dynamic>? ?? []);
+        });
+      }
+    } catch (_) {}
   }
 
   /// Decodes the JWT payload (no signature verification needed—server
@@ -166,6 +192,42 @@ class _TasksScreenState extends State<TasksScreen>
       case 3: list = list.where((t) => t['status'] == 'completed').toList(); break;
     }
     return list;
+  }
+
+  // Admin filtered tasks (search + status + priority + employee filters)
+  List<dynamic> get _adminFilteredTasks {
+    return _tasks.where((t) {
+      final q = _searchQuery.toLowerCase();
+      if (q.isNotEmpty &&
+          !((t['title'] ?? '').toString().toLowerCase().contains(q)) &&
+          !((t['description'] ?? '').toString().toLowerCase().contains(q)) &&
+          !((_assigneeName(t)).toLowerCase().contains(q))) {
+        return false;
+      }
+      if (_adminStatusFilter != null && _adminStatusFilter!.isNotEmpty) {
+        if (t['status'] != _adminStatusFilter) return false;
+      }
+      if (_adminPriorityFilter != null && _adminPriorityFilter!.isNotEmpty) {
+        if ((t['priority'] ?? '').toString().toLowerCase() != _adminPriorityFilter) return false;
+      }
+      if (_adminEmployeeFilter != null && _adminEmployeeFilter!.isNotEmpty) {
+        final assignedTo = t['assignedTo'];
+        if (assignedTo is Map) {
+          if ((assignedTo['_id'] ?? '').toString() != _adminEmployeeFilter) return false;
+        } else if (assignedTo is String) {
+          if (assignedTo != _adminEmployeeFilter) return false;
+        } else {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+  }
+
+  String _assigneeName(dynamic task) {
+    final a = task['assignedTo'];
+    if (a is Map) return (a['name'] ?? '').toString();
+    return '';
   }
 
   // ── Priority / status helpers ──────────────────────────────────────────────
@@ -407,6 +469,9 @@ class _TasksScreenState extends State<TasksScreen>
                       ],
 
                       const SizedBox(height: 24),
+                      // ── Manager Review Section (read-only for employee) ──
+                      if (task['review'] != null) ..._buildReviewCard(task['review'] as Map<String, dynamic>),
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
@@ -1044,6 +1109,7 @@ class _TasksScreenState extends State<TasksScreen>
   // ── Build ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    if (_isAdmin) return _buildAdminScaffold(context);
     return Scaffold(
       backgroundColor: _bgDark,
       body: SafeArea(
@@ -1082,6 +1148,1080 @@ class _TasksScreenState extends State<TasksScreen>
           );
         }),
       ),
+    );
+  }
+
+  // ── ADMIN PANEL ─────────────────────────────────────────────────────────────
+  Widget _buildAdminScaffold(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bgDark,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildAdminHeader(context),
+            Expanded(
+              child: _isLoading
+                  ? Center(child: CircularProgressIndicator(color: _accentPink))
+                  : _error != null
+                      ? _buildError()
+                      : RefreshIndicator(
+                          color: _accentPink,
+                          backgroundColor: _cardDark,
+                          onRefresh: () async {
+                            await Future.wait([_loadData(), _loadEmployees()]);
+                          },
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildAdminStats(),
+                                const SizedBox(height: 20),
+                                _buildAdminSearchAndFilters(),
+                                const SizedBox(height: 16),
+                                _buildAdminTaskList(),
+                                const SizedBox(height: 80),
+                              ],
+                            ),
+                          ),
+                        ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAdminCreateTaskDialog,
+        backgroundColor: _accentPink,
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text('Assign Task', style: TextStyle(fontWeight: FontWeight.bold)),
+        elevation: 4,
+      ),
+    );
+  }
+
+  Widget _buildAdminHeader(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: _cardDark,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.all(10),
+                minimumSize: const Size(44, 44),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Task Management',
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text('${_adminFilteredTasks.length} of ${_tasks.length} tasks',
+                      style: TextStyle(color: _textGrey, fontSize: 12)),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: () async => Future.wait([_loadData(), _loadEmployees()]),
+              icon: Icon(Icons.refresh_rounded, color: _accentPink, size: 22),
+              style: IconButton.styleFrom(
+                backgroundColor: _accentPink.withValues(alpha: 0.12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildAdminStats() {
+    final total = _stats['total'] ?? _tasks.length;
+    final inProgress = _stats['inProgress'] ?? 0;
+    final completed = _stats['completed'] ?? 0;
+    final overdue = _stats['overdue'] ?? 0;
+    final highPriority = _stats['highPriority'] ?? 0;
+    final avgProgress = _stats['averageProgress'] ?? 0;
+    return Column(
+      children: [
+        Row(children: [
+          Expanded(child: _buildStatCard('Total', '$total', Icons.folder_outlined, _accentPurple)),
+          const SizedBox(width: 12),
+          Expanded(child: _buildStatCard('In Progress', '$inProgress', Icons.pending_actions, _accentOrange)),
+          const SizedBox(width: 12),
+          Expanded(child: _buildStatCard('Completed', '$completed', Icons.check_circle_outline, _accentGreen)),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _buildStatCard('Overdue', '$overdue', Icons.warning_amber_outlined, Colors.redAccent)),
+          const SizedBox(width: 12),
+          Expanded(child: _buildStatCard('High Priority', '$highPriority', Icons.flag_outlined, _accentPink)),
+          const SizedBox(width: 12),
+          Expanded(child: _buildStatCard('Avg Progress', '$avgProgress%', Icons.insights, Colors.blueAccent)),
+        ]),
+      ],
+    );
+  }
+
+  Widget _buildAdminSearchAndFilters() => Column(
+        children: [
+          // Search bar
+          Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: _inputDark,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _accentPink.withValues(alpha: 0.3)),
+            ),
+            child: TextField(
+              style: const TextStyle(color: Colors.white, fontSize: 15),
+              onChanged: (v) => setState(() => _searchQuery = v),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                hintText: 'Search tasks, employees...',
+                hintStyle: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 14),
+                prefixIcon: Icon(Icons.search, color: _accentPink, size: 20),
+                prefixIconConstraints: const BoxConstraints(minWidth: 44),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.close, color: _textGrey, size: 18),
+                        onPressed: () => setState(() => _searchQuery = ''),
+                      )
+                    : null,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Filter chips row
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // Status filter
+                _adminFilterChip(
+                  label: _adminStatusFilter == null ? 'All Status' : _statusLabel(_adminStatusFilter!),
+                  icon: Icons.tune,
+                  active: _adminStatusFilter != null,
+                  onTap: _showStatusFilterSheet,
+                ),
+                const SizedBox(width: 8),
+                // Priority filter
+                _adminFilterChip(
+                  label: _adminPriorityFilter == null
+                      ? 'All Priority'
+                      : '${_adminPriorityFilter![0].toUpperCase()}${_adminPriorityFilter!.substring(1)} Priority',
+                  icon: Icons.flag_outlined,
+                  active: _adminPriorityFilter != null,
+                  onTap: _showPriorityFilterSheet,
+                ),
+                const SizedBox(width: 8),
+                // Employee filter
+                _adminFilterChip(
+                  label: _adminEmployeeFilter == null
+                      ? 'All Employees'
+                      : (_employees.firstWhere(
+                            (e) => e['_id'] == _adminEmployeeFilter,
+                            orElse: () => {'name': 'Employee'},
+                          )['name'] ?? 'Employee').toString().split(' ').first,
+                  icon: Icons.person_outline,
+                  active: _adminEmployeeFilter != null,
+                  onTap: _showEmployeeFilterSheet,
+                ),
+                if (_adminStatusFilter != null ||
+                    _adminPriorityFilter != null ||
+                    _adminEmployeeFilter != null) ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _adminStatusFilter = null;
+                      _adminPriorityFilter = null;
+                      _adminEmployeeFilter = null;
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.clear, color: Colors.redAccent, size: 14),
+                          SizedBox(width: 4),
+                          Text('Clear', style: TextStyle(color: Colors.redAccent, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+
+  Widget _adminFilterChip({required String label, required IconData icon, required bool active, required VoidCallback onTap}) =>
+      GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: active ? _accentPink.withValues(alpha: 0.15) : _cardDark,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: active ? _accentPink : Colors.white12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: active ? _accentPink : _textGrey, size: 14),
+              const SizedBox(width: 5),
+              Text(label, style: TextStyle(color: active ? _accentPink : _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 3),
+              Icon(Icons.keyboard_arrow_down, color: active ? _accentPink : _textGrey, size: 14),
+            ],
+          ),
+        ),
+      );
+
+  void _showStatusFilterSheet() {
+    final options = [
+      {'value': null, 'label': 'All Status', 'color': Colors.white},
+      {'value': 'todo', 'label': 'To Do', 'color': Colors.blueAccent},
+      {'value': 'in-progress', 'label': 'In Progress', 'color': _accentOrange},
+      {'value': 'completed', 'label': 'Completed', 'color': _accentGreen},
+      {'value': 'cancelled', 'label': 'Cancelled', 'color': Colors.grey},
+    ];
+    _showFilterSheet('Filter by Status', options, _adminStatusFilter, (v) {
+      setState(() => _adminStatusFilter = v as String?);
+    });
+  }
+
+  void _showPriorityFilterSheet() {
+    final options = [
+      {'value': null, 'label': 'All Priority', 'color': Colors.white},
+      {'value': 'low', 'label': 'Low', 'color': _accentGreen},
+      {'value': 'medium', 'label': 'Medium', 'color': _accentOrange},
+      {'value': 'high', 'label': 'High', 'color': Colors.redAccent},
+    ];
+    _showFilterSheet('Filter by Priority', options, _adminPriorityFilter, (v) {
+      setState(() => _adminPriorityFilter = v as String?);
+    });
+  }
+
+  void _showEmployeeFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.5,
+          maxChildSize: 0.85,
+          builder: (_, sc) => Column(
+            children: [
+              const SizedBox(height: 12),
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 16),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text('Filter by Employee', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView(
+                  controller: sc,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  children: [
+                    _filterOption(label: 'All Employees', color: Colors.white,
+                      selected: _adminEmployeeFilter == null,
+                      onTap: () { setState(() => _adminEmployeeFilter = null); Navigator.pop(context); }),
+                    const Divider(color: Colors.white10, height: 8),
+                    ..._employees.map((e) {
+                      final id = e['_id']?.toString() ?? '';
+                      final name = e['name']?.toString() ?? 'Employee';
+                      return _filterOption(
+                        label: name,
+                        subtitle: e['employeeId']?.toString(),
+                        color: _accentPink,
+                        selected: _adminEmployeeFilter == id,
+                        onTap: () { setState(() => _adminEmployeeFilter = id); Navigator.pop(context); },
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFilterSheet(String title, List<Map<String, dynamic>> options, dynamic currentValue, ValueChanged<dynamic> onSelect) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            ...options.map((opt) => _filterOption(
+              label: opt['label'] as String,
+              color: opt['color'] as Color,
+              selected: currentValue == opt['value'],
+              onTap: () { onSelect(opt['value']); Navigator.pop(context); },
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterOption({required String label, required Color color, required bool selected, required VoidCallback onTap, String? subtitle}) =>
+      ListTile(
+        dense: true,
+        onTap: onTap,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        leading: Container(
+          width: 10, height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        title: Text(label, style: TextStyle(color: selected ? _accentPink : Colors.white, fontWeight: selected ? FontWeight.bold : FontWeight.normal, fontSize: 14)),
+        subtitle: subtitle != null ? Text(subtitle, style: TextStyle(color: _textGrey, fontSize: 11)) : null,
+        trailing: selected ? Icon(Icons.check, color: _accentPink, size: 18) : null,
+      );
+
+  Widget _buildAdminTaskList() {
+    final list = _adminFilteredTasks;
+    if (list.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.only(top: 48),
+          child: Column(
+            children: [
+              Icon(Icons.assignment_outlined, size: 56, color: _textGrey.withValues(alpha: 0.3)),
+              const SizedBox(height: 16),
+              Text('No tasks found', style: TextStyle(color: _textGrey, fontSize: 15, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              Text('Try clearing filters or assign a new task', style: TextStyle(color: _textGrey.withValues(alpha: 0.6), fontSize: 13)),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: list.length,
+      itemBuilder: (_, i) => _buildAdminTaskCard(list[i] as Map<String, dynamic>),
+    );
+  }
+
+  Widget _buildAdminTaskCard(Map<String, dynamic> task) {
+    final priority = (task['priority'] ?? 'medium').toString();
+    final status = (task['status'] ?? 'todo').toString();
+    final progress = ((task['progress'] ?? 0) as num).toDouble();
+    final priorityColor = _priorityColor(priority);
+    final statusColor = _statusColor(status);
+    final assignee = task['assignedTo'];
+    final assigneeName = assignee is Map ? (assignee['name'] ?? 'Unassigned').toString() : 'Unassigned';
+    final assigneeId = assignee is Map ? (assignee['employeeId'] ?? '').toString() : '';
+    final dept = assignee is Map ? (assignee['department'] ?? '').toString() : '';
+
+    return GestureDetector(
+      onTap: () => _showAdminTaskDetail(task),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: _cardDark,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                Container(width: 5, color: priorityColor),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Chips row
+                        Row(
+                          children: [
+                            _miniChip(priority[0].toUpperCase() + priority.substring(1), priorityColor),
+                            const SizedBox(width: 6),
+                            _miniChip(_statusLabel(status), statusColor),
+                            const Spacer(),
+                            // Review star: filled (gold) if reviewed, outline if not
+                            GestureDetector(
+                              onTap: () => _showAdminReviewDialog(task),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  task['review'] != null ? Icons.star_rounded : Icons.star_outline_rounded,
+                                  color: task['review'] != null ? Colors.amber : _textGrey.withValues(alpha: 0.5),
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Title
+                        Text(task['title'] ?? '—',
+                            style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
+                        if ((task['description'] ?? '').toString().isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(task['description'], maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: _textGrey, fontSize: 11, height: 1.3)),
+                        ],
+                        const SizedBox(height: 10),
+                        // Progress
+                        if (status != 'completed' && status != 'cancelled') ...[
+                          Row(children: [
+                            Text('Progress', style: TextStyle(color: _textGrey, fontSize: 10)),
+                            const Spacer(),
+                            Text('${progress.toInt()}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ]),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(value: progress / 100, minHeight: 5, backgroundColor: Colors.black, color: priorityColor),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        // Footer: assignee + due date
+                        Row(
+                          children: [
+                            // Assignee avatar
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundColor: _accentPink.withValues(alpha: 0.2),
+                              child: Text(assigneeName.isNotEmpty ? assigneeName[0].toUpperCase() : '?',
+                                  style: TextStyle(color: _accentPink, fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(assigneeName, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  if (dept.isNotEmpty || assigneeId.isNotEmpty)
+                                    Text(dept.isNotEmpty ? dept : assigneeId,
+                                        style: TextStyle(color: _textGrey, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(Icons.calendar_today_outlined, color: _textGrey, size: 11),
+                            const SizedBox(width: 3),
+                            Text(_formatDate(task['dueDate']), style: TextStyle(color: _textGrey, fontSize: 11)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _miniChip(String label, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
+        child: Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+      );
+
+  // ── Review helpers ─────────────────────────────────────────────────────────
+  List<Widget> _buildReviewCard(Map<String, dynamic> review) {
+    final rating = (review['rating'] ?? 0) as num;
+    final comment = (review['comment'] ?? '').toString();
+    final reviewedBy = review['reviewedBy'];
+    final reviewerName = reviewedBy is Map ? (reviewedBy['name'] ?? 'Manager').toString() : 'Manager';
+    final reviewedAt = review['reviewedAt'];
+    String dateStr = '';
+    if (reviewedAt != null) {
+      try {
+        dateStr = DateFormat('MMM d, y').format(DateTime.parse(reviewedAt.toString()).toLocal());
+      } catch (_) {}
+    }
+    return [
+      const SizedBox(height: 16),
+      const Divider(color: Colors.white10),
+      const SizedBox(height: 12),
+      Row(children: [
+        Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+        const SizedBox(width: 6),
+        Text('Manager Review', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+      ]),
+      const SizedBox(height: 10),
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.amber.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Star row
+            Row(children: [
+              ...List.generate(5, (i) => Icon(
+                i < rating.toInt() ? Icons.star_rounded : Icons.star_outline_rounded,
+                color: Colors.amber, size: 18,
+              )),
+              const Spacer(),
+              Text(dateStr, style: TextStyle(color: _textGrey, fontSize: 11)),
+            ]),
+            if (comment.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(comment, style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.5)),
+            ],
+            const SizedBox(height: 8),
+            Row(children: [
+              Icon(Icons.person_outline, color: _textGrey, size: 13),
+              const SizedBox(width: 4),
+              Text(reviewerName, style: TextStyle(color: _textGrey, fontSize: 11)),
+            ]),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  Future<void> _showAdminReviewDialog(Map<String, dynamic> task) async {
+    final existing = task['review'] as Map<String, dynamic>?;
+    final commentCtrl = TextEditingController(text: existing?['comment']?.toString() ?? '');
+    int selectedRating = existing != null ? (existing['rating'] as num).toInt() : 0;
+    bool submitting = false;
+
+    try {
+      final result = await showModalBottomSheet<bool>(
+        context: context,
+        backgroundColor: _cardDark,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        builder: (sheetCtx) => StatefulBuilder(builder: (_, ss) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom, left: 20, right: 20, top: 20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)))),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Icon(Icons.star_rounded, color: Colors.amber, size: 22),
+                    const SizedBox(width: 10),
+                    Text(existing != null ? 'Update Review' : 'Add Review',
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    IconButton(onPressed: () => Navigator.pop(sheetCtx), icon: const Icon(Icons.close, color: Colors.white54, size: 20)),
+                  ]),
+                  const SizedBox(height: 6),
+                  Text(task['title'] ?? '', style: TextStyle(color: _textGrey, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 20),
+                  // Star rating
+                  _inputLabel('Rating *'),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (i) {
+                      final filled = i < selectedRating;
+                      return GestureDetector(
+                        onTap: () => ss(() => selectedRating = i + 1),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Icon(
+                            filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: filled ? Colors.amber : _textGrey.withValues(alpha: 0.5),
+                            size: 40,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  if (selectedRating > 0) ...[
+                    const SizedBox(height: 8),
+                    Center(child: Text(
+                      ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][selectedRating],
+                      style: TextStyle(color: Colors.amber, fontSize: 13, fontWeight: FontWeight.w600),
+                    )),
+                  ],
+                  const SizedBox(height: 20),
+                  // Comment
+                  _inputLabel('Comment'),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: _inputDark,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+                    ),
+                    child: TextField(
+                      controller: commentCtrl,
+                      maxLines: 4,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        hintText: 'Add a comment about this task...',
+                        hintStyle: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 13),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity, height: 52,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      onPressed: submitting ? null : () async {
+                        if (selectedRating == 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a rating'), backgroundColor: Colors.red));
+                          return;
+                        }
+                        ss(() => submitting = true);
+                        try {
+                          await TaskService.addReview(_token!, task['_id'].toString(),
+                            comment: commentCtrl.text.trim(),
+                            rating: selectedRating,
+                          );
+                          if (sheetCtx.mounted) Navigator.pop(sheetCtx, true);
+                        } catch (e) {
+                          if (sheetCtx.mounted) ss(() => submitting = false);
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
+                        }
+                      },
+                      icon: submitting
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                          : const Icon(Icons.star_rounded, size: 20),
+                      label: Text(submitting ? 'Submitting...' : (existing != null ? 'Update Review' : 'Submit Review'),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                ],
+              ),
+            ),
+          );
+        }),
+      );
+
+      if (result == true && mounted) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(existing != null ? 'Review updated!' : 'Review submitted!'),
+            backgroundColor: Colors.amber.shade700,
+          ));
+          _loadData();
+        }
+      }
+    } finally {
+      commentCtrl.dispose();
+    }
+  }
+
+  Future<void> _showAdminTaskDetail(Map<String, dynamic> task) async {
+    final assignee = task['assignedTo'];
+    final assigneeName = assignee is Map ? (assignee['name'] ?? 'Unassigned').toString() : 'Unassigned';
+    final dept = assignee is Map ? (assignee['department'] ?? '').toString() : '';
+    final employeeId = assignee is Map ? (assignee['employeeId'] ?? '').toString() : '';
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: _cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.65,
+        maxChildSize: 0.92,
+        builder: (_, sc) => Column(
+          children: [
+            const SizedBox(height: 12),
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)))),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
+              child: Row(
+                children: [
+                  Expanded(child: Text(task['title'] ?? 'Task', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold))),
+                  IconButton(icon: Icon(Icons.edit_outlined, color: _accentPink, size: 20), tooltip: 'Edit',
+                      onPressed: () => Navigator.pop(sheetCtx, 'edit')),
+                  IconButton(
+                    icon: Icon(
+                      task['review'] != null ? Icons.star_rounded : Icons.star_outline_rounded,
+                      color: task['review'] != null ? Colors.amber : _textGrey,
+                      size: 20,
+                    ),
+                    tooltip: task['review'] != null ? 'Update Review' : 'Add Review',
+                    onPressed: () => Navigator.pop(sheetCtx, 'review'),
+                  ),
+                  IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20), tooltip: 'Delete',
+                      onPressed: () => Navigator.pop(sheetCtx, 'delete')),
+                  IconButton(icon: const Icon(Icons.close, color: Colors.white38, size: 20),
+                      onPressed: () => Navigator.pop(sheetCtx)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                controller: sc,
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                children: [
+                  // Assignee card
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: _inputDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white12)),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: _accentPink.withValues(alpha: 0.2),
+                          child: Text(assigneeName.isNotEmpty ? assigneeName[0].toUpperCase() : '?',
+                              style: TextStyle(color: _accentPink, fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(assigneeName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                            if (dept.isNotEmpty) Text(dept, style: TextStyle(color: _textGrey, fontSize: 12)),
+                            if (employeeId.isNotEmpty) Text('ID: $employeeId', style: TextStyle(color: _textGrey, fontSize: 11)),
+                          ],
+                        ),
+                        const Spacer(),
+                        _miniChip(_statusLabel(task['status'] ?? 'todo'), _statusColor(task['status'] ?? 'todo')),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  // Description
+                  if ((task['description'] ?? '').toString().isNotEmpty) ...[
+                    Text(task['description'].toString(), style: TextStyle(color: _textGrey, fontSize: 13, height: 1.5)),
+                    const SizedBox(height: 14),
+                  ],
+                  // Meta
+                  Wrap(spacing: 8, runSpacing: 8, children: [
+                    _metaChip(label: (task['priority'] ?? 'medium').toString().toUpperCase(), color: _priorityColor(task['priority'] ?? 'medium'), icon: Icons.flag_outlined),
+                    _metaChip(label: _formatDate(task['dueDate']), color: _textGrey, icon: Icons.calendar_today_outlined),
+                  ]),
+                  // Progress
+                  const SizedBox(height: 16),
+                  const Divider(color: Colors.white10),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    Text('Progress', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(color: _accentPink.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(12)),
+                      child: Text('${((task['progress'] ?? 0) as num).toInt()}%', style: TextStyle(color: _accentPink, fontSize: 13, fontWeight: FontWeight.bold)),
+                    ),
+                  ]),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: ((task['progress'] ?? 0) as num).toDouble() / 100,
+                      minHeight: 8,
+                      backgroundColor: Colors.white10,
+                      color: _accentPink,
+                    ),
+                  ),
+                  // ── Existing review display in detail ────────────────
+                  if (task['review'] != null) ..._buildReviewCard(task['review'] as Map<String, dynamic>),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+    if (action == 'edit') {
+      await Future.delayed(const Duration(milliseconds: 200));
+      _showEditTaskDialog(task);
+    } else if (action == 'delete') {
+      await Future.delayed(const Duration(milliseconds: 200));
+      _deleteTask(task['_id'].toString());
+    } else if (action == 'review') {
+      await Future.delayed(const Duration(milliseconds: 200));
+      _showAdminReviewDialog(task);
+    }
+  }
+
+  Future<void> _showAdminCreateTaskDialog() async {
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    String selectedPriority = 'medium';
+    DateTime? selectedDueDate;
+    String? selectedEmployeeId;
+    bool submitting = false;
+
+    try {
+      final result = await showModalBottomSheet<bool>(
+        context: context,
+        backgroundColor: _cardDark,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        builder: (sheetCtx) => StatefulBuilder(builder: (_, ss) {
+          final selectedEmployee = selectedEmployeeId != null
+              ? _employees.firstWhere((e) => e['_id'] == selectedEmployeeId, orElse: () => null)
+              : null;
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(sheetCtx).viewInsets.bottom, left: 20, right: 20, top: 20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)))),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    const Text('Assign Task', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    IconButton(onPressed: () => Navigator.pop(sheetCtx), icon: const Icon(Icons.close, color: Colors.white54, size: 20)),
+                  ]),
+                  const SizedBox(height: 20),
+                  // Assign To
+                  _inputLabel('Assign To *'),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final picked = await _pickEmployee(sheetCtx);
+                      if (picked != null) ss(() => selectedEmployeeId = picked);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: _inputDark,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: selectedEmployee != null ? _accentPink.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.07)),
+                      ),
+                      child: Row(
+                        children: [
+                          if (selectedEmployee != null) ...[
+                            CircleAvatar(radius: 14, backgroundColor: _accentPink.withValues(alpha: 0.2),
+                              child: Text((selectedEmployee['name'] ?? '?')[0].toString().toUpperCase(), style: TextStyle(color: _accentPink, fontSize: 12, fontWeight: FontWeight.bold))),
+                            const SizedBox(width: 10),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                              Text(selectedEmployee['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 14)),
+                              if (selectedEmployee['department'] != null)
+                                Text(selectedEmployee['department'].toString(), style: TextStyle(color: _textGrey, fontSize: 11)),
+                            ])),
+                            Icon(Icons.edit, color: _accentPink, size: 16),
+                          ] else ...[
+                            Icon(Icons.person_add_outlined, color: _textGrey, size: 18),
+                            const SizedBox(width: 10),
+                            Text('Select Employee', style: TextStyle(color: _textGrey.withValues(alpha: 0.7), fontSize: 14)),
+                            const Spacer(),
+                            Icon(Icons.keyboard_arrow_down, color: _textGrey, size: 18),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _inputLabel('Task Title *'),
+                  const SizedBox(height: 8),
+                  _inputField(controller: titleCtrl, hint: 'e.g. Fix login bug', ctx: sheetCtx),
+                  const SizedBox(height: 16),
+                  _inputLabel('Description'),
+                  const SizedBox(height: 8),
+                  _inputField(controller: descCtrl, hint: 'Brief description...', maxLines: 3, ctx: sheetCtx),
+                  const SizedBox(height: 16),
+                  _inputLabel('Priority'),
+                  const SizedBox(height: 10),
+                  Wrap(spacing: 8, children: ['low', 'medium', 'high'].map((p) {
+                    final c = _priorityColor(p);
+                    final sel = selectedPriority == p;
+                    return ChoiceChip(
+                      label: Text(p[0].toUpperCase() + p.substring(1), style: TextStyle(color: sel ? c : _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                      selected: sel, onSelected: (_) => ss(() => selectedPriority = p),
+                      selectedColor: c.withValues(alpha: 0.18), backgroundColor: _inputDark,
+                      side: BorderSide(color: sel ? c : Colors.transparent),
+                    );
+                  }).toList()),
+                  const SizedBox(height: 16),
+                  _inputLabel('Due Date'),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now().add(const Duration(days: 1)),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        builder: (_, c) => Theme(data: ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: _accentPink, surface: _cardDark)), child: c!),
+                      );
+                      if (picked != null) ss(() => selectedDueDate = picked);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(color: _inputDark, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.white.withValues(alpha: 0.07))),
+                      child: Row(children: [
+                        Icon(Icons.calendar_today_outlined, color: _textGrey, size: 16),
+                        const SizedBox(width: 10),
+                        Text(selectedDueDate != null ? DateFormat('MMM d, y').format(selectedDueDate!) : 'Select due date',
+                            style: TextStyle(color: selectedDueDate != null ? Colors.white : _textGrey.withValues(alpha: 0.6), fontSize: 14)),
+                      ]),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity, height: 52,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: _accentPink, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 0),
+                      onPressed: submitting ? null : () async {
+                        if (titleCtrl.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Title is required'), backgroundColor: Colors.red));
+                          return;
+                        }
+                        if (selectedEmployeeId == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an employee'), backgroundColor: Colors.red));
+                          return;
+                        }
+                        ss(() => submitting = true);
+                        try {
+                          await TaskService.createTask(_token!, title: titleCtrl.text.trim(), description: descCtrl.text.trim().isEmpty ? titleCtrl.text.trim() : descCtrl.text.trim(),
+                            priority: selectedPriority, dueDate: selectedDueDate != null ? DateFormat('yyyy-MM-dd').format(selectedDueDate!) : DateFormat('yyyy-MM-dd').format(DateTime.now().add(const Duration(days: 7))),
+                            assignedTo: selectedEmployeeId!);
+                          if (sheetCtx.mounted) Navigator.pop(sheetCtx, true);
+                        } catch (e) {
+                          if (sheetCtx.mounted) ss(() => submitting = false);
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
+                        }
+                      },
+                      icon: submitting ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black)) : const Icon(Icons.send_outlined, size: 20),
+                      label: Text(submitting ? 'Assigning...' : 'Assign Task', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                ],
+              ),
+            ),
+          );
+        }),
+      );
+      if (result == true && mounted) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Task assigned successfully!'), backgroundColor: _accentGreen));
+          _loadData();
+        }
+      }
+    } finally {
+      titleCtrl.dispose();
+      descCtrl.dispose();
+    }
+  }
+
+  Future<String?> _pickEmployee(BuildContext sheetCtx) async {
+    return showModalBottomSheet<String>(
+      context: sheetCtx,
+      backgroundColor: _cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) {
+        String search = '';
+        return StatefulBuilder(builder: (_, ss2) {
+          final filtered = _employees.where((e) {
+            if (search.isEmpty) return true;
+            return (e['name'] ?? '').toString().toLowerCase().contains(search.toLowerCase()) ||
+                (e['employeeId'] ?? '').toString().toLowerCase().contains(search.toLowerCase()) ||
+                (e['department'] ?? '').toString().toLowerCase().contains(search.toLowerCase());
+          }).toList();
+          return DraggableScrollableSheet(
+            expand: false, initialChildSize: 0.55, maxChildSize: 0.9,
+            builder: (_, sc) => Column(
+              children: [
+                const SizedBox(height: 12),
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)))),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Select Employee', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 10),
+                      Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(color: _inputDark, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white10)),
+                        child: TextField(
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          onChanged: (v) => ss2(() => search = v),
+                          decoration: InputDecoration(border: InputBorder.none, hintText: 'Search employees...', hintStyle: TextStyle(color: _textGrey, fontSize: 13), prefixIcon: Icon(Icons.search, color: _textGrey, size: 18), prefixIconConstraints: const BoxConstraints(minWidth: 36)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: sc,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final e = filtered[i];
+                      return ListTile(
+                        dense: true,
+                        leading: CircleAvatar(radius: 18, backgroundColor: _accentPink.withValues(alpha: 0.2),
+                          child: Text((e['name'] ?? '?')[0].toString().toUpperCase(), style: TextStyle(color: _accentPink, fontSize: 13, fontWeight: FontWeight.bold))),
+                        title: Text(e['name'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                        subtitle: Text('${e['department'] ?? ''} • ${e['employeeId'] ?? ''}', style: TextStyle(color: _textGrey, fontSize: 11)),
+                        onTap: () => Navigator.pop(context, e['_id']?.toString()),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
     );
   }
 

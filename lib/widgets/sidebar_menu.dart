@@ -17,6 +17,12 @@ import 'package:hrms_app/screen/my_salary_screen.dart';
 import 'package:hrms_app/theme/app_theme.dart';
 import 'package:hrms_app/screen/settings_screen.dart';
 import 'package:hrms_app/screen/hr_accounts_screen.dart';
+import 'package:hrms_app/screen/all_employees_screen.dart';
+import 'package:hrms_app/screen/leave_management_screen.dart';
+import 'package:hrms_app/screen/leave_balance_screen.dart';
+import 'package:hrms_app/screen/all_clients_screen.dart';
+import 'package:hrms_app/screen/admin_attendance_screen.dart';
+import 'package:hrms_app/screen/edit_requests_screen.dart';
 
 class SidebarMenu extends StatefulWidget {
   final ProfileUser? user;
@@ -31,13 +37,14 @@ class SidebarMenu extends StatefulWidget {
 class _SidebarMenuState extends State<SidebarMenu> {
   int _selectedIndex = 0;
   bool _payrollExpanded = false;
+  bool _leavesExpanded = false;
   late String _userRole;
 
   @override
   void initState() {
     super.initState();
     // Determine user role
-    _userRole = (widget.user?.role?.toLowerCase() == 'admin') ? 'admin' : 'employee';
+    _userRole = (widget.user?.role.toLowerCase() == 'admin') ? 'admin' : 'employee';
   }
 
   late final List<Map<String, dynamic>> _employeeMenuItems = [
@@ -56,17 +63,17 @@ class _SidebarMenuState extends State<SidebarMenu> {
   late final List<Map<String, dynamic>> _adminMenuItems = [
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
     {"title": "HR Accounts", "icon": Icons.manage_accounts_rounded},
+    {"title": "Employees", "icon": Icons.people_rounded},
+    {"title": "Clients", "icon": Icons.people_outline_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded},
+    {"title": "Edit Request", "icon": Icons.description_rounded},
+    {"title": "Leaves", "icon": Icons.calendar_month_rounded, "hasSubmenu": true},
     {"title": "Tasks", "icon": Icons.task_alt_rounded},
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
     {"title": "Announcements", "icon": Icons.campaign_rounded},
     {"title": "Company Policy", "icon": Icons.policy_rounded},
     {"title": "Payroll", "icon": Icons.payments_rounded, "hasSubmenu": true},
-    {"title": "Edit Request", "icon": Icons.description_rounded},
-    {"title": "Clients", "icon": Icons.business_rounded},
-    {"title": "Employees", "icon": Icons.people_rounded},
-    {"title": "Leaves", "icon": Icons.calendar_month_rounded},
     {"title": "Settings", "icon": Icons.settings_rounded},
   ];
 
@@ -75,6 +82,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Increment/Promotion", "icon": Icons.trending_up_rounded},
     {"title": "Payroll", "icon": Icons.payments_rounded},
     {"title": "My Salary", "icon": Icons.money_rounded},
+  ];
+
+  late final List<Map<String, dynamic>> _leavesSubItems = [
+    {"title": "Leaves", "icon": Icons.calendar_month_rounded},
+    {"title": "Leave Management", "icon": Icons.assignment_rounded},
   ];
 
   /// Get the appropriate menu items based on user role
@@ -114,13 +126,35 @@ class _SidebarMenuState extends State<SidebarMenu> {
                           context, 
                           index: idx,
                           title: menuItem['title'], 
-                          icon: menuItem['icon']
+                          icon: menuItem['icon'],
+                          isExpanded: _payrollExpanded,
                         ),
                         // Insert submenu items right after Payroll
                         if (_payrollExpanded)
                           ..._payrollSubItems.asMap().entries.map((subEntry) {
                             int subIdx = subEntry.key;
                             return _buildPayrollSubMenuItem(context, subIdx);
+                          }).toList(),
+                      ],
+                    );
+                  }
+
+                  // If this is Leaves with submenu
+                  if (menuItem['title'] == 'Leaves' && menuItem['hasSubmenu'] == true) {
+                    return Column(
+                      children: [
+                        _buildMenuItemWithSubmenu(
+                          context, 
+                          index: idx,
+                          title: menuItem['title'], 
+                          icon: menuItem['icon'],
+                          isExpanded: _leavesExpanded,
+                        ),
+                        // Insert submenu items right after Leaves
+                        if (_leavesExpanded)
+                          ..._leavesSubItems.asMap().entries.map((subEntry) {
+                            int subIdx = subEntry.key;
+                            return _buildLeavesSubMenuItem(context, subIdx);
                           }).toList(),
                       ],
                     );
@@ -174,7 +208,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
   Widget _buildMenuItemWithSubmenu(BuildContext context, {
     required int index, 
     required String title, 
-    required IconData icon
+    required IconData icon,
+    required bool isExpanded,
   }) {
     Color primaryColor = Theme.of(context).primaryColor;
 
@@ -184,7 +219,13 @@ class _SidebarMenuState extends State<SidebarMenu> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            setState(() => _payrollExpanded = !_payrollExpanded);
+            setState(() {
+              if (title == 'Payroll') {
+                _payrollExpanded = !_payrollExpanded;
+              } else if (title == 'Leaves') {
+                _leavesExpanded = !_leavesExpanded;
+              }
+            });
           },
           borderRadius: BorderRadius.circular(12),
           hoverColor: Colors.white.withOpacity(0.03),
@@ -193,9 +234,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: _payrollExpanded ? primaryColor.withOpacity(0.12) : Colors.transparent,
+              color: isExpanded ? primaryColor.withOpacity(0.12) : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
-              border: _payrollExpanded 
+              border: isExpanded 
                   ? Border.all(color: primaryColor.withOpacity(0.1), width: 1)
                   : Border.all(color: Colors.transparent),
             ),
@@ -203,7 +244,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
               children: [
                 Icon(
                   icon, 
-                  color: _payrollExpanded ? primaryColor : Colors.grey[600],
+                  color: isExpanded ? primaryColor : Colors.grey[600],
                   size: 22,
                 ),
                 const SizedBox(width: 16),
@@ -211,23 +252,23 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   child: Text(
                     title, 
                     style: TextStyle(
-                      color: _payrollExpanded ? Colors.white : Colors.grey[500],
-                      fontWeight: _payrollExpanded ? FontWeight.w600 : FontWeight.w500,
+                      color: isExpanded ? Colors.white : Colors.grey[500],
+                      fontWeight: isExpanded ? FontWeight.w600 : FontWeight.w500,
                       fontSize: 14,
                       letterSpacing: 0.3,
                     )
                   ),
                 ),
                 AnimatedRotation(
-                  turns: _payrollExpanded ? 0.5 : 0,
+                  turns: isExpanded ? 0.5 : 0,
                   duration: const Duration(milliseconds: 300),
                   child: Icon(
                     Icons.expand_more_rounded,
-                    color: _payrollExpanded ? Theme.of(context).primaryColor : Colors.grey[600],
+                    color: isExpanded ? Theme.of(context).primaryColor : Colors.grey[600],
                     size: 20,
                   ),
                 ),
-                if (_payrollExpanded)
+                if (isExpanded)
                   const SizedBox(width: 8)
               ],
             ),
@@ -247,6 +288,60 @@ class _SidebarMenuState extends State<SidebarMenu> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _handlePayrollSubMenuClick(context, subItem['title']),
+          borderRadius: BorderRadius.circular(10),
+          hoverColor: Colors.white.withOpacity(0.03),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(
+                  subItem['icon'],
+                  color: Colors.grey[500],
+                  size: 18,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    subItem['title'],
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeavesSubMenuItem(BuildContext context, int index) {
+    final subItem = _leavesSubItems[index];
+    Color primaryColor = Theme.of(context).primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0, left: 16.0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _handleLeavesSubMenuClick(context, subItem['title']),
           borderRadius: BorderRadius.circular(10),
           hoverColor: Colors.white.withOpacity(0.03),
           child: Container(
@@ -521,15 +616,23 @@ class _SidebarMenuState extends State<SidebarMenu> {
         break;
         
       case "Attendance":
-        Navigator.of(context).push(_createSmoothRoute(const AttendanceScreen()));
+        if (_userRole == 'admin') {
+          Navigator.of(context).push(_createSmoothRoute(
+            AdminAttendanceScreen(token: widget.token),
+          ));
+        } else {
+          Navigator.of(context).push(_createSmoothRoute(const AttendanceScreen()));
+        }
         break;
         
       case "Tasks":
-        Navigator.of(context).push(_createSmoothRoute(const TasksScreen()));
+        Navigator.of(context).push(_createSmoothRoute(
+          TasksScreen(token: widget.token, role: _userRole),
+        ));
         break;
         
       case "Expenses":
-        Navigator.of(context).push(_createSmoothRoute(const ExpensesScreen()));
+        Navigator.of(context).push(_createSmoothRoute(ExpensesScreen(role: _userRole)));
         break;
         
       case "Chat":
@@ -537,11 +640,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
         break;
         
       case "Announcements":
-        Navigator.of(context).push(_createSmoothRoute(const AnnouncementsScreen()));
+        Navigator.of(context).push(_createSmoothRoute(AnnouncementsScreen(role: _userRole, token: widget.token)));
         break;
         
       case "Company Policy":
-        Navigator.of(context).push(_createSmoothRoute(const PoliciesScreen()));
+        Navigator.of(context).push(_createSmoothRoute(PoliciesScreen(role: _userRole, token: widget.token)));
         break;
         
       case "Settings":
@@ -551,21 +654,21 @@ class _SidebarMenuState extends State<SidebarMenu> {
         break;
         
       case "Edit Request":
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Edit Request management is under development.')),
-        );
+        Navigator.of(context).push(_createSmoothRoute(
+          EditRequestsScreen(token: widget.token),
+        ));
         break;
         
       case "Clients":
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Clients management is under development.')),
-        );
+        Navigator.of(context).push(_createSmoothRoute(
+          AllClientsScreen(token: widget.token),
+        ));
         break;
         
       case "Employees":
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Employees management is under development.')),
-        );
+        Navigator.of(context).push(_createSmoothRoute(
+          AllEmployeesScreen(token: widget.token),
+        ));
         break;
         
       case "HR Accounts":
@@ -575,9 +678,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
         break;
         
       case "Leaves":
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Leaves management is under development.')),
-        );
+        // This is now a submenu parent, do nothing on direct click
         break;
         
       default:
@@ -602,6 +703,24 @@ class _SidebarMenuState extends State<SidebarMenu> {
       Navigator.of(context).push(_createSmoothRoute(const PayrollScreen()));
     } else if (title == "My Salary") {
       Navigator.of(context).push(_createSmoothRoute(const MySalaryScreen()));
+    }
+  }
+
+  void _handleLeavesSubMenuClick(BuildContext context, String title) {
+    // Close Drawer if open (Mobile)
+    if (Scaffold.of(context).hasDrawer && Scaffold.of(context).isDrawerOpen) {
+      Navigator.pop(context);
+    }
+
+    // Navigate to appropriate leaves subscreen
+    if (title == "Leave Management") {
+      Navigator.of(context).push(_createSmoothRoute(
+        LeaveBalanceScreen(token: widget.token),
+      ));
+    } else if (title == "Leaves") {
+      Navigator.of(context).push(_createSmoothRoute(
+        LeaveManagementScreen(token: widget.token),
+      ));
     }
   }
 

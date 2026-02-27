@@ -8,18 +8,23 @@ import 'announcement_detail_screen.dart';
 import 'package:intl/intl.dart';
 
 class AnnouncementsScreen extends StatefulWidget {
-  const AnnouncementsScreen({super.key});
+  final String? role;
+  final String? token;
+  const AnnouncementsScreen({super.key, this.role, this.token});
 
   @override
   State<AnnouncementsScreen> createState() => _AnnouncementsScreenState();
 }
 
 class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
+  bool get _isAdmin => widget.role?.toLowerCase() == 'admin' || widget.role?.toLowerCase() == 'hr';
+
   List<Announcement> _allAnnouncements = [];
   bool _isLoading = true;
   String? _error;
   String _selectedFilter = 'All';
   String? _currentUserId;
+  String? _authToken;
   // Track which IDs have been read (persisted across sessions)
   Set<String> _readIds = {};
 
@@ -93,10 +98,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       });
 
       // Get token
-      final token = await TokenStorageService().getToken();
+      final token = widget.token ?? await TokenStorageService().getToken();
       if (token == null) {
         throw Exception('No authentication token found');
       }
+      _authToken = token;
 
       // Fetch announcements
       final response = await AnnouncementService.getAnnouncements(token: token);
@@ -159,6 +165,15 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
     return Scaffold(
       backgroundColor: kBgColor,
+      floatingActionButton: _isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: _showCreateAnnouncementDialog,
+              backgroundColor: const Color(0xFFFF8FA3),
+              foregroundColor: Colors.black,
+              icon: const Icon(Icons.add),
+              label: const Text('New Announcement', style: TextStyle(fontWeight: FontWeight.bold)),
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: kBgColor,
         elevation: 0,
@@ -307,6 +322,198 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   }
 
   // --- Widget Builders ---
+
+  // ── Create Announcement Dialog ────────────────────────────────────────────
+  Future<void> _showCreateAnnouncementDialog() async {
+    final kCardColor = const Color(0xFF141414);
+    final kInputColor = const Color(0xFF1F1F1F);
+    final titleCtrl = TextEditingController();
+    final contentCtrl = TextEditingController();
+    String selectedPriority = 'medium';
+    String? selectedCategory;
+    bool submitting = false;
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: kCardColor,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (sheetCtx) => StatefulBuilder(builder: (_, ss) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+            left: 20, right: 20, top: 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Row(children: [
+                  const Icon(Icons.campaign_outlined, color: Color(0xFFFF8FA3), size: 22),
+                  const SizedBox(width: 10),
+                  const Text('New Announcement', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(onPressed: () => Navigator.pop(sheetCtx), icon: const Icon(Icons.close, color: Colors.white54, size: 20)),
+                ]),
+                const SizedBox(height: 20),
+                // Priority selector
+                const Text('Priority', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 10),
+                Row(children: [
+                  for (final p in [
+                    ('low', 'Info', const Color(0xFF7B1FA2)),
+                    ('medium', 'Important', const Color(0xFFFBC02D)),
+                    ('high', 'Urgent', const Color(0xFFD32F2F)),
+                  ])
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => ss(() => selectedPriority = p.$1),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: selectedPriority == p.$1 ? p.$3.withValues(alpha: 0.2) : kInputColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: selectedPriority == p.$1 ? p.$3 : Colors.white12,
+                              width: selectedPriority == p.$1 ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Text(p.$2, textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: selectedPriority == p.$1 ? p.$3 : Colors.grey,
+                              fontSize: 13, fontWeight: FontWeight.w600,
+                            )),
+                        ),
+                      ),
+                    ),
+                ]),
+                const SizedBox(height: 20),
+                // Category
+                const Text('Category', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: kInputColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedCategory,
+                      isExpanded: true,
+                      dropdownColor: kInputColor,
+                      hint: Text('Select category', style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 20),
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      items: ['Policy', 'Event', 'Benefits', 'IT', 'Facility', 'General']
+                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (v) => ss(() => selectedCategory = v),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Title
+                const Text('Title *', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleCtrl,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Announcement title',
+                    hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                    filled: true, fillColor: kInputColor,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Content
+                const Text('Content *', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: contentCtrl,
+                  maxLines: 5,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Write the announcement content...',
+                    hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                    filled: true, fillColor: kInputColor,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity, height: 52,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF8FA3),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    onPressed: submitting ? null : () async {
+                      final title = titleCtrl.text.trim();
+                      final content = contentCtrl.text.trim();
+                      if (title.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter a title'), backgroundColor: Colors.red));
+                        return;
+                      }
+                      if (content.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter content'), backgroundColor: Colors.red));
+                        return;
+                      }
+                      final token = _authToken ?? widget.token ?? await TokenStorageService().getToken();
+                      if (token == null) return;
+                      ss(() => submitting = true);
+                      try {
+                        await AnnouncementService.createAnnouncement(
+                          token: token,
+                          title: title,
+                          content: content,
+                          priority: selectedPriority,
+                          category: selectedCategory,
+                        );
+                        if (sheetCtx.mounted) Navigator.pop(sheetCtx, true);
+                      } catch (e) {
+                        if (sheetCtx.mounted) ss(() => submitting = false);
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
+                      }
+                    },
+                    icon: submitting
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                        : const Icon(Icons.send_rounded, size: 18),
+                    label: Text(submitting ? 'Publishing...' : 'Publish Announcement',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
+                ),
+                const SizedBox(height: 28),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+
+    titleCtrl.dispose();
+    contentCtrl.dispose();
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Announcement published!'),
+        backgroundColor: Color(0xFF00C853),
+      ));
+      _fetchAnnouncements();
+    }
+  }
 
   Widget _buildStatCard(String label, int count, IconData icon, Color color) {
     return Container(
