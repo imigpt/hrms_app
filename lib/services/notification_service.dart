@@ -288,4 +288,260 @@ class NotificationService {
       print('Error showing chat notification: $e');
     }
   }
+
+  /// Show notification for leave approved
+  Future<void> showLeaveApprovedNotification({
+    required String employeeName,
+    required String leaveType,
+    required String startDate,
+    required String endDate,
+  }) async {
+    if (!_isInitialized) {
+      await initialize();
+      await requestNotificationPermissions();
+    }
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'leave_channel',
+          'Leave Notifications',
+          channelDescription: 'Notifications for leave approvals and rejections',
+          importance: Importance.max,
+          priority: Priority.high,
+          enableVibration: true,
+          playSound: true,
+          icon: '@mipmap/launcher_icon',
+        );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    final title = 'Leave Approved';
+    final body = '$employeeName\'s $leaveType leave has been approved ($startDate to $endDate)';
+
+    try {
+      await _notificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        details,
+        payload: 'leave_approved',
+      );
+      print('Leave approved notification shown: $title');
+    } catch (e) {
+      print('Error showing leave approved notification: $e');
+    }
+  }
+
+  /// Show notification for leave rejected
+  Future<void> showLeaveRejectedNotification({
+    required String employeeName,
+    required String leaveType,
+    String? reason,
+  }) async {
+    if (!_isInitialized) {
+      await initialize();
+      await requestNotificationPermissions();
+    }
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'leave_channel',
+          'Leave Notifications',
+          channelDescription: 'Notifications for leave approvals and rejections',
+          importance: Importance.max,
+          priority: Priority.high,
+          enableVibration: true,
+          playSound: true,
+          icon: '@mipmap/launcher_icon',
+        );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    final title = 'Leave Rejected';
+    final body = reason != null && reason.isNotEmpty
+        ? '$employeeName\'s $leaveType leave has been rejected: $reason'
+        : '$employeeName\'s $leaveType leave has been rejected';
+
+    try {
+      await _notificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        details,
+        payload: 'leave_rejected',
+      );
+      print('Leave rejected notification shown: $title');
+    } catch (e) {
+      print('Error showing leave rejected notification: $e');
+    }
+  }
+
+  /// Show notification for task assigned
+  Future<void> showTaskAssignedNotification({
+    required String taskTitle,
+    required String assignedTo,
+    String? priority,
+  }) async {
+    if (!_isInitialized) {
+      await initialize();
+      await requestNotificationPermissions();
+    }
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'task_channel',
+          'Task Notifications',
+          channelDescription: 'Notifications for task assignments and updates',
+          importance: Importance.max,
+          priority: Priority.high,
+          enableVibration: true,
+          playSound: true,
+          icon: '@mipmap/launcher_icon',
+        );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    final priorityLabel = priority != null && priority.isNotEmpty ? ' [$priority]' : '';
+    final title = 'Task Assigned';
+    final body = 'Task "$taskTitle" has been assigned to $assignedTo$priorityLabel';
+
+    try {
+      await _notificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        details,
+        payload: 'task_assigned',
+      );
+      print('Task assigned notification shown: $title');
+    } catch (e) {
+      print('Error showing task assigned notification: $e');
+    }
+  }
+
+  /// Show notification for task updated
+  Future<void> showTaskUpdateNotification({
+    required String taskTitle,
+    required String updateType, // e.g., 'completed', 'status_changed', 'deadline_reminder'
+    String? details,
+  }) async {
+    if (!_isInitialized) {
+      await initialize();
+      await requestNotificationPermissions();
+    }
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'task_channel',
+          'Task Notifications',
+          channelDescription: 'Notifications for task assignments and updates',
+          importance: Importance.defaultImportance,
+          priority: Priority.high,
+          enableVibration: true,
+          playSound: true,
+          icon: '@mipmap/launcher_icon',
+        );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    final title = 'Task Update: $taskTitle';
+    final body = details ?? 'Task $updateType';
+
+    try {
+      await _notificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        notificationDetails,
+        payload: 'task_update',
+      );
+      print('Task update notification shown: $title');
+    } catch (e) {
+      print('Error showing task update notification: $e');
+    }
+  }
+
+  /// Show generic status notification
+  Future<void> showStatusNotification({
+    required String title,
+    required String message,
+    String? notificationType,
+  }) async {
+    if (!_isInitialized) {
+      await initialize();
+      await requestNotificationPermissions();
+    }
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'general_channel',
+          'General Notifications',
+          channelDescription: 'General app notifications',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          enableVibration: true,
+          playSound: true,
+          icon: '@mipmap/launcher_icon',
+        );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: false,
+    );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    try {
+      await _notificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        message,
+        details,
+        payload: notificationType ?? '',
+      );
+      print('Status notification shown: $title');
+    } catch (e) {
+      print('Error showing status notification: $e');
+    }
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/leave_service.dart';
 import '../services/token_storage_service.dart';
+import '../services/notification_service.dart';
 import '../utils/responsive_utils.dart';
 import '../theme/app_theme.dart';
 // import 'leave_api_test_screen.dart';
@@ -61,6 +62,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
 
   String _selectedFilter = 'All';
   final List<String> _filterOptions = ['All', 'Pending', 'Approved', 'Rejected'];
+  
+  // Track which leave IDs have been notified for status changes
+  final Set<String> _notifiedLeaveIds = {};
 
 // --- COLORS ---
 Color get kBackground => AppTheme.background;
@@ -146,15 +150,45 @@ Color get kBorderGrey => AppTheme.outline;
             // Capitalize first letter
             leaveType = leaveType[0].toUpperCase() + leaveType.substring(1);
             
+            final leaveId = '${leave['id'] ?? leave['_id']}';
+            final status = _capitalizeStatus(leave['status'] ?? 'Pending');
+            
             _leaveRequests.add(LeaveRequest(
               type: '$leaveType Leave',
               fromDate: DateTime.parse(leave['startDate']),
               toDate: DateTime.parse(leave['endDate']),
               reason: leave['reason'] ?? '',
-              status: _capitalizeStatus(leave['status'] ?? 'Pending'),
+              status: status,
             ));
           }
         });
+        
+        // Show notifications outside of setState
+        for (var leave in leavesData) {
+          final leaveId = '${leave['id'] ?? leave['_id']}';
+          final status = _capitalizeStatus(leave['status'] ?? 'Pending');
+          String leaveType = leave['leaveType'] ?? 'unknown';
+          leaveType = leaveType[0].toUpperCase() + leaveType.substring(1);
+          
+          if (!_notifiedLeaveIds.contains(leaveId)) {
+            if (status == 'Approved') {
+              await NotificationService().showLeaveApprovedNotification(
+                employeeName: 'Your',
+                leaveType: leaveType,
+                startDate: DateFormat('MMM dd').format(DateTime.parse(leave['startDate'])),
+                endDate: DateFormat('MMM dd').format(DateTime.parse(leave['endDate'])),
+              );
+              _notifiedLeaveIds.add(leaveId);
+            } else if (status == 'Rejected') {
+              await NotificationService().showLeaveRejectedNotification(
+                employeeName: 'Your',
+                leaveType: leaveType,
+                reason: leave['reviewNote'] ?? 'No reason provided',
+              );
+              _notifiedLeaveIds.add(leaveId);
+            }
+          }
+        }
       }
     } catch (e) {
       print('Error loading leave requests: $e');

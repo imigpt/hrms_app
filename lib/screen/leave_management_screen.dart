@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/leave_management_model.dart';
 import '../services/leave_service.dart';
 import '../services/token_storage_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 
 class LeaveManagementScreen extends StatefulWidget {
@@ -138,6 +139,15 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
         leaveId: leave.id,
       );
       _snack('Leave approved successfully', _green);
+      
+      // Show notification for leave approval
+      await NotificationService().showLeaveApprovedNotification(
+        employeeName: leave.user?.name ?? 'Employee',
+        leaveType: _leaveTypeLabel(leave.leaveType),
+        startDate: DateFormat('MMM dd').format(leave.startDate ?? DateTime.now()),
+        endDate: DateFormat('MMM dd').format(leave.endDate ?? DateTime.now()),
+      );
+      
       await _fetchLeaves();
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception:', '').trim(), _red);
@@ -212,6 +222,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
         reviewNote: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
       );
       _snack('Leave request rejected', _orange);
+      
+      // Show notification for leave rejection
+      await NotificationService().showLeaveRejectedNotification(
+        employeeName: leave.user?.name ?? 'Employee',
+        leaveType: _leaveTypeLabel(leave.leaveType),
+        reason: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
+      );
+      
       await _fetchLeaves();
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception:', '').trim(), _red);

@@ -186,9 +186,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
       child: Row(
         children: [
           SizedBox(
-            height: 40,
-            width: 40,
-            child: Image.asset('assets/images/aselea-logo.png', height: 50, width: 70),
+            height: 60,
+            width: 80,
+            child: Image.asset('assets/images/aselea-logo.jpeg', height: 50, width: 70),
           ),
           const SizedBox(width: 14),
           const Text(

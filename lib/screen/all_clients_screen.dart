@@ -507,14 +507,14 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? _pink : Colors.transparent,
+                      color: Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       (item.child as Text).data ?? '',
-                      style: TextStyle(
-                        color: isSelected ? Colors.black : _textLight,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      style: const TextStyle(
+                        color: _textLight,
+                        fontWeight: FontWeight.normal,
                       ),
                     ),
                   ),
@@ -571,13 +571,13 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
         ],
       ),
     );
-  }
+  } 
 
   Widget _buildTableRow(Map<String, dynamic> client) {
     final name = client['name']?.toString() ?? 'Unknown';
     final email = client['email']?.toString() ?? '-';
     final phone = client['phone']?.toString() ?? '-';
-    final company = client['company']?.toString() ?? '-';
+    final companyName = client['companyName']?.toString() ?? '-';
     final clientId = client['id']?.toString() ?? client['_id']?.toString() ?? '-';
     final status = client['status']?.toString() ?? '-';
 
@@ -630,7 +630,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
           // Company
           Expanded(
             flex: 3,
-            child: Text(company,
+            child: Text(companyName,
                 style: const TextStyle(color: _textLight, fontSize: 12),
                 overflow: TextOverflow.ellipsis),
           ),
@@ -652,7 +652,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                   icon: const Icon(Icons.edit_rounded, color: _textGrey, size: 18),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  onPressed: () => _showDetailsSheet(context, client),
+                  onPressed: () => _showEditClientDialog(client),
                   tooltip: 'Edit',
                 ),
                 const SizedBox(width: 8),
@@ -676,7 +676,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
     final name = client['name']?.toString() ?? 'Unknown';
     final email = client['email']?.toString() ?? '-';
     final phone = client['phone']?.toString() ?? '-';
-    final company = client['company']?.toString() ?? '-';
+    final companyName = client['companyName']?.toString() ?? '-';
     final clientId = client['id']?.toString() ?? client['_id']?.toString() ?? '-';
     final status = client['status']?.toString() ?? '-';
 
@@ -727,7 +727,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
               const SizedBox(height: 6),
               _cardRow(Icons.phone_outlined, phone),
               const SizedBox(height: 6),
-              _cardRow(Icons.business_rounded, company),
+              _cardRow(Icons.business_rounded, companyName),
               const SizedBox(height: 12),
               const Divider(color: _border, height: 1),
               const SizedBox(height: 12),
@@ -736,7 +736,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _showDetailsSheet(context, client),
+                      onPressed: () => _showEditClientDialog(client),
                       icon: const Icon(Icons.edit, size: 16),
                       label: const Text('Edit'),
                       style: OutlinedButton.styleFrom(
@@ -794,7 +794,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
     final name = client['name']?.toString() ?? 'Unknown';
     final email = client['email']?.toString() ?? '-';
     final phone = client['phone']?.toString() ?? '-';
-    final company = client['company']?.toString() ?? '-';
+    final companyName = client['companyName']?.toString() ?? '-';
     final clientId = client['id']?.toString() ?? client['_id']?.toString() ?? '-';
     final status = client['status']?.toString() ?? '-';
     final address = client['address']?.toString() ?? '-';
@@ -855,7 +855,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                 _sheetRow('Email', email, Icons.email_outlined),
                 _sheetRow('Phone', phone, Icons.phone_outlined),
                 _sheetRow('Address', address, Icons.location_on_outlined),
-                _sheetRow('Company', company, Icons.business_rounded),
+                _sheetRow('Company', companyName, Icons.business_rounded),
                 _sheetRow('Status', status, Icons.info_outline_rounded),
               ],
             ),
@@ -890,6 +890,366 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
     );
   }
 
+  // Edit client dialog
+  void _showEditClientDialog(Map<String, dynamic> client) {
+    final clientId = client['_id']?.toString() ?? '';
+    final nameCtrl = TextEditingController(text: client['name'] ?? '');
+    final emailCtrl = TextEditingController(text: client['email'] ?? '');
+    final passwordCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController(text: client['phone'] ?? '');
+    final companyNameCtrl =
+        TextEditingController(text: client['companyName'] ?? '');
+    final notesCtrl =
+        TextEditingController(text: client['clientNotes'] ?? '');
+
+    bool isSubmitting = false;
+    String? errorMessage;
+
+    Widget fieldLabel(String label, {bool required = false}) => Row(
+          children: [
+            Text(label,
+                style: const TextStyle(
+                    color: _textLight,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600)),
+            if (required)
+              const Text(' *', style: TextStyle(color: _red, fontSize: 13)),
+          ],
+        );
+
+    Widget inputBox(TextEditingController ctrl,
+        {String hint = '',
+        bool obscure = false,
+        int maxLines = 1,
+        TextInputType? keyboardType}) {
+      return Container(
+        padding: EdgeInsets.symmetric(
+            horizontal: 12, vertical: maxLines > 1 ? 10 : 0),
+        decoration: BoxDecoration(
+          color: _input,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _border),
+        ),
+        child: TextField(
+          controller: ctrl,
+          obscureText: obscure,
+          maxLines: obscure ? 1 : maxLines,
+          minLines: maxLines > 1 ? 3 : 1,
+          keyboardType: keyboardType,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: _textGrey.withOpacity(0.6)),
+            border: InputBorder.none,
+            isDense: maxLines == 1,
+            contentPadding:
+                maxLines == 1 ? const EdgeInsets.symmetric(vertical: 13) : null,
+          ),
+        ),
+      );
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: StatefulBuilder(
+          builder: (ctx, setS) => Container(
+            decoration: BoxDecoration(
+              color: _card,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _border.withOpacity(0.5)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.4), blurRadius: 24),
+              ],
+            ),
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _pink.withOpacity(0.1),
+                        _pink.withOpacity(0.04)
+                      ],
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                    border: Border(
+                        bottom: BorderSide(
+                            color: _border.withOpacity(0.3), width: 1)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: _pink.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: _pink.withOpacity(0.3), width: 1),
+                        ),
+                        child: const Icon(Icons.edit_rounded,
+                            color: _pink, size: 20),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Edit Client',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text('Update client account details',
+                                style: TextStyle(
+                                    color: _textGrey, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: _border.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: const Icon(Icons.close_rounded,
+                              color: _textGrey, size: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Form
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Name & Phone row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  fieldLabel('Full Name', required: true),
+                                  const SizedBox(height: 8),
+                                  inputBox(nameCtrl, hint: 'John Smith'),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  fieldLabel('Phone'),
+                                  const SizedBox(height: 8),
+                                  inputBox(phoneCtrl,
+                                      hint: '+1 234 567 890',
+                                      keyboardType: TextInputType.phone),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Email
+                        fieldLabel('Email Address', required: true),
+                        const SizedBox(height: 8),
+                        inputBox(emailCtrl,
+                            hint: 'client@company.com',
+                            keyboardType: TextInputType.emailAddress),
+                        const SizedBox(height: 16),
+                        // Password
+                        fieldLabel('New Password'),
+                        const SizedBox(height: 4),
+                        Text('Leave blank to keep current password',
+                            style: TextStyle(
+                                color: _textGrey.withOpacity(0.7),
+                                fontSize: 11)),
+                        const SizedBox(height: 8),
+                        inputBox(passwordCtrl,
+                            hint: 'Min 6 characters', obscure: true),
+                        const SizedBox(height: 16),
+                        // Client Company Name
+                        fieldLabel('Client\'s Own Company Name'),
+                        const SizedBox(height: 8),
+                        inputBox(companyNameCtrl, hint: 'Acme Corp'),
+                        const SizedBox(height: 16),
+                        // Notes
+                        fieldLabel('Notes (optional)'),
+                        const SizedBox(height: 8),
+                        inputBox(notesCtrl,
+                            hint: 'Any relevant notes about this client',
+                            maxLines: 3),
+                        // Error
+                        if (errorMessage != null) ...[
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: _red.withOpacity(0.5)),
+                            ),
+                            child: Text(errorMessage!,
+                                style: const TextStyle(
+                                    color: _red, fontSize: 12)),
+                          ),
+                        ],
+                        const SizedBox(height: 22),
+                        // Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: isSubmitting
+                                    ? null
+                                    : () => Navigator.pop(ctx),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 13),
+                                  decoration: BoxDecoration(
+                                    color: _border.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: _border.withOpacity(0.5)),
+                                  ),
+                                  child: const Text('Cancel',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: isSubmitting
+                                    ? null
+                                    : () async {
+                                        if (nameCtrl.text.trim().isEmpty ||
+                                            emailCtrl.text.trim().isEmpty) {
+                                          setS(() => errorMessage =
+                                              'Name and Email are required');
+                                          return;
+                                        }
+                                        setS(() {
+                                          isSubmitting = true;
+                                          errorMessage = null;
+                                        });
+                                        try {
+                                          await AdminClientsService
+                                              .updateClient(
+                                            token: widget.token ?? '',
+                                            clientId: clientId,
+                                            name: nameCtrl.text.trim(),
+                                            email: emailCtrl.text.trim(),
+                                            phone: phoneCtrl.text.trim(),
+                                            companyName:
+                                                companyNameCtrl.text.trim(),
+                                            password: passwordCtrl.text.isEmpty
+                                                ? null
+                                                : passwordCtrl.text,
+                                            clientNotes: notesCtrl.text.trim(),
+                                          );
+                                          if (mounted) {
+                                            Navigator.pop(ctx);
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              const SnackBar(
+                                                  content: Text(
+                                                      'Client updated successfully'),
+                                                  backgroundColor: _green),
+                                            );
+                                            _loadClients();
+                                          }
+                                        } catch (e) {
+                                          setS(() {
+                                            errorMessage = e
+                                                .toString()
+                                                .replaceAll('Exception: ', '');
+                                            isSubmitting = false;
+                                          });
+                                        }
+                                      },
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 13),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(colors: [
+                                      _pink,
+                                      _pink.withOpacity(0.8)
+                                    ]),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                          color: _pink.withOpacity(0.3),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4))
+                                    ],
+                                  ),
+                                  child: isSubmitting
+                                      ? const Center(
+                                          child: SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation(
+                                                        Colors.white)),
+                                          ),
+                                        )
+                                      : const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.check_rounded,
+                                                color: Colors.white, size: 17),
+                                            SizedBox(width: 6),
+                                            Text('Save Changes',
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 14,
+                                                    fontWeight:
+                                                        FontWeight.w700)),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // Avatar
   Widget _avatar(String name, {double radius = 20}) {
     return CircleAvatar(
@@ -909,26 +1269,102 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
   Future<void> _deleteClient(String clientId) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: _card,
-        title: const Text(
-          'Delete Client',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Are you sure you want to delete this client? This action cannot be undone.',
-          style: TextStyle(color: _textLight),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: _textGrey)),
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _border.withOpacity(0.5)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 24),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: _red)),
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _red.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.delete_outline_rounded, color: _red, size: 32),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Delete Client',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Are you sure you want to delete this client? This action cannot be undone.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context, false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        decoration: BoxDecoration(
+                          color: _border.withOpacity(0.25),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _border.withOpacity(0.5)),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context, true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        decoration: BoxDecoration(
+                          color: _red,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _red.withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
+                        ),
+                        child: const Text(
+                          'Delete',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
 
@@ -1099,12 +1535,20 @@ class _AddClientDialogState extends State<_AddClientDialog> {
   String _notes = '';
   String _assignedCompanyId = '';
 
+  List<Map<String, dynamic>> _companies = [];
+
   bool _isSubmitting = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _loadCompanies();
+  }
+
+  Future<void> _loadCompanies() async {
+    final list = await AdminClientsService.getCompanies(widget.token ?? '');
+    if (mounted) setState(() => _companies = list);
   }
 
   @override
@@ -1450,10 +1894,15 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                 'Select company (optional)',
                 style: TextStyle(color: _textGrey),
               ),
-              items: [
-                // This can be populated from companies fetched from API
-                // For now, showing placeholder
-              ],
+              items: _companies.map((c) {
+                final id = c['_id']?.toString() ?? '';
+                final name = c['name']?.toString() ?? id;
+                return DropdownMenuItem<String>(
+                  value: id,
+                  child: Text(name,
+                      style: const TextStyle(color: _textLight, fontSize: 14)),
+                );
+              }).toList(),
               onChanged: (v) {
                 setState(() => _assignedCompanyId = v ?? '');
               },
@@ -1485,10 +1934,10 @@ class _AddClientDialogState extends State<_AddClientDialog> {
         name: _fullName,
         email: _email,
         phone: _phone,
-        company: _clientCompanyName,
+        companyName: _clientCompanyName,
         password: _password,
         assignedCompanyId: _assignedCompanyId,
-        notes: _notes,
+        clientNotes: _notes,
       );
 
       if (!mounted) return;

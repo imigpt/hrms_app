@@ -99,6 +99,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_userRole == 'admin') {
       // Load admin dashboard data
       _loadAdminDashboard();
+      // Also load announcements and unread count for notification badge
+      _loadPersistedReadIds();
+      _loadUnreadCount();
+      _loadAnnouncementsFallback();
     } else {
       // Load employee dashboard data
       _loadCachedAttendanceState();  // Load cached state first
@@ -651,7 +655,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ── Notification icon + popup ────────────────────────────────────────────
   Widget _buildNotificationIconButton(double iconSize) {
     return IconButton(
-      onPressed: () => _showNotificationPopup(context),
+      onPressed: () {
+        if (_userRole == 'admin') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+          );
+        } else {
+          _showNotificationPopup(context);
+        }
+      },
       icon: _unreadAnnouncementsCount > 0
           ? Badge(
               label: Text(_unreadAnnouncementsCount.toString()),
@@ -1345,11 +1358,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               actions: [
                 _buildChatIconButton(iconSize),
                 IconButton(
-                    onPressed: () {},
-                    icon: Icon(Icons.notifications_outlined, size: iconSize),
-                    tooltip: 'Notification',
-                  ),
-                
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                    );
+                  },
+                  icon: Icon(Icons.notifications_outlined, size: iconSize),
+                  tooltip: 'Notification',
+                ),
               ],
             ),
       drawer: !isDesktopDevice

@@ -4,7 +4,7 @@ class AppTheme {
   // ── Colors ─────────────────────────────────────────────────────────────
   static const Color background = Color(0xFF050505);
   static const Color cardColor = Color(0xFF121212);
-  static const Color primaryColor = Color(0xFFf4879a); // Brand Pink
+  static const Color primaryColor = Color(0xFFFF8FA3); // Aselea Brand Pink
   static const Color secondaryColor = Color(0xFF00C853); // Success Green
   static const Color surface = Color(0xFF1C1C1E);
   static const Color surfaceVariant = Color(0xFF2C2C2E);

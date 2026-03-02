@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../services/task_service.dart';
 import '../services/token_storage_service.dart';
 import '../services/admin_employees_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 
 class TasksScreen extends StatefulWidget {
@@ -532,6 +533,22 @@ class _TasksScreenState extends State<TasksScreen>
       await TaskService.updateTaskProgress(_token!, taskId,
           completionPercentage: progress);
       await _loadData(showLoading: false); // SILENT UPDATE
+      
+      // Show notification for progress update
+      if (progress == 100) {
+        await NotificationService().showTaskUpdateNotification(
+          taskTitle: 'Task Completed',
+          updateType: 'completed',
+          details: 'A task has been marked as 100% complete',
+        );
+      } else {
+        await NotificationService().showTaskUpdateNotification(
+          taskTitle: 'Progress Update',
+          updateType: 'progress_updated',
+          details: 'Task progress updated to $progress%',
+        );
+      }
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('Progress updated to $progress%'),
@@ -838,6 +855,13 @@ class _TasksScreenState extends State<TasksScreen>
           ? DateFormat('yyyy-MM-dd').format(dueDate)
           : null,
     );
+    
+    // Show notification for task update
+    await NotificationService().showTaskUpdateNotification(
+      taskTitle: title,
+      updateType: 'updated',
+      details: 'Task details have been updated',
+    );
   }
 
   // ── Create Task ───────────────────────────────────────────────────────────
@@ -1058,6 +1082,13 @@ class _TasksScreenState extends State<TasksScreen>
           : DateFormat('yyyy-MM-dd')
               .format(DateTime.now().add(const Duration(days: 7))),
       assignedTo: assignTo,
+    );
+    
+    // Show notification for task creation
+    await NotificationService().showTaskAssignedNotification(
+      taskTitle: title,
+      assignedTo: 'You',
+      priority: priority,
     );
   }
 

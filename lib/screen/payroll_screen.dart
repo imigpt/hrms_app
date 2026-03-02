@@ -5,7 +5,9 @@ import '../services/payroll_service.dart';
 import '../services/token_storage_service.dart';
 
 class PayrollScreen extends StatefulWidget {
-  const PayrollScreen({super.key});
+  final String? role;
+
+  const PayrollScreen({super.key, this.role});
 
   @override
   State<PayrollScreen> createState() => _PayrollScreenState();
@@ -14,6 +16,23 @@ class PayrollScreen extends StatefulWidget {
 class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String? _token;
+  late bool _isAdmin;
+
+  // Admin
+  List<dynamic> _employees = [];
+  bool _isLoadingEmployees = false;
+  String _selectedEmployeeId = '';
+  
+  // Filters
+  String _filterUserId = 'all';
+  String _filterYear = DateTime.now().year.toString();
+  String _filterMonth = 'all';
+  bool _isGenerateOpen = false;
+  
+  // Generate dialog
+  String _genUserId = '';
+  String _genMonth = '';
+  String _genYear = DateTime.now().year.toString();
 
   // Salary
   EmployeeSalary? _salary;
@@ -21,6 +40,7 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
 
   // Payrolls (payslips)
   List<Payroll> _payrolls = [];
+  List<Payroll> _filteredPayrolls = [];
   bool _isLoadingPayrolls = true;
 
   // Pre-Payments
@@ -34,6 +54,7 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    _isAdmin = widget.role == 'admin';
     _tabController = TabController(length: 4, vsync: this);
     _loadData();
   }
@@ -50,12 +71,19 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     setState(() => _token = token);
 
     // Load all in parallel
-    await Future.wait([
-      _fetchSalary(token),
+    final futures = [
       _fetchPayrolls(token),
       _fetchPrePayments(token),
       _fetchIncrements(token),
-    ]);
+    ];
+    
+    if (_isAdmin) {
+      futures.add(_fetchEmployees(token));
+    } else {
+      futures.add(_fetchSalary(token));
+    }
+    
+    await Future.wait(futures);
   }
 
   Future<void> _fetchSalary(String token) async {
@@ -71,7 +99,13 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   Future<void> _fetchPayrolls(String token) async {
     try {
       final res = await PayrollService.getMyPayrolls(token: token);
-      if (mounted) setState(() { _payrolls = res.data; _isLoadingPayrolls = false; });
+      if (mounted) {
+        setState(() { 
+          _payrolls = res.data; 
+          _isLoadingPayrolls = false;
+        });
+        _applyFilters();
+      }
     } catch (e) {
       print('Payrolls fetch error: $e');
       if (mounted) setState(() => _isLoadingPayrolls = false);
@@ -98,6 +132,118 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     }
   }
 
+  Future<void> _fetchEmployees(String token) async {
+    if (!_isAdmin) return;
+    setState(() => _isLoadingEmployees = true);
+    try {
+      // TODO: Update with actual API endpoint for fetching employees
+      // final res = await AdminService.getEmployees({ limit: 1000 });
+      // List<dynamic> list = res.data?.data ?? res.data?.employees ?? res.data ?? [];
+      // if (mounted) setState(() { _employees = list; _isLoadingEmployees = false; });
+      if (mounted) setState(() => _isLoadingEmployees = false);
+    } catch (e) {
+      print('Employees fetch error: $e');
+      if (mounted) setState(() => _isLoadingEmployees = false);
+    }
+  }
+
+  void _applyFilters() {
+    setState(() {
+      _filteredPayrolls = _payrolls.where((p) {
+        if (_filterUserId != 'all' && p.userId != _filterUserId) return false;
+        if (_filterYear != 'all' && p.year.toString() != _filterYear) return false;
+        if (_filterMonth != 'all' && p.month.toString() != _filterMonth) return false;
+        return true;
+      }).toList();
+    });
+  }
+
+  Future<void> _generatePayroll() async {
+    if (_genUserId.isEmpty || _genMonth.isEmpty || _genYear.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select employee, month, and year'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    if (_token == null) return;
+    
+    try {
+      // TODO: Call payroll API to generate payroll
+      // await PayrollService.generatePayroll({
+      //   userId: _genUserId,
+      //   month: int.parse(_genMonth),
+      //   year: int.parse(_genYear),
+      // }, _token!);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payroll generated successfully'), backgroundColor: Colors.green),
+      );
+      setState(() => _isGenerateOpen = false);
+      _fetchPayrolls(_token!);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _markPayrollAsPaid(Payroll payroll) async {
+    if (_token == null) return;
+    try {
+      // TODO: Call payroll API to mark as paid
+      // await PayrollService.updatePayroll(payroll._id, {
+      //   status: 'paid',
+      //   paymentDate: DateTime.now().toIso8601String(),
+      // }, _token!);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payroll marked as paid'), backgroundColor: Colors.green),
+      );
+      _fetchPayrolls(_token!);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _deletePayroll(String payrollId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text('Delete Payroll', style: TextStyle(color: Colors.white)),
+        content: const Text('Are you sure you want to delete this payroll record?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || _token == null) return;
+    
+    try {
+      // TODO: Call payroll API to delete
+      // await PayrollService.deletePayroll(payrollId, _token!);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payroll deleted'), backgroundColor: Colors.green),
+      );
+      _fetchPayrolls(_token!);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -111,46 +257,479 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Column(
-        children: [
-          // Statistics Cards
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: _buildStatisticsCards(),
-          ),
-          // Tab Bar
-          Container(
-            color: const Color(0xFF0A0A0A),
-            child: TabBar(
-              controller: _tabController,
-              isScrollable: true,
-              indicatorColor: Theme.of(context).primaryColor,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.grey,
-              tabAlignment: TabAlignment.start,
-              tabs: const [
-                Tab(text: 'Salary'),
-                Tab(text: 'Payslips'),
-                Tab(text: 'Pre-Payments'),
-                Tab(text: 'Increments'),
-              ],
+      body: _isAdmin ? _buildAdminView() : _buildEmployeeView(),
+    );
+  }
+
+  Widget _buildAdminView() {
+    return RefreshIndicator(
+      onRefresh: () => _fetchPayrolls(_token ?? ''),
+      child: CustomScrollView(
+        slivers: [
+          // Statistics
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildStatisticsCards(),
             ),
           ),
-          // Tab Views
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
+          // Filters & Generate Button
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                children: [
+                  // Alert
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info, color: Colors.blue, size: 18),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Setup basic salary for employees before generating payroll.',
+                            style: TextStyle(color: Colors.blue, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Filters Row
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        // Employee Filter
+                        SizedBox(
+                          width: 160,
+                          child: _buildFilterDropdown(
+                            label: 'Employee',
+                            value: _filterUserId,
+                            items: [
+                              DropdownMenuItem(value: 'all', child: const Text('All Employees')),
+                              ..._employees.map((e) => DropdownMenuItem(
+                                value: e['_id']?.toString() ?? '',
+                                child: Text(e['name']?.toString() ?? ''),
+                              )),
+                            ],
+                            onChanged: (v) {
+                              setState(() => _filterUserId = v ?? 'all');
+                              _applyFilters();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Year Filter
+                        SizedBox(
+                          width: 120,
+                          child: _buildFilterDropdown(
+                            label: 'Year',
+                            value: _filterYear,
+                            items: [
+                              DropdownMenuItem(value: 'all', child: const Text('All Years')),
+                              ...List.generate(5, (i) {
+                                final year = DateTime.now().year - i;
+                                return DropdownMenuItem(value: year.toString(), child: Text(year.toString()));
+                              }),
+                            ],
+                            onChanged: (v) {
+                              setState(() => _filterYear = v ?? DateTime.now().year.toString());
+                              _applyFilters();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Month Filter
+                        SizedBox(
+                          width: 130,
+                          child: _buildFilterDropdown(
+                            label: 'Month',
+                            value: _filterMonth,
+                            items: [
+                              DropdownMenuItem(value: 'all', child: const Text('All Months')),
+                              DropdownMenuItem(value: '1', child: const Text('January')),
+                              DropdownMenuItem(value: '2', child: const Text('February')),
+                              DropdownMenuItem(value: '3', child: const Text('March')),
+                              DropdownMenuItem(value: '4', child: const Text('April')),
+                              DropdownMenuItem(value: '5', child: const Text('May')),
+                              DropdownMenuItem(value: '6', child: const Text('June')),
+                              DropdownMenuItem(value: '7', child: const Text('July')),
+                              DropdownMenuItem(value: '8', child: const Text('August')),
+                              DropdownMenuItem(value: '9', child: const Text('September')),
+                              DropdownMenuItem(value: '10', child: const Text('October')),
+                              DropdownMenuItem(value: '11', child: const Text('November')),
+                              DropdownMenuItem(value: '12', child: const Text('December')),
+                            ],
+                            onChanged: (v) {
+                              setState(() => _filterMonth = v ?? 'all');
+                              _applyFilters();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Filter Button
+                        ElevatedButton.icon(
+                          onPressed: _applyFilters,
+                          icon: const Icon(Icons.filter_list, size: 16),
+                          label: const Text('Filter'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.withOpacity(0.2),
+                            foregroundColor: Colors.blue,
+                            side: BorderSide(color: Colors.blue.withOpacity(0.5)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Generate Payroll Button
+                        ElevatedButton.icon(
+                          onPressed: _showGeneratePayrollDialog,
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Generate'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.withOpacity(0.2),
+                            foregroundColor: Colors.green,
+                            side: BorderSide(color: Colors.green.withOpacity(0.5)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Payroll Table
+          _isLoadingPayrolls
+              ? SliverFillRemaining(child: _loader())
+              : _filteredPayrolls.isEmpty
+                  ? SliverFillRemaining(child: _emptyState('No payrolls found'))
+                  : SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (ctx, i) => _buildPayrollTableRow(_filteredPayrolls[i]),
+                        childCount: _filteredPayrolls.length,
+                      ),
+                    ),
+        ],
+      ),
+    );
+  }
+
+  void _showGeneratePayrollDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSalaryTab(),
-                _buildPayslipsTab(),
-                _buildPrePaymentsTab(),
-                _buildIncrementsTab(),
+                const Text(
+                  'Generate Payroll',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                // Employee Dropdown
+                const Text('Employee', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141414),
+                    border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    value: _genUserId.isEmpty ? null : _genUserId,
+                    items: _employees.map((e) => DropdownMenuItem(
+                      value: e['_id']?.toString() ?? '',
+                      child: Text(e['name']?.toString() ?? '', style: const TextStyle(color: Colors.white)),
+                    )).toList(),
+                    onChanged: (v) => setState(() => _genUserId = v ?? ''),
+                    dropdownColor: const Color(0xFF1A1A1A),
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    iconEnabledColor: Colors.white54,
+                    underline: const SizedBox(),
+                    isExpanded: true,
+                    hint: const Text('Select employee', style: TextStyle(color: Colors.white54)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Month & Year Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Month', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF141414),
+                              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButton<String>(
+                              value: _genMonth.isEmpty ? null : _genMonth,
+                              items: List.generate(12, (i) => DropdownMenuItem(
+                                value: (i + 1).toString(),
+                                child: Text(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i],
+                                    style: const TextStyle(color: Colors.white)),
+                              )).toList(),
+                              onChanged: (v) => setState(() => _genMonth = v ?? ''),
+                              dropdownColor: const Color(0xFF1A1A1A),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                              iconEnabledColor: Colors.white54,
+                              underline: const SizedBox(),
+                              isExpanded: true,
+                              hint: const Text('Month', style: TextStyle(color: Colors.white54)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Year', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF141414),
+                              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButton<String>(
+                              value: _genYear,
+                              items: List.generate(5, (i) {
+                                final year = DateTime.now().year - i;
+                                return DropdownMenuItem(value: year.toString(), child: Text(year.toString(), style: const TextStyle(color: Colors.white)));
+                              }).toList(),
+                              onChanged: (v) => setState(() => _genYear = v ?? DateTime.now().year.toString()),
+                              dropdownColor: const Color(0xFF1A1A1A),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                              iconEnabledColor: Colors.white54,
+                              underline: const SizedBox(),
+                              isExpanded: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white54),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          _generatePayroll();
+                          Navigator.pop(ctx);
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green.withOpacity(0.3)),
+                        child: const Text('Generate', style: TextStyle(color: Colors.green)),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmployeeView() {
+    return Column(
+      children: [
+        // Statistics Cards
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: _buildStatisticsCards(),
+        ),
+        // Tab Bar
+        Container(
+          color: const Color(0xFF0A0A0A),
+          child: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            indicatorColor: Theme.of(context).primaryColor,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.grey,
+            tabAlignment: TabAlignment.start,
+            tabs: const [
+              Tab(text: 'Salary'),
+              Tab(text: 'Payslips'),
+              Tab(text: 'Pre-Payments'),
+              Tab(text: 'Increments'),
+            ],
+          ),
+        ),
+        // Tab Views
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildSalaryTab(),
+              _buildPayslipsTab(),
+              _buildPrePaymentsTab(),
+              _buildIncrementsTab(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterDropdown({
+    required String label,
+    required String value,
+    required List<DropdownMenuItem<String>> items,
+    required Function(String?) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButton<String>(
+        value: value,
+        items: items,
+        onChanged: onChanged,
+        dropdownColor: const Color(0xFF1A1A1A),
+        style: const TextStyle(color: Colors.white, fontSize: 13),
+        iconEnabledColor: Colors.white54,
+        underline: const SizedBox(),
+        isExpanded: true,
+      ),
+    );
+  }
+
+  Widget _buildPayrollTableRow(Payroll payroll) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      payroll.userName ?? payroll.userId ?? 'Unknown',
+                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      '${_monthName(payroll.month)} ${payroll.year}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              _statusBadge(payroll.status, _payrollStatusColor(payroll.status)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Details
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _labelValue('Gross', _currency(payroll.grossSalary ?? 0)),
+                    _labelValue('Deductions', _currency(payroll.totalDeductions ?? 0)),
+                    _labelValue('Net', _currency(payroll.netSalary ?? 0), valueBold: true),
+                  ],
+                ),
+              ),
+              if (payroll.paymentDate != null)
+                Text(
+                  'Paid: ${DateFormat('MMM d').format(payroll.paymentDate is String ? DateTime.parse(payroll.paymentDate as String) : payroll.paymentDate as DateTime)}',
+                  style: const TextStyle(color: Colors.green, fontSize: 11),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Actions
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _showPayslipDetail(payroll),
+                icon: const Icon(Icons.visibility, size: 14),
+                label: const Text('View'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.withOpacity(0.2),
+                  foregroundColor: Colors.blue,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (payroll.status != 'paid')
+                ElevatedButton.icon(
+                  onPressed: () => _markPayrollAsPaid(payroll),
+                  icon: const Icon(Icons.check_circle, size: 14),
+                  label: const Text('Mark Paid'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.withOpacity(0.2),
+                    foregroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  ),
+                ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => _deletePayroll(payroll.id ?? ''),
+                icon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  String _monthName(int? month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return month != null && month > 0 && month <= 12 ? months[month - 1] : '';
   }
 
   Widget _buildStatisticsCards() {

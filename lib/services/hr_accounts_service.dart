@@ -79,52 +79,95 @@ class HRAccountsService {
     }
   }
 
-  /// Create new HR account (registration with admin/hr role)
+  /// Create new HR account — POST /auth/register with role=hr
   static Future<Map<String, dynamic>> createHRAccount(
-    String token, {
-    required String name,
-    required String email,
-    required String password,
-    String? department,
-    String? position,
-  }) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     try {
-      final request = http.MultipartRequest(
-        'POST',
+      final body = <String, dynamic>{...data, 'role': 'hr'};
+      // Remove empty/null values to avoid ObjectId cast errors
+      body.removeWhere((k, v) => v == null || v.toString().isEmpty);
+      body.remove('reportingTo'); // not supported for HR role
+
+      final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
-      );
-
-      // Add auth headers
-      request.headers['Authorization'] = 'Bearer $token';
-
-      // Add form fields
-      request.fields['name'] = name;
-      request.fields['email'] = email;
-      request.fields['password'] = password;
-      request.fields['role'] = 'hr'; // Creating HR account
-
-      if (department != null && department.isNotEmpty) {
-        request.fields['department'] = department;
-      }
-      if (position != null && position.isNotEmpty) {
-        request.fields['position'] = position;
-      }
-
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
-      final response = await http.Response.fromStream(streamedResponse);
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
-      } else if (response.statusCode == 400) {
-        final error = jsonDecode(response.body);
-        throw Exception(error['message'] ?? 'Invalid account data');
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized: Invalid or expired token');
       } else {
-        throw Exception('Failed to create HR account: ${response.statusCode}');
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to create HR account: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Error creating HR account: ${e.toString()}');
+      if (e is Exception) rethrow;
+      throw Exception('Error creating HR account: $e');
+    }
+  }
+
+  /// Update HR account — PUT /users/:id
+  static Future<Map<String, dynamic>> updateHRAccount(
+    String token,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      // Remove empty values
+      final body = Map<String, dynamic>.from(data)
+        ..removeWhere((k, v) => v == null || v.toString().isEmpty);
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/users/$id'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to update HR account: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error updating HR account: $e');
+    }
+  }
+
+  /// Delete HR account — DELETE /users/:id (endpoint may not exist yet)
+  static Future<Map<String, dynamic>> deleteHRAccount(
+    String token,
+    String id,
+  ) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/users/$id'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return response.body.isEmpty
+            ? {'success': true}
+            : jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to delete HR account: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error deleting HR account: $e');
     }
   }
 }

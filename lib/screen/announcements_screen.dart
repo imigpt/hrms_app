@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/announcement_model.dart';
 import '../services/announcement_service.dart';
 import '../services/token_storage_service.dart';
+import '../services/notification_service.dart';
 import 'announcement_detail_screen.dart';
 // import 'announcement_api_test_screen.dart';
 import 'package:intl/intl.dart';
@@ -27,6 +28,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   String? _authToken;
   // Track which IDs have been read (persisted across sessions)
   Set<String> _readIds = {};
+  // Track which announcements have been notified
+  Set<String> _notifiedAnnouncementIds = {};
 
   @override
   void initState() {
@@ -113,6 +116,19 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
           _isLoading = false;
         });
+        
+        // Show notifications for new announcements
+        for (final announcement in response.data) {
+          if (!_notifiedAnnouncementIds.contains(announcement.id)) {
+            await NotificationService().showAnnouncementNotification(
+              title: 'New Announcement',
+              message: announcement.title ?? 'New announcement from management',
+              body: announcement.content ?? announcement.title ?? 'Check the announcements section for details',
+              payload: {'id': announcement.id},
+            );
+            _notifiedAnnouncementIds.add(announcement.id);
+          }
+        }
       }
     } catch (e) {
       print('Error fetching announcements: $e');

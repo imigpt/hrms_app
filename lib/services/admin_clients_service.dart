@@ -9,7 +9,7 @@ class AdminClientsService {
         'Authorization': 'Bearer $token',
       };
 
-  /// GET /api/admin/clients
+  /// GET /api/clients
   /// Optional filter: status (active|inactive)
   static Future<Map<String, dynamic>> getAllClients(
     String token, {
@@ -19,7 +19,7 @@ class AdminClientsService {
       final queryParams = <String, String>{};
       if (status != null && status.isNotEmpty) queryParams['status'] = status;
 
-      final uri = Uri.parse('$_baseUrl/admin/clients').replace(
+      final uri = Uri.parse('$_baseUrl/clients').replace(
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
 
@@ -41,32 +41,32 @@ class AdminClientsService {
     }
   }
 
-  /// POST /api/admin/clients
+  /// POST /api/clients
   /// Create a new client
   static Future<Map<String, dynamic>> addClient({
     required String token,
     required String name,
     required String email,
     String? phone,
-    String? company,
+    String? companyName,
     String? password,
     String? assignedCompanyId,
-    String? notes,
+    String? clientNotes,
   }) async {
     try {
       final body = <String, dynamic>{
         'name': name,
         'email': email,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
-        if (company != null && company.isNotEmpty) 'company': company,
+        if (companyName != null && companyName.isNotEmpty) 'companyName': companyName,
         if (password != null && password.isNotEmpty) 'password': password,
         if (assignedCompanyId != null && assignedCompanyId.isNotEmpty) 'assignedCompanyId': assignedCompanyId,
-        if (notes != null && notes.isNotEmpty) 'notes': notes,
+        if (clientNotes != null && clientNotes.isNotEmpty) 'clientNotes': clientNotes,
       };
 
       final response = await http
           .post(
-            Uri.parse('$_baseUrl/admin/clients'),
+            Uri.parse('$_baseUrl/clients'),
             headers: _headers(token),
             body: jsonEncode(body),
           )
@@ -89,7 +89,7 @@ class AdminClientsService {
     }
   }
 
-  /// PUT /api/admin/clients/:id
+  /// PUT /api/clients/:id
   /// Update a client
   static Future<Map<String, dynamic>> updateClient({
     required String token,
@@ -97,25 +97,25 @@ class AdminClientsService {
     String? name,
     String? email,
     String? phone,
-    String? company,
+    String? companyName,
     String? password,
     String? assignedCompanyId,
-    String? notes,
+    String? clientNotes,
   }) async {
     try {
       final body = <String, dynamic>{
         if (name != null) 'name': name,
         if (email != null) 'email': email,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
-        if (company != null && company.isNotEmpty) 'company': company,
+        if (companyName != null && companyName.isNotEmpty) 'companyName': companyName,
         if (password != null && password.isNotEmpty) 'password': password,
         if (assignedCompanyId != null && assignedCompanyId.isNotEmpty) 'assignedCompanyId': assignedCompanyId,
-        if (notes != null && notes.isNotEmpty) 'notes': notes,
+        if (clientNotes != null && clientNotes.isNotEmpty) 'clientNotes': clientNotes,
       };
 
       final response = await http
           .put(
-            Uri.parse('$_baseUrl/admin/clients/$clientId'),
+            Uri.parse('$_baseUrl/clients/$clientId'),
             headers: _headers(token),
             body: jsonEncode(body),
           )
@@ -137,7 +137,7 @@ class AdminClientsService {
     }
   }
 
-  /// DELETE /api/admin/clients/:id
+  /// DELETE /api/clients/:id
   /// Delete a client
   static Future<Map<String, dynamic>> deleteClient({
     required String token,
@@ -146,7 +146,7 @@ class AdminClientsService {
     try {
       final response = await http
           .delete(
-            Uri.parse('$_baseUrl/admin/clients/$clientId'),
+            Uri.parse('$_baseUrl/clients/$clientId'),
             headers: _headers(token),
           )
           .timeout(const Duration(seconds: 30));
@@ -164,6 +164,34 @@ class AdminClientsService {
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Error deleting client: $e');
+    }
+  }
+
+  /// GET /api/admin/companies
+  /// Fetch all HRMS companies (admin only)
+  static Future<List<Map<String, dynamic>>> getCompanies(String token) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/admin/companies'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = body['data'];
+        if (data is List) {
+          return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+        return [];
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized');
+      } else {
+        return []; // non-fatal
+      }
+    } catch (_) {
+      return [];
     }
   }
 }

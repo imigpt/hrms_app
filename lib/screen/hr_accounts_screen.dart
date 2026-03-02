@@ -182,10 +182,14 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                   _buildDetailRow('Employee ID', account['employeeId'] ?? '-'),
                   _buildDetailRow('Email', account['email'] ?? '-'),
                   _buildDetailRow('Phone', account['phone'] ?? '-'),
+                  _buildDetailRow('Position', account['position'] ?? '-'),
                   _buildDetailRow('Department', account['department'] ?? '-'),
                   _buildDetailRow('Company', account['company']?['name'] ?? '-'),
                   _buildDetailRow('Status', account['status'] ?? '-'),
-                  _buildDetailRow('Join Date', _formatDate(account['joinDate'])),
+                  _buildDetailRow('Date of Birth', _formatDate(account['dateOfBirth'])),
+                  _buildDetailRow('Address', account['address'] ?? '-'),
+                  _buildDetailRow('Join Date',
+                      _formatDate(account['joinDate'] ?? account['joinedDate'])),
                   const SizedBox(height: 20),
                   // Buttons
                   Row(
@@ -353,11 +357,21 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   }
 
   Future<void> _showEditManagerDialog(Map<String, dynamic> manager) async {
+    String isoToField(dynamic val) {
+      if (val == null || val.toString().isEmpty) return '';
+      try { return DateFormat('dd-MM-yyyy').format(DateTime.parse(val.toString())); }
+      catch (_) { return val.toString(); }
+    }
     final _nameController = TextEditingController(text: manager['name'] ?? '');
+    final _employeeIdController = TextEditingController(text: manager['employeeId'] ?? '');
     final _emailController = TextEditingController(text: manager['email'] ?? '');
     final _phoneController = TextEditingController(text: manager['phone'] ?? '');
     final _departmentController = TextEditingController(text: manager['department'] ?? '');
-    var _selectedStatus = manager['status'] ?? 'active';
+    final _positionController = TextEditingController(text: manager['position'] ?? '');
+    final _dobController = TextEditingController(text: isoToField(manager['dateOfBirth']));
+    final _addressController = TextEditingController(text: manager['address'] ?? '');
+    final _joinDateController = TextEditingController(
+        text: isoToField(manager['joinedDate'] ?? manager['joinDate']));
 
     showDialog(
       context: context,
@@ -427,15 +441,36 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                     const SizedBox(height: 18),
                     Divider(color: _border.withOpacity(0.4), height: 1),
                     const SizedBox(height: 18),
-                    _buildEditField('Full Name', _nameController),
+                    _buildEditField('Full Name *', _nameController),
                     const SizedBox(height: 14),
-                    _buildEditField('Email', _emailController),
+                    _buildEditField('Employee ID *', _employeeIdController,
+                        helperText: 'Used for login'),
                     const SizedBox(height: 14),
-                    _buildEditField('Phone', _phoneController),
+                    _buildEditField('Email *', _emailController),
                     const SizedBox(height: 14),
-                    _buildEditField('Department', _departmentController),
+                    _buildEditField('Phone *', _phoneController),
                     const SizedBox(height: 14),
-                    _buildStatusSelector(_selectedStatus, (v) => setState(() => _selectedStatus = v)),
+                    Row(
+                      children: [
+                        Expanded(child: _buildEditField('Department', _departmentController)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildEditField('Position', _positionController)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildDateField(
+                                'Date of Birth', _dobController, context)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _buildDateField(
+                                'Join Date', _joinDateController, context)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _buildEditField('Address', _addressController, maxLines: 3),
                     const SizedBox(height: 20),
                     Row(
                       children: [
@@ -465,15 +500,69 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                               color: Colors.transparent,
                               child: InkWell(
                                 onTap: () async {
-                                  // TODO: Implement update API call
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text('Manager updated successfully'),
-                                      backgroundColor: _secondaryAccent,
-                                    ),
-                                  );
-                                  _loadHRAccounts();
+                                  if (_nameController.text.isEmpty ||
+                                      _employeeIdController.text.isEmpty ||
+                                      _emailController.text.isEmpty ||
+                                      _phoneController.text.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text(
+                                            'Please fill in all required fields'),
+                                        backgroundColor: _red,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  String? toISO(String s) {
+                                    if (s.isEmpty) return null;
+                                    try {
+                                      return DateFormat('dd-MM-yyyy')
+                                          .parse(s)
+                                          .toIso8601String();
+                                    } catch (_) {
+                                      return null;
+                                    }
+                                  }
+                                  final data = <String, dynamic>{
+                                    'name': _nameController.text,
+                                    'email': _emailController.text,
+                                    'phone': _phoneController.text,
+                                    'employeeId': _employeeIdController.text,
+                                    if (_departmentController.text.isNotEmpty)
+                                      'department': _departmentController.text,
+                                    if (_positionController.text.isNotEmpty)
+                                      'position': _positionController.text,
+                                    if (_addressController.text.isNotEmpty)
+                                      'address': _addressController.text,
+                                    if (toISO(_dobController.text) != null)
+                                      'dateOfBirth': toISO(_dobController.text),
+                                    if (toISO(_joinDateController.text) != null)
+                                      'joinDate': toISO(_joinDateController.text),
+                                  };
+                                  try {
+                                    await HRAccountsService.updateHRAccount(
+                                        _token!, manager['_id'], data);
+                                    if (mounted) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                        content: const Text(
+                                            'Manager updated successfully'),
+                                        backgroundColor: _secondaryAccent,
+                                      ));
+                                      _loadHRAccounts();
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                        content: Text(e
+                                            .toString()
+                                            .replaceAll('Exception: ', '')),
+                                        backgroundColor: _red,
+                                      ));
+                                    }
+                                  }
                                 },
                                 borderRadius: BorderRadius.circular(11),
                                 child: const Padding(
@@ -521,58 +610,79 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     final _departmentController = TextEditingController();
     final _positionController = TextEditingController();
     final _jobDateController = TextEditingController();
-    var _selectedStatus = 'active';
 
     showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
         child: StatefulBuilder(
           builder: (context, setState) => Container(
             decoration: BoxDecoration(
               color: _section,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: _border.withOpacity(0.5), width: 1),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 20)],
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 24, offset: const Offset(0, 8))
+              ],
             ),
-            constraints: const BoxConstraints(maxWidth: 520),
+            constraints: const BoxConstraints(maxWidth: 600),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header
+                  // ─── Header with gradient ─────────────────────────────
                   Container(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [_primaryAccent.withOpacity(0.15), _primaryAccent.withOpacity(0.08)],
+                        colors: [
+                          _primaryAccent.withOpacity(0.12),
+                          _primaryAccent.withOpacity(0.04),
+                        ],
                       ),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(20),
                         topRight: Radius.circular(20),
                       ),
-                      border: Border(bottom: BorderSide(color: _border.withOpacity(0.3), width: 1)),
+                      border: Border(
+                        bottom: BorderSide(color: _border.withOpacity(0.3), width: 1),
+                      ),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Add New HR Manager',
-                              style: TextStyle(
-                                color: _textLight,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: _primaryAccent.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: _primaryAccent.withOpacity(0.3), width: 1),
+                          ),
+                          child: Icon(Icons.person_add_rounded,
+                              color: _primaryAccent, size: 24),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Add New HR Manager',
+                                style: TextStyle(
+                                  color: _textLight,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.3,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Create a new HR manager account with complete details',
-                              style: TextStyle(color: _textGrey, fontSize: 12),
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                'Create a new HR manager account',
+                                style:
+                                    TextStyle(color: _textGrey, fontSize: 12),
+                              ),
+                            ],
+                          ),
                         ),
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
@@ -580,168 +690,214 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: _border.withOpacity(0.4),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Icon(Icons.close_rounded, color: _textLight, size: 20),
+                            child: Icon(Icons.close_rounded,
+                                color: _textGrey, size: 20),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  // Content
+                  // ─── Form Content ──────────────────────────────────────
                   Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Profile Photo Section
-                        Center(
-                          child: Column(
+                        // ─────── Section: Authentication ─────────────────
+                        _buildDialogSection('Authentication', Icons.lock_rounded, [
+                          _buildEditField('Full Name *', _nameController),
+                          const SizedBox(height: 14),
+                          _buildEditField('Employee ID *', _employeeIdController,
+                              helperText: 'Used for login'),
+                          const SizedBox(height: 14),
+                          _buildEditField('Email *', _emailController,
+                              helperText: 'Login email address'),
+                          const SizedBox(height: 14),
+                          _buildEditField('Password *', _passwordController,
+                              obscure: true,
+                              helperText: 'Initial login password'),
+                        ]),
+                        const SizedBox(height: 24),
+                        // ─────── Section: Contact Information ──────────────
+                        _buildDialogSection('Contact Information', Icons.phone_rounded, [
+                          _buildEditField('Phone *', _phoneController,
+                              helperText: 'Mobile or office number'),
+                          const SizedBox(height: 14),
+                          _buildEditField('Address', _addressController,
+                              maxLines: 3, helperText: 'Full address'),
+                        ]),
+                        const SizedBox(height: 24),
+                        // ─────── Section: Employment Details ──────────────
+                        _buildDialogSection(
+                            'Employment Details', Icons.work_rounded, [
+                          Row(
                             children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [_primaryAccent.withOpacity(0.3), _primaryAccent.withOpacity(0.1)],
-                                  ),
-                                  border: Border.all(color: _primaryAccent.withOpacity(0.4), width: 2),
-                                ),
-                                child: Center(
-                                  child: Icon(Icons.person_add_rounded, color: _primaryAccent, size: 40),
-                                ),
+                              Expanded(
+                                child: _buildEditField(
+                                    'Department', _departmentController),
                               ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Profile Photo',
-                                style: TextStyle(color: _textLight, fontSize: 13, fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 4),
-                              GestureDetector(
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Photo upload feature coming soon')),
-                                  );
-                                },
-                                child: Text(
-                                  'Click to upload photo\nPNG, JPG up to 5MB',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: _textGrey, fontSize: 11),
-                                ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child:
+                                    _buildEditField('Position', _positionController),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        // Form Fields
-                        _buildEditField('Full Name', _nameController),
-                        const SizedBox(height: 14),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildDateField(
+                                    'Date of Birth', _dobController, context),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildDateField(
+                                    'Join Date', _jobDateController, context),
+                              ),
+                            ],
+                          ),
+                        ]),
+                        // ─────── Action Buttons ──────────────────────────
                         Row(
                           children: [
                             Expanded(
-                              child: _buildEditField('Employee ID', _employeeIdController, helperText: 'Used for login'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        _buildEditField('Password', _passwordController,
-                            obscure: true,
-                            helperText: 'Create password for HR manager'),
-                        const SizedBox(height: 14),
-                        _buildEditField('Email', _emailController),
-                        const SizedBox(height: 14),
-                        _buildEditField('Phone', _phoneController),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildDateField('Date of Birth', _dobController, context, helperText: 'dd-MM-yyyy'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        _buildEditField('Address', _addressController, maxLines: 3),
-                        const SizedBox(height: 14),
-                        _buildEditField('Department', _departmentController),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildEditField('Position', _positionController),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildDateField('Job Date', _jobDateController, context, helperText: 'dd-MM-yyyy'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        // Buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: _textLight,
-                                  side: BorderSide(color: _border.withOpacity(0.8), width: 1.5),
-                                  padding: const EdgeInsets.symmetric(vertical: 13),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: _border.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: _border.withOpacity(0.4),
+                                        width: 1),
+                                  ),
+                                  child: const Text(
+                                    'Cancel',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: _textLight,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
-                                child: const Text('Cancel', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [_primaryAccent, _primaryAccent.withOpacity(0.85)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(11),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: _primaryAccent.withOpacity(0.4),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () async {
-                                      // TODO: Implement create API call
+                              child: GestureDetector(
+                                onTap: () async {
+                                  if (_nameController.text.isEmpty ||
+                                      _emailController.text.isEmpty ||
+                                      _employeeIdController.text.isEmpty ||
+                                      _passwordController.text.isEmpty ||
+                                      _phoneController.text.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Please fill all required fields')),
+                                    );
+                                    return;
+                                  }
+
+                                  String? toISO(String s) {
+                                    if (s.isEmpty) return null;
+                                    try {
+                                      return DateFormat('dd-MM-yyyy')
+                                          .parse(s)
+                                          .toIso8601String();
+                                    } catch (_) {
+                                      return null;
+                                    }
+                                  }
+
+                                  final data = <String, dynamic>{
+                                    'name': _nameController.text,
+                                    'employeeId': _employeeIdController.text,
+                                    'email': _emailController.text,
+                                    'password': _passwordController.text,
+                                    'phone': _phoneController.text,
+                                    if (_departmentController.text.isNotEmpty)
+                                      'department': _departmentController.text,
+                                    if (_positionController.text.isNotEmpty)
+                                      'position': _positionController.text,
+                                    if (_addressController.text.isNotEmpty)
+                                      'address': _addressController.text,
+                                    if (toISO(_dobController.text) != null)
+                                      'dateOfBirth': toISO(_dobController.text),
+                                    if (toISO(_jobDateController.text) != null)
+                                      'joinedDate': toISO(_jobDateController.text),
+                                  };
+
+                                  Navigator.pop(context);
+                                  await _showLoadingDialog(
+                                      'Creating HR Manager...');
+
+                                  try {
+                                    await HRAccountsService.createHRAccount(
+                                        _token!, data);
+                                    if (mounted) {
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: const Text('Manager created successfully'),
-                                          backgroundColor: _secondaryAccent,
-                                        ),
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'HR Manager created successfully')),
                                       );
                                       _loadHRAccounts();
-                                    },
-                                    borderRadius: BorderRadius.circular(11),
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 13),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.check_rounded, size: 18, color: Colors.white),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            'Create Account',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 14,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(e
+                                              .toString()
+                                              .replaceAll('Exception: ', '')),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [_primaryAccent,
+                                          _primaryAccent.withOpacity(0.7)],
                                     ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: _primaryAccent.withOpacity(0.3),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      )
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.person_add_rounded,
+                                          color: Colors.white, size: 18),
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        'Create Manager',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -859,9 +1015,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     );
 
     try {
-      // TODO: Implement delete API call
-      // await HRAccountsService.deleteHRAccount(_token!, managerId);
-
+      await HRAccountsService.deleteHRAccount(_token!, managerId);
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
@@ -883,6 +1037,40 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
         );
       }
     }
+  }
+
+  Widget _buildDialogSection(String title, IconData icon, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: _primaryAccent.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(icon, color: _primaryAccent, size: 16),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                color: _textLight,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Column(
+          children: children,
+        ),
+      ],
+    );
   }
 
   Widget _buildEditField(String label, TextEditingController controller, {
@@ -1002,75 +1190,71 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () async {
-              try {
-                DateTime? initialDate;
-                if (controller.text.isNotEmpty) {
-                  try {
-                    initialDate = DateFormat('dd-MM-yyyy').parse(controller.text);
-                  } catch (_) {
-                    initialDate = DateTime.now();
-                  }
-                } else {
+        GestureDetector(
+          onTap: () async {
+            try {
+              DateTime? initialDate;
+              if (controller.text.isNotEmpty) {
+                try {
+                  initialDate = DateFormat('dd-MM-yyyy').parse(controller.text);
+                } catch (_) {
                   initialDate = DateTime.now();
                 }
-
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: initialDate,
-                  firstDate: DateTime(1990),
-                  lastDate: DateTime.now(),
-                  builder: (BuildContext context, Widget? child) {
-                    return Theme(
-                      data: Theme.of(context).copyWith(
-                        colorScheme: ColorScheme.light(
-                          primary: _primaryAccent,
-                          onPrimary: Colors.white,
-                          surface: _section,
-                          onSurface: _textLight,
-                          outline: _border,
-                        ),
-                        textTheme: Theme.of(context).textTheme.copyWith(
-                          bodyLarge: const TextStyle(color: _textLight),
-                        ),
-                      ),
-                      child: child!,
-                    );
-                  },
-                );
-
-                if (picked != null) {
-                  controller.text = DateFormat('dd-MM-yyyy').format(picked);
-                }
-              } catch (e) {
-                debugPrint('Date picker error: $e');
+              } else {
+                initialDate = DateTime.now();
               }
-            },
-            borderRadius: BorderRadius.circular(11),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
-              decoration: BoxDecoration(
-                color: _input,
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(color: _border.withOpacity(0.6), width: 1),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      controller.text.isEmpty ? 'Select date' : controller.text,
-                      style: TextStyle(
-                        color: controller.text.isEmpty ? _textGrey : _textLight,
-                        fontSize: 14,
+
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: initialDate,
+                firstDate: DateTime(1900),
+                lastDate: DateTime.now(),
+                builder: (BuildContext context, Widget? child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: ColorScheme.light(
+                        primary: _primaryAccent,
+                        onPrimary: Colors.white,
+                        surface: _section,
+                        onSurface: _textLight,
+                        outline: _border,
+                      ),
+                      textTheme: Theme.of(context).textTheme.copyWith(
+                        bodyLarge: const TextStyle(color: _textLight),
                       ),
                     ),
+                    child: child!,
+                  );
+                },
+              );
+
+              if (picked != null) {
+                controller.text = DateFormat('dd-MM-yyyy').format(picked);
+              }
+            } catch (e) {
+              debugPrint('Date picker error: $e');
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+            decoration: BoxDecoration(
+              color: _input,
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(color: _border.withOpacity(0.6), width: 1),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    controller.text.isEmpty ? 'Select date' : controller.text,
+                    style: TextStyle(
+                      color: controller.text.isEmpty ? _textGrey : _textLight,
+                      fontSize: 14,
+                    ),
                   ),
-                  Icon(Icons.calendar_today_rounded, color: _primaryAccent, size: 18),
-                ],
-              ),
+                ),
+                Icon(Icons.calendar_today_rounded, color: _primaryAccent, size: 18),
+              ],
             ),
           ),
         ),
@@ -1757,5 +1941,37 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     final first = parts[0].isNotEmpty ? parts[0][0] : '';
     final last = parts.length > 1 && parts[1].isNotEmpty ? parts[1][0] : '';
     return (first + last).toUpperCase().isEmpty ? '?' : (first + last).toUpperCase();
+  }
+
+  Future<void> _showLoadingDialog(String message) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _section,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _border.withOpacity(0.5), width: 1),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: _primaryAccent),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: const TextStyle(
+                  color: _textLight,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

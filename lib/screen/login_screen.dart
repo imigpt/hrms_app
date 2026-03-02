@@ -130,17 +130,6 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 1. Logo Placeholder
-                // In a real app, use: SvgPicture.asset('assets/logo.svg', height: 50)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset('assets/images/aselea-logo.png', height: 60, width: 100),
-                  ],
-                ),
-
-                const SizedBox(height: 30),
-
                 // 2. Welcome Text
                 Text(
                   "Welcome Back",
