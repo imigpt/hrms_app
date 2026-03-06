@@ -49,8 +49,9 @@ class _AdminTranslationsScreenState extends State<AdminTranslationsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getLocalizationSettings(widget.token ?? '');
+      final res = await SettingsService.getLocalizationSettings(
+        widget.token ?? '',
+      );
       final d = res['data'];
       if (d != null) {
         setState(() {
@@ -142,9 +143,13 @@ class _AdminTranslationsScreenState extends State<AdminTranslationsScreen> {
                                 value: _timeFormat,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: '12h', child: Text('12 Hour')),
+                                    value: '12h',
+                                    child: Text('12 Hour'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: '24h', child: Text('24 Hour')),
+                                    value: '24h',
+                                    child: Text('24 Hour'),
+                                  ),
                                 ],
                                 onChanged: (v) =>
                                     setState(() => _timeFormat = v!),

@@ -200,10 +200,7 @@ class _EmployeeApiTestScreenState extends State<EmployeeApiTestScreen> {
           );
           // A rejection due to bad credentials means the endpoint is alive —
           // count as pass regardless of r.success value.
-          result = {
-            'success': true,
-            'message': r.message,
-          };
+          result = {'success': true, 'message': r.message};
 
         case 'Get My Tasks':
           final r = await EmployeeService.getMyTasks(token: _token!);
@@ -233,7 +230,8 @@ class _EmployeeApiTestScreenState extends State<EmployeeApiTestScreen> {
           result = {'success': false, 'message': 'Unknown test'};
       }
 
-      final passed = (result['success'] as bool? ?? false) ||
+      final passed =
+          (result['success'] as bool? ?? false) ||
           ((result['statusCode'] as int? ?? 0) < 500 &&
               (result['statusCode'] as int? ?? 0) >= 200);
 
@@ -313,8 +311,8 @@ class _EmployeeApiTestScreenState extends State<EmployeeApiTestScreen> {
               child: CircularProgressIndicator(color: Colors.pinkAccent),
             )
           : _token == null
-              ? _buildNoToken()
-              : _buildTestList(),
+          ? _buildNoToken()
+          : _buildTestList(),
     );
   }
 
@@ -397,7 +395,11 @@ class _EmployeeApiTestScreenState extends State<EmployeeApiTestScreen> {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -452,12 +454,16 @@ class _EmployeeApiTestScreenState extends State<EmployeeApiTestScreen> {
                 ),
                 if (isWrite)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.orangeAccent.withAlpha(30),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.orangeAccent.withAlpha(80)),
+                      border: Border.all(
+                        color: Colors.orangeAccent.withAlpha(80),
+                      ),
                     ),
                     child: Text(
                       test.method,
@@ -471,12 +477,16 @@ class _EmployeeApiTestScreenState extends State<EmployeeApiTestScreen> {
                   )
                 else
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.blueAccent.withAlpha(30),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: Colors.blueAccent.withAlpha(80)),
+                      border: Border.all(
+                        color: Colors.blueAccent.withAlpha(80),
+                      ),
                     ),
                     child: Text(
                       test.method,
@@ -528,8 +538,10 @@ class _EmployeeApiTestScreenState extends State<EmployeeApiTestScreen> {
             ] else if (test.responsePreview != null) ...[
               const SizedBox(height: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withAlpha(8),
                   borderRadius: BorderRadius.circular(6),
@@ -546,8 +558,10 @@ class _EmployeeApiTestScreenState extends State<EmployeeApiTestScreen> {
             ] else if (test.errorMessage != null) ...[
               const SizedBox(height: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.redAccent.withAlpha(20),
                   borderRadius: BorderRadius.circular(6),
@@ -590,10 +604,18 @@ extension on Object {
     try {
       final map = <String, dynamic>{};
       // Use reflection-free approach: try known fields
-      try { map['success'] = (this as dynamic).success as bool? ?? false; } catch (_) {}
-      try { map['message'] = (this as dynamic).message as String?; } catch (_) {}
-      try { map['count'] = (this as dynamic).count as int?; } catch (_) {}
-      try { map['statusCode'] = (this as dynamic).statusCode as int?; } catch (_) {}
+      try {
+        map['success'] = (this as dynamic).success as bool? ?? false;
+      } catch (_) {}
+      try {
+        map['message'] = (this as dynamic).message as String?;
+      } catch (_) {}
+      try {
+        map['count'] = (this as dynamic).count as int?;
+      } catch (_) {}
+      try {
+        map['statusCode'] = (this as dynamic).statusCode as int?;
+      } catch (_) {}
       try {
         final d = (this as dynamic).data;
         if (d != null) map['data'] = {'type': d.runtimeType.toString()};

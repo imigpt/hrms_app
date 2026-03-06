@@ -7,13 +7,15 @@ class HRAccountsService {
   /// Fetch all HR accounts
   static Future<Map<String, dynamic>> getHRAccounts(String token) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/admin/hr-accounts'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/admin/hr-accounts'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -28,15 +30,20 @@ class HRAccountsService {
   }
 
   /// Fetch specific HR account details
-  static Future<Map<String, dynamic>> getHRAccountDetails(String token, String hrId) async {
+  static Future<Map<String, dynamic>> getHRAccountDetails(
+    String token,
+    String hrId,
+  ) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/admin/hr/$hrId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/admin/hr/$hrId'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -53,15 +60,20 @@ class HRAccountsService {
   }
 
   /// Reset HR account password
-  static Future<Map<String, dynamic>> resetHRPassword(String token, String hrId) async {
+  static Future<Map<String, dynamic>> resetHRPassword(
+    String token,
+    String hrId,
+  ) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/admin/hr/$hrId/reset-password'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/admin/hr/$hrId/reset-password'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -90,20 +102,25 @@ class HRAccountsService {
       body.removeWhere((k, v) => v == null || v.toString().isEmpty);
       body.remove('reportingTo'); // not supported for HR role
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/register'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
         final error = jsonDecode(response.body);
-        throw Exception(error['message'] ?? 'Failed to create HR account: ${response.statusCode}');
+        throw Exception(
+          error['message'] ??
+              'Failed to create HR account: ${response.statusCode}',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;
@@ -122,20 +139,25 @@ class HRAccountsService {
       final body = Map<String, dynamic>.from(data)
         ..removeWhere((k, v) => v == null || v.toString().isEmpty);
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/users/$id'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/users/$id'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else {
         final error = jsonDecode(response.body);
-        throw Exception(error['message'] ?? 'Failed to update HR account: ${response.statusCode}');
+        throw Exception(
+          error['message'] ??
+              'Failed to update HR account: ${response.statusCode}',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;
@@ -149,13 +171,15 @@ class HRAccountsService {
     String id,
   ) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/users/$id'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/users/$id'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         return response.body.isEmpty
@@ -163,7 +187,10 @@ class HRAccountsService {
             : jsonDecode(response.body) as Map<String, dynamic>;
       } else {
         final error = jsonDecode(response.body);
-        throw Exception(error['message'] ?? 'Failed to delete HR account: ${response.statusCode}');
+        throw Exception(
+          error['message'] ??
+              'Failed to delete HR account: ${response.statusCode}',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;

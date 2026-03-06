@@ -28,12 +28,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   final Color _textGrey = const Color(0xFF9E9E9E);
 
   // -- State --
-  bool get _isAdmin => widget.role?.toLowerCase() == 'admin' || widget.role?.toLowerCase() == 'hr';
+  bool get _isAdmin =>
+      widget.role?.toLowerCase() == 'admin' ||
+      widget.role?.toLowerCase() == 'hr';
   String _selectedFilter = "All";
   bool _isLoading = true;
   List<Expense> _expenses = [];
   String? _token;
-  
+
   // -- Form Controllers --
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
@@ -94,7 +96,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   List<Expense> _getFilteredExpenses() {
     if (_selectedFilter == "All") return _expenses;
     final filterStatus = _selectedFilter.toLowerCase();
-    return _expenses.where((e) => e.status.toLowerCase() == filterStatus).toList();
+    return _expenses
+        .where((e) => e.status.toLowerCase() == filterStatus)
+        .toList();
   }
 
   // --- Date Picker Logic ---
@@ -157,14 +161,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     final displayedExpenses = _getFilteredExpenses();
-    
+
     // Calculate Stats
     final totalApproved = _expenses
         .where((e) => e.status.toLowerCase() == 'approved')
         .fold(0.0, (sum, item) => sum + item.amount);
-    final pendingCount = _expenses.where((e) => e.status.toLowerCase() == 'pending').length;
-    final approvedCount = _expenses.where((e) => e.status.toLowerCase() == 'approved').length;
-    final rejectedCount = _expenses.where((e) => e.status.toLowerCase() == 'rejected').length;
+    final pendingCount = _expenses
+        .where((e) => e.status.toLowerCase() == 'pending')
+        .length;
+    final approvedCount = _expenses
+        .where((e) => e.status.toLowerCase() == 'approved')
+        .length;
+    final rejectedCount = _expenses
+        .where((e) => e.status.toLowerCase() == 'rejected')
+        .length;
 
     return Scaffold(
       backgroundColor: _bgDark,
@@ -176,20 +186,33 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             return Column(
               children: [
                 // 1. Header
-                 _buildTopHeader(context, isMobile),
+                _buildTopHeader(context, isMobile),
 
                 // 2. Scrollable Content
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Stats Section
-                        isMobile 
-                          ? _buildMobileStats(pendingCount, approvedCount, rejectedCount, totalApproved) 
-                          : _buildDesktopStats(pendingCount, approvedCount, rejectedCount, totalApproved),
-                        
+                        isMobile
+                            ? _buildMobileStats(
+                                pendingCount,
+                                approvedCount,
+                                rejectedCount,
+                                totalApproved,
+                              )
+                            : _buildDesktopStats(
+                                pendingCount,
+                                approvedCount,
+                                rejectedCount,
+                                totalApproved,
+                              ),
+
                         const SizedBox(height: 30),
 
                         // Section Header & Filter
@@ -205,16 +228,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                                 ),
                               )
                             : displayedExpenses.isEmpty
-                                ? _buildEmptyState()
-                                : ListView.separated(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: displayedExpenses.length,
-                                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                                    itemBuilder: (context, index) {
-                                      return _buildExpenseCard(displayedExpenses[index]);
-                                    },
-                                  ),
+                            ? _buildEmptyState()
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: displayedExpenses.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  return _buildExpenseCard(
+                                    displayedExpenses[index],
+                                  );
+                                },
+                              ),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -222,7 +248,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ),
               ],
             );
-          }
+          },
         ),
       ),
     );
@@ -244,12 +270,21 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 style: IconButton.styleFrom(
                   backgroundColor: _cardDark,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   padding: const EdgeInsets.all(12),
                 ),
               ),
               const SizedBox(width: 16),
-              const Text("Expense Claims", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text(
+                "Expense Claims",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           Row(
@@ -273,8 +308,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _accentPink,
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
             ],
@@ -291,11 +331,21 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("History", style: TextStyle(color: _textWhite, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text("Your recent claims", style: TextStyle(color: _textGrey, fontSize: 13)),
+            Text(
+              "History",
+              style: TextStyle(
+                color: _textWhite,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              "Your recent claims",
+              style: TextStyle(color: _textGrey, fontSize: 13),
+            ),
           ],
         ),
-        
+
         // Filter & Add Button (Mobile layout needs care)
         Row(
           children: [
@@ -312,15 +362,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 child: DropdownButton<String>(
                   value: _selectedFilter,
                   dropdownColor: _cardDark,
-                  icon: const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.grey),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: Colors.grey,
+                  ),
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   items: ["All", "Pending", "Approved", "Rejected"]
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
                   onChanged: (v) => setState(() => _selectedFilter = v!),
                 ),
               ),
             ),
-            
+
             if (isMobile && !_isAdmin) ...[
               const SizedBox(width: 10),
               IconButton(
@@ -328,7 +383,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 style: IconButton.styleFrom(
                   backgroundColor: _accentPink,
                   foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
                 icon: const Icon(Icons.add, size: 24),
               ),
@@ -339,7 +396,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildMobileStats(int pending, int approved, int rejected, double total) {
+  Widget _buildMobileStats(
+    int pending,
+    int approved,
+    int rejected,
+    double total,
+  ) {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -348,29 +410,82 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       mainAxisSpacing: 12,
       childAspectRatio: 1.1, // Compact cards to prevent overflow
       children: [
-        _buildStatCard("Pending", "$pending", Icons.access_time_filled, _accentOrange),
-        _buildStatCard("Approved", "$approved", Icons.check_circle, _accentGreen),
+        _buildStatCard(
+          "Pending",
+          "$pending",
+          Icons.access_time_filled,
+          _accentOrange,
+        ),
+        _buildStatCard(
+          "Approved",
+          "$approved",
+          Icons.check_circle,
+          _accentGreen,
+        ),
         _buildStatCard("Rejected", "$rejected", Icons.cancel, _accentRed),
-        _buildStatCard("Total Approved", "\₹${total.toStringAsFixed(0)}", Icons.currency_rupee, _accentPink),
+        _buildStatCard(
+          "Total Approved",
+          "\₹${total.toStringAsFixed(0)}",
+          Icons.currency_rupee,
+          _accentPink,
+        ),
       ],
     );
   }
 
-  Widget _buildDesktopStats(int pending, int approved, int rejected, double total) {
+  Widget _buildDesktopStats(
+    int pending,
+    int approved,
+    int rejected,
+    double total,
+  ) {
     return Row(
       children: [
-        Expanded(child: _buildStatCard("Pending", "$pending", Icons.access_time_filled, _accentOrange)),
+        Expanded(
+          child: _buildStatCard(
+            "Pending",
+            "$pending",
+            Icons.access_time_filled,
+            _accentOrange,
+          ),
+        ),
         const SizedBox(width: 16),
-        Expanded(child: _buildStatCard("Approved", "$approved", Icons.check_circle, _accentGreen)),
+        Expanded(
+          child: _buildStatCard(
+            "Approved",
+            "$approved",
+            Icons.check_circle,
+            _accentGreen,
+          ),
+        ),
         const SizedBox(width: 16),
-        Expanded(child: _buildStatCard("Rejected", "$rejected", Icons.cancel, _accentRed)),
+        Expanded(
+          child: _buildStatCard(
+            "Rejected",
+            "$rejected",
+            Icons.cancel,
+            _accentRed,
+          ),
+        ),
         const SizedBox(width: 16),
-        Expanded(child: _buildStatCard("Total Approved", "\$${total.toStringAsFixed(0)}", Icons.attach_money, _accentPink)),
+        Expanded(
+          child: _buildStatCard(
+            "Total Approved",
+            "\$${total.toStringAsFixed(0)}",
+            Icons.attach_money,
+            _accentPink,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -384,13 +499,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.15), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
             child: Icon(icon, color: color, size: 20),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(label, style: TextStyle(color: _textGrey, fontSize: 12)),
             ],
@@ -405,14 +530,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     IconData statusIcon;
     final status = item.status.toLowerCase();
     switch (status) {
-      case "approved": statusColor = _accentGreen; statusIcon = Icons.check_circle_outline; break;
-      case "rejected": statusColor = _accentRed; statusIcon = Icons.highlight_off; break;
-      default: statusColor = _accentOrange; statusIcon = Icons.access_time;
+      case "approved":
+        statusColor = _accentGreen;
+        statusIcon = Icons.check_circle_outline;
+        break;
+      case "rejected":
+        statusColor = _accentRed;
+        statusIcon = Icons.highlight_off;
+        break;
+      default:
+        statusColor = _accentOrange;
+        statusIcon = Icons.access_time;
     }
 
     // Format category for display
-    final categoryDisplay = item.category[0].toUpperCase() + item.category.substring(1);
-    
+    final categoryDisplay =
+        item.category[0].toUpperCase() + item.category.substring(1);
+
     // Format date
     final dateDisplay = DateFormat('MMM d, y').format(item.date);
 
@@ -429,7 +563,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           children: [
             // Icon Box
             Container(
-              width: 48, height: 48,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: _inputDark,
                 borderRadius: BorderRadius.circular(12),
@@ -442,9 +577,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.description, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(
+                    item.description,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text("$categoryDisplay • $dateDisplay", style: TextStyle(color: _textGrey, fontSize: 12)),
+                  Text(
+                    "$categoryDisplay • $dateDisplay",
+                    style: TextStyle(color: _textGrey, fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -452,10 +597,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text("${item.currency} ${item.amount.toStringAsFixed(2)}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(
+                  "${item.currency} ${item.amount.toStringAsFixed(2)}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -464,7 +619,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     children: [
                       Icon(statusIcon, size: 12, color: statusColor),
                       const SizedBox(width: 4),
-                      Text(status[0].toUpperCase() + status.substring(1), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                      Text(
+                        status[0].toUpperCase() + status.substring(1),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -482,7 +644,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         padding: const EdgeInsets.only(top: 40),
         child: Column(
           children: [
-            Icon(Icons.folder_off_outlined, size: 48, color: _textGrey.withOpacity(0.3)),
+            Icon(
+              Icons.folder_off_outlined,
+              size: 48,
+              color: _textGrey.withOpacity(0.3),
+            ),
             const SizedBox(height: 16),
             Text("No claims found", style: TextStyle(color: _textGrey)),
           ],
@@ -581,7 +747,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Submitting expense...', style: TextStyle(color: Colors.white)),
+              Text(
+                'Submitting expense...',
+                style: TextStyle(color: Colors.white),
+              ),
             ],
           ),
         ),
@@ -642,24 +811,53 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       context: context,
       backgroundColor: _cardDark,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
       builder: (context) {
         return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 20, right: 20, top: 20
+            left: 20,
+            right: 20,
+            top: 20,
           ),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.85,
+            ),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2))),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                   const SizedBox(height: 20),
-                  const Align(alignment: Alignment.centerLeft, child: Text("Submit Expense", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Submit Expense",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Align(alignment: Alignment.centerLeft, child: Text("Submit a new expense claim for approval", style: TextStyle(color: _textGrey, fontSize: 13))),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "Submit a new expense claim for approval",
+                      style: TextStyle(color: _textGrey, fontSize: 13),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   _buildForm(context),
                   const SizedBox(height: 30),
@@ -678,7 +876,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       builder: (context) {
         return Dialog(
           backgroundColor: _cardDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: SizedBox(
             width: 500,
             child: SingleChildScrollView(
@@ -690,12 +890,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Submit Expense", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                      IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: Colors.grey)),
+                      const Text(
+                        "Submit Expense",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Colors.grey),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text("Submit a new expense claim for approval", style: TextStyle(color: _textGrey, fontSize: 13)),
+                  Text(
+                    "Submit a new expense claim for approval",
+                    style: TextStyle(color: _textGrey, fontSize: 13),
+                  ),
                   const SizedBox(height: 24),
                   _buildForm(context),
                 ],
@@ -717,17 +930,27 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             _label("Category"),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(color: _inputDark, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: _inputDark,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _selectedCategory,
-                  hint: Text("Select category", style: TextStyle(color: Colors.grey[700], fontSize: 14)),
+                  hint: Text(
+                    "Select category",
+                    style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                  ),
                   isExpanded: true,
                   dropdownColor: _cardDark,
-                  icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Colors.grey,
+                  ),
                   style: const TextStyle(color: Colors.white),
                   items: ["Travel", "Meals", "Equipment", "Training", "Other"]
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
                   onChanged: (val) {
                     setState(() => _selectedCategory = val);
                     setDialogState(() => _selectedCategory = val);
@@ -746,7 +969,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _label("Amount"),
-                      _inputField(hint: "0.00", controller: _amountController, isNumber: true),
+                      _inputField(
+                        hint: "0.00",
+                        controller: _amountController,
+                        isNumber: true,
+                      ),
                     ],
                   ),
                 ),
@@ -759,16 +986,32 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       _label("Currency"),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(color: _inputDark, borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(
+                          color: _inputDark,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _selectedCurrency,
                             isExpanded: true,
                             dropdownColor: _cardDark,
-                            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 18),
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down,
+                              color: Colors.grey,
+                              size: 18,
+                            ),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
                             items: ["INR", "USD", "EUR", "GBP"]
-                                .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                )
+                                .toList(),
                             onChanged: (val) {
                               setState(() => _selectedCurrency = val!);
                               setDialogState(() => _selectedCurrency = val!);
@@ -786,19 +1029,32 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _label("Date"),
-                       TextFormField(
+                      TextFormField(
                         controller: _dateController,
                         readOnly: true,
                         style: const TextStyle(color: Colors.white),
                         onTap: () => _selectDate(context),
                         decoration: InputDecoration(
                           hintText: "Select date",
-                          hintStyle: TextStyle(color: Colors.grey[700], fontSize: 14),
+                          hintStyle: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: 14,
+                          ),
                           filled: true,
                           fillColor: _inputDark,
-                          suffixIcon: Icon(Icons.calendar_month, color: Colors.grey[600], size: 18),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          suffixIcon: Icon(
+                            Icons.calendar_month,
+                            color: Colors.grey[600],
+                            size: 18,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                         ),
                       ),
                     ],
@@ -826,18 +1082,33 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: Colors.grey[800], borderRadius: BorderRadius.circular(6)),
-                      child: const Text("Choose File", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[800],
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        "Choose File",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _selectedReceiptFile != null 
-                            ? _selectedReceiptFile!.path.split('/').last 
+                        _selectedReceiptFile != null
+                            ? _selectedReceiptFile!.path.split('/').last
                             : "No file chosen",
                         style: TextStyle(
-                          color: _selectedReceiptFile != null ? Colors.white : Colors.grey,
+                          color: _selectedReceiptFile != null
+                              ? Colors.white
+                              : Colors.grey,
                           fontSize: 13,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -849,7 +1120,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           setState(() => _selectedReceiptFile = null);
                           setDialogState(() => _selectedReceiptFile = null);
                         },
-                        icon: const Icon(Icons.close, color: Colors.grey, size: 18),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.grey,
+                          size: 18,
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -861,7 +1136,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
             // Description
             _label("Description"),
-            _inputField(hint: "Describe the expense...", controller: _descController, maxLines: 3),
+            _inputField(
+              hint: "Describe the expense...",
+              controller: _descController,
+              maxLines: 3,
+            ),
             const SizedBox(height: 24),
 
             // Submit Button
@@ -873,38 +1152,66 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   backgroundColor: _accentPink,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text("Submit Expense", style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text(
+                  "Submit Expense",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
         );
-      }
+      },
     );
   }
 
-  Widget _label(String text) => Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)));
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
 
-  Widget _inputField({required String hint, TextEditingController? controller, int maxLines = 1, bool isNumber = false}) {
+  Widget _inputField({
+    required String hint,
+    TextEditingController? controller,
+    int maxLines = 1,
+    bool isNumber = false,
+  }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+      keyboardType: isNumber
+          ? const TextInputType.numberWithOptions(decimal: true)
+          : TextInputType.text,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[700], fontSize: 14),
         filled: true,
         fillColor: _inputDark,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
 
   // --- VIEW/EDIT EXPENSE ---
-  
+
   void _handleViewExpense(BuildContext context, Expense expense) {
     showDialog(
       context: context,
@@ -925,7 +1232,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     children: [
                       const Text(
                         "Expense Details",
-                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
@@ -934,16 +1245,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
+
                   _buildDetailRow("Category", expense.category.toUpperCase()),
-                  _buildDetailRow("Amount", "${expense.currency} ${expense.amount.toStringAsFixed(2)}"),
-                  _buildDetailRow("Date", DateFormat('MMM d, y').format(expense.date)),
+                  _buildDetailRow(
+                    "Amount",
+                    "${expense.currency} ${expense.amount.toStringAsFixed(2)}",
+                  ),
+                  _buildDetailRow(
+                    "Date",
+                    DateFormat('MMM d, y').format(expense.date),
+                  ),
                   _buildDetailRow("Description", expense.description),
                   _buildDetailRow("Status", expense.status.toUpperCase()),
-                  
+
                   if (expense.receipt != null) ...[
                     const SizedBox(height: 16),
-                    Text("Receipt", style: TextStyle(color: _textGrey, fontSize: 12)),
+                    Text(
+                      "Receipt",
+                      style: TextStyle(color: _textGrey, fontSize: 12),
+                    ),
                     const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
@@ -962,9 +1282,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                       ),
                     ),
                   ],
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Action buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -982,7 +1302,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         ),
                         const SizedBox(width: 8),
                         TextButton(
-                          onPressed: () => _handleDeleteExpense(context, expense),
+                          onPressed: () =>
+                              _handleDeleteExpense(context, expense),
                           style: TextButton.styleFrom(
                             foregroundColor: _accentRed,
                           ),
@@ -1008,7 +1329,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         children: [
           Text(label, style: TextStyle(color: _textGrey, fontSize: 12)),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 15)),
+          Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontSize: 15),
+          ),
         ],
       ),
     );
@@ -1019,7 +1343,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     _amountController.text = expense.amount.toString();
     _descController.text = expense.description;
     _dateController.text = DateFormat('MMM d, y').format(expense.date);
-    _selectedCategory = expense.category[0].toUpperCase() + expense.category.substring(1);
+    _selectedCategory =
+        expense.category[0].toUpperCase() + expense.category.substring(1);
     _selectedCurrency = expense.currency;
     _selectedDate = expense.date;
     _selectedReceiptFile = null; // Cannot pre-fill file
@@ -1043,7 +1368,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     children: [
                       const Text(
                         "Edit Expense",
-                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
@@ -1052,7 +1381,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text("Update your expense details", style: TextStyle(color: _textGrey, fontSize: 13)),
+                  Text(
+                    "Update your expense details",
+                    style: TextStyle(color: _textGrey, fontSize: 13),
+                  ),
                   const SizedBox(height: 24),
                   _buildForm(context),
                   const SizedBox(height: 24),
@@ -1064,9 +1396,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         backgroundColor: _accentPink,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: const Text("Update Expense", style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Update Expense",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -1082,28 +1419,40 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     // Validation (same as submit)
     if (_selectedCategory == null || _selectedCategory!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a category'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please select a category'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     if (_amountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an amount'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please enter an amount'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     if (_selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a date'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please select a date'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
 
     if (_descController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a description'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please enter a description'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -1111,7 +1460,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final double? amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid amount'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please enter a valid amount'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -1123,13 +1475,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       builder: (context) => Center(
         child: Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: _cardDark, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: _cardDark,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Updating expense...', style: TextStyle(color: Colors.white)),
+              Text(
+                'Updating expense...',
+                style: TextStyle(color: Colors.white),
+              ),
             ],
           ),
         ),
@@ -1161,7 +1519,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Expense updated successfully!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Expense updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
 
@@ -1174,20 +1535,29 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       print('Error updating expense: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update expense: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to update expense: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
 
-  Future<void> _handleDeleteExpense(BuildContext context, Expense expense) async {
+  Future<void> _handleDeleteExpense(
+    BuildContext context,
+    Expense expense,
+  ) async {
     // Confirm deletion
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: _cardDark,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Expense', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Delete Expense',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Are you sure you want to delete this expense?',
           style: TextStyle(color: _textGrey),
@@ -1215,13 +1585,19 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       builder: (context) => Center(
         child: Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: _cardDark, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+            color: _cardDark,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Deleting expense...', style: TextStyle(color: Colors.white)),
+              Text(
+                'Deleting expense...',
+                style: TextStyle(color: Colors.white),
+              ),
             ],
           ),
         ),
@@ -1244,7 +1620,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Expense deleted successfully!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Expense deleted successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
 
@@ -1257,7 +1636,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       print('Error deleting expense: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete expense: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to delete expense: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

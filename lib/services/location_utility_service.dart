@@ -8,10 +8,10 @@ class LocationUtilityService {
   // Office coordinates
   static const double OFFICE_LATITUDE = 26.816210;
   static const double OFFICE_LONGITUDE = 75.845435;
-  
+
   // Radius in meters
   static const double OFFICE_RADIUS_METERS = 50.0;
-  
+
   // Location names
   static const String MAIN_BUILDING = "Main Building";
   static const String OUTSIDE_OFFICE = "Outside Office Location";
@@ -29,7 +29,8 @@ class LocationUtilityService {
     final double dLat = _toRadians(officeLatitude - userLatitude);
     final double dLon = _toRadians(officeLongitude - userLongitude);
 
-    final double a = sin(dLat / 2) * sin(dLat / 2) +
+    final double a =
+        sin(dLat / 2) * sin(dLat / 2) +
         cos(_toRadians(userLatitude)) *
             cos(_toRadians(officeLatitude)) *
             sin(dLon / 2) *
@@ -75,7 +76,9 @@ class LocationUtilityService {
       }
 
       // User is outside office, try to get actual address
-      print('🔄 User is outside office radius, attempting reverse geocoding...');
+      print(
+        '🔄 User is outside office radius, attempting reverse geocoding...',
+      );
       String addressName = OUTSIDE_OFFICE;
 
       try {
@@ -92,31 +95,34 @@ class LocationUtilityService {
           if (placemark.name != null && placemark.name!.isNotEmpty) {
             addressParts.add(placemark.name!);
           }
-          if (placemark.street != null && 
-              placemark.street!.isNotEmpty && 
+          if (placemark.street != null &&
+              placemark.street!.isNotEmpty &&
               placemark.street != placemark.name) {
             addressParts.add(placemark.street!);
           }
-          if (placemark.subLocality != null && 
+          if (placemark.subLocality != null &&
               placemark.subLocality!.isNotEmpty) {
             addressParts.add(placemark.subLocality!);
           }
-          if (placemark.locality != null && 
-              placemark.locality!.isNotEmpty) {
+          if (placemark.locality != null && placemark.locality!.isNotEmpty) {
             addressParts.add(placemark.locality!);
           }
 
           // Take first 3 parts to keep it concise
           String resolvedAddress = addressParts.take(3).join(', ');
-          
+
           if (resolvedAddress.isNotEmpty) {
             addressName = resolvedAddress;
             print('✅ Address resolved: $addressName');
           } else {
-            print('⚠️ Address parts were empty, using default: $OUTSIDE_OFFICE');
+            print(
+              '⚠️ Address parts were empty, using default: $OUTSIDE_OFFICE',
+            );
           }
         } else {
-          print('⚠️ No placemarks found for coordinates, using default: $OUTSIDE_OFFICE');
+          print(
+            '⚠️ No placemarks found for coordinates, using default: $OUTSIDE_OFFICE',
+          );
         }
       } catch (e) {
         print('❌ Error during reverse geocoding: $e');

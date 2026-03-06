@@ -36,20 +36,16 @@ class _AdminPayrollSettingsScreenState
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getPayrollSettings(widget.token ?? '');
+      final res = await SettingsService.getPayrollSettings(widget.token ?? '');
       final d = res['data'];
       if (d != null) {
         setState(() {
           _cycle = d['payrollCycle'] ?? 'monthly';
           _payDay = (d['payDay'] ?? 1) as int;
-          _overtimeRate =
-              (d['overtimeRate'] ?? 1.5).toDouble();
+          _overtimeRate = (d['overtimeRate'] ?? 1.5).toDouble();
           _taxCalc = d['taxCalculation'] ?? 'auto';
-          _pfPercent =
-              (d['providentFundPercentage'] ?? 12).toDouble();
-          _esiPercent =
-              (d['esiPercentage'] ?? 0.75).toDouble();
+          _pfPercent = (d['providentFundPercentage'] ?? 12).toDouble();
+          _esiPercent = (d['esiPercentage'] ?? 0.75).toDouble();
           _professionalTax = d['professionalTax'] ?? true;
           _autoPayslip = d['autoGeneratePayslip'] ?? true;
           _payslipFormat = d['payslipFormat'] ?? 'pdf';
@@ -81,10 +77,15 @@ class _AdminPayrollSettingsScreenState
     }
   }
 
-  Widget _numField(String label, num value, ValueChanged<num> onChanged,
-      {bool isDouble = false}) {
-    final ctrl =
-        TextEditingController(text: isDouble ? value.toString() : value.toInt().toString());
+  Widget _numField(
+    String label,
+    num value,
+    ValueChanged<num> onChanged, {
+    bool isDouble = false,
+  }) {
+    final ctrl = TextEditingController(
+      text: isDouble ? value.toString() : value.toInt().toString(),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -103,21 +104,20 @@ class _AdminPayrollSettingsScreenState
             fillColor: AppTheme.surfaceVariant,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.07)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.07)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
       ],
@@ -153,22 +153,27 @@ class _AdminPayrollSettingsScreenState
                                 value: _cycle,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'weekly',
-                                      child: Text('Weekly')),
+                                    value: 'weekly',
+                                    child: Text('Weekly'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'biweekly',
-                                      child: Text('Bi-Weekly')),
+                                    value: 'biweekly',
+                                    child: Text('Bi-Weekly'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'monthly',
-                                      child: Text('Monthly')),
+                                    value: 'monthly',
+                                    child: Text('Monthly'),
+                                  ),
                                 ],
-                                onChanged: (v) =>
-                                    setState(() => _cycle = v!),
+                                onChanged: (v) => setState(() => _cycle = v!),
                               ),
                               right: _numField(
-                                  'Pay Day (1-31)', _payDay,
-                                  (v) => setState(
-                                      () => _payDay = v.toInt().clamp(1, 31))),
+                                'Pay Day (1-31)',
+                                _payDay,
+                                (v) => setState(
+                                  () => _payDay = v.toInt().clamp(1, 31),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -181,36 +186,41 @@ class _AdminPayrollSettingsScreenState
                                 value: _taxCalc,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'auto',
-                                      child: Text('Automatic')),
+                                    value: 'auto',
+                                    child: Text('Automatic'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'manual',
-                                      child: Text('Manual')),
+                                    value: 'manual',
+                                    child: Text('Manual'),
+                                  ),
                                 ],
-                                onChanged: (v) =>
-                                    setState(() => _taxCalc = v!),
+                                onChanged: (v) => setState(() => _taxCalc = v!),
                               ),
                               right: _numField(
-                                  'Overtime Rate (x)',
-                                  _overtimeRate,
-                                  (v) => setState(
-                                      () => _overtimeRate = v.toDouble()),
-                                  isDouble: true),
+                                'Overtime Rate (x)',
+                                _overtimeRate,
+                                (v) => setState(
+                                  () => _overtimeRate = v.toDouble(),
+                                ),
+                                isDouble: true,
+                              ),
                             ),
                             const SizedBox(height: 14),
                             AdminRow2(
                               left: _numField(
-                                  'PF Percentage (%)',
-                                  _pfPercent,
-                                  (v) => setState(
-                                      () => _pfPercent = v.toDouble()),
-                                  isDouble: true),
+                                'PF Percentage (%)',
+                                _pfPercent,
+                                (v) =>
+                                    setState(() => _pfPercent = v.toDouble()),
+                                isDouble: true,
+                              ),
                               right: _numField(
-                                  'ESI Percentage (%)',
-                                  _esiPercent,
-                                  (v) => setState(
-                                      () => _esiPercent = v.toDouble()),
-                                  isDouble: true),
+                                'ESI Percentage (%)',
+                                _esiPercent,
+                                (v) =>
+                                    setState(() => _esiPercent = v.toDouble()),
+                                isDouble: true,
+                              ),
                             ),
                             const SizedBox(height: 14),
                             AdminToggleRow(
@@ -238,11 +248,17 @@ class _AdminPayrollSettingsScreenState
                                 value: _payslipFormat,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'pdf', child: Text('PDF')),
+                                    value: 'pdf',
+                                    child: Text('PDF'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'excel', child: Text('Excel')),
+                                    value: 'excel',
+                                    child: Text('Excel'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'html', child: Text('HTML')),
+                                    value: 'html',
+                                    child: Text('HTML'),
+                                  ),
                                 ],
                                 onChanged: (v) =>
                                     setState(() => _payslipFormat = v!),

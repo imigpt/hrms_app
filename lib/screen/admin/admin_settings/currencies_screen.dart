@@ -41,8 +41,9 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getLocalizationSettings(widget.token ?? '');
+      final res = await SettingsService.getLocalizationSettings(
+        widget.token ?? '',
+      );
       final d = res['data'];
       if (d != null) {
         setState(() {
@@ -98,17 +99,21 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
                               label: 'Currency',
                               value: _currency,
                               items: _currencies
-                                  .map((c) => DropdownMenuItem<String>(
-                                        value: c['code'],
-                                        child: Text(
-                                            '${c['symbol']}  ${c['name']} (${c['code']})'),
-                                      ))
+                                  .map(
+                                    (c) => DropdownMenuItem<String>(
+                                      value: c['code'],
+                                      child: Text(
+                                        '${c['symbol']}  ${c['name']} (${c['code']})',
+                                      ),
+                                    ),
+                                  )
                                   .toList(),
                               onChanged: (v) {
                                 if (v == null) return;
                                 final found = _currencies.firstWhere(
-                                    (c) => c['code'] == v,
-                                    orElse: () => _currencies.first);
+                                  (c) => c['code'] == v,
+                                  orElse: () => _currencies.first,
+                                );
                                 setState(() {
                                   _currency = v;
                                   _symbol = found['symbol']!;
@@ -118,17 +123,21 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
                             const SizedBox(height: 14),
                             AdminRow2(
                               left: _SymbolPreview(
-                                  currency: _currency, symbol: _symbol),
+                                currency: _currency,
+                                symbol: _symbol,
+                              ),
                               right: AdminDropdown(
                                 label: 'Symbol Position',
                                 value: _position,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'before',
-                                      child: Text('Before Amount')),
+                                    value: 'before',
+                                    child: Text('Before Amount'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'after',
-                                      child: Text('After Amount')),
+                                    value: 'after',
+                                    child: Text('After Amount'),
+                                  ),
                                 ],
                                 onChanged: (v) =>
                                     setState(() => _position = v!),
@@ -136,10 +145,7 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
                             ),
                           ],
                         ),
-                        _PreviewCard(
-                          symbol: _symbol,
-                          position: _position,
-                        ),
+                        _PreviewCard(symbol: _symbol, position: _position),
                       ],
                     ),
             ),
@@ -171,14 +177,19 @@ class _SymbolPreview extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(symbol,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold)),
+              Text(
+                symbol,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(width: 8),
-              Text(currency,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+              Text(
+                currency,
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
+              ),
             ],
           ),
         ),
@@ -194,7 +205,9 @@ class _PreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formatted = position == 'before' ? '$symbol 1,234.56' : '1,234.56 $symbol';
+    final formatted = position == 'before'
+        ? '$symbol 1,234.56'
+        : '1,234.56 $symbol';
     return AdminCard(
       title: 'Preview',
       children: [
@@ -203,19 +216,24 @@ class _PreviewCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFEAB308).withOpacity(0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: const Color(0xFFEAB308).withOpacity(0.2)),
+            border: Border.all(color: const Color(0xFFEAB308).withOpacity(0.2)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.visibility_rounded,
-                  color: Color(0xFFEAB308), size: 18),
+              const Icon(
+                Icons.visibility_rounded,
+                color: Color(0xFFEAB308),
+                size: 18,
+              ),
               const SizedBox(width: 10),
-              Text('Sample: $formatted',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                'Sample: $formatted',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),

@@ -8,8 +8,7 @@ class AdminHRMSettingsScreen extends StatefulWidget {
   const AdminHRMSettingsScreen({super.key, this.token});
 
   @override
-  State<AdminHRMSettingsScreen> createState() =>
-      _AdminHRMSettingsScreenState();
+  State<AdminHRMSettingsScreen> createState() => _AdminHRMSettingsScreenState();
 }
 
 class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
@@ -31,12 +30,28 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   List<String> _allowedIPs = [];
 
   static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   static const _days = [
-    'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
   ];
 
   @override
@@ -48,25 +63,21 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getHRMSettings(widget.token ?? '');
+      final res = await SettingsService.getHRMSettings(widget.token ?? '');
       final d = res['data'];
       if (d != null) {
         setState(() {
           _leaveStartMonth = d['leaveStartMonth'] ?? 'January';
           _clockInCtrl.text = (d['clockInTime'] ?? '09:30').substring(0, 5);
-          _clockOutCtrl.text =
-              (d['clockOutTime'] ?? '18:00').substring(0, 5);
+          _clockOutCtrl.text = (d['clockOutTime'] ?? '18:00').substring(0, 5);
           _earlyClockIn = (d['earlyClockInMinutes'] ?? 0) as int;
-          _allowClockOutTill =
-              (d['allowClockOutTillMinutes'] ?? 0) as int;
+          _allowClockOutTill = (d['allowClockOutTillMinutes'] ?? 0) as int;
           _lateMarkAfter = (d['lateMarkAfterMinutes'] ?? 30) as int;
           _selfClocking = d['selfClocking'] ?? true;
           _captureLocation = d['captureLocation'] ?? false;
           _halfDayHours = (d['halfDayHours'] ?? 4) as int;
           _workingDaysPerWeek = (d['workingDaysPerWeek'] ?? 5) as int;
-          _weeklyOffDays =
-              List<String>.from(d['weeklyOffDays'] ?? ['sunday']);
+          _weeklyOffDays = List<String>.from(d['weeklyOffDays'] ?? ['sunday']);
           _allowedIPs = List<String>.from(d['allowedIPs'] ?? []);
         });
       }
@@ -126,21 +137,20 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
             fillColor: AppTheme.surfaceVariant,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.07)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.07)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
       ],
@@ -168,37 +178,40 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
                 children: ['Attendance', 'Work Rules', 'IP Restrictions']
                     .asMap()
                     .entries
-                    .map((e) => Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _tab = e.key),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              margin: EdgeInsets.only(
-                                  right: e.key < 2 ? 8 : 0),
-                              padding: const EdgeInsets.symmetric(vertical: 9),
-                              decoration: BoxDecoration(
+                    .map(
+                      (e) => Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _tab = e.key),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            margin: EdgeInsets.only(right: e.key < 2 ? 8 : 0),
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: _tab == e.key
+                                  ? AppTheme.primaryColor
+                                  : AppTheme.cardColor,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
                                 color: _tab == e.key
                                     ? AppTheme.primaryColor
-                                    : AppTheme.cardColor,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color: _tab == e.key
-                                        ? AppTheme.primaryColor
-                                        : Colors.white.withOpacity(0.07)),
+                                    : Colors.white.withOpacity(0.07),
                               ),
-                              child: Text(
-                                e.value,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                    color: _tab == e.key
-                                        ? Colors.white
-                                        : Colors.grey[500],
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600),
+                            ),
+                            child: Text(
+                              e.value,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _tab == e.key
+                                    ? Colors.white
+                                    : Colors.grey[500],
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                        ))
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -206,10 +219,10 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
               child: _loading
                   ? adminLoader()
                   : _tab == 0
-                      ? _buildAttendance()
-                      : _tab == 1
-                          ? _buildWorkRules()
-                          : _buildIPTab(),
+                  ? _buildAttendance()
+                  : _tab == 1
+                  ? _buildWorkRules()
+                  : _buildIPTab(),
             ),
           ],
         ),
@@ -235,37 +248,49 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
             const SizedBox(height: 14),
             AdminRow2(
               left: AdminTextField(
-                  label: 'Check In Time',
-                  controller: _clockInCtrl,
-                  hint: '09:30',
-                  keyboardType: TextInputType.datetime),
+                label: 'Check In Time',
+                controller: _clockInCtrl,
+                hint: '09:30',
+                keyboardType: TextInputType.datetime,
+              ),
               right: AdminTextField(
-                  label: 'Check Out Time',
-                  controller: _clockOutCtrl,
-                  hint: '18:00',
-                  keyboardType: TextInputType.datetime),
+                label: 'Check Out Time',
+                controller: _clockOutCtrl,
+                hint: '18:00',
+                keyboardType: TextInputType.datetime,
+              ),
             ),
             const SizedBox(height: 14),
             AdminRow2(
-              left: _numInput('Early Clock In (min)', _earlyClockIn,
-                  (v) => setState(() => _earlyClockIn = v)),
-              right: _numInput('Allow Clock Out Till (min)',
-                  _allowClockOutTill,
-                  (v) => setState(() => _allowClockOutTill = v)),
+              left: _numInput(
+                'Early Clock In (min)',
+                _earlyClockIn,
+                (v) => setState(() => _earlyClockIn = v),
+              ),
+              right: _numInput(
+                'Allow Clock Out Till (min)',
+                _allowClockOutTill,
+                (v) => setState(() => _allowClockOutTill = v),
+              ),
             ),
             const SizedBox(height: 14),
-            _numInput('Late Mark After (min)', _lateMarkAfter,
-                (v) => setState(() => _lateMarkAfter = v)),
+            _numInput(
+              'Late Mark After (min)',
+              _lateMarkAfter,
+              (v) => setState(() => _lateMarkAfter = v),
+            ),
             const SizedBox(height: 14),
             AdminRow2(
               left: AdminYesNoToggle(
-                  label: 'Self Clocking',
-                  value: _selfClocking,
-                  onChanged: (v) => setState(() => _selfClocking = v)),
+                label: 'Self Clocking',
+                value: _selfClocking,
+                onChanged: (v) => setState(() => _selfClocking = v),
+              ),
               right: AdminYesNoToggle(
-                  label: 'Capture Location',
-                  value: _captureLocation,
-                  onChanged: (v) => setState(() => _captureLocation = v)),
+                label: 'Capture Location',
+                value: _captureLocation,
+                onChanged: (v) => setState(() => _captureLocation = v),
+              ),
             ),
           ],
         ),
@@ -281,10 +306,16 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
           title: 'Work Rules',
           children: [
             AdminRow2(
-              left: _numInput('Half Day Hours', _halfDayHours,
-                  (v) => setState(() => _halfDayHours = v)),
-              right: _numInput('Working Days / Week', _workingDaysPerWeek,
-                  (v) => setState(() => _workingDaysPerWeek = v.clamp(1, 7))),
+              left: _numInput(
+                'Half Day Hours',
+                _halfDayHours,
+                (v) => setState(() => _halfDayHours = v),
+              ),
+              right: _numInput(
+                'Working Days / Week',
+                _workingDaysPerWeek,
+                (v) => setState(() => _workingDaysPerWeek = v.clamp(1, 7)),
+              ),
             ),
             const SizedBox(height: 14),
             AdminMultiChipSelect(

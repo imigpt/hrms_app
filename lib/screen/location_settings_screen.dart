@@ -27,7 +27,11 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -234,10 +238,7 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
             ),
           ],
         ),
@@ -273,7 +274,7 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
 
   Future<void> _updateLocationManually() async {
     final result = await _locationService.updateCurrentLocation();
-    
+
     if (!mounted) return;
 
     if (result != null && result.success) {

@@ -26,7 +26,8 @@ class ProfileService {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
         // /employees/profile returns { success, data: {...} }
-        final userJson = (decoded['data'] ?? decoded['user']) as Map<String, dynamic>?;
+        final userJson =
+            (decoded['data'] ?? decoded['user']) as Map<String, dynamic>?;
         if (userJson == null) return null;
         return ProfileUser.fromJson(userJson);
       } else {
@@ -65,11 +66,17 @@ class ProfileService {
           'message': decoded['message'] ?? 'Unexpected response',
         };
       } catch (_) {
-        return {'success': false, 'message': 'Server error (${response.statusCode})'};
+        return {
+          'success': false,
+          'message': 'Server error (${response.statusCode})',
+        };
       }
     } catch (e) {
       print('changePassword Error: $e');
-      return {'success': false, 'message': 'Connection failed. Please check your internet.'};
+      return {
+        'success': false,
+        'message': 'Connection failed. Please check your internet.',
+      };
     }
   }
 
@@ -97,15 +104,18 @@ class ProfileService {
           final userJson =
               (decoded['data'] ?? decoded['user']) as Map<String, dynamic>?;
           if (userJson == null) {
-            return {'success': false, 'message': 'Invalid response from server'};
+            return {
+              'success': false,
+              'message': 'Invalid response from server',
+            };
           }
-          return {
-            'success': true,
-            'user': ProfileUser.fromJson(userJson),
-          };
+          return {'success': true, 'user': ProfileUser.fromJson(userJson)};
         } catch (e) {
           print('Profile Parse Error: ${response.body}');
-          return {'success': false, 'message': 'Failed to parse server response'};
+          return {
+            'success': false,
+            'message': 'Failed to parse server response',
+          };
         }
       } else {
         String message = 'Failed to update profile';
@@ -120,7 +130,10 @@ class ProfileService {
       }
     } catch (e) {
       print('Profile Update Error: $e');
-      return {'success': false, 'message': 'Connection failed. Please check your internet.'};
+      return {
+        'success': false,
+        'message': 'Connection failed. Please check your internet.',
+      };
     }
   }
 
@@ -152,7 +165,10 @@ class ProfileService {
           final userJson =
               (decoded['data'] ?? decoded['user']) as Map<String, dynamic>?;
           if (userJson == null) {
-            return {'success': false, 'message': 'Invalid response from server'};
+            return {
+              'success': false,
+              'message': 'Invalid response from server',
+            };
           }
           return {
             'success': true,
@@ -161,7 +177,10 @@ class ProfileService {
           };
         } catch (e) {
           print('Photo Upload Parse Error: ${response.body}');
-          return {'success': false, 'message': 'Failed to parse server response'};
+          return {
+            'success': false,
+            'message': 'Failed to parse server response',
+          };
         }
       } else {
         String message = 'Failed to upload photo';
@@ -176,7 +195,10 @@ class ProfileService {
       }
     } catch (e) {
       print('Photo Upload Error: $e');
-      return {'success': false, 'message': 'Connection failed. Please check your internet.'};
+      return {
+        'success': false,
+        'message': 'Connection failed. Please check your internet.',
+      };
     }
   }
 }

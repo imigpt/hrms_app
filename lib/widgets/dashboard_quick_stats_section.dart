@@ -8,10 +8,7 @@ import 'package:hrms_app/theme/app_theme.dart';
 class DashboardQuickStatsSection extends StatefulWidget {
   final String? userId;
 
-  const DashboardQuickStatsSection({
-    super.key,
-    this.userId,
-  });
+  const DashboardQuickStatsSection({super.key, this.userId});
 
   @override
   State<DashboardQuickStatsSection> createState() =>
@@ -71,11 +68,14 @@ class _DashboardQuickStatsSectionState
 
   Future<int> _fetchAppreciations(String token) async {
     try {
-      final response = await http.get(
-        Uri.parse(
-            'https://hrms-backend-zzzc.onrender.com/api/appreciations'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse(
+              'https://hrms-backend-zzzc.onrender.com/api/appreciations',
+            ),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -92,10 +92,12 @@ class _DashboardQuickStatsSectionState
 
   Future<int> _fetchWarnings(String token) async {
     try {
-      final response = await http.get(
-        Uri.parse('https://hrms-backend-zzzc.onrender.com/api/warnings'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('https://hrms-backend-zzzc.onrender.com/api/warnings'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -112,10 +114,12 @@ class _DashboardQuickStatsSectionState
 
   Future<int> _fetchExpenses(String token) async {
     try {
-      final response = await http.get(
-        Uri.parse('https://hrms-backend-zzzc.onrender.com/api/expenses'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('https://hrms-backend-zzzc.onrender.com/api/expenses'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -154,10 +158,12 @@ class _DashboardQuickStatsSectionState
 
   Future<int> _fetchComplaints(String token) async {
     try {
-      final response = await http.get(
-        Uri.parse('https://hrms-backend-zzzc.onrender.com/api/complaints'),
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            Uri.parse('https://hrms-backend-zzzc.onrender.com/api/complaints'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -208,7 +214,7 @@ class _DashboardQuickStatsSectionState
                 IconButton(
                   icon: const Icon(Icons.refresh, color: Colors.red, size: 20),
                   onPressed: _loadStats,
-                )
+                ),
               ],
             ),
           )
@@ -226,7 +232,7 @@ class _DashboardQuickStatsSectionState
               DashboardStatsCard(
                 value: _appreciations,
                 label: 'Appreciations',
-                icon:Icons.accessibility,
+                icon: Icons.accessibility,
                 iconColor: const Color(0xFFB66FD9),
                 backgroundColor: const Color(0xFFB66FD9),
               ),

@@ -24,7 +24,7 @@ class AnnouncementsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       // Matching height with TasksSection for symmetry
-      height: 260, 
+      height: 260,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -39,11 +39,17 @@ class AnnouncementsSection extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Text("📢 Announcements", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text(
+                    "📢 Announcements",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   if (showLiveIndicator) ...[
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(4),
@@ -70,15 +76,29 @@ class AnnouncementsSection extends StatelessWidget {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AnnouncementsScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const AnnouncementsScreen(),
+                    ),
                   );
                 },
-                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
-                child: Text("View All", style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor)),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(50, 30),
+                ),
+                child: Text(
+                  "View All",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
               ),
             ],
           ),
-          const Text("Latest company updates", style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const Text(
+            "Latest company updates",
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
           const SizedBox(height: 15),
 
           // --- Scrollable List ---
@@ -86,16 +106,20 @@ class AnnouncementsSection extends StatelessWidget {
             child: isLoading
                 ? _buildLoadingState()
                 : announcements.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.separated(
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: announcements.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          return _buildAnnouncementCard(context, announcements[index]);
-                        },
-                      ),
-          )
+                ? _buildEmptyState()
+                : ListView.separated(
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: announcements.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      return _buildAnnouncementCard(
+                        context,
+                        announcements[index],
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
     );
@@ -104,10 +128,10 @@ class AnnouncementsSection extends StatelessWidget {
   Widget _buildAnnouncementCard(BuildContext context, Announcement item) {
     // Format the date
     final formattedDate = DateFormat('MMM d, yyyy').format(item.createdAt);
-    
+
     // Check if announcement is unread
     final isUnread = userId != null && !item.readBy.contains(userId);
-    
+
     // Get priority color
     Color priorityColor;
     switch (item.priority.toLowerCase()) {
@@ -120,7 +144,7 @@ class AnnouncementsSection extends StatelessWidget {
       default:
         priorityColor = Theme.of(context).primaryColor;
     }
-    
+
     return InkWell(
       onTap: () {
         // Mark as read when tapped
@@ -137,13 +161,11 @@ class AnnouncementsSection extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isUnread 
-              ? Colors.white.withOpacity(0.08) 
+          color: isUnread
+              ? Colors.white.withOpacity(0.08)
               : Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(8),
-          border: Border(
-            left: BorderSide(color: priorityColor, width: 3),
-          ),
+          border: Border(left: BorderSide(color: priorityColor, width: 3)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,9 +188,11 @@ class AnnouncementsSection extends StatelessWidget {
                         ),
                       Expanded(
                         child: Text(
-                          item.title, 
+                          item.title,
                           style: TextStyle(
-                            fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                            fontWeight: isUnread
+                                ? FontWeight.bold
+                                : FontWeight.w600,
                             fontSize: 13,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -178,14 +202,14 @@ class AnnouncementsSection extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  formattedDate, 
-                  style: TextStyle(fontSize: 10, color: Colors.grey[400])
+                  formattedDate,
+                  style: TextStyle(fontSize: 10, color: Colors.grey[400]),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              item.content, 
+              item.content,
               style: TextStyle(fontSize: 11, color: Colors.grey[300]),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -204,20 +228,17 @@ class AnnouncementsSection extends StatelessWidget {
           Icon(Icons.campaign_outlined, size: 48, color: Colors.grey[700]),
           const SizedBox(height: 12),
           const Text(
-            "No announcements yet", 
+            "No announcements yet",
             style: TextStyle(
-              color: Colors.white60, 
+              color: Colors.white60,
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            "Check back later for updates", 
-            style: TextStyle(
-              color: Colors.grey[600], 
-              fontSize: 11,
-            ),
+            "Check back later for updates",
+            style: TextStyle(color: Colors.grey[600], fontSize: 11),
           ),
         ],
       ),
@@ -229,15 +250,12 @@ class AnnouncementsSection extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(
-            color: Colors.blue[400],
-            strokeWidth: 2.5,
-          ),
+          CircularProgressIndicator(color: Colors.blue[400], strokeWidth: 2.5),
           const SizedBox(height: 12),
           const Text(
-            "Loading announcements...", 
+            "Loading announcements...",
             style: TextStyle(
-              color: Colors.white70, 
+              color: Colors.white70,
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),

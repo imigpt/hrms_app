@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../screen/tasks_screen.dart';
 import '../services/task_service.dart';
 import '../services/token_storage_service.dart';
@@ -12,14 +12,14 @@ class TasksSection extends StatefulWidget {
 }
 
 class _TasksSectionState extends State<TasksSection> {
-  //  Theme 
+  //  Theme
   final Color _bgCard = const Color(0xFF141414);
   final Color _accentPink = const Color(0xFFFF8FA3);
   final Color _accentGreen = const Color(0xFF00C853);
   final Color _accentOrange = const Color(0xFFFFAB00);
   final Color _textGrey = const Color(0xFF9E9E9E);
 
-  //  State 
+  //  State
   bool _isLoading = true;
   String? _error;
   List<dynamic> _tasks = [];
@@ -38,11 +38,17 @@ class _TasksSectionState extends State<TasksSection> {
 
   Future<void> _loadTasks() async {
     if (_token == null) {
-      setState(() { _isLoading = false; _error = 'Not authenticated'; });
+      setState(() {
+        _isLoading = false;
+        _error = 'Not authenticated';
+      });
       return;
     }
     try {
-      setState(() { _isLoading = true; _error = null; });
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
       final result = await TaskService.getTasks(_token!);
       if (!mounted) return;
       final data = result['data'];
@@ -52,33 +58,47 @@ class _TasksSectionState extends State<TasksSection> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = e.toString(); _isLoading = false; });
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
   Color _priorityColor(String p) {
     switch (p.toLowerCase()) {
-      case 'high': return Colors.redAccent;
-      case 'medium': return _accentOrange;
-      default: return _accentGreen;
+      case 'high':
+        return Colors.redAccent;
+      case 'medium':
+        return _accentOrange;
+      default:
+        return _accentGreen;
     }
   }
 
   Color _statusColor(String s) {
     switch (s.toLowerCase()) {
-      case 'completed': return _accentGreen;
-      case 'in-progress': return _accentOrange;
-      case 'cancelled': return Colors.grey;
-      default: return _accentPink;
+      case 'completed':
+        return _accentGreen;
+      case 'in-progress':
+        return _accentOrange;
+      case 'cancelled':
+        return Colors.grey;
+      default:
+        return _accentPink;
     }
   }
 
   String _statusLabel(String s) {
     switch (s.toLowerCase()) {
-      case 'in-progress': return 'In Progress';
-      case 'completed': return 'Done';
-      case 'cancelled': return 'Cancelled';
-      default: return 'Todo';
+      case 'in-progress':
+        return 'In Progress';
+      case 'completed':
+        return 'Done';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Todo';
     }
   }
 
@@ -96,32 +116,34 @@ class _TasksSectionState extends State<TasksSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          //  Header 
+          //  Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 ' My Tasks',
                 style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
               TextButton(
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                      builder: (_) => TasksScreen(token: _token)),
+                  MaterialPageRoute(builder: (_) => TasksScreen(token: _token)),
                 ),
                 style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(50, 28)),
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(50, 28),
+                ),
                 child: Text(
                   'View All',
                   style: TextStyle(
-                      fontSize: 12,
-                      color: _accentPink,
-                      fontWeight: FontWeight.w600),
+                    fontSize: 12,
+                    color: _accentPink,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -132,12 +154,14 @@ class _TasksSectionState extends State<TasksSection> {
           ),
           const SizedBox(height: 14),
 
-          //  Body 
+          //  Body
           if (_isLoading)
-            const Center(child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 30),
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 30),
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
           else if (_error != null)
             Center(
               child: Column(
@@ -145,12 +169,16 @@ class _TasksSectionState extends State<TasksSection> {
                   const SizedBox(height: 12),
                   Icon(Icons.wifi_off_rounded, color: _textGrey, size: 32),
                   const SizedBox(height: 8),
-                  Text('Could not load tasks',
-                      style: TextStyle(color: _textGrey, fontSize: 12)),
+                  Text(
+                    'Could not load tasks',
+                    style: TextStyle(color: _textGrey, fontSize: 12),
+                  ),
                   TextButton(
                     onPressed: _loadTasks,
-                    child: Text('Retry',
-                        style: TextStyle(color: _accentPink, fontSize: 12)),
+                    child: Text(
+                      'Retry',
+                      style: TextStyle(color: _accentPink, fontSize: 12),
+                    ),
                   ),
                 ],
               ),
@@ -162,8 +190,10 @@ class _TasksSectionState extends State<TasksSection> {
                   const SizedBox(height: 20),
                   Icon(Icons.assignment_outlined, size: 40, color: _textGrey),
                   const SizedBox(height: 8),
-                  Text('No tasks assigned yet',
-                      style: TextStyle(color: _textGrey, fontSize: 12)),
+                  Text(
+                    'No tasks assigned yet',
+                    style: TextStyle(color: _textGrey, fontSize: 12),
+                  ),
                 ],
               ),
             )
@@ -201,9 +231,10 @@ class _TasksSectionState extends State<TasksSection> {
                 Text(
                   task['title'] ?? '—',
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600),
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
@@ -222,8 +253,7 @@ class _TasksSectionState extends State<TasksSection> {
           const SizedBox(width: 10),
           // Status chip
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: _statusColor(status).withOpacity(0.12),
               borderRadius: BorderRadius.circular(6),
@@ -231,9 +261,10 @@ class _TasksSectionState extends State<TasksSection> {
             child: Text(
               _statusLabel(status),
               style: TextStyle(
-                  color: _statusColor(status),
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold),
+                color: _statusColor(status),
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],

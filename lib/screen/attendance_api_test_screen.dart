@@ -113,8 +113,7 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
       _tests.where((t) => t.status == _TestStatus.passed).length;
   int get _failedCount =>
       _tests.where((t) => t.status == _TestStatus.failed).length;
-  int get _totalAutoTests =>
-      _tests.where((t) => !t.requiresAction).length;
+  int get _totalAutoTests => _tests.where((t) => !t.requiresAction).length;
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
@@ -165,8 +164,9 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
       switch (test.endpoint) {
         // ── 1. Today attendance ──────────────────────────────────────────
         case '/api/attendance/today':
-          final result =
-              await AttendanceService.getTodayAttendance(token: _token!);
+          final result = await AttendanceService.getTodayAttendance(
+            token: _token!,
+          );
           _markPassed(
             test,
             200,
@@ -212,8 +212,9 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
 
         // ── 4. My Edit Requests ──────────────────────────────────────────
         case '/api/attendance/edit-requests':
-          final result =
-              await AttendanceService.getEditRequests(token: _token!);
+          final result = await AttendanceService.getEditRequests(
+            token: _token!,
+          );
           _markPassed(
             test,
             200,
@@ -265,16 +266,20 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
         backgroundColor: const Color(0xFF0A0A0A),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Attendance API Tests',
           style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 18),
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         actions: [
           IconButton(
@@ -291,10 +296,11 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
       ),
       body: _isInitializing
           ? const Center(
-              child: CircularProgressIndicator(color: Colors.pinkAccent))
+              child: CircularProgressIndicator(color: Colors.pinkAccent),
+            )
           : _token == null
-              ? _buildNoTokenMessage()
-              : _buildBody(),
+          ? _buildNoTokenMessage()
+          : _buildBody(),
     );
   }
 
@@ -311,9 +317,10 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
             const Text(
               'Not Authenticated',
               style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold),
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -341,11 +348,11 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 ..._tests.asMap().entries.map(
-                      (e) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildTestCard(e.key + 1, e.value),
-                      ),
-                    ),
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildTestCard(e.key + 1, e.value),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 _buildLegend(),
                 const SizedBox(height: 20),
@@ -383,9 +390,10 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
           Text(
             '$passed / $total auto-tests',
             style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 12,
-                fontWeight: FontWeight.w500),
+              color: Colors.grey[500],
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -403,8 +411,7 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
         const SizedBox(width: 5),
         Text(
           '$count $label',
-          style:
-              TextStyle(color: Colors.grey[400], fontSize: 12),
+          style: TextStyle(color: Colors.grey[400], fontSize: 12),
         ),
       ],
     );
@@ -421,10 +428,7 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF0F0F0F),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: _borderColor(test.status),
-          width: 1,
-        ),
+        border: Border.all(color: _borderColor(test.status), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,9 +451,10 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
                   child: Text(
                     '$index',
                     style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.white54,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -460,9 +465,10 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
                       Text(
                         test.name,
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600),
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -470,7 +476,9 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
                           // Method badge
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: methodColor.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(4),
@@ -478,9 +486,10 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
                             child: Text(
                               test.method,
                               style: TextStyle(
-                                  color: methodColor,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold),
+                                color: methodColor,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -489,7 +498,8 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
                             child: GestureDetector(
                               onLongPress: () {
                                 Clipboard.setData(
-                                    ClipboardData(text: test.endpoint));
+                                  ClipboardData(text: test.endpoint),
+                                );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Endpoint copied'),
@@ -501,9 +511,10 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
                               child: Text(
                                 test.endpoint,
                                 style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 11,
-                                    fontFamily: 'monospace'),
+                                  color: Colors.grey[500],
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -545,8 +556,7 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
                   if (test.testedAt != null)
                     Text(
                       'Tested at ${DateFormat('hh:mm:ss a').format(test.testedAt!)}',
-                      style:
-                          TextStyle(color: Colors.grey[700], fontSize: 10),
+                      style: TextStyle(color: Colors.grey[700], fontSize: 10),
                     ),
                   const Spacer(),
                   TextButton.icon(
@@ -554,11 +564,16 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
                         ? null
                         : () => _runSingleTest(test),
                     icon: const Icon(Icons.refresh, size: 14),
-                    label: const Text('Re-test', style: TextStyle(fontSize: 12)),
+                    label: const Text(
+                      'Re-test',
+                      style: TextStyle(fontSize: 12),
+                    ),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.pinkAccent,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
@@ -580,19 +595,23 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline,
-                        color: Colors.amber, size: 14),
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.amber,
+                      size: 14,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         test.endpoint == '/api/attendance/check-in'
                             ? 'Use the Attendance screen → Check In button to test this live.'
                             : test.endpoint == '/api/attendance/check-out'
-                                ? 'Use the Attendance screen → Check Out button to test this live.'
-                                : 'Use the Attendance screen → Edit Request dialog to test this live.',
+                            ? 'Use the Attendance screen → Check Out button to test this live.'
+                            : 'Use the Attendance screen → Edit Request dialog to test this live.',
                         style: TextStyle(
-                            color: Colors.amber[300],
-                            fontSize: 11),
+                          color: Colors.amber[300],
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
@@ -612,7 +631,9 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
           width: 22,
           height: 22,
           child: CircularProgressIndicator(
-              strokeWidth: 2.5, color: Colors.amber),
+            strokeWidth: 2.5,
+            color: Colors.amber,
+          ),
         );
       case _TestStatus.passed:
         return Row(
@@ -621,9 +642,10 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
               Text(
                 '${test.statusCode}',
                 style: const TextStyle(
-                    color: Colors.greenAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold),
+                  color: Colors.greenAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             const SizedBox(width: 6),
             const Icon(Icons.check_circle, color: Colors.greenAccent, size: 22),
@@ -635,16 +657,22 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
             if (test.statusCode != null)
               Text(
                 '${test.statusCode}',
-                style:
-                    TextStyle(color: Colors.red[400], fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.red[400],
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             const SizedBox(width: 6),
             Icon(Icons.cancel, color: Colors.red[400], size: 22),
           ],
         );
       case _TestStatus.idle:
-        return Icon(Icons.radio_button_unchecked,
-            color: Colors.grey[700], size: 22);
+        return Icon(
+          Icons.radio_button_unchecked,
+          color: Colors.grey[700],
+          size: 22,
+        );
     }
   }
 
@@ -659,10 +687,11 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
       child: const Text(
         'MANUAL',
         style: TextStyle(
-            color: Colors.amber,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5),
+          color: Colors.amber,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -677,15 +706,19 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: Row(
             children: [
-              const Icon(Icons.arrow_downward,
-                  color: Colors.greenAccent, size: 13),
+              const Icon(
+                Icons.arrow_downward,
+                color: Colors.greenAccent,
+                size: 13,
+              ),
               const SizedBox(width: 4),
               const Text(
                 'Response',
                 style: TextStyle(
-                    color: Colors.greenAccent,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600),
+                  color: Colors.greenAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -698,16 +731,16 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
             decoration: BoxDecoration(
               color: Colors.greenAccent.withOpacity(0.04),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color: Colors.greenAccent.withOpacity(0.15)),
+              border: Border.all(color: Colors.greenAccent.withOpacity(0.15)),
             ),
             child: SelectableText(
               test.responsePreview!,
               style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  height: 1.5),
+                color: Colors.grey[400],
+                fontSize: 11,
+                fontFamily: 'monospace',
+                height: 1.5,
+              ),
             ),
           ),
         ),
@@ -730,9 +763,10 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
               Text(
                 'Error',
                 style: TextStyle(
-                    color: Colors.red[400],
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600),
+                  color: Colors.red[400],
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -745,16 +779,16 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
             decoration: BoxDecoration(
               color: Colors.red.withOpacity(0.04),
               borderRadius: BorderRadius.circular(8),
-              border:
-                  Border.all(color: Colors.red.withOpacity(0.2)),
+              border: Border.all(color: Colors.red.withOpacity(0.2)),
             ),
             child: SelectableText(
               test.errorMessage!,
               style: TextStyle(
-                  color: Colors.red[300],
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  height: 1.5),
+                color: Colors.red[300],
+                fontSize: 11,
+                fontFamily: 'monospace',
+                height: 1.5,
+              ),
             ),
           ),
         ),
@@ -777,18 +811,35 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
           const Text(
             'Legend',
             style: TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.w600),
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 10),
-          _legendRow(Icons.check_circle, Colors.greenAccent, 'Passed — API responded with 2xx status'),
+          _legendRow(
+            Icons.check_circle,
+            Colors.greenAccent,
+            'Passed — API responded with 2xx status',
+          ),
           const SizedBox(height: 6),
-          _legendRow(Icons.cancel, Colors.red, 'Failed — API error, network issue, or no token'),
+          _legendRow(
+            Icons.cancel,
+            Colors.red,
+            'Failed — API error, network issue, or no token',
+          ),
           const SizedBox(height: 6),
-          _legendRow(Icons.radio_button_unchecked, Colors.grey, 'Idle — not tested yet'),
+          _legendRow(
+            Icons.radio_button_unchecked,
+            Colors.grey,
+            'Idle — not tested yet',
+          ),
           const SizedBox(height: 6),
-          _legendRow(Icons.label, Colors.amber, 'Manual — requires user action (POST endpoint)'),
+          _legendRow(
+            Icons.label,
+            Colors.amber,
+            'Manual — requires user action (POST endpoint)',
+          ),
         ],
       ),
     );
@@ -799,10 +850,7 @@ class _AttendanceApiTestScreenState extends State<AttendanceApiTestScreen> {
       children: [
         Icon(icon, color: color, size: 14),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(color: Colors.grey[500], fontSize: 11),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 11)),
       ],
     );
   }

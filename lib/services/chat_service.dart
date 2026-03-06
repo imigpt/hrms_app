@@ -10,13 +10,13 @@ class ChatService {
   static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
 
   static Map<String, String> _headers(String token) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
 
   static Map<String, String> _getHeaders(String token) => {
-        'Authorization': 'Bearer $token',
-      };
+    'Authorization': 'Bearer $token',
+  };
 
   // ── Error helper ──────────────────────────────────────────────────────────
   static String _msg(String body, String fallback) {
@@ -33,16 +33,15 @@ class ChatService {
   // =========================================================================
 
   /// GET /api/chat/rooms — all rooms (personal + groups) for the current user
-  static Future<ChatRoomsResponse> getChatRooms({
-    required String token,
-  }) async {
+  static Future<ChatRoomsResponse> getChatRooms({required String token}) async {
     final response = await http
         .get(Uri.parse('$_baseUrl/chat/rooms'), headers: _getHeaders(token))
         .timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
       return ChatRoomsResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(response.body, 'Failed to load chat rooms'));
   }
@@ -63,7 +62,8 @@ class ChatService {
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return ChatPersonalRoomResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(response.body, 'Failed to get/create personal chat'));
   }
@@ -80,8 +80,9 @@ class ChatService {
     final params = <String, String>{};
     if (limit != null) params['limit'] = limit.toString();
     if (before != null) params['before'] = before;
-    final uri = Uri.parse('$_baseUrl/chat/rooms/$roomId/messages')
-        .replace(queryParameters: params.isEmpty ? null : params);
+    final uri = Uri.parse(
+      '$_baseUrl/chat/rooms/$roomId/messages',
+    ).replace(queryParameters: params.isEmpty ? null : params);
 
     final response = await http
         .get(uri, headers: _getHeaders(token))
@@ -89,7 +90,8 @@ class ChatService {
 
     if (response.statusCode == 200) {
       return ChatMessagesResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(response.body, 'Failed to fetch messages'));
   }
@@ -119,7 +121,8 @@ class ChatService {
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return SendMessageResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(response.body, 'Failed to send message'));
   }
@@ -138,7 +141,8 @@ class ChatService {
 
     if (response.statusCode == 200) {
       return MarkReadResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(response.body, 'Failed to mark room as read'));
   }
@@ -153,13 +157,16 @@ class ChatService {
     required String groupId,
   }) async {
     final response = await http
-        .get(Uri.parse('$_baseUrl/chat/groups/$groupId'),
-            headers: _getHeaders(token))
+        .get(
+          Uri.parse('$_baseUrl/chat/groups/$groupId'),
+          headers: _getHeaders(token),
+        )
         .timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 200) {
       return ChatPersonalRoomResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(response.body, 'Failed to fetch group details'));
   }
@@ -175,15 +182,13 @@ class ChatService {
         .post(
           Uri.parse('$_baseUrl/chat/groups'),
           headers: _headers(token),
-          body: jsonEncode({
-            'name': name,
-            'memberIds': memberIds,
-          }),
+          body: jsonEncode({'name': name, 'memberIds': memberIds}),
         )
         .timeout(const Duration(seconds: 30));
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    if (response.statusCode == 200 || response.statusCode == 201) return decoded;
+    if (response.statusCode == 200 || response.statusCode == 201)
+      return decoded;
     throw Exception(_msg(response.body, 'Failed to create group'));
   }
 
@@ -198,14 +203,13 @@ class ChatService {
         .post(
           Uri.parse('$_baseUrl/chat/groups/$groupId/members'),
           headers: _headers(token),
-          body: jsonEncode({
-            'userId': userId,
-          }),
+          body: jsonEncode({'userId': userId}),
         )
         .timeout(const Duration(seconds: 30));
 
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    if (response.statusCode == 200 || response.statusCode == 201) return decoded;
+    if (response.statusCode == 200 || response.statusCode == 201)
+      return decoded;
     throw Exception(_msg(response.body, 'Failed to add member to group'));
   }
 
@@ -257,7 +261,8 @@ class ChatService {
 
     if (response.statusCode == 200) {
       return ChatUsersResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(response.body, 'Failed to fetch users'));
   }
@@ -268,8 +273,9 @@ class ChatService {
     required String token,
     required String query,
   }) async {
-    final uri = Uri.parse('$_baseUrl/chat/users/search')
-        .replace(queryParameters: {'q': query});
+    final uri = Uri.parse(
+      '$_baseUrl/chat/users/search',
+    ).replace(queryParameters: {'q': query});
 
     final response = await http
         .get(uri, headers: _getHeaders(token))
@@ -277,7 +283,8 @@ class ChatService {
 
     if (response.statusCode == 200) {
       return ChatUsersResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(response.body, 'Failed to search users'));
   }
@@ -317,7 +324,8 @@ class ChatService {
 
     if (response.statusCode == 200) {
       return UnreadCountResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(response.body, 'Failed to fetch unread count'));
   }
@@ -344,15 +352,14 @@ class ChatService {
     if (content.isNotEmpty) request.fields['content'] = content;
     request.files.add(await http.MultipartFile.fromPath('file', file.path));
 
-    final streamed =
-        await request.send().timeout(const Duration(seconds: 90));
+    final streamed = await request.send().timeout(const Duration(seconds: 90));
     final body = await streamed.stream.bytesToString();
 
     if (streamed.statusCode == 200 || streamed.statusCode == 201) {
       return SendMessageResponse.fromJson(
-          jsonDecode(body) as Map<String, dynamic>);
+        jsonDecode(body) as Map<String, dynamic>,
+      );
     }
     throw Exception(_msg(body, 'Failed to send media'));
   }
 }
-

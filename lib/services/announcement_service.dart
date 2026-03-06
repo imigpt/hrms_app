@@ -15,11 +15,14 @@ class AnnouncementService {
   }) async {
     try {
       final queryParams = <String, String>{};
-      if (priority != null && priority.isNotEmpty) queryParams['priority'] = priority;
-      if (department != null && department.isNotEmpty) queryParams['department'] = department;
+      if (priority != null && priority.isNotEmpty)
+        queryParams['priority'] = priority;
+      if (department != null && department.isNotEmpty)
+        queryParams['department'] = department;
 
-      final uri = Uri.parse('$baseUrl/announcements')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/announcements',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
       print('=== FETCH ANNOUNCEMENTS ===');
       print('URL: $uri');
@@ -47,10 +50,13 @@ class AnnouncementService {
         try {
           final errorData = json.decode(response.body);
           throw Exception(
-              errorData['message'] ?? 'Failed to fetch announcements (${response.statusCode})');
+            errorData['message'] ??
+                'Failed to fetch announcements (${response.statusCode})',
+          );
         } catch (_) {
           throw Exception(
-              'Failed to fetch announcements: ${response.statusCode}');
+            'Failed to fetch announcements: ${response.statusCode}',
+          );
         }
       }
     } catch (e) {
@@ -60,9 +66,7 @@ class AnnouncementService {
   }
 
   // ── GET /api/announcements/unread/count ────────────────────────────────────
-  static Future<int> getUnreadCount({
-    required String token,
-  }) async {
+  static Future<int> getUnreadCount({required String token}) async {
     try {
       final uri = Uri.parse('$baseUrl/announcements/unread/count');
 
@@ -122,7 +126,9 @@ class AnnouncementService {
       }
       final errorData = json.decode(response.body);
       throw Exception(
-          errorData['message'] ?? 'Failed to fetch announcement (${response.statusCode})');
+        errorData['message'] ??
+            'Failed to fetch announcement (${response.statusCode})',
+      );
     } catch (e) {
       print('Get announcement by id error: $e');
       rethrow;
@@ -166,7 +172,10 @@ class AnnouncementService {
 
       if (response.statusCode == 201) return;
       final err = json.decode(response.body);
-      throw Exception(err['message'] ?? 'Failed to create announcement (${response.statusCode})');
+      throw Exception(
+        err['message'] ??
+            'Failed to create announcement (${response.statusCode})',
+      );
     } catch (e) {
       rethrow;
     }
@@ -178,8 +187,7 @@ class AnnouncementService {
     required String announcementId,
   }) async {
     try {
-      final uri =
-          Uri.parse('$baseUrl/announcements/$announcementId/read');
+      final uri = Uri.parse('$baseUrl/announcements/$announcementId/read');
 
       print('Marking announcement as read: $announcementId');
 

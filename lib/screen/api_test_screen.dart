@@ -54,12 +54,22 @@ class _ApiTestScreenState extends State<ApiTestScreen>
   final _tokenStorage = TokenStorageService();
 
   // Track summary
-  int get _passedCount => _tests.where((t) => t.status == TestStatus.passed).length;
-  int get _failedCount => _tests.where((t) => t.status == TestStatus.failed).length;
+  int get _passedCount =>
+      _tests.where((t) => t.status == TestStatus.passed).length;
+  int get _failedCount =>
+      _tests.where((t) => t.status == TestStatus.failed).length;
   int get _totalCount => _tests.length;
 
   final List<String> _categories = [
-    'All', 'Auth', 'Attendance', 'Leave', 'Expense', 'Tasks', 'Profile', 'Chat', 'Employee'
+    'All',
+    'Auth',
+    'Attendance',
+    'Leave',
+    'Expense',
+    'Tasks',
+    'Profile',
+    'Chat',
+    'Employee',
   ];
 
   late List<ApiTest> _tests;
@@ -81,48 +91,204 @@ class _ApiTestScreenState extends State<ApiTestScreen>
   void _initTests() {
     _tests = [
       //  AUTH
-      ApiTest(id: 'auth_me', name: 'Get Current User (me)', method: 'GET', endpoint: '/auth/me', category: 'Auth'),
-      ApiTest(id: 'auth_login_history', name: 'Login History', method: 'GET', endpoint: '/auth/login-history/:userId', category: 'Auth'),
+      ApiTest(
+        id: 'auth_me',
+        name: 'Get Current User (me)',
+        method: 'GET',
+        endpoint: '/auth/me',
+        category: 'Auth',
+      ),
+      ApiTest(
+        id: 'auth_login_history',
+        name: 'Login History',
+        method: 'GET',
+        endpoint: '/auth/login-history/:userId',
+        category: 'Auth',
+      ),
 
       // EMPLOYEE DASHBOARD
-      ApiTest(id: 'emp_dashboard', name: 'Employee Dashboard Stats', method: 'GET', endpoint: '/employees/dashboard', category: 'Employee'),
-      ApiTest(id: 'emp_profile', name: 'Get My Profile', method: 'GET', endpoint: '/employees/profile', category: 'Employee'),
-      ApiTest(id: 'emp_tasks', name: 'My Tasks', method: 'GET', endpoint: '/employees/tasks', category: 'Employee'),
-      ApiTest(id: 'emp_leaves', name: 'My Leaves', method: 'GET', endpoint: '/employees/leaves', category: 'Employee'),
-      ApiTest(id: 'emp_expenses', name: 'My Expenses', method: 'GET', endpoint: '/employees/expenses', category: 'Employee'),
-      ApiTest(id: 'emp_attendance', name: 'My Attendance', method: 'GET', endpoint: '/employees/attendance', category: 'Employee'),
-      ApiTest(id: 'emp_leave_balance', name: 'Leave Balance (Employee)', method: 'GET', endpoint: '/employees/leave-balance', category: 'Employee'),
-      ApiTest(id: 'emp_team', name: 'Team Members', method: 'GET', endpoint: '/employees/team', category: 'Employee'),
+      ApiTest(
+        id: 'emp_dashboard',
+        name: 'Employee Dashboard Stats',
+        method: 'GET',
+        endpoint: '/employees/dashboard',
+        category: 'Employee',
+      ),
+      ApiTest(
+        id: 'emp_profile',
+        name: 'Get My Profile',
+        method: 'GET',
+        endpoint: '/employees/profile',
+        category: 'Employee',
+      ),
+      ApiTest(
+        id: 'emp_tasks',
+        name: 'My Tasks',
+        method: 'GET',
+        endpoint: '/employees/tasks',
+        category: 'Employee',
+      ),
+      ApiTest(
+        id: 'emp_leaves',
+        name: 'My Leaves',
+        method: 'GET',
+        endpoint: '/employees/leaves',
+        category: 'Employee',
+      ),
+      ApiTest(
+        id: 'emp_expenses',
+        name: 'My Expenses',
+        method: 'GET',
+        endpoint: '/employees/expenses',
+        category: 'Employee',
+      ),
+      ApiTest(
+        id: 'emp_attendance',
+        name: 'My Attendance',
+        method: 'GET',
+        endpoint: '/employees/attendance',
+        category: 'Employee',
+      ),
+      ApiTest(
+        id: 'emp_leave_balance',
+        name: 'Leave Balance (Employee)',
+        method: 'GET',
+        endpoint: '/employees/leave-balance',
+        category: 'Employee',
+      ),
+      ApiTest(
+        id: 'emp_team',
+        name: 'Team Members',
+        method: 'GET',
+        endpoint: '/employees/team',
+        category: 'Employee',
+      ),
 
       // ATTENDANCE
-      ApiTest(id: 'att_today', name: 'Today Attendance', method: 'GET', endpoint: '/attendance/today', category: 'Attendance'),
-      ApiTest(id: 'att_summary', name: 'Attendance Summary', method: 'GET', endpoint: '/attendance/summary', category: 'Attendance'),
-      ApiTest(id: 'att_my', name: 'My Attendance Records', method: 'GET', endpoint: '/attendance/my-attendance', category: 'Attendance'),
-      ApiTest(id: 'att_edit_reqs', name: 'My Edit Requests', method: 'GET', endpoint: '/attendance/edit-requests', category: 'Attendance'),
+      ApiTest(
+        id: 'att_today',
+        name: 'Today Attendance',
+        method: 'GET',
+        endpoint: '/attendance/today',
+        category: 'Attendance',
+      ),
+      ApiTest(
+        id: 'att_summary',
+        name: 'Attendance Summary',
+        method: 'GET',
+        endpoint: '/attendance/summary',
+        category: 'Attendance',
+      ),
+      ApiTest(
+        id: 'att_my',
+        name: 'My Attendance Records',
+        method: 'GET',
+        endpoint: '/attendance/my-attendance',
+        category: 'Attendance',
+      ),
+      ApiTest(
+        id: 'att_edit_reqs',
+        name: 'My Edit Requests',
+        method: 'GET',
+        endpoint: '/attendance/edit-requests',
+        category: 'Attendance',
+      ),
 
       // LEAVE
-      ApiTest(id: 'leave_balance', name: 'Leave Balance', method: 'GET', endpoint: '/leave/balance', category: 'Leave'),
-      ApiTest(id: 'leave_stats', name: 'Leave Statistics', method: 'GET', endpoint: '/leave/statistics', category: 'Leave'),
-      ApiTest(id: 'leave_list', name: 'Leave Requests List', method: 'GET', endpoint: '/leave', category: 'Leave'),
+      ApiTest(
+        id: 'leave_balance',
+        name: 'Leave Balance',
+        method: 'GET',
+        endpoint: '/leave/balance',
+        category: 'Leave',
+      ),
+      ApiTest(
+        id: 'leave_stats',
+        name: 'Leave Statistics',
+        method: 'GET',
+        endpoint: '/leave/statistics',
+        category: 'Leave',
+      ),
+      ApiTest(
+        id: 'leave_list',
+        name: 'Leave Requests List',
+        method: 'GET',
+        endpoint: '/leave',
+        category: 'Leave',
+      ),
 
       // EXPENSE
-      ApiTest(id: 'exp_list', name: 'Expenses List', method: 'GET', endpoint: '/expenses', category: 'Expense'),
-      ApiTest(id: 'exp_stats', name: 'Expense Statistics', method: 'GET', endpoint: '/expenses/statistics', category: 'Expense'),
+      ApiTest(
+        id: 'exp_list',
+        name: 'Expenses List',
+        method: 'GET',
+        endpoint: '/expenses',
+        category: 'Expense',
+      ),
+      ApiTest(
+        id: 'exp_stats',
+        name: 'Expense Statistics',
+        method: 'GET',
+        endpoint: '/expenses/statistics',
+        category: 'Expense',
+      ),
 
       // TASKS
-      ApiTest(id: 'task_list', name: 'Tasks List', method: 'GET', endpoint: '/tasks', category: 'Tasks'),
-      ApiTest(id: 'task_stats', name: 'Task Statistics', method: 'GET', endpoint: '/tasks/statistics', category: 'Tasks'),
+      ApiTest(
+        id: 'task_list',
+        name: 'Tasks List',
+        method: 'GET',
+        endpoint: '/tasks',
+        category: 'Tasks',
+      ),
+      ApiTest(
+        id: 'task_stats',
+        name: 'Task Statistics',
+        method: 'GET',
+        endpoint: '/tasks/statistics',
+        category: 'Tasks',
+      ),
 
       // PROFILE
-      ApiTest(id: 'profile_get', name: 'Get Profile', method: 'GET', endpoint: '/employees/profile', category: 'Profile'),
+      ApiTest(
+        id: 'profile_get',
+        name: 'Get Profile',
+        method: 'GET',
+        endpoint: '/employees/profile',
+        category: 'Profile',
+      ),
 
       // CHAT
-      ApiTest(id: 'chat_rooms', name: 'Chat Rooms', method: 'GET', endpoint: '/chat/rooms', category: 'Chat'),
-      ApiTest(id: 'chat_users', name: 'Company Users for Chat', method: 'GET', endpoint: '/chat/users', category: 'Chat'),
-      ApiTest(id: 'chat_unread', name: 'Unread Count', method: 'GET', endpoint: '/chat/unread', category: 'Chat'),
+      ApiTest(
+        id: 'chat_rooms',
+        name: 'Chat Rooms',
+        method: 'GET',
+        endpoint: '/chat/rooms',
+        category: 'Chat',
+      ),
+      ApiTest(
+        id: 'chat_users',
+        name: 'Company Users for Chat',
+        method: 'GET',
+        endpoint: '/chat/users',
+        category: 'Chat',
+      ),
+      ApiTest(
+        id: 'chat_unread',
+        name: 'Unread Count',
+        method: 'GET',
+        endpoint: '/chat/unread',
+        category: 'Chat',
+      ),
 
       // ANNOUNCEMENTS
-      ApiTest(id: 'announce_list', name: 'Announcements', method: 'GET', endpoint: '/announcements', category: 'Chat'),
+      ApiTest(
+        id: 'announce_list',
+        name: 'Announcements',
+        method: 'GET',
+        endpoint: '/announcements',
+        category: 'Chat',
+      ),
     ];
   }
 
@@ -194,8 +360,11 @@ class _ApiTestScreenState extends State<ApiTestScreen>
     late http.Response response;
 
     final now = DateTime.now();
-    final firstDayOfMonth =
-        DateTime(now.year, now.month, 1).toIso8601String().split('T')[0];
+    final firstDayOfMonth = DateTime(
+      now.year,
+      now.month,
+      1,
+    ).toIso8601String().split('T')[0];
     final today = now.toIso8601String().split('T')[0];
 
     switch (test.id) {
@@ -209,7 +378,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
         final userId = await _tokenStorage.getUserId();
         if (userId == null) throw Exception('User ID not found');
         response = await http
-            .get(Uri.parse('$_baseUrl/auth/login-history/$userId'), headers: headers)
+            .get(
+              Uri.parse('$_baseUrl/auth/login-history/$userId'),
+              headers: headers,
+            )
             .timeout(const Duration(seconds: 15));
         break;
 
@@ -252,7 +424,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
 
       case 'emp_leave_balance':
         response = await http
-            .get(Uri.parse('$_baseUrl/employees/leave-balance'), headers: headers)
+            .get(
+              Uri.parse('$_baseUrl/employees/leave-balance'),
+              headers: headers,
+            )
             .timeout(const Duration(seconds: 15));
         break;
 
@@ -272,7 +447,8 @@ class _ApiTestScreenState extends State<ApiTestScreen>
         response = await http
             .get(
               Uri.parse(
-                  '$_baseUrl/attendance/summary?month=${now.month}&year=${now.year}'),
+                '$_baseUrl/attendance/summary?month=${now.month}&year=${now.year}',
+              ),
               headers: headers,
             )
             .timeout(const Duration(seconds: 15));
@@ -282,7 +458,8 @@ class _ApiTestScreenState extends State<ApiTestScreen>
         response = await http
             .get(
               Uri.parse(
-                  '$_baseUrl/attendance/my-attendance?startDate=$firstDayOfMonth&endDate=$today'),
+                '$_baseUrl/attendance/my-attendance?startDate=$firstDayOfMonth&endDate=$today',
+              ),
               headers: headers,
             )
             .timeout(const Duration(seconds: 15));
@@ -290,7 +467,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
 
       case 'att_edit_reqs':
         response = await http
-            .get(Uri.parse('$_baseUrl/attendance/edit-requests'), headers: headers)
+            .get(
+              Uri.parse('$_baseUrl/attendance/edit-requests'),
+              headers: headers,
+            )
             .timeout(const Duration(seconds: 15));
         break;
 
@@ -325,7 +505,8 @@ class _ApiTestScreenState extends State<ApiTestScreen>
         response = await http
             .get(
               Uri.parse(
-                  '$_baseUrl/expenses/statistics?startDate=$firstDayOfMonth&endDate=$today'),
+                '$_baseUrl/expenses/statistics?startDate=$firstDayOfMonth&endDate=$today',
+              ),
               headers: headers,
             )
             .timeout(const Duration(seconds: 15));
@@ -378,7 +559,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
     if (!passed) {
       try {
         final decoded = jsonDecode(response.body);
-        err = decoded['message'] ?? decoded['error'] ?? 'Status ${response.statusCode}';
+        err =
+            decoded['message'] ??
+            decoded['error'] ??
+            'Status ${response.statusCode}';
       } catch (_) {
         err = 'Status ${response.statusCode}';
       }
@@ -452,11 +636,17 @@ class _ApiTestScreenState extends State<ApiTestScreen>
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: _token == null
                 ? const Chip(
-                    label: Text('No Token', style: TextStyle(color: Colors.white, fontSize: 11)),
+                    label: Text(
+                      'No Token',
+                      style: TextStyle(color: Colors.white, fontSize: 11),
+                    ),
                     backgroundColor: Color(0xFFFF6B6B),
                   )
                 : const Chip(
-                    label: Text('Token OK', style: TextStyle(color: Colors.white, fontSize: 11)),
+                    label: Text(
+                      'Token OK',
+                      style: TextStyle(color: Colors.white, fontSize: 11),
+                    ),
                     backgroundColor: Color(0xFF00D084),
                   ),
           ),
@@ -474,10 +664,7 @@ class _ApiTestScreenState extends State<ApiTestScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildTestListTab(),
-          _buildDetailTab(),
-        ],
+        children: [_buildTestListTab(), _buildDetailTab()],
       ),
     );
   }
@@ -510,9 +697,11 @@ class _ApiTestScreenState extends State<ApiTestScreen>
                           ),
                         )
                       : const Icon(Icons.play_arrow),
-                  label: Text(_isRunningAll
-                      ? 'Running ${_filteredTests().where((t) => t.status == TestStatus.running).length} / ${filtered.length}...'
-                      : 'Run ${_selectedCategory == 'All' ? 'All' : _selectedCategory} Tests (${filtered.length})'),
+                  label: Text(
+                    _isRunningAll
+                        ? 'Running ${_filteredTests().where((t) => t.status == TestStatus.running).length} / ${filtered.length}...'
+                        : 'Run ${_selectedCategory == 'All' ? 'All' : _selectedCategory} Tests (${filtered.length})',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF6B6B),
                     foregroundColor: Colors.white,
@@ -566,8 +755,16 @@ class _ApiTestScreenState extends State<ApiTestScreen>
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _summaryChip('Total', _totalCount.toString(), Colors.blue),
-          _summaryChip('Passed', _passedCount.toString(), const Color(0xFF00D084)),
-          _summaryChip('Failed', _failedCount.toString(), const Color(0xFFFF6B6B)),
+          _summaryChip(
+            'Passed',
+            _passedCount.toString(),
+            const Color(0xFF00D084),
+          ),
+          _summaryChip(
+            'Failed',
+            _failedCount.toString(),
+            const Color(0xFFFF6B6B),
+          ),
           _summaryChip(
             'Pending',
             (_totalCount - _passedCount - _failedCount).toString(),
@@ -581,9 +778,14 @@ class _ApiTestScreenState extends State<ApiTestScreen>
   Widget _summaryChip(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value,
-            style: TextStyle(
-                color: color, fontSize: 22, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
       ],
     );
@@ -605,7 +807,9 @@ class _ApiTestScreenState extends State<ApiTestScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: selected ? const Color(0xFFFF6B6B) : const Color(0xFF2A2A2A),
+                color: selected
+                    ? const Color(0xFFFF6B6B)
+                    : const Color(0xFF2A2A2A),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -613,8 +817,7 @@ class _ApiTestScreenState extends State<ApiTestScreen>
                 style: TextStyle(
                   color: selected ? Colors.white : Colors.grey,
                   fontSize: 12,
-                  fontWeight:
-                      selected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
             ),
@@ -634,14 +837,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF2D2D2D)
-              : const Color(0xFF1E1E1E),
+          color: isSelected ? const Color(0xFF2D2D2D) : const Color(0xFF1E1E1E),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected
-                ? const Color(0xFFFF6B6B)
-                : Colors.transparent,
+            color: isSelected ? const Color(0xFFFF6B6B) : Colors.transparent,
             width: 1,
           ),
         ),
@@ -671,9 +870,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
                   Text(
                     test.name,
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600),
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Row(
@@ -683,7 +883,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
                       Expanded(
                         child: Text(
                           test.endpoint,
-                          style: const TextStyle(color: Colors.grey, fontSize: 11),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -694,7 +897,9 @@ class _ApiTestScreenState extends State<ApiTestScreen>
                     Text(
                       test.errorMessage!,
                       style: const TextStyle(
-                          color: Color(0xFFFF6B6B), fontSize: 11),
+                        color: Color(0xFFFF6B6B),
+                        fontSize: 11,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -713,7 +918,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
                   ),
                 if (test.responseCode != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: _statusColor(test.status).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4),
@@ -721,9 +929,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
                     child: Text(
                       test.responseCode!,
                       style: TextStyle(
-                          color: _statusColor(test.status),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
+                        color: _statusColor(test.status),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 const SizedBox(height: 4),
@@ -737,8 +946,11 @@ class _ApiTestScreenState extends State<ApiTestScreen>
                       color: const Color(0xFF2A2A2A),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Icon(Icons.play_arrow,
-                        size: 16, color: Color(0xFFFFA500)),
+                    child: const Icon(
+                      Icons.play_arrow,
+                      size: 16,
+                      color: Color(0xFFFFA500),
+                    ),
                   ),
                 ),
               ],
@@ -765,9 +977,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
       child: Text(
         method,
         style: TextStyle(
-            color: colors[method] ?? Colors.grey,
-            fontSize: 10,
-            fontWeight: FontWeight.bold),
+          color: colors[method] ?? Colors.grey,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -782,8 +995,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
           children: [
             Icon(Icons.touch_app, color: Colors.grey, size: 48),
             SizedBox(height: 12),
-            Text('Tap any test to see details',
-                style: TextStyle(color: Colors.grey)),
+            Text(
+              'Tap any test to see details',
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       );
@@ -806,33 +1021,42 @@ class _ApiTestScreenState extends State<ApiTestScreen>
               children: [
                 Row(
                   children: [
-                    Icon(_statusIcon(test.status),
-                        color: _statusColor(test.status), size: 24),
+                    Icon(
+                      _statusIcon(test.status),
+                      color: _statusColor(test.status),
+                      size: 24,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         test.name,
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     if (test.responseCode != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: _statusColor(test.status).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                              color: _statusColor(test.status), width: 1),
+                            color: _statusColor(test.status),
+                            width: 1,
+                          ),
                         ),
                         child: Text(
                           test.responseCode!,
                           style: TextStyle(
-                              color: _statusColor(test.status),
-                              fontWeight: FontWeight.bold),
+                            color: _statusColor(test.status),
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                   ],
@@ -844,8 +1068,11 @@ class _ApiTestScreenState extends State<ApiTestScreen>
                 if (test.duration != null)
                   _detailRow('Duration', '${test.duration!.inMilliseconds} ms'),
                 if (test.errorMessage != null)
-                  _detailRow('Error', test.errorMessage!,
-                      color: const Color(0xFFFF6B6B)),
+                  _detailRow(
+                    'Error',
+                    test.errorMessage!,
+                    color: const Color(0xFFFF6B6B),
+                  ),
               ],
             ),
           ),
@@ -891,11 +1118,14 @@ class _ApiTestScreenState extends State<ApiTestScreen>
             const SizedBox(height: 16),
             Row(
               children: [
-                const Text('Response Body',
-                    style: TextStyle(
-                        color: Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12)),
+                const Text(
+                  'Response Body',
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
                 const Spacer(),
                 Text(
                   '${test.responseBody!.length} chars',
@@ -915,9 +1145,10 @@ class _ApiTestScreenState extends State<ApiTestScreen>
               child: SelectableText(
                 test.responseBody!,
                 style: const TextStyle(
-                    color: Color(0xFF00D084),
-                    fontSize: 12,
-                    fontFamily: 'monospace'),
+                  color: Color(0xFF00D084),
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                ),
               ),
             ),
           ],
@@ -934,14 +1165,15 @@ class _ApiTestScreenState extends State<ApiTestScreen>
         children: [
           SizedBox(
             width: 80,
-            child: Text(key,
-                style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            child: Text(
+              key,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(
-                  color: color ?? Colors.white, fontSize: 12),
+              style: TextStyle(color: color ?? Colors.white, fontSize: 12),
             ),
           ),
         ],

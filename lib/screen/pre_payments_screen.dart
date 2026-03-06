@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/payroll_model.dart';
+import '../models/profile_model.dart';
 import '../services/payroll_service.dart';
 import '../services/token_storage_service.dart';
+import '../services/admin_employees_service.dart';
 
 class PrePaymentsScreen extends StatefulWidget {
   const PrePaymentsScreen({super.key});
@@ -13,10 +15,28 @@ class PrePaymentsScreen extends StatefulWidget {
 
 class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
   String? _token;
+  String? _userRole;
   List<PrePayment> _prePayments = [];
+  List<ProfileUser> _employees = [];
   bool _isLoading = true;
+  bool _isSubmitting = false;
+  String _selectedFilterUser = 'all';
   DateTime? _startDate;
   DateTime? _endDate;
+
+  // Form state
+  bool _isDialogOpen = false;
+  bool _isViewOpen = false;
+  bool _isEditMode = false;
+  PrePayment? _selectedRecord;
+
+  final _formKey = GlobalKey<FormState>();
+  String? _selectedUserId;
+  final _amountCtrl = TextEditingController();
+  final _accountNumberCtrl = TextEditingController();
+  final _bankNameCtrl = TextEditingController();
+  final _deductMonthCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -24,87 +44,237 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _accountNumberCtrl.dispose();
+    _bankNameCtrl.dispose();
+    _deductMonthCtrl.dispose();
+    _descriptionCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
     final token = await TokenStorageService().getToken();
+    final role = await TokenStorageService().getUserRole();
+
     if (token == null || !mounted) return;
-    setState(() => _token = token);
-    await _fetchPrePayments(token);
+
+    setState(() {
+      _token = token;
+      _userRole = role;
+    });
+
+    await Future.wait([
+      _fetchPrePayments(token),
+      if (role?.toLowerCase() == 'admin') _fetchEmployees(token),
+    ]);
   }
 
   Future<void> _fetchPrePayments(String token) async {
     try {
+      debugPrint('🔄 Fetching pre-payments...');
       final res = await PayrollService.getPrePayments(token: token);
+      debugPrint('✅ Pre-payments fetched: ${res.data.length} records');
       if (mounted) {
         setState(() {
           _prePayments = res.data;
           _isLoading = false;
         });
+        debugPrint('✓ UI updated with ${_prePayments.length} pre-payments');
       }
     } catch (e) {
-      print('PrePayments fetch error: $e');
+      debugPrint('❌ Pre-payments fetch error: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _selectStartDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _startDate ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            inputDecorationTheme: InputDecorationTheme(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && mounted) {
-      setState(() => _startDate = picked);
-    }
-  }
-
-  Future<void> _selectEndDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _endDate ?? DateTime.now(),
-      firstDate: _startDate ?? DateTime(2020),
-      lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            inputDecorationTheme: InputDecorationTheme(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && mounted) {
-      setState(() => _endDate = picked);
+  Future<void> _fetchEmployees(String token) async {
+    try {
+      debugPrint('🔄 Fetching employees...');
+      final res = await AdminEmployeesService.getAllEmployees(token);
+      if (mounted && res['data'] != null) {
+        final List<dynamic> employeeList = res['data'] is List
+            ? res['data']
+            : (res['data']['employees'] ?? []);
+        setState(() {
+          _employees = employeeList
+              .whereType<Map<String, dynamic>>()
+              .map((e) => ProfileUser.fromJson(e))
+              .toList();
+        });
+        debugPrint('✅ Loaded ${_employees.length} employees');
+      }
+    } catch (e) {
+      debugPrint('❌ Employees fetch error: $e');
     }
   }
 
   List<PrePayment> _getFilteredPayments() {
     return _prePayments.where((p) {
+      // Filter by user
+      if (_selectedFilterUser != 'all' && p.user?.id != _selectedFilterUser) {
+        return false;
+      }
+
+      // Filter by date range
       if (p.createdAt == null) return false;
       if (_startDate != null && p.createdAt!.isBefore(_startDate!)) {
         return false;
       }
-      if (_endDate != null && p.createdAt!.isAfter(_endDate!)) {
+      if (_endDate != null &&
+          p.createdAt!.isAfter(_endDate!.add(const Duration(days: 1)))) {
         return false;
       }
       return true;
     }).toList();
   }
 
+  void _resetForm() {
+    _selectedUserId = null;
+    _amountCtrl.clear();
+    _accountNumberCtrl.clear();
+    _bankNameCtrl.clear();
+    _deductMonthCtrl.clear();
+    _descriptionCtrl.clear();
+    _isEditMode = false;
+    _selectedRecord = null;
+  }
+
+  void _openAddDialog() {
+    _resetForm();
+    setState(() {
+      _isDialogOpen = true;
+      _isEditMode = false;
+    });
+    _showFormDialog();
+  }
+
+  void _openEditDialog(PrePayment record) {
+    _selectedRecord = record;
+    _selectedUserId = record.user?.id;
+    _amountCtrl.text = record.amount.toString();
+    _accountNumberCtrl.text = record.bankDetails?.accountNumber ?? '';
+    _bankNameCtrl.text = record.bankDetails?.bankName ?? '';
+    _deductMonthCtrl.text = record.deductMonth ?? '';
+    _descriptionCtrl.text = record.description ?? '';
+
+    setState(() {
+      _isDialogOpen = true;
+      _isEditMode = true;
+    });
+    _showFormDialog();
+  }
+
+  Future<void> _handleSubmit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedUserId == null ||
+        _amountCtrl.text.isEmpty ||
+        _deductMonthCtrl.text.isEmpty) {
+      _showSnackBar('Please fill all required fields', Colors.red);
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final payload = {
+        'user': _selectedUserId,
+        'amount': double.parse(_amountCtrl.text),
+        'bankDetails': {
+          'accountNumber': _accountNumberCtrl.text.isEmpty
+              ? null
+              : _accountNumberCtrl.text,
+          'bankName': _bankNameCtrl.text.isEmpty ? null : _bankNameCtrl.text,
+        },
+        'deductMonth': _deductMonthCtrl.text,
+        'description': _descriptionCtrl.text.isEmpty
+            ? null
+            : _descriptionCtrl.text,
+      };
+
+      if (_isEditMode && _selectedRecord != null) {
+        await PayrollService.updatePrePayment(
+          token: _token!,
+          id: _selectedRecord!.id,
+          data: payload,
+        );
+        _showSnackBar('Pre-payment updated successfully', Colors.green);
+      } else {
+        await PayrollService.createPrePayment(token: _token!, data: payload);
+        _showSnackBar('Pre-payment created successfully', Colors.green);
+      }
+
+      if (mounted) Navigator.pop(context);
+      setState(() => _isDialogOpen = false);
+      await _fetchPrePayments(_token!);
+    } catch (e) {
+      _showSnackBar('Error: ${e.toString()}', Colors.red);
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _handleDelete(String id) async {
+    final confirm = await _showConfirmDialog(
+      'Delete Pre-Payment',
+      'Are you sure you want to delete this pre-payment?',
+    );
+    if (!confirm) return;
+
+    try {
+      await PayrollService.deletePrePayment(token: _token!, id: id);
+      _showSnackBar('Pre-payment deleted successfully', Colors.green);
+      await _fetchPrePayments(_token!);
+    } catch (e) {
+      _showSnackBar('Error: ${e.toString()}', Colors.red);
+    }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<bool> _showConfirmDialog(String title, String message) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: const Color(0xFF1A1A1A),
+            title: Text(title, style: const TextStyle(color: Colors.white)),
+            content: Text(message, style: const TextStyle(color: Colors.grey)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text(
+                  'Delete',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isAdmin = _userRole?.toLowerCase() == 'admin';
+    final filtered = _getFilteredPayments();
+
     return Scaffold(
       backgroundColor: const Color(0xFF050505),
       appBar: AppBar(
@@ -118,11 +288,24 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                debugPrint('🔄 Manual refresh triggered');
+                _loadData();
+              },
+            ),
+        ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFF8FA3)),
+            )
           : RefreshIndicator(
               onRefresh: () => _loadData(),
+              color: const Color(0xFFFF8FA3),
               child: CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(
@@ -131,77 +314,249 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'View your pre-payment records',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          // Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                isAdmin
+                                    ? 'Manage pre-payments'
+                                    : 'Your pre-payment records',
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (isAdmin)
+                                ElevatedButton.icon(
+                                  onPressed: _openAddDialog,
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Add New'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFF8FA3),
+                                    foregroundColor: Colors.black,
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 20),
+
+                          // Filters
+                          if (isAdmin)
+                            Column(
+                              children: [
+                                DropdownButtonFormField<String>(
+                                  value: _selectedFilterUser,
+                                  onChanged: (value) => setState(
+                                    () => _selectedFilterUser = value ?? 'all',
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Filter by Employee',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    filled: true,
+                                    fillColor: const Color(0xFF0A0A0A),
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem(
+                                      value: 'all',
+                                      child: Text('All Employees'),
+                                    ),
+                                    ..._employees.map(
+                                      (e) => DropdownMenuItem(
+                                        value: e.id,
+                                        child: Text(e.name),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                            ),
+
                           // Date Filters
                           Row(
                             children: [
                               Expanded(
-                                child: _buildDateField(
-                                  label: 'Start Date',
-                                  date: _startDate,
-                                  onTap: _selectStartDate,
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: _startDate ?? DateTime.now(),
+                                      firstDate: DateTime(2020),
+                                      lastDate: DateTime.now(),
+                                    );
+                                    if (picked != null)
+                                      setState(() => _startDate = picked);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1A1A1A),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.grey[800]!,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Start Date',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _startDate != null
+                                              ? DateFormat(
+                                                  'dd-MMM-yyyy',
+                                                ).format(_startDate!)
+                                              : 'Select date',
+                                          style: TextStyle(
+                                            color: _startDate != null
+                                                ? Colors.white
+                                                : Colors.grey[600],
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: _buildDateField(
-                                  label: 'End Date',
-                                  date: _endDate,
-                                  onTap: _selectEndDate,
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: _endDate ?? DateTime.now(),
+                                      firstDate: _startDate ?? DateTime(2020),
+                                      lastDate: DateTime.now(),
+                                    );
+                                    if (picked != null)
+                                      setState(() => _endDate = picked);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1A1A1A),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.grey[800]!,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'End Date',
+                                          style: TextStyle(
+                                            color: Colors.grey[600],
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _endDate != null
+                                              ? DateFormat(
+                                                  'dd-MMM-yyyy',
+                                                ).format(_endDate!)
+                                              : 'Select date',
+                                          style: TextStyle(
+                                            color: _endDate != null
+                                                ? Colors.white
+                                                : Colors.grey[600],
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 20),
+
                           // Stats
-                          _buildStatsCard(),
+                          _buildStatsCard(filtered),
                         ],
                       ),
                     ),
                   ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final filtered = _getFilteredPayments();
-                        if (filtered.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 60),
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.payment_rounded,
-                                    size: 64,
-                                    color: Colors.grey[700],
+                  // Records List
+                  filtered.isEmpty
+                      ? SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 40,
+                              horizontal: 16,
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.payment_rounded,
+                                  size: 64,
+                                  color: Colors.grey[700],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No pre-payment records found',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
                                   ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  isAdmin
+                                      ? 'Create your first pre-payment record'
+                                      : 'No pre-payment records yet',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 13,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                if (isAdmin) ...[
                                   const SizedBox(height: 16),
-                                  Text(
-                                    'No pre-payment records found',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
+                                  ElevatedButton.icon(
+                                    onPressed: _openAddDialog,
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Create Record'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFFF8FA3),
+                                      foregroundColor: Colors.black,
                                     ),
                                   ),
                                 ],
-                              ),
+                              ],
                             ),
-                          );
-                        }
-                        final payment = filtered[index];
-                        return _buildPaymentCard(payment);
-                      },
-                      childCount: _getFilteredPayments().isEmpty ? 1 : _getFilteredPayments().length,
-                    ),
-                  ),
+                          ),
+                        )
+                      : SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) =>
+                                _buildPaymentCard(filtered[index], isAdmin),
+                            childCount: filtered.length,
+                          ),
+                        ),
                 ],
               ),
             ),
@@ -235,7 +590,9 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              date != null ? DateFormat('dd-MMM-yyyy').format(date) : 'dd-mm-yyyy',
+              date != null
+                  ? DateFormat('dd-MMM-yyyy').format(date)
+                  : 'dd-mm-yyyy',
               style: TextStyle(
                 color: date != null ? Colors.white : Colors.grey[600],
                 fontSize: 14,
@@ -248,9 +605,11 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
     );
   }
 
-  Widget _buildStatsCard() {
-    final filtered = _getFilteredPayments();
-    final total = filtered.fold<double>(0, (sum, p) => sum + (double.tryParse(p.amount.toString()) ?? 0));
+  Widget _buildStatsCard(List<PrePayment> filtered) {
+    final total = filtered.fold<double>(
+      0,
+      (sum, p) => sum + (double.tryParse(p.amount.toString()) ?? 0),
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -299,60 +658,309 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
     );
   }
 
-  Widget _buildPaymentCard(PrePayment payment) {
+  Widget _buildPaymentCard(PrePayment payment, bool isAdmin) {
     Color statusColor = _getStatusColor(payment.status);
-    
+    final user = payment.user;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
+          color: const Color(0xFF0A0A0A),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.grey[900]!, width: 1),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _currency(double.tryParse(payment.amount.toString()) ?? 0),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+            ListTile(
+              contentPadding: const EdgeInsets.all(16),
+              leading: CircleAvatar(
+                backgroundColor: statusColor.withOpacity(0.3),
+                child: Icon(
+                  Icons.payment_rounded,
+                  color: statusColor,
+                  size: 28,
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: statusColor.withOpacity(0.5), width: 1),
+              ),
+              title: Text(
+                user?.name ?? 'Unknown',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text(
+                    user?.position ?? 'N/A',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
-                  child: Text(
-                    payment.status.toUpperCase(),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                  Text(
+                    user?.department ?? 'N/A',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+                ],
+              ),
+              trailing: isAdmin
+                  ? PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _openEditDialog(payment);
+                        } else if (value == 'delete') {
+                          _handleDelete(payment.id);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Delete'),
+                        ),
+                      ],
+                    )
+                  : null,
+            ),
+            Divider(height: 1, color: Colors.grey[900]),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Amount',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _currency(
+                          double.tryParse(payment.amount.toString()) ?? 0,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF4FC3F7),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Deduct Month',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        payment.deductMonth ?? 'N/A',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Status',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: statusColor.withOpacity(0.5),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          payment.status.replaceFirst(
+                            payment.status[0],
+                            payment.status[0].toUpperCase(),
+                          ),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFormDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF0A0A0A),
+        title: Text(
+          _isEditMode ? 'Edit Pre-Payment' : 'Add Pre-Payment',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Employee Dropdown (Admin only)
+              if (_userRole?.toLowerCase() == 'admin')
+                DropdownButtonFormField<String>(
+                  value: _selectedUserId,
+                  onChanged: (value) => setState(() => _selectedUserId = value),
+                  decoration: InputDecoration(
+                    labelText: 'Select Employee',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFF1A1A1A),
+                  ),
+                  items: _employees
+                      .map(
+                        (e) =>
+                            DropdownMenuItem(value: e.id, child: Text(e.name)),
+                      )
+                      .toList(),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: TextFormField(
+                    readOnly: true,
+                    initialValue:
+                        (_employees
+                                .where((e) => e.id == _selectedUserId)
+                                .firstOrNull)
+                            ?.name ??
+                        'Unknown',
+                    decoration: InputDecoration(
+                      labelText: 'Employee',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF1A1A1A),
                     ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildDetailRow('Request Date', payment.createdAt != null ? DateFormat('dd MMM yyyy').format(payment.createdAt!) : 'N/A'),
-            const SizedBox(height: 8),
-            _buildDetailRow('Deduct Month', payment.deductMonth ?? 'N/A'),
-            if (payment.description != null) ...[
-              const SizedBox(height: 8),
-              _buildDetailRow('Description', payment.description ?? 'N/A'),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _amountCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Amount *',
+                  hintText: 'Enter amount',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _deductMonthCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Deduct Month *',
+                  hintText: 'YYYY-MM',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _bankNameCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Bank Name',
+                  hintText: 'Optional',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _accountNumberCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Account Number',
+                  hintText: 'Optional',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _descriptionCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  hintText: 'Optional',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFF1A1A1A),
+                ),
+              ),
             ],
-          ],
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _resetForm();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: _isSubmitting
+                ? null
+                : () {
+                    Navigator.pop(context);
+                    _handleSubmit();
+                  },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF8FA3),
+              foregroundColor: Colors.black,
+            ),
+            child: _isSubmitting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(_isEditMode ? 'Update' : 'Create'),
+          ),
+        ],
       ),
     );
   }
@@ -383,16 +991,17 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'approved':
-        return Colors.green;
       case 'pending':
-        return Colors.orange;
-      case 'rejected':
-        return Colors.red;
+        return const Color(0xFFFFA500); // Orange
+      case 'deducted':
+        return const Color(0xFF00C853); // Green
+      case 'cancelled':
+        return const Color(0xFFFF5252); // Red
       default:
-        return Colors.grey;
+        return Colors.grey[600]!;
     }
   }
 
-  String _currency(double amount) => '\u{20B9}${NumberFormat('#,##,###.##').format(amount)}';
+  String _currency(double amount) =>
+      '\u{20B9}${NumberFormat('#,##,###.##').format(amount)}';
 }

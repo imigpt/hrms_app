@@ -31,18 +31,17 @@ class LeaveBalance {
   final int total;
 
   LeaveBalance({
-    required this.type, 
-    required this.remaining, 
-    required this.used, 
-    required this.total
+    required this.type,
+    required this.remaining,
+    required this.used,
+    required this.total,
   });
 }
 
 void main() {
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: LeaveScreen(),
-  ));
+  runApp(
+    const MaterialApp(debugShowCheckedModeBanner: false, home: LeaveScreen()),
+  );
 }
 
 class LeaveScreen extends StatefulWidget {
@@ -61,19 +60,24 @@ class _LeaveScreenState extends State<LeaveScreen> {
   bool _isLoadingRequests = false;
 
   String _selectedFilter = 'All';
-  final List<String> _filterOptions = ['All', 'Pending', 'Approved', 'Rejected'];
-  
+  final List<String> _filterOptions = [
+    'All',
+    'Pending',
+    'Approved',
+    'Rejected',
+  ];
+
   // Track which leave IDs have been notified for status changes
   final Set<String> _notifiedLeaveIds = {};
 
-// --- COLORS ---
-Color get kBackground => AppTheme.background;
-Color get kCardColor => AppTheme.cardColor;
-Color get kPinkAccent => AppTheme.primaryColor;
-Color get kTextRed => AppTheme.errorColor;
-Color get kTextWhite => Colors.white;
-Color get kTextGrey => Colors.grey;
-Color get kBorderGrey => AppTheme.outline;
+  // --- COLORS ---
+  Color get kBackground => AppTheme.background;
+  Color get kCardColor => AppTheme.cardColor;
+  Color get kPinkAccent => AppTheme.primaryColor;
+  Color get kTextRed => AppTheme.errorColor;
+  Color get kTextWhite => Colors.white;
+  Color get kTextGrey => Colors.grey;
+  Color get kBorderGrey => AppTheme.outline;
 
   @override
   void initState() {
@@ -91,9 +95,7 @@ Color get kBorderGrey => AppTheme.outline;
         throw Exception('Authentication data not found');
       }
 
-      final response = await LeaveService.getLeaveBalance(
-        token: token,
-      );
+      final response = await LeaveService.getLeaveBalance(token: token);
 
       if (response.success && response.data != null) {
         final d = response.data!;
@@ -139,44 +141,50 @@ Color get kBorderGrey => AppTheme.outline;
       }
 
       final response = await LeaveService.getMyLeaves(token: token);
-      
+
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> leavesData = response['data'];
-        
+
         setState(() {
           _leaveRequests.clear();
           for (var leave in leavesData) {
             String leaveType = leave['leaveType'] ?? 'unknown';
             // Capitalize first letter
             leaveType = leaveType[0].toUpperCase() + leaveType.substring(1);
-            
+
             final leaveId = '${leave['id'] ?? leave['_id']}';
             final status = _capitalizeStatus(leave['status'] ?? 'Pending');
-            
-            _leaveRequests.add(LeaveRequest(
-              type: '$leaveType Leave',
-              fromDate: DateTime.parse(leave['startDate']),
-              toDate: DateTime.parse(leave['endDate']),
-              reason: leave['reason'] ?? '',
-              status: status,
-            ));
+
+            _leaveRequests.add(
+              LeaveRequest(
+                type: '$leaveType Leave',
+                fromDate: DateTime.parse(leave['startDate']),
+                toDate: DateTime.parse(leave['endDate']),
+                reason: leave['reason'] ?? '',
+                status: status,
+              ),
+            );
           }
         });
-        
+
         // Show notifications outside of setState
         for (var leave in leavesData) {
           final leaveId = '${leave['id'] ?? leave['_id']}';
           final status = _capitalizeStatus(leave['status'] ?? 'Pending');
           String leaveType = leave['leaveType'] ?? 'unknown';
           leaveType = leaveType[0].toUpperCase() + leaveType.substring(1);
-          
+
           if (!_notifiedLeaveIds.contains(leaveId)) {
             if (status == 'Approved') {
               await NotificationService().showLeaveApprovedNotification(
                 employeeName: 'Your',
                 leaveType: leaveType,
-                startDate: DateFormat('MMM dd').format(DateTime.parse(leave['startDate'])),
-                endDate: DateFormat('MMM dd').format(DateTime.parse(leave['endDate'])),
+                startDate: DateFormat(
+                  'MMM dd',
+                ).format(DateTime.parse(leave['startDate'])),
+                endDate: DateFormat(
+                  'MMM dd',
+                ).format(DateTime.parse(leave['endDate'])),
               );
               _notifiedLeaveIds.add(leaveId);
             } else if (status == 'Rejected') {
@@ -242,7 +250,7 @@ Color get kBorderGrey => AppTheme.outline;
   @override
   Widget build(BuildContext context) {
     final responsive = ResponsiveUtils(context);
-    
+
     List<LeaveRequest> filteredRequests = _leaveRequests.where((request) {
       if (_selectedFilter == 'All') return true;
       return request.status == _selectedFilter;
@@ -254,14 +262,18 @@ Color get kBorderGrey => AppTheme.outline;
         backgroundColor: kBackground,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: kTextWhite, size: responsive.iconSize),
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: kTextWhite,
+            size: responsive.iconSize,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'My Leaves', 
+          'My Leaves',
           style: TextStyle(
-            color: kTextWhite, 
-            fontWeight: FontWeight.bold, 
+            color: kTextWhite,
+            fontWeight: FontWeight.bold,
             fontSize: responsive.titleFontSize,
           ),
         ),
@@ -308,44 +320,55 @@ Color get kBorderGrey => AppTheme.outline;
                 )
               else if (responsive.isDesktopDevice)
                 GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      childAspectRatio: 2.5,
-                      crossAxisSpacing: responsive.spacing,
-                      mainAxisSpacing: responsive.spacing,
-                    ),
-                    itemCount: _leaveBalances.length,
-                    itemBuilder: (ctx, index) {
-                      return _buildLeaveBalanceCard(_leaveBalances[index], responsive);
-                    },
-                  )
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 2.5,
+                    crossAxisSpacing: responsive.spacing,
+                    mainAxisSpacing: responsive.spacing,
+                  ),
+                  itemCount: _leaveBalances.length,
+                  itemBuilder: (ctx, index) {
+                    return _buildLeaveBalanceCard(
+                      _leaveBalances[index],
+                      responsive,
+                    );
+                  },
+                )
               else
                 SizedBox(
-                    height: responsive.scaledSize(120),
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _leaveBalances.length,
-                      separatorBuilder: (ctx, i) => SizedBox(width: responsive.spacing),
-                      itemBuilder: (ctx, index) {
-                        return _buildLeaveBalanceCard(_leaveBalances[index], responsive);
-                      },
-                    ),
+                  height: responsive.scaledSize(120),
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _leaveBalances.length,
+                    separatorBuilder: (ctx, i) =>
+                        SizedBox(width: responsive.spacing),
+                    itemBuilder: (ctx, index) {
+                      return _buildLeaveBalanceCard(
+                        _leaveBalances[index],
+                        responsive,
+                      );
+                    },
                   ),
-              
+                ),
+
               SizedBox(height: responsive.spacing * 1.5),
 
               // 2. Section Header
               Row(
                 children: [
-                  Icon(Icons.calendar_month_outlined, color: kPinkAccent, size: responsive.iconSize),
+                  Icon(
+                    Icons.calendar_month_outlined,
+                    color: kPinkAccent,
+                    size: responsive.iconSize,
+                  ),
                   SizedBox(width: responsive.smallSpacing),
                   Text(
-                    'Leave Requests', 
+                    'Leave Requests',
                     style: TextStyle(
-                      color: kTextWhite, 
-                      fontSize: responsive.headingFontSize, 
+                      color: kTextWhite,
+                      fontSize: responsive.headingFontSize,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -353,57 +376,55 @@ Color get kBorderGrey => AppTheme.outline;
               ),
               SizedBox(height: responsive.smallSpacing / 2),
               Text(
-                'Your leave request history', 
+                'Your leave request history',
                 style: TextStyle(
-                  color: kTextGrey, 
+                  color: kTextGrey,
                   fontSize: responsive.captionFontSize,
                 ),
               ),
-              
+
               SizedBox(height: responsive.spacing),
 
               // Filter and Apply Button Row (Responsive)
               responsive.isDesktopDevice
-                ? Row(
-                    children: [
-                      SizedBox(
-                        width: 200,
-                        child: _buildFilterDropdown(responsive),
-                      ),
-                      SizedBox(width: responsive.spacing),
-                      SizedBox(
-                        width: 140,
-                        child: _buildApplyButton(responsive),
-                      ),
-                      SizedBox(width: responsive.smallSpacing),
-                      SizedBox(
-                        width: 160,
-                        child: _buildApplyHalfDayButton(responsive),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      // Filter Dropdown
-                      _buildFilterDropdown(responsive),
-                      
-                      SizedBox(height: responsive.smallSpacing),
+                  ? Row(
+                      children: [
+                        SizedBox(
+                          width: 200,
+                          child: _buildFilterDropdown(responsive),
+                        ),
+                        SizedBox(width: responsive.spacing),
+                        SizedBox(
+                          width: 140,
+                          child: _buildApplyButton(responsive),
+                        ),
+                        SizedBox(width: responsive.smallSpacing),
+                        SizedBox(
+                          width: 160,
+                          child: _buildApplyHalfDayButton(responsive),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        // Filter Dropdown
+                        _buildFilterDropdown(responsive),
 
-                      // Apply Buttons Row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildApplyButton(responsive),
-                          ),
-                          SizedBox(width: responsive.smallSpacing),
-                          Expanded(
-                            child: _buildApplyHalfDayButton(responsive),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-              
+                        SizedBox(height: responsive.smallSpacing),
+
+                        // Apply Buttons Row
+                        Row(
+                          children: [
+                            Expanded(child: _buildApplyButton(responsive)),
+                            SizedBox(width: responsive.smallSpacing),
+                            Expanded(
+                              child: _buildApplyHalfDayButton(responsive),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
               SizedBox(height: responsive.spacing * 1.5),
 
               // 3. Leave Request History List
@@ -416,33 +437,47 @@ Color get kBorderGrey => AppTheme.outline;
                       ),
                     )
                   : filteredRequests.isEmpty
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 24),
-                          alignment: Alignment.center,
-                          child: Column(
-                            children: [
-                              Icon(Icons.inbox_outlined, size: 64, color: kTextGrey.withOpacity(0.5)),
-                              const SizedBox(height: 16),
-                              Text(
-                                "No requests found", 
-                                style: TextStyle(color: kTextGrey, fontSize: 16, fontWeight: FontWeight.w500)
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Your leave requests will appear here", 
-                                style: TextStyle(color: kTextGrey.withOpacity(0.7), fontSize: 13)
-                              ),
-                            ],
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 60,
+                        horizontal: 24,
+                      ),
+                      alignment: Alignment.center,
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.inbox_outlined,
+                            size: 64,
+                            color: kTextGrey.withOpacity(0.5),
                           ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: filteredRequests.length,
-                          itemBuilder: (context, index) {
-                            return _buildLeaveRequestRow(filteredRequests[index]);
-                          },
-                        ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "No requests found",
+                            style: TextStyle(
+                              color: kTextGrey,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Your leave requests will appear here",
+                            style: TextStyle(
+                              color: kTextGrey.withOpacity(0.7),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: filteredRequests.length,
+                      itemBuilder: (context, index) {
+                        return _buildLeaveRequestRow(filteredRequests[index]);
+                      },
+                    ),
             ],
           ),
         ),
@@ -465,16 +500,18 @@ Color get kBorderGrey => AppTheme.outline;
           dropdownColor: kCardColor,
           value: _selectedFilter,
           icon: Icon(Icons.keyboard_arrow_down, color: kTextGrey),
-          style: TextStyle(color: kTextWhite, fontSize: responsive.bodyFontSize),
+          style: TextStyle(
+            color: kTextWhite,
+            fontSize: responsive.bodyFontSize,
+          ),
           isExpanded: true,
           onChanged: (String? newValue) {
-            setState(() { _selectedFilter = newValue!; });
+            setState(() {
+              _selectedFilter = newValue!;
+            });
           },
           items: _filterOptions.map<DropdownMenuItem<String>>((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
+            return DropdownMenuItem<String>(value: value, child: Text(value));
           }).toList(),
         ),
       ),
@@ -488,15 +525,17 @@ Color get kBorderGrey => AppTheme.outline;
         backgroundColor: kPinkAccent,
         foregroundColor: Colors.black,
         padding: EdgeInsets.symmetric(vertical: responsive.spacing * 0.875),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(responsive.cardBorderRadius)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(responsive.cardBorderRadius),
+        ),
         elevation: 0,
         minimumSize: Size(0, responsive.buttonHeight),
       ),
       icon: Icon(Icons.add, size: responsive.smallIconSize),
       label: Text(
-        "Apply Leave", 
+        "Apply Leave",
         style: TextStyle(
-          fontWeight: FontWeight.bold, 
+          fontWeight: FontWeight.bold,
           fontSize: responsive.bodyFontSize,
         ),
       ),
@@ -510,25 +549,33 @@ Color get kBorderGrey => AppTheme.outline;
         backgroundColor: kPinkAccent,
         foregroundColor: Colors.black,
         padding: EdgeInsets.symmetric(vertical: responsive.spacing * 0.875),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(responsive.cardBorderRadius)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(responsive.cardBorderRadius),
+        ),
         elevation: 0,
         minimumSize: Size(0, responsive.buttonHeight),
       ),
       icon: Icon(Icons.schedule, size: responsive.smallIconSize),
       label: Text(
-        "Half Day", 
+        "Half Day",
         style: TextStyle(
-          fontWeight: FontWeight.bold, 
+          fontWeight: FontWeight.bold,
           fontSize: responsive.bodyFontSize,
         ),
       ),
     );
   }
 
-  Widget _buildLeaveBalanceCard(LeaveBalance balance, ResponsiveUtils responsive) {
+  Widget _buildLeaveBalanceCard(
+    LeaveBalance balance,
+    ResponsiveUtils responsive,
+  ) {
     return Container(
       width: responsive.isMobile ? responsive.scaledSize(170) : null,
-      padding: EdgeInsets.symmetric(horizontal: responsive.spacing, vertical: responsive.spacing * 0.6),
+      padding: EdgeInsets.symmetric(
+        horizontal: responsive.spacing,
+        vertical: responsive.spacing * 0.6,
+      ),
       decoration: BoxDecoration(
         color: kCardColor,
         borderRadius: BorderRadius.circular(responsive.cardBorderRadius),
@@ -540,16 +587,16 @@ Color get kBorderGrey => AppTheme.outline;
         children: [
           // Top Line: Type Name
           Text(
-            balance.type, 
+            balance.type,
             style: TextStyle(
-              color: kTextGrey, 
-              fontSize: responsive.bodyFontSize, 
+              color: kTextGrey,
+              fontSize: responsive.bodyFontSize,
               fontWeight: FontWeight.w500,
             ),
           ),
-          
+
           SizedBox(height: responsive.smallSpacing * 0.3),
-          
+
           // Middle Line: Big Number + Remaining
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -558,16 +605,16 @@ Color get kBorderGrey => AppTheme.outline;
               Text(
                 '${balance.remaining}',
                 style: TextStyle(
-                  color: kPinkAccent, 
-                  fontSize: responsive.scaledFontSize(36), 
+                  color: kPinkAccent,
+                  fontSize: responsive.scaledFontSize(36),
                   fontWeight: FontWeight.bold,
                 ),
               ),
               SizedBox(width: responsive.smallSpacing / 2),
               Text(
-                'left', 
+                'left',
                 style: TextStyle(
-                  color: kTextGrey, 
+                  color: kTextGrey,
                   fontSize: responsive.captionFontSize,
                 ),
               ),
@@ -582,7 +629,7 @@ Color get kBorderGrey => AppTheme.outline;
             child: Text(
               '${balance.used}/${balance.total} used',
               style: TextStyle(
-                color: kTextGrey, 
+                color: kTextGrey,
                 fontSize: responsive.captionFontSize,
               ),
             ),
@@ -595,7 +642,7 @@ Color get kBorderGrey => AppTheme.outline;
   Widget _buildLeaveRequestRow(LeaveRequest request) {
     Color statusColor;
     Color statusBg;
-    
+
     switch (request.status) {
       case 'Approved':
         statusColor = AppTheme.successColor;
@@ -631,36 +678,54 @@ Color get kBorderGrey => AppTheme.outline;
                   color: AppTheme.cardColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.description_outlined, color: kPinkAccent, size: 24),
+                child: Icon(
+                  Icons.description_outlined,
+                  color: kPinkAccent,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 14),
-              
+
               // Type Name
               Expanded(
                 child: Text(
-                  request.type, 
-                  style: TextStyle(color: kTextWhite, fontSize: 17, fontWeight: FontWeight.w600)
+                  request.type,
+                  style: TextStyle(
+                    color: kTextWhite,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
 
               // Status Pill
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: statusBg,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: statusColor.withOpacity(0.5), width: 1),
+                  border: Border.all(
+                    color: statusColor.withOpacity(0.5),
+                    width: 1,
+                  ),
                 ),
                 child: Text(
                   request.status,
-                  style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Date Range
           Row(
             children: [
@@ -672,9 +737,9 @@ Color get kBorderGrey => AppTheme.outline;
               ),
             ],
           ),
-          
+
           // Reason (if exists)
-          if(request.reason.isNotEmpty) ...[
+          if (request.reason.isNotEmpty) ...[
             const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,10 +748,14 @@ Color get kBorderGrey => AppTheme.outline;
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    request.reason, 
-                    style: TextStyle(color: kTextGrey.withOpacity(0.8), fontSize: 13, fontStyle: FontStyle.italic), 
-                    maxLines: 2, 
-                    overflow: TextOverflow.ellipsis
+                    request.reason,
+                    style: TextStyle(
+                      color: kTextGrey.withOpacity(0.8),
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -763,7 +832,7 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final maxHeight = mediaQuery.size.height * 0.85; // Max 85% of screen height
-    
+
     return Dialog(
       backgroundColor: kDialogBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -777,136 +846,180 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('New Request', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                  InkWell(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'New Request',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
-                      child: const Icon(Icons.close, color: Colors.grey, size: 20),
+                    ),
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                _buildLabel('Leave Type'),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: kInputBg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      dropdownColor: kInputBg,
+                      value: _selectedLeaveType,
+                      isExpanded: true,
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.white,
+                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 15),
+                      onChanged: (val) =>
+                          setState(() => _selectedLeaveType = val!),
+                      items: _leaveTypes
+                          .map(
+                            (val) =>
+                                DropdownMenuItem(value: val, child: Text(val)),
+                          )
+                          .toList(),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              _buildLabel('Leave Type'),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: kInputBg, 
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    dropdownColor: kInputBg,
-                    value: _selectedLeaveType,
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
-                    onChanged: (val) => setState(() => _selectedLeaveType = val!),
-                    items: _leaveTypes.map((val) => DropdownMenuItem(value: val, child: Text(val))).toList(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('From'),
-                        _buildDateField(context, _fromDate, true),
-                      ],
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('From'),
+                          _buildDateField(context, _fromDate, true),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('To'),
+                          _buildDateField(context, _toDate, false),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                _buildLabel('Reason'),
+                TextFormField(
+                  controller: _reasonController,
+                  maxLines: 4,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'Describe your reason for leave...',
+                    hintStyle: TextStyle(color: Colors.grey.withOpacity(0.5)),
+                    filled: true,
+                    fillColor: kInputBg,
+                    contentPadding: const EdgeInsets.all(16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: kPinkAccent.withOpacity(0.5),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildLabel('To'),
-                        _buildDateField(context, _toDate, false),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              _buildLabel('Reason'),
-              TextFormField(
-                controller: _reasonController,
-                maxLines: 4,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: 'Describe your reason for leave...',
-                  hintStyle: TextStyle(color: Colors.grey.withOpacity(0.5)),
-                  filled: true,
-                  fillColor: kInputBg,
-                  contentPadding: const EdgeInsets.all(16),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12), 
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12), 
-                    borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12), 
-                    borderSide: BorderSide(color: kPinkAccent.withOpacity(0.5)),
-                  ),
+                  validator: (val) =>
+                      val!.isEmpty ? 'Reason is required' : null,
                 ),
-                validator: (val) => val!.isEmpty ? 'Reason is required' : null,
-              ),
-              const SizedBox(height: 28),
+                const SizedBox(height: 28),
 
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isSubmitting ? null : _submitLeaveRequest,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPinkAccent,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
-                  child: _isSubmitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitLeaveRequest,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPinkAccent,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.black,
+                              ),
+                            ),
+                          )
+                        : const Text(
+                            "Submit Request",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
-                        )
-                      : const Text("Submit Request", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    )
     );
   }
 
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
-      child: Text(text, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -916,7 +1029,7 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: kInputBg, 
+          color: kInputBg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
@@ -925,10 +1038,12 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
           children: [
             Flexible(
               child: Text(
-                date == null ? 'Select date' : DateFormat('dd MMM yyyy').format(date), 
+                date == null
+                    ? 'Select date'
+                    : DateFormat('dd MMM yyyy').format(date),
                 style: TextStyle(
-                  color: date == null ? Colors.grey : Colors.white, 
-                  fontSize: 15
+                  color: date == null ? Colors.grey : Colors.white,
+                  fontSize: 15,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -946,7 +1061,7 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
     print('🔴 [Dialog] _fromDate: $_fromDate');
     print('🔴 [Dialog] _toDate: $_toDate');
     print('🔴 [Dialog] _reasonController.text: ${_reasonController.text}');
-    
+
     // Validate form and dates
     if (!_formKey.currentState!.validate()) {
       print('❌ [Dialog] Form validation failed');
@@ -954,10 +1069,12 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
     }
 
     if (_fromDate == null || _toDate == null) {
-      print('❌ [Dialog] Dates are null - _fromDate=$_fromDate, _toDate=$_toDate');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select both dates')),
+      print(
+        '❌ [Dialog] Dates are null - _fromDate=$_fromDate, _toDate=$_toDate',
       );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select both dates')));
       return;
     }
 
@@ -995,18 +1112,21 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
       if (!mounted) return;
 
       // Capitalize status for consistency (API returns lowercase)
-      String capitalizedStatus = response.data.status.isEmpty 
-          ? 'Pending' 
-          : response.data.status[0].toUpperCase() + response.data.status.substring(1).toLowerCase();
+      String capitalizedStatus = response.data.status.isEmpty
+          ? 'Pending'
+          : response.data.status[0].toUpperCase() +
+                response.data.status.substring(1).toLowerCase();
 
       // Success - add to local list and close dialog
-      widget.onSubmit(LeaveRequest(
-        type: _selectedLeaveType,
-        fromDate: _fromDate!,
-        toDate: _toDate!,
-        reason: _reasonController.text,
-        status: capitalizedStatus,
-      ));
+      widget.onSubmit(
+        LeaveRequest(
+          type: _selectedLeaveType,
+          fromDate: _fromDate!,
+          toDate: _toDate!,
+          reason: _reasonController.text,
+          status: capitalizedStatus,
+        ),
+      );
 
       Navigator.pop(context);
 
@@ -1104,7 +1224,7 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
     final mediaQuery = MediaQuery.of(context);
     final isMobile = mediaQuery.size.width < 600;
     final maxHeight = mediaQuery.size.height * 0.85;
-    
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: EdgeInsets.symmetric(
@@ -1140,7 +1260,11 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
-                        child: const Icon(Icons.schedule, color: Colors.white, size: 24),
+                        child: const Icon(
+                          Icons.schedule,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -1168,9 +1292,16 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.grey,
+                          size: 20,
+                        ),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                        constraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
                       ),
                     ],
                   ),
@@ -1233,10 +1364,14 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
           vertical: isMobile ? 14 : 16,
         ),
         decoration: BoxDecoration(
-          color: hasDate ? AppTheme.primaryColor.withOpacity(0.1) : AppTheme.surfaceVariant,
+          color: hasDate
+              ? AppTheme.primaryColor.withOpacity(0.1)
+              : AppTheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: hasDate ? AppTheme.primaryColor : Colors.white.withOpacity(0.1),
+            color: hasDate
+                ? AppTheme.primaryColor
+                : Colors.white.withOpacity(0.1),
             width: hasDate ? 1.5 : 1,
           ),
         ),
@@ -1249,7 +1384,9 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                   Text(
                     _selectedDate == null ? 'Select a date' : 'Date Selected',
                     style: TextStyle(
-                      color: _selectedDate == null ? Colors.grey[600] : AppTheme.primaryColor,
+                      color: _selectedDate == null
+                          ? Colors.grey[600]
+                          : AppTheme.primaryColor,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1260,9 +1397,13 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                         ? 'Tap to choose a date'
                         : DateFormat('EEE, MMM d, yyyy').format(_selectedDate!),
                     style: TextStyle(
-                      color: _selectedDate == null ? Colors.grey[500] : Colors.white,
+                      color: _selectedDate == null
+                          ? Colors.grey[500]
+                          : Colors.white,
                       fontSize: isMobile ? 14 : 15,
-                      fontWeight: _selectedDate == null ? FontWeight.normal : FontWeight.w600,
+                      fontWeight: _selectedDate == null
+                          ? FontWeight.normal
+                          : FontWeight.w600,
                     ),
                   ),
                 ],
@@ -1283,9 +1424,7 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
   Widget _buildSessionSelection(bool isMobile) {
     return Row(
       children: [
-        Expanded(
-          child: _buildSessionButton('morning', '🌅 Morning', isMobile),
-        ),
+        Expanded(child: _buildSessionButton('morning', '🌅 Morning', isMobile)),
         const SizedBox(width: 12),
         Expanded(
           child: _buildSessionButton('afternoon', '🌤️ Afternoon', isMobile),
@@ -1304,10 +1443,14 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
           vertical: isMobile ? 12 : 14,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryColor.withOpacity(0.2) : AppTheme.surfaceVariant,
+          color: isSelected
+              ? AppTheme.primaryColor.withOpacity(0.2)
+              : AppTheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppTheme.primaryColor : Colors.white.withOpacity(0.1),
+            color: isSelected
+                ? AppTheme.primaryColor
+                : Colors.white.withOpacity(0.1),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -1350,10 +1493,14 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
           vertical: isMobile ? 12 : 14,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryColor.withOpacity(0.2) : AppTheme.surfaceVariant,
+          color: isSelected
+              ? AppTheme.primaryColor.withOpacity(0.2)
+              : AppTheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppTheme.primaryColor : Colors.white.withOpacity(0.1),
+            color: isSelected
+                ? AppTheme.primaryColor
+                : Colors.white.withOpacity(0.1),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -1416,7 +1563,9 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                     disabledBackgroundColor: Colors.grey[700],
                   ),
@@ -1426,7 +1575,9 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : Row(
@@ -1449,10 +1600,14 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
-                  onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                  onPressed: _isSubmitting
+                      ? null
+                      : () => Navigator.pop(context),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text(
                     'Cancel',
@@ -1466,11 +1621,15 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
             children: [
               Expanded(
                 child: TextButton(
-                  onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                  onPressed: _isSubmitting
+                      ? null
+                      : () => Navigator.pop(context),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     backgroundColor: Colors.grey[800],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text(
                     'Cancel',
@@ -1487,7 +1646,9 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                     disabledBackgroundColor: Colors.grey[700],
                   ),
@@ -1497,7 +1658,9 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                           width: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : Row(
@@ -1507,7 +1670,10 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
                             SizedBox(width: 8),
                             Text(
                               'Submit Request',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
                             ),
                           ],
                         ),
@@ -1553,7 +1719,11 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
       }
 
       // Convert date to UTC before sending to API
-      final utcDate = DateTime.utc(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day);
+      final utcDate = DateTime.utc(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+      );
       // Call the new half-day API
       final response = await LeaveService.applyHalfDayLeave(
         token: token,
@@ -1569,16 +1739,18 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
       String capitalizedStatus = response.data.status.isEmpty
           ? 'Pending'
           : response.data.status[0].toUpperCase() +
-              response.data.status.substring(1).toLowerCase();
+                response.data.status.substring(1).toLowerCase();
 
       // Success - add to local list and close dialog
-      widget.onSubmit(LeaveRequest(
-        type: 'Half Day',
-        fromDate: _selectedDate!,
-        toDate: _selectedDate!,
-        reason: _reasonController.text,
-        status: capitalizedStatus,
-      ));
+      widget.onSubmit(
+        LeaveRequest(
+          type: 'Half Day',
+          fromDate: _selectedDate!,
+          toDate: _selectedDate!,
+          reason: _reasonController.text,
+          status: capitalizedStatus,
+        ),
+      );
 
       Navigator.pop(context);
 

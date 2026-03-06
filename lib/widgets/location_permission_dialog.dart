@@ -3,19 +3,14 @@ import 'package:permission_handler/permission_handler.dart';
 
 class LocationPermissionDialog extends StatelessWidget {
   final bool isPermanentlyDenied;
-  
-  const LocationPermissionDialog({
-    super.key,
-    this.isPermanentlyDenied = false,
-  });
+
+  const LocationPermissionDialog({super.key, this.isPermanentlyDenied = false});
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: const Color(0xFF141414),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -34,9 +29,9 @@ class LocationPermissionDialog extends StatelessWidget {
                 size: 48,
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Title
             const Text(
               'Location Permission Required',
@@ -47,14 +42,14 @@ class LocationPermissionDialog extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Description
             Text(
-              isPermanentlyDenied 
-                ? 'Location permission is currently disabled in settings.\n\nTo complete your Check-In / Check-Out, please enable location access in app settings.'
-                : 'To complete your Check-In / Check-Out, we need access to your location.\n\nThis helps us verify your attendance accurately and securely.',
+              isPermanentlyDenied
+                  ? 'Location permission is currently disabled in settings.\n\nTo complete your Check-In / Check-Out, please enable location access in app settings.'
+                  : 'To complete your Check-In / Check-Out, we need access to your location.\n\nThis helps us verify your attendance accurately and securely.',
               style: const TextStyle(
                 color: Color(0xFF9E9E9E),
                 fontSize: 14,
@@ -62,13 +57,13 @@ class LocationPermissionDialog extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             Text(
               isPermanentlyDenied
-                ? 'Tap "Open Settings" below to enable location permission.'
-                : 'Please enable location permission to continue.',
+                  ? 'Tap "Open Settings" below to enable location permission.'
+                  : 'Please enable location permission to continue.',
               style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 13,
@@ -76,9 +71,9 @@ class LocationPermissionDialog extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Buttons
             Row(
               children: [
@@ -145,11 +140,15 @@ class LocationPermissionDialog extends StatelessWidget {
 
   /// Show the location permission dialog
   /// Returns true if user wants to grant permission, false if opening settings, null if cancelled
-  static Future<bool?> show(BuildContext context, {bool isPermanentlyDenied = false}) {
+  static Future<bool?> show(
+    BuildContext context, {
+    bool isPermanentlyDenied = false,
+  }) {
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => LocationPermissionDialog(isPermanentlyDenied: isPermanentlyDenied),
+      builder: (context) =>
+          LocationPermissionDialog(isPermanentlyDenied: isPermanentlyDenied),
     );
   }
 }

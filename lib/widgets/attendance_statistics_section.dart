@@ -9,10 +9,7 @@ import 'package:hrms_app/theme/app_theme.dart';
 class AttendanceStatisticsSection extends StatefulWidget {
   final String? userId;
 
-  const AttendanceStatisticsSection({
-    super.key,
-    this.userId,
-  });
+  const AttendanceStatisticsSection({super.key, this.userId});
 
   @override
   State<AttendanceStatisticsSection> createState() =>
@@ -84,17 +81,15 @@ class _AttendanceStatisticsSectionState
 
   @override
   Widget build(BuildContext context) {
-    final monthYear = DateFormat('MMMM yyyy')
-        .format(DateTime(_currentYear, _currentMonth, 1));
+    final monthYear = DateFormat(
+      'MMMM yyyy',
+    ).format(DateTime(_currentYear, _currentMonth, 1));
 
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -136,11 +131,14 @@ class _AttendanceStatisticsSectionState
               ),
               if (!_isLoading)
                 IconButton(
-                  icon: const Icon(Icons.refresh,
-                      color: AppTheme.primaryColor, size: 20),
+                  icon: const Icon(
+                    Icons.refresh,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
                   onPressed: _loadAttendanceSummary,
                   tooltip: 'Refresh',
-                )
+                ),
             ],
           ),
           const SizedBox(height: 20),
@@ -151,7 +149,9 @@ class _AttendanceStatisticsSectionState
               padding: const EdgeInsets.symmetric(vertical: 60),
               alignment: Alignment.center,
               child: const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppTheme.primaryColor,
+                ),
               ),
             )
           else if (_error != null)
@@ -183,8 +183,10 @@ class _AttendanceStatisticsSectionState
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.chevron_left,
-                          color: AppTheme.primaryColor),
+                      icon: const Icon(
+                        Icons.chevron_left,
+                        color: AppTheme.primaryColor,
+                      ),
                       onPressed: () => _changeMonth(-1),
                     ),
                     Text(
@@ -196,8 +198,10 @@ class _AttendanceStatisticsSectionState
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.chevron_right,
-                          color: AppTheme.primaryColor),
+                      icon: const Icon(
+                        Icons.chevron_right,
+                        color: AppTheme.primaryColor,
+                      ),
                       onPressed: () => _changeMonth(1),
                     ),
                   ],
@@ -250,9 +254,7 @@ class _AttendanceStatisticsSectionState
                     ),
                     const SizedBox(width: 30),
                     // Chart (Right side - Donut/Pie)
-                    Expanded(
-                      child: _buildDonutChart(),
-                    ),
+                    Expanded(child: _buildDonutChart()),
                   ],
                 ),
               ],
@@ -278,10 +280,7 @@ class _AttendanceStatisticsSectionState
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -307,7 +306,8 @@ class _AttendanceStatisticsSectionState
   }
 
   Widget _buildDonutChart() {
-    final total = _summaryData!.present +
+    final total =
+        _summaryData!.present +
         _summaryData!.absent +
         _summaryData!.late +
         _summaryData!.halfDay;
@@ -316,10 +316,7 @@ class _AttendanceStatisticsSectionState
       return Center(
         child: Text(
           'No data',
-          style: TextStyle(
-            color: Colors.grey.withOpacity(0.5),
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Colors.grey.withOpacity(0.5), fontSize: 14),
         ),
       );
     }
@@ -443,12 +440,7 @@ class DonutChartPainter extends CustomPainter {
 
     // Inner arc (reverse)
     final innerRect = Rect.fromCircle(center: center, radius: innerRadius);
-    path.arcTo(
-      innerRect,
-      endAngle,
-      -sweepAngle * (3.14159 / 180),
-      false,
-    );
+    path.arcTo(innerRect, endAngle, -sweepAngle * (3.14159 / 180), false);
 
     path.close();
     canvas.drawPath(path, paint);

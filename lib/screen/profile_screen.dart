@@ -32,7 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _dobController;
 
   // -- Data State --
-  String _profileImage = ""; 
+  String _profileImage = "";
   String _initials = "RG";
   String _dob = "-";
   Map<String, String> _employmentData = {};
@@ -52,7 +52,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _bioController = TextEditingController(text: "");
     _emergencyNameController = TextEditingController(text: "");
     _emergencyPhoneController = TextEditingController(text: "");
-    _dobController = TextEditingController(text: _formatDate(user?.dateOfBirth) ?? "");
+    _dobController = TextEditingController(
+      text: _formatDate(user?.dateOfBirth) ?? "",
+    );
     _profileImage = user?.profilePhotoUrl ?? "";
     _initials = _buildInitials(user?.name ?? "");
     _dob = _formatDate(user?.dateOfBirth) ?? "";
@@ -226,16 +228,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     return cleaned
         .split(RegExp(r"\s+"))
-        .map((part) => part.isEmpty
-            ? part
-            : part[0].toUpperCase() + part.substring(1).toLowerCase())
+        .map(
+          (part) => part.isEmpty
+              ? part
+              : part[0].toUpperCase() + part.substring(1).toLowerCase(),
+        )
         .join(" ");
   }
 
   Future<void> _selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _currentUser?.dateOfBirth ?? DateTime.now().subtract(const Duration(days: 365 * 25)),
+      initialDate:
+          _currentUser?.dateOfBirth ??
+          DateTime.now().subtract(const Duration(days: 365 * 25)),
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
       builder: (context, child) {
@@ -252,7 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       },
     );
-    
+
     if (picked != null && mounted) {
       setState(() {
         // Update the current user's date of birth
@@ -325,10 +331,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 ListTile(
                   leading: const Icon(Icons.camera_alt, color: Colors.white),
-                  title: const Text("Take Photo", style: TextStyle(color: Colors.white)),
+                  title: const Text(
+                    "Take Photo",
+                    style: TextStyle(color: Colors.white),
+                  ),
                   onTap: () async {
                     Navigator.pop(context);
-                    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+                    final XFile? image = await picker.pickImage(
+                      source: ImageSource.camera,
+                    );
                     if (image != null && mounted) {
                       await _uploadProfilePhoto(image.path);
                     }
@@ -336,10 +347,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.photo_library, color: Colors.white),
-                  title: const Text("Choose from Gallery", style: TextStyle(color: Colors.white)),
+                  title: const Text(
+                    "Choose from Gallery",
+                    style: TextStyle(color: Colors.white),
+                  ),
                   onTap: () async {
                     Navigator.pop(context);
-                    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                    final XFile? image = await picker.pickImage(
+                      source: ImageSource.gallery,
+                    );
                     if (image != null && mounted) {
                       await _uploadProfilePhoto(image.path);
                     }
@@ -347,8 +363,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 if (_profileImage.isNotEmpty)
                   ListTile(
-                    leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                    title: const Text("Remove Photo", style: TextStyle(color: Colors.redAccent)),
+                    leading: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.redAccent,
+                    ),
+                    title: const Text(
+                      "Remove Photo",
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
                     onTap: () {
                       Navigator.pop(context);
                       setState(() {
@@ -369,9 +391,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     final result = await _profileService.uploadProfilePhoto(
@@ -387,8 +407,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (updatedUser != null) {
         setState(() {
           _currentUser = updatedUser;
-          _profileImage = updatedUser.profilePhotoUrl.isNotEmpty 
-              ? updatedUser.profilePhotoUrl 
+          _profileImage = updatedUser.profilePhotoUrl.isNotEmpty
+              ? updatedUser.profilePhotoUrl
               : imagePath;
         });
       } else {
@@ -400,7 +420,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result['message'] ?? 'Profile photo updated successfully'),
+            content: Text(
+              result['message'] ?? 'Profile photo updated successfully',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -417,27 +439,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
     final responsive = ResponsiveUtils(context);
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFF050505), // Deep Black
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          "My Profile", 
+          "My Profile",
           style: TextStyle(
-            fontWeight: FontWeight.w600, 
+            fontWeight: FontWeight.w600,
             fontSize: responsive.headingFontSize,
           ),
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, size: responsive.smallIconSize, color: Colors.white),
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            size: responsive.smallIconSize,
+            color: Colors.white,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
@@ -454,38 +479,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Padding(
             padding: EdgeInsets.only(right: responsive.spacing),
             child: _isEditing
-              ? TextButton(
-                  onPressed: _isSaving ? null : _saveProfile,
-                  child: _isSaving
-                      ? SizedBox(
-                          height: responsive.smallIconSize,
-                          width: responsive.smallIconSize,
-                          child: const CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          "Save",
-                          style: TextStyle(
-                            color: primaryColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: responsive.bodyFontSize,
+                ? TextButton(
+                    onPressed: _isSaving ? null : _saveProfile,
+                    child: _isSaving
+                        ? SizedBox(
+                            height: responsive.smallIconSize,
+                            width: responsive.smallIconSize,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            "Save",
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: responsive.bodyFontSize,
+                            ),
                           ),
-                        ),
-                )
-              : IconButton(
-                  icon: Icon(Icons.edit_note, color: Colors.white, size: responsive.iconSize),
-                  onPressed: _toggleEdit,
-                  tooltip: "Edit Profile",
-                ),
-          )
+                  )
+                : IconButton(
+                    icon: Icon(
+                      Icons.edit_note,
+                      color: Colors.white,
+                      size: responsive.iconSize,
+                    ),
+                    onPressed: _toggleEdit,
+                    tooltip: "Edit Profile",
+                  ),
+          ),
         ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
-          horizontal: responsive.isDesktopDevice ? 60 : responsive.horizontalPadding, 
+          horizontal: responsive.isDesktopDevice
+              ? 60
+              : responsive.horizontalPadding,
           vertical: responsive.verticalPadding,
         ),
-        child: responsive.isDesktopDevice 
-            ? _buildDesktopLayout(primaryColor) 
+        child: responsive.isDesktopDevice
+            ? _buildDesktopLayout(primaryColor)
             : _buildMobileLayout(primaryColor),
       ),
     );
@@ -522,9 +555,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _buildProfileHeader(primaryColor),
               const SizedBox(height: 20),
-               // Bio moved to left column on Desktop
-              if (_isEditing || _bioController.text.isNotEmpty)
-                _buildBioCard(),
+              // Bio moved to left column on Desktop
+              if (_isEditing || _bioController.text.isNotEmpty) _buildBioCard(),
             ],
           ),
         ),
@@ -555,8 +587,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [const Color(0xFF1A1A1A), const Color(0xFF111111)],
-          begin: Alignment.topLeft, 
-          end: Alignment.bottomRight
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
@@ -571,19 +603,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(color: primaryColor.withOpacity(0.3), blurRadius: 20, spreadRadius: 2)
-                  ]
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
                 ),
                 child: CircleAvatar(
                   radius: 50,
                   backgroundColor: const Color(0xFF2A2A2A),
                   backgroundImage: _profileImage.isNotEmpty
                       ? (_profileImage.startsWith('http')
-                          ? NetworkImage(_profileImage)
-                          : FileImage(File(_profileImage)) as ImageProvider)
+                            ? NetworkImage(_profileImage)
+                            : FileImage(File(_profileImage)) as ImageProvider)
                       : null,
-                  child: _profileImage.isEmpty 
-                      ? Text(_initials, style: TextStyle(fontSize: 32, color: primaryColor, fontWeight: FontWeight.bold)) 
+                  child: _profileImage.isEmpty
+                      ? Text(
+                          _initials,
+                          style: TextStyle(
+                            fontSize: 32,
+                            color: primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
                       : null,
                 ),
               ),
@@ -600,25 +643,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.black, width: 3),
                       ),
-                      child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                )
+                ),
             ],
           ),
           const SizedBox(height: 20),
-          
+
           // Name (Non-editable)
           Text(
             _nameController.text,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
-          
+
           const SizedBox(height: 6),
-          Text(_employmentData["Position"] ?? "Employee", style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-          
+          Text(
+            _employmentData["Position"] ?? "Employee",
+            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+          ),
+
           const SizedBox(height: 20),
-          
+
           // Chips
           Wrap(
             spacing: 8,
@@ -635,10 +689,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Colors.blueAccent.withOpacity(0.1),
                 Colors.blueAccent,
               ),
-              _buildStatusChip("ID: ${_employmentData['Employee ID']}", Colors.white.withOpacity(0.05), Colors.grey),
+              _buildStatusChip(
+                "ID: ${_employmentData['Employee ID']}",
+                Colors.white.withOpacity(0.05),
+                Colors.grey,
+              ),
             ],
           ),
-
         ],
       ),
     );
@@ -655,7 +712,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Bio", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          const Text(
+            "Bio",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 10),
           TextField(
             controller: _bioController,
@@ -667,8 +727,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fillColor: Colors.black,
               hintText: "Write something about yourself...",
               hintStyle: const TextStyle(color: Colors.grey),
-              border: _isEditing ? OutlineInputBorder(borderRadius: BorderRadius.circular(8)) : InputBorder.none,
-              contentPadding: _isEditing ? const EdgeInsets.all(12) : EdgeInsets.zero,
+              border: _isEditing
+                  ? OutlineInputBorder(borderRadius: BorderRadius.circular(8))
+                  : InputBorder.none,
+              contentPadding: _isEditing
+                  ? const EdgeInsets.all(12)
+                  : EdgeInsets.zero,
             ),
           ),
         ],
@@ -684,7 +748,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildFieldRow("Full Name", _nameController, isEditable: true),
         _buildFieldRow("Email", _emailController, isEditable: false),
         _buildFieldRow("Phone", _phoneController, isEditable: true),
-        _buildFieldRow("Address", _addressController, isEditable: true, maxLines: 2),
+        _buildFieldRow(
+          "Address",
+          _addressController,
+          isEditable: true,
+          maxLines: 2,
+        ),
         _buildDateFieldRow("Date of Birth", _dobController),
       ],
     );
@@ -694,7 +763,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return _buildSectionCard(
       title: "Employment Details",
       icon: Icons.badge_outlined,
-      children: _employmentData.entries.map((e) => _buildStaticRow(e.key, e.value, null)).toList(),
+      children: _employmentData.entries
+          .map((e) => _buildStaticRow(e.key, e.value, null))
+          .toList(),
     );
   }
 
@@ -703,15 +774,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: "Emergency Contact",
       icon: Icons.phone_callback_outlined,
       children: [
-        _buildFieldRow("Contact Name", _emergencyNameController, isEditable: true),
-        _buildFieldRow("Contact Number", _emergencyPhoneController, isEditable: true),
+        _buildFieldRow(
+          "Contact Name",
+          _emergencyNameController,
+          isEditable: true,
+        ),
+        _buildFieldRow(
+          "Contact Number",
+          _emergencyPhoneController,
+          isEditable: true,
+        ),
       ],
     );
   }
 
   // --- REUSABLE WIDGETS ---
 
-  Widget _buildSectionCard({required String title, required IconData icon, required List<Widget> children}) {
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -726,7 +809,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Icon(icon, color: Theme.of(context).primaryColor, size: 22),
               const SizedBox(width: 12),
-              Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -736,32 +826,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildFieldRow(String label, TextEditingController controller, {bool isEditable = false, int maxLines = 1}) {
+  Widget _buildFieldRow(
+    String label,
+    TextEditingController controller, {
+    bool isEditable = false,
+    int maxLines = 1,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: LayoutBuilder(
         builder: (context, constraints) {
           bool isWide = constraints.maxWidth > 400;
-          return isWide 
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 120, 
-                    child: Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500))
-                  ),
-                  Expanded(child: _buildInputOrText(controller, isEditable, maxLines)),
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 6),
-                  _buildInputOrText(controller, isEditable, maxLines),
-                ],
-              );
-        }
+          return isWide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: _buildInputOrText(
+                        controller,
+                        isEditable,
+                        maxLines,
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildInputOrText(controller, isEditable, maxLines),
+                  ],
+                );
+        },
       ),
     );
   }
@@ -773,15 +888,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120, 
+            width: 120,
             child: Row(
               children: [
-                if (icon != null) ...[Icon(icon, size: 14, color: Colors.grey[600]), const SizedBox(width: 6)],
-                Expanded(child: Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500))),
+                if (icon != null) ...[
+                  Icon(icon, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 6),
+                ],
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ],
-            )
+            ),
           ),
-          Expanded(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500))),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -793,46 +929,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           bool isWide = constraints.maxWidth > 400;
-          return isWide 
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 120, 
-                    child: Row(
+          return isWide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.cake_outlined,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(child: _buildDateInput(controller)),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Icon(Icons.cake_outlined, size: 14, color: Colors.grey[600]),
+                        Icon(
+                          Icons.cake_outlined,
+                          size: 14,
+                          color: Colors.grey[600],
+                        ),
                         const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            label, 
-                            style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500)
-                          )
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
-                    )
-                  ),
-                  Expanded(child: _buildDateInput(controller)),
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.cake_outlined, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 6),
-                      Text(
-                        label, 
-                        style: TextStyle(color: Colors.grey[500], fontSize: 13, fontWeight: FontWeight.w500)
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  _buildDateInput(controller),
-                ],
-              );
-        }
+                    ),
+                    const SizedBox(height: 6),
+                    _buildDateInput(controller),
+                  ],
+                );
+        },
       ),
     );
   }
@@ -855,7 +1007,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   controller.text.isEmpty ? "Select Date" : controller.text,
                   style: TextStyle(
                     color: controller.text.isEmpty ? Colors.grey : Colors.white,
-                    fontSize: 14
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -867,12 +1019,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       return Text(
         controller.text.isEmpty ? "-" : controller.text,
-        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
       );
     }
   }
 
-  Widget _buildInputOrText(TextEditingController controller, bool isEditable, int maxLines) {
+  Widget _buildInputOrText(
+    TextEditingController controller,
+    bool isEditable,
+    int maxLines,
+  ) {
     if (_isEditing && isEditable) {
       return TextField(
         controller: controller,
@@ -880,7 +1040,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         style: const TextStyle(color: Colors.white, fontSize: 14),
         decoration: InputDecoration(
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
           filled: true,
           fillColor: const Color(0xFF0A0A0A),
           border: OutlineInputBorder(
@@ -896,7 +1059,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       return Text(
         controller.text.isEmpty ? "-" : controller.text,
-        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
       );
     }
   }
@@ -910,8 +1077,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         border: Border.all(color: textColor.withOpacity(0.2)),
       ),
       child: Text(
-        label, 
-        style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5)
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }

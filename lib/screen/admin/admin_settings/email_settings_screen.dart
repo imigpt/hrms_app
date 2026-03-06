@@ -12,8 +12,7 @@ class AdminEmailSettingsScreen extends StatefulWidget {
       _AdminEmailSettingsScreenState();
 }
 
-class _AdminEmailSettingsScreenState
-    extends State<AdminEmailSettingsScreen> {
+class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
   bool _loading = true;
   bool _saving = false;
   bool _testSending = false;
@@ -28,8 +27,7 @@ class _AdminEmailSettingsScreenState
   bool _showPassword = false;
   String _encryption = 'tls';
   final _fromNameCtrl = TextEditingController(text: 'HRMS');
-  final _fromEmailCtrl =
-      TextEditingController(text: 'noreply@hrms.com');
+  final _fromEmailCtrl = TextEditingController(text: 'noreply@hrms.com');
 
   // Triggers
   bool _leaveApplication = true;
@@ -60,8 +58,7 @@ class _AdminEmailSettingsScreenState
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getEmailSettings(widget.token ?? '');
+      final res = await SettingsService.getEmailSettings(widget.token ?? '');
       final d = res['data'];
       if (d != null) {
         setState(() {
@@ -140,7 +137,9 @@ class _AdminEmailSettingsScreenState
     setState(() => _testSending = true);
     try {
       await SettingsService.sendTestEmail(
-          widget.token ?? '', _testEmailCtrl.text);
+        widget.token ?? '',
+        _testEmailCtrl.text,
+      );
       if (mounted) showAdminSnack(context, 'Test email sent!');
     } catch (_) {
       if (mounted)
@@ -153,8 +152,12 @@ class _AdminEmailSettingsScreenState
   @override
   void dispose() {
     for (final c in [
-      _smtpHostCtrl, _usernameCtrl, _passwordCtrl,
-      _fromNameCtrl, _fromEmailCtrl, _testEmailCtrl,
+      _smtpHostCtrl,
+      _usernameCtrl,
+      _passwordCtrl,
+      _fromNameCtrl,
+      _fromEmailCtrl,
+      _testEmailCtrl,
     ]) {
       c.dispose();
     }
@@ -182,36 +185,40 @@ class _AdminEmailSettingsScreenState
                 children: ['SMTP', 'Triggers', 'Logs']
                     .asMap()
                     .entries
-                    .map((e) => Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _tab = e.key),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              margin: EdgeInsets.only(right: e.key < 2 ? 8 : 0),
-                              padding: const EdgeInsets.symmetric(vertical: 9),
-                              decoration: BoxDecoration(
+                    .map(
+                      (e) => Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _tab = e.key),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            margin: EdgeInsets.only(right: e.key < 2 ? 8 : 0),
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: _tab == e.key
+                                  ? AppTheme.primaryColor
+                                  : AppTheme.cardColor,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
                                 color: _tab == e.key
                                     ? AppTheme.primaryColor
-                                    : AppTheme.cardColor,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                    color: _tab == e.key
-                                        ? AppTheme.primaryColor
-                                        : Colors.white.withOpacity(0.07)),
+                                    : Colors.white.withOpacity(0.07),
                               ),
-                              child: Text(
-                                e.value,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                    color: _tab == e.key
-                                        ? Colors.white
-                                        : Colors.grey[500],
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600),
+                            ),
+                            child: Text(
+                              e.value,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _tab == e.key
+                                    ? Colors.white
+                                    : Colors.grey[500],
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                        ))
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -219,10 +226,10 @@ class _AdminEmailSettingsScreenState
               child: _loading
                   ? adminLoader()
                   : _tab == 0
-                      ? _buildSMTP()
-                      : _tab == 1
-                          ? _buildTriggers()
-                          : _buildLogs(),
+                  ? _buildSMTP()
+                  : _tab == 1
+                  ? _buildTriggers()
+                  : _buildLogs(),
             ),
           ],
         ),
@@ -255,9 +262,10 @@ class _AdminEmailSettingsScreenState
           children: [
             AdminRow2(
               left: AdminTextField(
-                  label: 'SMTP Host',
-                  controller: _smtpHostCtrl,
-                  hint: 'smtp.gmail.com'),
+                label: 'SMTP Host',
+                controller: _smtpHostCtrl,
+                hint: 'smtp.gmail.com',
+              ),
               right: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -268,28 +276,33 @@ class _AdminEmailSettingsScreenState
                     keyboardType: TextInputType.number,
                     onChanged: (v) =>
                         setState(() => _smtpPort = int.tryParse(v) ?? 587),
-                    style:
-                        const TextStyle(color: Colors.white, fontSize: 14),
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: AppTheme.surfaceVariant,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                            color: Colors.white.withOpacity(0.07)),
+                          color: Colors.white.withOpacity(0.07),
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                            color: Colors.white.withOpacity(0.07)),
+                          color: Colors.white.withOpacity(0.07),
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(
-                            color: AppTheme.primaryColor, width: 1.5),
+                          color: AppTheme.primaryColor,
+                          width: 1.5,
+                        ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ],
@@ -315,13 +328,13 @@ class _AdminEmailSettingsScreenState
               obscure: !_showPassword,
               suffix: IconButton(
                 icon: Icon(
-                    _showPassword
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
-                    color: Colors.grey[500],
-                    size: 18),
-                onPressed: () =>
-                    setState(() => _showPassword = !_showPassword),
+                  _showPassword
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                  color: Colors.grey[500],
+                  size: 18,
+                ),
+                onPressed: () => setState(() => _showPassword = !_showPassword),
               ),
             ),
           ],
@@ -331,11 +344,14 @@ class _AdminEmailSettingsScreenState
           children: [
             AdminRow2(
               left: AdminTextField(
-                  label: 'From Name', controller: _fromNameCtrl),
+                label: 'From Name',
+                controller: _fromNameCtrl,
+              ),
               right: AdminTextField(
-                  label: 'From Email',
-                  controller: _fromEmailCtrl,
-                  keyboardType: TextInputType.emailAddress),
+                label: 'From Email',
+                controller: _fromEmailCtrl,
+                keyboardType: TextInputType.emailAddress,
+              ),
             ),
           ],
         ),
@@ -346,10 +362,11 @@ class _AdminEmailSettingsScreenState
               children: [
                 Expanded(
                   child: AdminTextField(
-                      label: 'Test Email Address',
-                      controller: _testEmailCtrl,
-                      keyboardType: TextInputType.emailAddress,
-                      hint: 'test@example.com'),
+                    label: 'Test Email Address',
+                    controller: _testEmailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    hint: 'test@example.com',
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Padding(
@@ -359,23 +376,30 @@ class _AdminEmailSettingsScreenState
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
-                        color:
-                            const Color(0xFF3B82F6).withOpacity(0.15),
+                        color: const Color(0xFF3B82F6).withOpacity(0.15),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: const Color(0xFF3B82F6).withOpacity(0.4)),
+                          color: const Color(0xFF3B82F6).withOpacity(0.4),
+                        ),
                       ),
                       child: _testSending
                           ? const SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFF3B82F6)))
-                          : const Icon(Icons.send_rounded,
-                              color: Color(0xFF3B82F6), size: 18),
+                                strokeWidth: 2,
+                                color: Color(0xFF3B82F6),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.send_rounded,
+                              color: Color(0xFF3B82F6),
+                              size: 18,
+                            ),
                     ),
                   ),
                 ),
@@ -389,30 +413,58 @@ class _AdminEmailSettingsScreenState
 
   Widget _buildTriggers() {
     final triggers = [
-      ('Leave Application', _leaveApplication,
-          (v) => setState(() => _leaveApplication = v)),
-      ('Leave Approval', _leaveApproval,
-          (v) => setState(() => _leaveApproval = v)),
-      ('Leave Rejection', _leaveRejection,
-          (v) => setState(() => _leaveRejection = v)),
-      ('Late Attendance', _attendanceLate,
-          (v) => setState(() => _attendanceLate = v)),
-      ('Task Assignment', _taskAssignment,
-          (v) => setState(() => _taskAssignment = v)),
-      ('Expense Submission', _expenseSubmission,
-          (v) => setState(() => _expenseSubmission = v)),
-      ('Expense Approval', _expenseApproval,
-          (v) => setState(() => _expenseApproval = v)),
-      ('Resignation', _resignation,
-          (v) => setState(() => _resignation = v)),
-      ('Password Reset', _passwordReset,
-          (v) => setState(() => _passwordReset = v)),
-      ('Welcome Email', _welcomeEmail,
-          (v) => setState(() => _welcomeEmail = v)),
-      ('Payslip Generated', _payslipGenerated,
-          (v) => setState(() => _payslipGenerated = v)),
-      ('Announcement', _announcement,
-          (v) => setState(() => _announcement = v)),
+      (
+        'Leave Application',
+        _leaveApplication,
+        (v) => setState(() => _leaveApplication = v),
+      ),
+      (
+        'Leave Approval',
+        _leaveApproval,
+        (v) => setState(() => _leaveApproval = v),
+      ),
+      (
+        'Leave Rejection',
+        _leaveRejection,
+        (v) => setState(() => _leaveRejection = v),
+      ),
+      (
+        'Late Attendance',
+        _attendanceLate,
+        (v) => setState(() => _attendanceLate = v),
+      ),
+      (
+        'Task Assignment',
+        _taskAssignment,
+        (v) => setState(() => _taskAssignment = v),
+      ),
+      (
+        'Expense Submission',
+        _expenseSubmission,
+        (v) => setState(() => _expenseSubmission = v),
+      ),
+      (
+        'Expense Approval',
+        _expenseApproval,
+        (v) => setState(() => _expenseApproval = v),
+      ),
+      ('Resignation', _resignation, (v) => setState(() => _resignation = v)),
+      (
+        'Password Reset',
+        _passwordReset,
+        (v) => setState(() => _passwordReset = v),
+      ),
+      (
+        'Welcome Email',
+        _welcomeEmail,
+        (v) => setState(() => _welcomeEmail = v),
+      ),
+      (
+        'Payslip Generated',
+        _payslipGenerated,
+        (v) => setState(() => _payslipGenerated = v),
+      ),
+      ('Announcement', _announcement, (v) => setState(() => _announcement = v)),
     ];
 
     return ListView(
@@ -421,14 +473,16 @@ class _AdminEmailSettingsScreenState
         AdminCard(
           title: 'Email Triggers',
           children: [
-            ...triggers.map((t) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: AdminToggleRow(
-                    label: t.$1,
-                    value: t.$2,
-                    onChanged: (v) => t.$3(v),
-                  ),
-                )),
+            ...triggers.map(
+              (t) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: AdminToggleRow(
+                  label: t.$1,
+                  value: t.$2,
+                  onChanged: (v) => t.$3(v),
+                ),
+              ),
+            ),
           ],
         ),
       ],
@@ -446,9 +500,11 @@ class _AdminEmailSettingsScreenState
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
-                    child: Text('No email logs found.',
-                        style: TextStyle(
-                            color: Colors.grey[600], fontSize: 13))),
+                  child: Text(
+                    'No email logs found.',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
+                ),
               )
             else
               ..._logs.take(20).map((log) => _LogItem(log: log)),
@@ -474,9 +530,10 @@ class _LogItem extends StatelessWidget {
         color: AppTheme.background,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-            color: isSuccess
-                ? const Color(0xFF22C55E).withOpacity(0.2)
-                : const Color(0xFFEF4444).withOpacity(0.2)),
+          color: isSuccess
+              ? const Color(0xFF22C55E).withOpacity(0.2)
+              : const Color(0xFFEF4444).withOpacity(0.2),
+        ),
       ),
       child: Row(
         children: [
@@ -495,16 +552,20 @@ class _LogItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(log['subject']?.toString() ?? 'No subject',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                Text('To: ${log['to'] ?? '—'} · $status',
-                    style:
-                        TextStyle(color: Colors.grey[600], fontSize: 11)),
+                Text(
+                  log['subject']?.toString() ?? 'No subject',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'To: ${log['to'] ?? '—'} · $status',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                ),
               ],
             ),
           ),

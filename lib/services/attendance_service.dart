@@ -14,7 +14,7 @@ class AttendanceService {
   // Replace with your actual API base URL
   // static const String baseUrl = 'https://hrms-backend-807r.onrender.com/api';
   static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
-  
+
   // Check In
   static Future<CheckInResponse> checkIn({
     required String token,
@@ -24,69 +24,67 @@ class AttendanceService {
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/attendance/check-in');
-      
+
       print('=== CHECK-IN API REQUEST ===');
       print('URL: $uri');
       print('Latitude: $latitude');
       print('Longitude: $longitude');
       print('Photo file: ${photoFile.path}');
-      
+
       var request = http.MultipartRequest('POST', uri);
-      
+
       // Add headers
       request.headers['Authorization'] = 'Bearer $token';
-      
+
       // Add photo file
       request.files.add(
-        await http.MultipartFile.fromPath(
-          'photo',
-          photoFile.path,
-        ),
+        await http.MultipartFile.fromPath('photo', photoFile.path),
       );
-      
+
       // Add location data as JSON string (as per API docs)
-      final locationData = {
-        'latitude': latitude,
-        'longitude': longitude,
-      };
+      final locationData = {'latitude': latitude, 'longitude': longitude};
       request.fields['location'] = json.encode(locationData);
-      
+
       print('Request fields: ${request.fields}');
-      
+
       // Send request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      
+
       print('=== CHECK-IN API RESPONSE ===');
       print('Status Code: ${response.statusCode}');
       print('Response Body: ${response.body}');
-      
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonData = json.decode(response.body);
-        
+
         // Log the location from response
         if (jsonData['data'] != null && jsonData['data']['checkIn'] != null) {
-          print('Response Check-In Location: ${jsonData['data']['checkIn']['location']}');
+          print(
+            'Response Check-In Location: ${jsonData['data']['checkIn']['location']}',
+          );
         }
-        
+
         return CheckInResponse.fromJson(jsonData);
       } else {
         final errorBody = response.body;
         print('Check-in failed with status ${response.statusCode}');
         print('Response body: $errorBody');
-        
+
         try {
           final errorData = json.decode(errorBody);
           throw Exception(errorData['message'] ?? 'Failed to check in');
         } catch (e) {
-          throw Exception('Failed to check in: ${response.statusCode} - ${errorBody.substring(0, errorBody.length > 100 ? 100 : errorBody.length)}');
+          throw Exception(
+            'Failed to check in: ${response.statusCode} - ${errorBody.substring(0, errorBody.length > 100 ? 100 : errorBody.length)}',
+          );
         }
       }
     } catch (e) {
       throw Exception('Check-in error: $e');
     }
   }
-  
+
   // Check Out
   static Future<CheckInResponse> checkOut({
     required String token,
@@ -95,21 +93,18 @@ class AttendanceService {
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/attendance/check-out');
-      
+
       print('\n📤 [CHECK-OUT] === API REQUEST ===');
       print('📍 [CHECK-OUT] URL: $uri');
       print('📍 [CHECK-OUT] Latitude: $latitude');
       print('📍 [CHECK-OUT] Longitude: $longitude');
-      
+
       final requestBody = {
-        'location': {
-          'latitude': latitude,
-          'longitude': longitude,
-        },
+        'location': {'latitude': latitude, 'longitude': longitude},
       };
-      
+
       print('📨 [CHECK-OUT] Request body: ${json.encode(requestBody)}');
-      
+
       final response = await http.post(
         uri,
         headers: {
@@ -118,50 +113,53 @@ class AttendanceService {
         },
         body: json.encode(requestBody),
       );
-      
+
       print('\n📥 [CHECK-OUT] === API RESPONSE ===');
       print('📊 [CHECK-OUT] Status Code: ${response.statusCode}');
       print('📄 [CHECK-OUT] Response Body: ${response.body}');
-      
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonData = json.decode(response.body);
-        
+
         // Log the location from response
         if (jsonData['data'] != null && jsonData['data']['checkOut'] != null) {
           var checkOutLocation = jsonData['data']['checkOut']['location'];
           print('📍 [CHECK-OUT] Server Response Location: $checkOutLocation');
-          
+
           // ⚠️ WORKAROUND: If backend doesn't return location, inject it manually
           if (checkOutLocation == null) {
             print('⚠️ [CHECK-OUT] WARNING: Backend returned null location!');
             print('✅ [CHECK-OUT] Injecting location manually...');
-            
+
             jsonData['data']['checkOut']['location'] = {
               'latitude': latitude,
               'longitude': longitude,
             };
-            
-            print('📍 [CHECK-OUT] Injected location: Lat=$latitude, Long=$longitude');
+
+            print(
+              '📍 [CHECK-OUT] Injected location: Lat=$latitude, Long=$longitude',
+            );
           }
         }
-        
+
         return CheckInResponse.fromJson(jsonData);
       } else {
         final errorBody = response.body;
-        
+
         String errorMessage = 'Failed to check out';
         try {
           final errorData = json.decode(errorBody);
           errorMessage = errorData['message'] ?? errorMessage;
-          
+
           // If there's additional error info, include it
           if (errorData['error'] != null) {
             errorMessage += ': ${errorData['error']}';
           }
         } catch (e) {
-          errorMessage = 'Failed to check out (${response.statusCode}): $errorBody';
+          errorMessage =
+              'Failed to check out (${response.statusCode}): $errorBody';
         }
-        
+
         throw Exception(errorMessage);
       }
     } catch (e) {
@@ -169,37 +167,37 @@ class AttendanceService {
       throw Exception('Check-out error: $e');
     }
   }
-  
+
   // Get Today's Attendance
   static Future<TodayAttendance?> getTodayAttendance({
     required String token,
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/attendance/today');
-      
+
       print('📅 [TODAY\'S ATTENDANCE] Fetching: $uri');
-      
+
       final response = await http
           .get(uri, headers: {'Authorization': 'Bearer $token'})
           .timeout(
             const Duration(seconds: 10),
             onTimeout: () => throw Exception('Attendance request timed out'),
           );
-      
+
       print('📅 [TODAY\'S ATTENDANCE] Status: ${response.statusCode}');
       print('📅 [TODAY\'S ATTENDANCE] Response: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         final todayAttendance = TodayAttendance.fromJson(jsonData);
-        
+
         print('✅ [TODAY\'S ATTENDANCE] Parsed successfully');
         print('   - Success: ${todayAttendance.success}');
         print('   - Has Check-in: ${todayAttendance.data?.hasCheckedIn}');
         print('   - Has Check-out: ${todayAttendance.data?.hasCheckedOut}');
         print('   - Status: ${todayAttendance.data?.status}');
         print('   - Work Hours: ${todayAttendance.data?.workHours}');
-        
+
         return todayAttendance;
       } else if (response.statusCode == 404) {
         // No attendance record for today
@@ -207,9 +205,11 @@ class AttendanceService {
         return null;
       } else {
         final errorBody = response.body;
-        print('❌ [TODAY\'S ATTENDANCE] Failed with status ${response.statusCode}');
+        print(
+          '❌ [TODAY\'S ATTENDANCE] Failed with status ${response.statusCode}',
+        );
         print('Response body: $errorBody');
-        
+
         try {
           final errorData = json.decode(errorBody);
           throw Exception(errorData['message'] ?? 'Failed to get attendance');
@@ -222,7 +222,7 @@ class AttendanceService {
       throw Exception('Get attendance error: $e');
     }
   }
-  
+
   // Get Attendance Summary
   static Future<AttendanceSummary> getAttendanceSummary({
     required String token,
@@ -230,15 +230,15 @@ class AttendanceService {
     required int year,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl/attendance/summary?month=$month&year=$year');
-      
+      final uri = Uri.parse(
+        '$baseUrl/attendance/summary?month=$month&year=$year',
+      );
+
       final response = await http.get(
         uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
-      
+
       if (response.statusCode == 200) {
         try {
           final jsonData = json.decode(response.body);
@@ -263,21 +263,27 @@ class AttendanceService {
         }
       } else {
         final errorBody = response.body;
-        print('Get attendance summary failed with status ${response.statusCode}');
+        print(
+          'Get attendance summary failed with status ${response.statusCode}',
+        );
         print('Response body: $errorBody');
-        
+
         try {
           final errorData = json.decode(errorBody);
-          throw Exception(errorData['message'] ?? 'Failed to get attendance summary');
+          throw Exception(
+            errorData['message'] ?? 'Failed to get attendance summary',
+          );
         } catch (e) {
-          throw Exception('Failed to get attendance summary: ${response.statusCode}');
+          throw Exception(
+            'Failed to get attendance summary: ${response.statusCode}',
+          );
         }
       }
     } catch (e) {
       throw Exception('Get attendance summary error: $e');
     }
   }
-  
+
   // Get Attendance History for Calendar
   // Maps /api/attendance/my-attendance (date-ranged) → AttendanceHistory for calendar rendering
   static Future<history_model.AttendanceHistory> getAttendanceHistory({
@@ -296,16 +302,15 @@ class AttendanceService {
         'year': year.toString(),
       };
 
-      final uri = Uri.parse('$baseUrl/attendance/my-attendance')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/attendance/my-attendance',
+      ).replace(queryParameters: queryParams);
 
       print('📅 [HISTORY] Fetching attendance history: $uri');
 
       final response = await http.get(
         uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       print('📅 [HISTORY] Status: ${response.statusCode}');
@@ -317,15 +322,19 @@ class AttendanceService {
           final records = AttendanceRecords.fromJson(jsonData);
 
           final historyRecords = records.data
-              .map((r) => history_model.AttendanceRecord(
-                    id: r.id,
-                    date: r.date,
-                    status: r.status,
-                    workHours: r.workHours,
-                  ))
+              .map(
+                (r) => history_model.AttendanceRecord(
+                  id: r.id,
+                  date: r.date,
+                  status: r.status,
+                  workHours: r.workHours,
+                ),
+              )
               .toList();
 
-          print('📅 [HISTORY] Converted ${historyRecords.length} records for calendar');
+          print(
+            '📅 [HISTORY] Converted ${historyRecords.length} records for calendar',
+          );
           return history_model.AttendanceHistory(
             success: records.success,
             data: historyRecords,
@@ -346,7 +355,7 @@ class AttendanceService {
       return history_model.AttendanceHistory(success: false, data: []);
     }
   }
-  
+
   // Get Attendance Records with Filters
   static Future<AttendanceRecords> getAttendanceRecords({
     required String token,
@@ -364,29 +373,30 @@ class AttendanceService {
         'month': month.toString(),
         'year': year.toString(),
       };
-      
+
       // Add status filter if provided
-      if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
+      if (status != null &&
+          status.isNotEmpty &&
+          status.toLowerCase() != 'all') {
         queryParams['status'] = status.toLowerCase();
       }
-      
-      final uri = Uri.parse('$baseUrl/attendance/my-attendance')
-          .replace(queryParameters: queryParams);
-      
+
+      final uri = Uri.parse(
+        '$baseUrl/attendance/my-attendance',
+      ).replace(queryParameters: queryParams);
+
       print('Fetching attendance records:');
       print('URL: $uri');
       print('Status filter: ${status ?? "All"}');
-      
+
       final response = await http.get(
         uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
-      
+
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         try {
           final jsonData = json.decode(response.body);
@@ -401,9 +411,11 @@ class AttendanceService {
         }
       } else {
         final errorBody = response.body;
-        print('Get attendance records failed with status ${response.statusCode}');
+        print(
+          'Get attendance records failed with status ${response.statusCode}',
+        );
         print('Response body: $errorBody');
-        
+
         // Return empty records on error
         return AttendanceRecords(success: false, count: 0, data: []);
       }
@@ -425,17 +437,17 @@ class AttendanceService {
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/attendance/edit-request');
-      
+
       final requestBody = {
         'attendanceId': attendanceId,
         'requestedCheckIn': requestedCheckIn,
         'requestedCheckOut': requestedCheckOut,
         'reason': reason,
       };
-      
+
       print('📤 [EDIT REQUEST] URL: $uri');
       print('📤 [EDIT REQUEST] Body: ${json.encode(requestBody)}');
-      
+
       final response = await http.post(
         uri,
         headers: {
@@ -444,10 +456,10 @@ class AttendanceService {
         },
         body: json.encode(requestBody),
       );
-      
+
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
-      
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonData = json.decode(response.body);
         return AttendanceEditRequest.fromJson(jsonData);
@@ -519,7 +531,9 @@ class AttendanceService {
         return AdminEditRequestsList.fromJson(jsonData);
       } else {
         final errorBody = json.decode(response.body);
-        throw Exception(errorBody['message'] ?? 'Failed to fetch pending edit requests');
+        throw Exception(
+          errorBody['message'] ?? 'Failed to fetch pending edit requests',
+        );
       }
     } catch (e) {
       print('❌ [ADMIN EDIT REQUESTS PENDING] Error: $e');
@@ -548,12 +562,16 @@ class AttendanceService {
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         final list = (jsonData["data"] as List<dynamic>? ?? [])
-            .map((e) => AdminEditRequestData.fromJson(e as Map<String, dynamic>))
+            .map(
+              (e) => AdminEditRequestData.fromJson(e as Map<String, dynamic>),
+            )
             .toList();
         return list;
       } else {
         final errorBody = json.decode(response.body);
-        throw Exception(errorBody['message'] ?? 'Failed to fetch edit requests');
+        throw Exception(
+          errorBody['message'] ?? 'Failed to fetch edit requests',
+        );
       }
     } catch (e) {
       print('❌ [ADMIN ALL EDIT REQUESTS] Error: $e');
@@ -624,7 +642,9 @@ class AttendanceService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return decoded;
       }
-      throw Exception(decoded['message'] ?? 'Failed to submit half-day request');
+      throw Exception(
+        decoded['message'] ?? 'Failed to submit half-day request',
+      );
     } catch (e) {
       print('submitHalfDayRequest error: $e');
       rethrow;
@@ -637,10 +657,10 @@ class AttendanceService {
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/employees/dashboard');
-      
+
       print('Fetching dashboard stats:');
       print('URL: $uri');
-      
+
       final response = await http
           .get(
             uri,
@@ -651,12 +671,13 @@ class AttendanceService {
           )
           .timeout(
             const Duration(seconds: 10),
-            onTimeout: () => throw Exception('Dashboard stats request timed out'),
+            onTimeout: () =>
+                throw Exception('Dashboard stats request timed out'),
           );
-      
+
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         return dashboardStatsResponseFromJson(response.body);
       } else {
@@ -683,22 +704,34 @@ class AttendanceService {
       if (startDate != null) params['startDate'] = startDate;
       if (endDate != null) params['endDate'] = endDate;
 
-      final uri = Uri.parse('$baseUrl/attendance').replace(queryParameters: params.isNotEmpty ? params : null);
+      final uri = Uri.parse(
+        '$baseUrl/attendance',
+      ).replace(queryParameters: params.isNotEmpty ? params : null);
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        return {'success': true, 'data': json['data'] ?? [], 'count': json['count'] ?? 0};
+        return {
+          'success': true,
+          'data': json['data'] ?? [],
+          'count': json['count'] ?? 0,
+        };
       } else {
         final err = jsonDecode(response.body);
-        return {'success': false, 'message': err['message'] ?? 'Failed to fetch attendance', 'data': []};
+        return {
+          'success': false,
+          'message': err['message'] ?? 'Failed to fetch attendance',
+          'data': [],
+        };
       }
     } catch (e) {
       return {'success': false, 'message': e.toString(), 'data': []};

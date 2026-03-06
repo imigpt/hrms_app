@@ -121,7 +121,8 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
         method: 'GET',
         endpoint: '/attendance/summary?month=2&year=2026',
         category: ApiCategory.attendance,
-        description: 'Get monthly attendance summary (present, absent, late, etc.)',
+        description:
+            'Get monthly attendance summary (present, absent, late, etc.)',
       ),
       ApiEndpoint(
         id: 'att_my',
@@ -129,7 +130,8 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
         method: 'GET',
         endpoint: '/attendance/my-attendance',
         category: ApiCategory.attendance,
-        description: 'Get paginated attendance records with date range filtering',
+        description:
+            'Get paginated attendance records with date range filtering',
       ),
       ApiEndpoint(
         id: 'att_edit_requests',
@@ -235,7 +237,8 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
         method: 'GET',
         endpoint: '/tasks/statistics',
         category: ApiCategory.tasks,
-        description: 'Get task count by status (pending, in-progress, completed)',
+        description:
+            'Get task count by status (pending, in-progress, completed)',
       ),
 
       // ─── ANNOUNCEMENTS ────────────────────────────────────────────────────
@@ -266,7 +269,10 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
         _isLoading = false;
       });
       if (token == null) {
-        _showSnackBar('No authentication token found. Please log in first.', true);
+        _showSnackBar(
+          'No authentication token found. Please log in first.',
+          true,
+        );
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -309,7 +315,9 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
       final preview = _prettyJsonPreview(response.body, 500);
 
       setState(() {
-        endpoint.status = isSuccess ? ApiTestStatus.success : ApiTestStatus.failed;
+        endpoint.status = isSuccess
+            ? ApiTestStatus.success
+            : ApiTestStatus.failed;
         endpoint.responseCode = response.statusCode;
         endpoint.responsePreview = preview;
         endpoint.duration = stopwatch.elapsed;
@@ -358,7 +366,9 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
     try {
       final obj = jsonDecode(raw);
       final pretty = const JsonEncoder.withIndent('  ').convert(obj);
-      return pretty.length > maxChars ? '${pretty.substring(0, maxChars)}...' : pretty;
+      return pretty.length > maxChars
+          ? '${pretty.substring(0, maxChars)}...'
+          : pretty;
     } catch (_) {
       return raw.length > maxChars ? '${raw.substring(0, maxChars)}...' : raw;
     }
@@ -429,14 +439,11 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _token == null
-              ? _buildNoTokenState()
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildTestListTab(),
-                    _buildResponseTab(),
-                  ],
-                ),
+          ? _buildNoTokenState()
+          : TabBarView(
+              controller: _tabController,
+              children: [_buildTestListTab(), _buildResponseTab()],
+            ),
     );
   }
 
@@ -486,8 +493,12 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
 
   Widget _buildSummary() {
     final total = _getFilteredEndpoints().length;
-    final passed = _endpoints.where((e) => e.status == ApiTestStatus.success).length;
-    final failed = _endpoints.where((e) => e.status == ApiTestStatus.failed).length;
+    final passed = _endpoints
+        .where((e) => e.status == ApiTestStatus.success)
+        .length;
+    final failed = _endpoints
+        .where((e) => e.status == ApiTestStatus.failed)
+        .length;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -510,7 +521,14 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
   Widget _summaryChip(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
       ],
     );
@@ -533,7 +551,9 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: selected ? const Color(0xFFFF6B6B) : const Color(0xFF2A2A2A),
+                color: selected
+                    ? const Color(0xFFFF6B6B)
+                    : const Color(0xFF2A2A2A),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -565,9 +585,11 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.play_arrow),
-          label: Text(_isRunningAll
-              ? 'Running Tests...'
-              : 'Run All Tests (${_getFilteredEndpoints().length})'),
+          label: Text(
+            _isRunningAll
+                ? 'Running Tests...'
+                : 'Run All Tests (${_getFilteredEndpoints().length})',
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFFF6B6B),
             foregroundColor: Colors.white,
@@ -614,33 +636,56 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Icon(_statusIcon(endpoint.status),
-                    color: _statusColor(endpoint.status), size: 20),
+                : Icon(
+                    _statusIcon(endpoint.status),
+                    color: _statusColor(endpoint.status),
+                    size: 20,
+                  ),
             const SizedBox(width: 12),
             // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(endpoint.name,
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text(
+                    endpoint.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: _methodColor(endpoint.method),
                           borderRadius: BorderRadius.circular(3),
                         ),
-                        child: Text(endpoint.method,
-                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          endpoint.method,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
-                        child: Text(endpoint.endpoint,
-                            style: const TextStyle(color: Colors.grey, fontSize: 11),
-                            overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          endpoint.endpoint,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -652,22 +697,39 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (endpoint.duration != null)
-                  Text('${endpoint.duration!.inMilliseconds}ms',
-                      style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                  Text(
+                    '${endpoint.duration!.inMilliseconds}ms',
+                    style: const TextStyle(color: Colors.grey, fontSize: 10),
+                  ),
                 if (endpoint.responseCode != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: _statusColor(endpoint.status).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(endpoint.responseCode.toString(),
-                        style: TextStyle(color: _statusColor(endpoint.status), fontSize: 11, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      endpoint.responseCode.toString(),
+                      style: TextStyle(
+                        color: _statusColor(endpoint.status),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 const SizedBox(height: 4),
                 InkWell(
-                  onTap: endpoint.status == ApiTestStatus.running ? null : () => _runTest(endpoint),
-                  child: Icon(Icons.refresh, size: 16, color: _statusColor(endpoint.status)),
+                  onTap: endpoint.status == ApiTestStatus.running
+                      ? null
+                      : () => _runTest(endpoint),
+                  child: Icon(
+                    Icons.refresh,
+                    size: 16,
+                    color: _statusColor(endpoint.status),
+                  ),
                 ),
               ],
             ),
@@ -679,11 +741,11 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
 
   Color _methodColor(String method) {
     return const {
-      'GET': Colors.blue,
-      'POST': Color(0xFF00D084),
-      'PUT': Color(0xFFFFA500),
-      'DELETE': Color(0xFFFF6B6B),
-    }[method] ??
+          'GET': Colors.blue,
+          'POST': Color(0xFF00D084),
+          'PUT': Color(0xFFFFA500),
+          'DELETE': Color(0xFFFF6B6B),
+        }[method] ??
         Colors.grey;
   }
 
@@ -695,7 +757,10 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
           children: [
             Icon(Icons.touch_app, color: Colors.grey, size: 48),
             SizedBox(height: 12),
-            Text('Tap any test to see response', style: TextStyle(color: Colors.grey)),
+            Text(
+              'Tap any test to see response',
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       );
@@ -719,33 +784,58 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
               children: [
                 Row(
                   children: [
-                    Icon(_statusIcon(endpoint.status), color: _statusColor(endpoint.status), size: 24),
+                    Icon(
+                      _statusIcon(endpoint.status),
+                      color: _statusColor(endpoint.status),
+                      size: 24,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(endpoint.name,
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        endpoint.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     if (endpoint.responseCode != null)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: _statusColor(endpoint.status).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(endpoint.responseCode.toString(),
-                            style: TextStyle(color: _statusColor(endpoint.status), fontWeight: FontWeight.bold)),
+                        child: Text(
+                          endpoint.responseCode.toString(),
+                          style: TextStyle(
+                            color: _statusColor(endpoint.status),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text('${endpoint.method} ${endpoint.endpoint}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(
+                  '${endpoint.method} ${endpoint.endpoint}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
                 const SizedBox(height: 8),
-                Text(endpoint.description, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text(
+                  endpoint.description,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
                 if (endpoint.duration != null) ...[
                   const SizedBox(height: 8),
-                  Text('Duration: ${endpoint.duration!.inMilliseconds}ms',
-                      style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                  Text(
+                    'Duration: ${endpoint.duration!.inMilliseconds}ms',
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  ),
                 ],
               ],
             ),
@@ -756,7 +846,9 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: endpoint.status == ApiTestStatus.running ? null : () => _runTest(endpoint),
+              onPressed: endpoint.status == ApiTestStatus.running
+                  ? null
+                  : () => _runTest(endpoint),
               icon: const Icon(Icons.play_arrow),
               label: const Text('Run Test'),
               style: ElevatedButton.styleFrom(
@@ -769,7 +861,14 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
 
           // Response
           if (endpoint.responsePreview != null) ...[
-            const Text('Response:', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
+            const Text(
+              'Response:',
+              style: TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -781,7 +880,11 @@ class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
               ),
               child: SelectableText(
                 endpoint.responsePreview!,
-                style: const TextStyle(color: Color(0xFF00D084), fontSize: 11, fontFamily: 'monospace'),
+                style: const TextStyle(
+                  color: Color(0xFF00D084),
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                ),
               ),
             ),
           ],

@@ -8,9 +8,9 @@ class SettingsService {
   static const Duration _timeout = Duration(seconds: 30);
 
   static Map<String, String> _h(String token) => {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      };
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  };
 
   static Map<String, dynamic> _decode(http.Response res) {
     try {
@@ -21,7 +21,7 @@ class SettingsService {
       if (res.statusCode >= 400) {
         return {
           'success': false,
-          'message': body['message'] ?? 'Request failed (${res.statusCode})'
+          'message': body['message'] ?? 'Request failed (${res.statusCode})',
         };
       }
       return body;
@@ -45,10 +45,15 @@ class SettingsService {
 
   /// PUT /api/settings/company
   static Future<Map<String, dynamic>> updateCompanySettings(
-      String token, Map<String, dynamic> data) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/company'),
-            headers: _h(token), body: jsonEncode(data))
+        .put(
+          Uri.parse('$_base/settings/company'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
@@ -69,11 +74,10 @@ class SettingsService {
       if (search != null && search.isNotEmpty) 'search': search,
       if (role != null && role.isNotEmpty) 'role': role,
     };
-    final uri = Uri.parse('$_base/auth/user-credentials')
-        .replace(queryParameters: params);
-    final res = await http
-        .get(uri, headers: _h(token))
-        .timeout(_timeout);
+    final uri = Uri.parse(
+      '$_base/auth/user-credentials',
+    ).replace(queryParameters: params);
+    final res = await http.get(uri, headers: _h(token)).timeout(_timeout);
     return _decode(res);
   }
 
@@ -87,11 +91,16 @@ class SettingsService {
 
   /// PUT /api/auth/admin-reset-password/:userId
   static Future<Map<String, dynamic>> adminResetUserPassword(
-      String token, String userId, String newPassword) async {
+    String token,
+    String userId,
+    String newPassword,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/auth/admin-reset-password/$userId'),
-            headers: _h(token),
-            body: jsonEncode({'newPassword': newPassword}))
+        .put(
+          Uri.parse('$_base/auth/admin-reset-password/$userId'),
+          headers: _h(token),
+          body: jsonEncode({'newPassword': newPassword}),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
@@ -100,7 +109,8 @@ class SettingsService {
 
   /// GET /api/settings/localization
   static Future<Map<String, dynamic>> getLocalizationSettings(
-      String token) async {
+    String token,
+  ) async {
     final res = await http
         .get(Uri.parse('$_base/settings/localization'), headers: _h(token))
         .timeout(_timeout);
@@ -109,10 +119,15 @@ class SettingsService {
 
   /// PUT /api/settings/localization
   static Future<Map<String, dynamic>> updateLocalizationSettings(
-      String token, Map<String, dynamic> data) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/localization'),
-            headers: _h(token), body: jsonEncode(data))
+        .put(
+          Uri.parse('$_base/settings/localization'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
@@ -129,17 +144,20 @@ class SettingsService {
 
   /// GET /api/settings/roles/:id/permissions
   static Future<Map<String, dynamic>> getRolePermissions(
-      String token, String roleId) async {
+    String token,
+    String roleId,
+  ) async {
     final res = await http
-        .get(Uri.parse('$_base/settings/roles/$roleId/permissions'),
-            headers: _h(token))
+        .get(
+          Uri.parse('$_base/settings/roles/$roleId/permissions'),
+          headers: _h(token),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
 
   /// GET /api/settings/modules
-  static Future<Map<String, dynamic>> getPermissionModules(
-      String token) async {
+  static Future<Map<String, dynamic>> getPermissionModules(String token) async {
     final res = await http
         .get(Uri.parse('$_base/settings/modules'), headers: _h(token))
         .timeout(_timeout);
@@ -150,7 +168,8 @@ class SettingsService {
 
   /// GET /api/settings/work-status
   static Future<Map<String, dynamic>> getWorkStatusSettings(
-      String token) async {
+    String token,
+  ) async {
     final res = await http
         .get(Uri.parse('$_base/settings/work-status'), headers: _h(token))
         .timeout(_timeout);
@@ -159,11 +178,15 @@ class SettingsService {
 
   /// PUT /api/settings/work-status
   static Future<Map<String, dynamic>> updateWorkStatusSettings(
-      String token, List<String> statuses) async {
+    String token,
+    List<String> statuses,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/work-status'),
-            headers: _h(token),
-            body: jsonEncode({'statuses': statuses}))
+        .put(
+          Uri.parse('$_base/settings/work-status'),
+          headers: _h(token),
+          body: jsonEncode({'statuses': statuses}),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
@@ -180,10 +203,15 @@ class SettingsService {
 
   /// PUT /api/settings/hrm
   static Future<Map<String, dynamic>> updateHRMSettings(
-      String token, Map<String, dynamic> data) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/hrm'),
-            headers: _h(token), body: jsonEncode(data))
+        .put(
+          Uri.parse('$_base/settings/hrm'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
@@ -200,10 +228,15 @@ class SettingsService {
 
   /// PUT /api/settings/payroll
   static Future<Map<String, dynamic>> updatePayrollSettings(
-      String token, Map<String, dynamic> data) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/payroll'),
-            headers: _h(token), body: jsonEncode(data))
+        .put(
+          Uri.parse('$_base/settings/payroll'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
@@ -220,10 +253,15 @@ class SettingsService {
 
   /// PUT /api/settings/employee-id
   static Future<Map<String, dynamic>> updateEmployeeIDConfig(
-      String token, Map<String, dynamic> data) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/employee-id'),
-            headers: _h(token), body: jsonEncode(data))
+        .put(
+          Uri.parse('$_base/settings/employee-id'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
@@ -240,20 +278,30 @@ class SettingsService {
 
   /// PUT /api/settings/email
   static Future<Map<String, dynamic>> updateEmailSettings(
-      String token, Map<String, dynamic> data) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/email'),
-            headers: _h(token), body: jsonEncode(data))
+        .put(
+          Uri.parse('$_base/settings/email'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
 
   /// POST /api/settings/email/test
   static Future<Map<String, dynamic>> sendTestEmail(
-      String token, String to) async {
+    String token,
+    String to,
+  ) async {
     final res = await http
-        .post(Uri.parse('$_base/settings/email/test'),
-            headers: _h(token), body: jsonEncode({'to': to}))
+        .post(
+          Uri.parse('$_base/settings/email/test'),
+          headers: _h(token),
+          body: jsonEncode({'to': to}),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
@@ -270,10 +318,15 @@ class SettingsService {
 
   /// PUT /api/settings/storage
   static Future<Map<String, dynamic>> updateStorageSettings(
-      String token, Map<String, dynamic> data) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/storage'),
-            headers: _h(token), body: jsonEncode(data))
+        .put(
+          Uri.parse('$_base/settings/storage'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
@@ -288,27 +341,40 @@ class SettingsService {
 
   /// POST /api/settings/roles
   static Future<Map<String, dynamic>> createRole(
-      String token, Map<String, dynamic> data) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .post(Uri.parse('$_base/settings/roles'),
-            headers: _h(token), body: jsonEncode(data))
+        .post(
+          Uri.parse('$_base/settings/roles'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
 
   /// PUT /api/settings/roles/:id
   static Future<Map<String, dynamic>> updateRole(
-      String token, String id, Map<String, dynamic> data) async {
+    String token,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/roles/$id'),
-            headers: _h(token), body: jsonEncode(data))
+        .put(
+          Uri.parse('$_base/settings/roles/$id'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
 
   /// DELETE /api/settings/roles/:id
   static Future<Map<String, dynamic>> deleteRole(
-      String token, String id) async {
+    String token,
+    String id,
+  ) async {
     final res = await http
         .delete(Uri.parse('$_base/settings/roles/$id'), headers: _h(token))
         .timeout(_timeout);
@@ -317,21 +383,31 @@ class SettingsService {
 
   /// PUT /api/settings/roles/:id/permissions
   static Future<Map<String, dynamic>> assignPermissions(
-      String token, String roleId, List<dynamic> permissions) async {
+    String token,
+    String roleId,
+    List<dynamic> permissions,
+  ) async {
     final res = await http
-        .put(Uri.parse('$_base/settings/roles/$roleId/permissions'),
-            headers: _h(token),
-            body: jsonEncode({'permissions': permissions}))
+        .put(
+          Uri.parse('$_base/settings/roles/$roleId/permissions'),
+          headers: _h(token),
+          body: jsonEncode({'permissions': permissions}),
+        )
         .timeout(_timeout);
     return _decode(res);
   }
 
   /// POST /api/settings/employee-id/assign
   static Future<Map<String, dynamic>> assignEmployeeID(
-      String token, Map<String, dynamic> data) async {
+    String token,
+    Map<String, dynamic> data,
+  ) async {
     final res = await http
-        .post(Uri.parse('$_base/settings/employee-id/assign'),
-            headers: _h(token), body: jsonEncode(data))
+        .post(
+          Uri.parse('$_base/settings/employee-id/assign'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
         .timeout(_timeout);
     return _decode(res);
   }

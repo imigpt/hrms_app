@@ -92,7 +92,8 @@ class ChatMediaService {
     rawName = Uri.decodeComponent(rawName);
     // Sanitize: replace characters that are invalid in file names
     rawName = rawName.replaceAll(RegExp(r'[<>:"|?*\\]'), '_');
-    if (rawName.isEmpty) rawName = 'media_${DateTime.now().millisecondsSinceEpoch}';
+    if (rawName.isEmpty)
+      rawName = 'media_${DateTime.now().millisecondsSinceEpoch}';
     final typeDir = Directory('${_cacheDir!.path}/$mediaType');
     if (!typeDir.existsSync()) typeDir.createSync(recursive: true);
     return File('${typeDir.path}/$rawName');
@@ -124,26 +125,25 @@ class ChatMediaService {
 
   /// Fix common URL issues like double slashes and Cloudinary typos.
   String _normalizeUrl(String url) {
-  try {
-    final uri = Uri.parse(url);
+    try {
+      final uri = Uri.parse(url);
 
-    var path = uri.path;
+      var path = uri.path;
 
-    if (uri.host.contains('cloudinary.com')) {
-      path = path
-          .replaceAll('/iimage/', '/image/')   // ⭐ ADD THIS
-          .replaceAll('/image/uploadd/', '/image/upload/')
-          .replaceAll('/video/uploadd/', '/video/upload/')
-          .replaceAll('/raw/uploadd/', '/raw/upload/')
-          .replaceAll('/auto/uploadd/', '/auto/upload/');
+      if (uri.host.contains('cloudinary.com')) {
+        path = path
+            .replaceAll('/iimage/', '/image/') // ⭐ ADD THIS
+            .replaceAll('/image/uploadd/', '/image/upload/')
+            .replaceAll('/video/uploadd/', '/video/upload/')
+            .replaceAll('/raw/uploadd/', '/raw/upload/')
+            .replaceAll('/auto/uploadd/', '/auto/upload/');
+      }
+
+      return uri.replace(path: path).toString();
+    } catch (_) {
+      return url;
     }
-
-    return uri.replace(path: path).toString();
-  } catch (_) {
-    return url;
   }
-}
-
 
   /// Check if URL is a public CDN URL (no auth needed)
   bool isCdnUrl(String url) {
@@ -215,7 +215,7 @@ class ChatMediaService {
       final isCdn = isCdnUrl(url);
       final needsAuth = _requiresAuth(url);
       debugPrint('   CDN URL: $isCdn | Needs Auth: $needsAuth');
-      
+
       // Debug token when auth is required
       if (needsAuth) {
         final token = await _storage.getToken();
@@ -285,7 +285,9 @@ class ChatMediaService {
     var response = await _simpleGet(url, withAuth: needsAuth);
     debugPrint('   📊 Simple GET status: ${response.statusCode}');
     if (response.statusCode != 200) {
-      debugPrint('   📝 Response body: ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
+      debugPrint(
+        '   📝 Response body: ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}',
+      );
     }
 
     // For CDN URLs, never try with auth headers - they should work without auth
@@ -297,9 +299,12 @@ class ChatMediaService {
       response = await _simpleGet(url, withAuth: !needsAuth);
       debugPrint('   📊 Attempt 2 status: ${response.statusCode}');
       if (response.statusCode != 200) {
-        debugPrint('   📝 Response body: ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
+        debugPrint(
+          '   📝 Response body: ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}',
+        );
       }
-    } else if ((response.statusCode == 401 || response.statusCode == 403) && isCdn) {
+    } else if ((response.statusCode == 401 || response.statusCode == 403) &&
+        isCdn) {
       debugPrint('   ⚠️ CDN URL returned 401/403 - this is unexpected');
     }
 
@@ -309,7 +314,9 @@ class ChatMediaService {
       response = await _simpleGet(url, withAuth: false, browserLike: true);
       debugPrint('   📊 Attempt 3 status: ${response.statusCode}');
       if (response.statusCode != 200) {
-        debugPrint('   📝 Response body: ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
+        debugPrint(
+          '   📝 Response body: ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}',
+        );
       }
     }
 
@@ -319,12 +326,16 @@ class ChatMediaService {
       response = await _simpleGet(url, withAuth: true, browserLike: true);
       debugPrint('   📊 Attempt 4 status: ${response.statusCode}');
       if (response.statusCode != 200) {
-        debugPrint('   📝 Response body: ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
+        debugPrint(
+          '   📝 Response body: ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}',
+        );
       }
     }
 
     if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
-      debugPrint('   ✅ Simple GET successful (${response.bodyBytes.length} bytes)');
+      debugPrint(
+        '   ✅ Simple GET successful (${response.bodyBytes.length} bytes)',
+      );
       return response.bodyBytes;
     }
 
@@ -337,9 +348,7 @@ class ChatMediaService {
     required bool withAuth,
     bool browserLike = false,
   }) async {
-    final headers = <String, String>{
-      'Accept': '*/*',
-    };
+    final headers = <String, String>{'Accept': '*/*'};
     if (browserLike) {
       headers['User-Agent'] =
           'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 '
@@ -370,12 +379,14 @@ class ChatMediaService {
 
     // For CDN URLs, never try with auth headers - they should work without auth
     final isCdn = isCdnUrl(url);
-    
+
     if (response.statusCode == 401 || response.statusCode == 403) {
       if (!isCdn) {
         // Only try auth variations for non-CDN URLs
         await response.stream.drain();
-        debugPrint('   🔄 Stream retry: trying with ${needsAuth ? 'no' : ''} auth…');
+        debugPrint(
+          '   🔄 Stream retry: trying with ${needsAuth ? 'no' : ''} auth…',
+        );
         response = await _sendDownloadRequest(url, withAuth: !needsAuth);
         debugPrint('   📊 Stream retry status: ${response.statusCode}');
       } else {
@@ -386,7 +397,11 @@ class ChatMediaService {
     if ((response.statusCode == 401 || response.statusCode == 403) && !isCdn) {
       await response.stream.drain();
       debugPrint('   🔄 Stream retry: browser-like with auth…');
-      response = await _sendDownloadRequest(url, withAuth: true, browserLike: true);
+      response = await _sendDownloadRequest(
+        url,
+        withAuth: true,
+        browserLike: true,
+      );
       debugPrint('   📊 Stream retry status: ${response.statusCode}');
     }
 
@@ -428,9 +443,7 @@ class ChatMediaService {
     required bool withAuth,
     bool browserLike = false,
   }) async {
-    final headers = <String, String>{
-      'Accept': '*/*',
-    };
+    final headers = <String, String>{'Accept': '*/*'};
 
     if (browserLike) {
       headers['User-Agent'] =

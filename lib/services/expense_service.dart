@@ -34,7 +34,10 @@ class ExpenseService {
         print('Get Expenses Error Response: ${response.body}');
         try {
           final errorBody = json.decode(response.body);
-          final message = errorBody['message'] ?? errorBody['error'] ?? 'Failed to fetch expenses';
+          final message =
+              errorBody['message'] ??
+              errorBody['error'] ??
+              'Failed to fetch expenses';
           throw Exception(message);
         } catch (e) {
           if (e is FormatException) {
@@ -112,8 +115,11 @@ class ExpenseService {
         print('Submit Expense Error Response: ${response.body}');
         try {
           final errorBody = json.decode(response.body);
-          final message = errorBody['message'] ?? errorBody['error'] ?? 'Failed to submit expense';
-          
+          final message =
+              errorBody['message'] ??
+              errorBody['error'] ??
+              'Failed to submit expense';
+
           // Check for validation errors
           if (errorBody['errors'] != null) {
             final errors = errorBody['errors'];
@@ -125,7 +131,7 @@ class ExpenseService {
               throw Exception('$message: $errorMessages');
             }
           }
-          
+
           throw Exception(message);
         } catch (e) {
           if (e is FormatException) {
@@ -160,9 +166,7 @@ class ExpenseService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'status': status,
-        }),
+        body: jsonEncode({'status': status}),
       );
 
       print('Response status: ${response.statusCode}');
@@ -174,7 +178,10 @@ class ExpenseService {
         print('Update Expense Error Response: ${response.body}');
         try {
           final errorBody = json.decode(response.body);
-          final message = errorBody['message'] ?? errorBody['error'] ?? 'Failed to update expense';
+          final message =
+              errorBody['message'] ??
+              errorBody['error'] ??
+              'Failed to update expense';
           throw Exception(message);
         } catch (e) {
           if (e is FormatException) {
@@ -218,7 +225,10 @@ class ExpenseService {
         print('Get Expense Error Response: ${response.body}');
         try {
           final errorBody = json.decode(response.body);
-          final message = errorBody['message'] ?? errorBody['error'] ?? 'Failed to fetch expense';
+          final message =
+              errorBody['message'] ??
+              errorBody['error'] ??
+              'Failed to fetch expense';
           throw Exception(message);
         } catch (e) {
           if (e is FormatException) {
@@ -297,8 +307,11 @@ class ExpenseService {
         print('Update Expense Error Response: ${response.body}');
         try {
           final errorBody = json.decode(response.body);
-          final message = errorBody['message'] ?? errorBody['error'] ?? 'Failed to update expense';
-          
+          final message =
+              errorBody['message'] ??
+              errorBody['error'] ??
+              'Failed to update expense';
+
           // Check for validation errors
           if (errorBody['errors'] != null) {
             final errors = errorBody['errors'];
@@ -310,7 +323,7 @@ class ExpenseService {
               throw Exception('$message: $errorMessages');
             }
           }
-          
+
           throw Exception(message);
         } catch (e) {
           if (e is FormatException) {
@@ -337,8 +350,9 @@ class ExpenseService {
       if (startDate != null) queryParams['startDate'] = startDate;
       if (endDate != null) queryParams['endDate'] = endDate;
 
-      final uri = Uri.parse('$baseUrl/expenses/statistics')
-          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      final uri = Uri.parse(
+        '$baseUrl/expenses/statistics',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       print('Fetching expense statistics:');
       print('URL: $uri');
@@ -360,10 +374,13 @@ class ExpenseService {
         try {
           final errorBody = json.decode(response.body);
           final message =
-              errorBody['message'] ?? errorBody['error'] ?? 'Failed to fetch statistics';
+              errorBody['message'] ??
+              errorBody['error'] ??
+              'Failed to fetch statistics';
           throw Exception(message);
         } catch (e) {
-          if (e is FormatException) throw Exception('Server error: ${response.statusCode}');
+          if (e is FormatException)
+            throw Exception('Server error: ${response.statusCode}');
           rethrow;
         }
       }
@@ -400,7 +417,10 @@ class ExpenseService {
         print('Delete Expense Error Response: ${response.body}');
         try {
           final errorBody = json.decode(response.body);
-          final message = errorBody['message'] ?? errorBody['error'] ?? 'Failed to delete expense';
+          final message =
+              errorBody['message'] ??
+              errorBody['error'] ??
+              'Failed to delete expense';
           throw Exception(message);
         } catch (e) {
           if (e is FormatException) {

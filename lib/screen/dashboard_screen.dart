@@ -33,7 +33,6 @@ import 'apply_leave_screen.dart';
 import 'attendance_screen.dart';
 import '../theme/app_theme.dart';
 
-
 class DashboardScreen extends StatefulWidget {
   final ProfileUser? user;
   final String? token;
@@ -52,7 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Color _accentGreen = const Color(0xFF00C853);
   final Color _accentBlue = const Color(0xFF1E88E5);
   final Color _accentOrange = const Color(0xFFFF9800);
-  
+
   // --- STATE VARIABLES ---
   bool _isCheckedIn = false;
   bool _showPhotoUI = false;
@@ -68,18 +67,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoadingAnnouncements = true;
   int _unreadAnnouncementsCount = 0;
   int _unreadChatCount = 0; // Unread chat messages count
-  
+
   // Dashboard stats
   DashboardStats? _dashboardStats;
   bool _isLoadingStats = true;
 
   // Tracks which announcement IDs have been marked read (persisted across sessions)
   Set<String> _readAnnouncementIds = {};
-  
+
   // WebSocket service for real-time announcements
-  final AnnouncementWebSocketService _wsService = AnnouncementWebSocketService();
+  final AnnouncementWebSocketService _wsService =
+      AnnouncementWebSocketService();
   StreamSubscription<List<Announcement>>? _announcementsSubscription;
-  
+
   // ── ADMIN DASHBOARD STATE ───────────────────────────────────────────────────
   Map<String, dynamic> _adminDashboard = {};
   List<dynamic> _recentActivity = [];
@@ -89,13 +89,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Determine user role
-    _userRole = (widget.user?.role.toLowerCase() == 'admin') ? 'admin' : 'employee';
-    
+    _userRole = (widget.user?.role.toLowerCase() == 'admin')
+        ? 'admin'
+        : 'employee';
+
     // Load unread chat count for both admin and employee
     _loadUnreadChatCount();
-    
+
     if (_userRole == 'admin') {
       // Load admin dashboard data
       _loadAdminDashboard();
@@ -105,20 +107,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _loadAnnouncementsFallback();
     } else {
       // Load employee dashboard data
-      _loadCachedAttendanceState();  // Load cached state first
-      _loadPersistedReadIds();           // Load persisted read announcements
+      _loadCachedAttendanceState(); // Load cached state first
+      _loadPersistedReadIds(); // Load persisted read announcements
       _loadTodayAttendance();
-      _loadDashboardStats();  // Load dashboard statistics
-      
+      _loadDashboardStats(); // Load dashboard statistics
+
       // Load unread count from API (fast badge update)
       _loadUnreadCount();
 
       // Load announcements immediately via REST API for quick display
       _loadAnnouncementsFallback();
-      
+
       // Also connect to WebSocket for real-time updates
       _connectToAnnouncementsWebSocket();
-      
+
       // Start the timer to simulate working hours increasing
       _startTimer();
     }
@@ -129,28 +131,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      
+
       await prefs.setString('attendance_date', today);
       await prefs.setBool('is_checked_in', _isCheckedIn);
-      
+
       if (_checkInTime != null) {
         await prefs.setString('check_in_time', _checkInTime!.toIso8601String());
       } else {
         await prefs.remove('check_in_time');
       }
-      
+
       if (_checkOutTime != null) {
-        await prefs.setString('check_out_time', _checkOutTime!.toIso8601String());
+        await prefs.setString(
+          'check_out_time',
+          _checkOutTime!.toIso8601String(),
+        );
       } else {
         await prefs.remove('check_out_time');
       }
-      
+
       if (_checkInLocation != null) {
         await prefs.setString('check_in_location', _checkInLocation!);
       } else {
         await prefs.remove('check_in_location');
       }
-      
+
       if (_checkOutLocation != null) {
         await prefs.setString('check_out_location', _checkOutLocation!);
       } else {
@@ -167,25 +172,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final prefs = await SharedPreferences.getInstance();
       final cachedDate = prefs.getString('attendance_date');
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      
+
       // Only load cached data if it's from today
       if (cachedDate == today) {
         setState(() {
           _isCheckedIn = prefs.getBool('is_checked_in') ?? false;
-          
+
           final checkInStr = prefs.getString('check_in_time');
           if (checkInStr != null) {
             _checkInTime = DateTime.parse(checkInStr);
           }
-          
+
           final checkOutStr = prefs.getString('check_out_time');
           if (checkOutStr != null) {
             _checkOutTime = DateTime.parse(checkOutStr);
           }
-          
+
           _checkInLocation = prefs.getString('check_in_location');
           _checkOutLocation = prefs.getString('check_out_location');
-          
+
           // Calculate worked duration if we have the times
           if (_checkInTime != null && _checkOutTime != null) {
             _workedDuration = _checkOutTime!.difference(_checkInTime!);
@@ -223,7 +228,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       print('API Response received: ${response != null}');
       if (response != null && response.data != null) {
-        print('hasCheckedIn: ${response.data!.hasCheckedIn}, hasCheckedOut: ${response.data!.hasCheckedOut}');
+        print(
+          'hasCheckedIn: ${response.data!.hasCheckedIn}, hasCheckedOut: ${response.data!.hasCheckedOut}',
+        );
         print('data: ${response.data}');
       }
 
@@ -232,51 +239,82 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final attendanceData = response.data!;
           // Derive checked-in state: prefer model flags, fallback to
           // actual checkIn/checkOut time presence.
-          final hasCheckedIn = attendanceData.hasCheckedIn ||
+          final hasCheckedIn =
+              attendanceData.hasCheckedIn ||
               (attendanceData.checkIn?.time != null);
-          final hasCheckedOut = attendanceData.hasCheckedOut ||
+          final hasCheckedOut =
+              attendanceData.hasCheckedOut ||
               (attendanceData.checkOut?.time != null);
           _isCheckedIn = hasCheckedIn && !hasCheckedOut;
-          
+
           try {
             print('Using attendance data from API');
             print('Check-in time string: ${attendanceData.checkIn?.time}');
-            
+
             // Check if attendance is from today
             if (attendanceData.checkIn?.time != null) {
-              final checkInDateTimeRaw = DateTime.tryParse(attendanceData.checkIn!.time!);
+              final checkInDateTimeRaw = DateTime.tryParse(
+                attendanceData.checkIn!.time!,
+              );
               // Always compare in local time to avoid UTC vs local date mismatch
               final checkInDateTime = checkInDateTimeRaw?.toLocal();
               if (checkInDateTime != null) {
                 final today = DateTime.now();
-                final isSameDay = checkInDateTime.year == today.year && 
-                                  checkInDateTime.month == today.month && 
-                                  checkInDateTime.day == today.day;
-                
+                final isSameDay =
+                    checkInDateTime.year == today.year &&
+                    checkInDateTime.month == today.month &&
+                    checkInDateTime.day == today.day;
+
                 print('Is same day: $isSameDay');
-                
+
                 // Only set check-in/out times if they're from today
                 if (isSameDay) {
                   _checkInTime = checkInDateTime;
-                  
+
                   // Set check-in location
                   if (attendanceData.checkIn?.location != null) {
-                    final lat = (attendanceData.checkIn!.location!['latitude'] as num).toDouble();
-                    final lng = (attendanceData.checkIn!.location!['longitude'] as num).toDouble();
-                    final d = Geolocator.distanceBetween(lat, lng, 26.816224, 75.845444);
-                    _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
+                    final lat =
+                        (attendanceData.checkIn!.location!['latitude'] as num)
+                            .toDouble();
+                    final lng =
+                        (attendanceData.checkIn!.location!['longitude'] as num)
+                            .toDouble();
+                    final d = Geolocator.distanceBetween(
+                      lat,
+                      lng,
+                      26.816224,
+                      75.845444,
+                    );
+                    _checkInLocation = d <= 100
+                        ? 'Main Building'
+                        : 'Outside Building';
                   }
-                  
+
                   // Set check-out info if available
                   if (attendanceData.checkOut?.time != null) {
-                    final checkOutDateTime = DateTime.tryParse(attendanceData.checkOut!.time!);
+                    final checkOutDateTime = DateTime.tryParse(
+                      attendanceData.checkOut!.time!,
+                    );
                     if (checkOutDateTime != null) {
                       _checkOutTime = checkOutDateTime;
                       if (attendanceData.checkOut!.location != null) {
-                        final lat = (attendanceData.checkOut!.location!['latitude'] as num).toDouble();
-                        final lng = (attendanceData.checkOut!.location!['longitude'] as num).toDouble();
-                        final d = Geolocator.distanceBetween(lat, lng, 26.816224, 75.845444);
-                        _checkOutLocation = d <= 100 ? 'Main Building' : 'Outside Building';
+                        final lat =
+                            (attendanceData.checkOut!.location!['latitude']
+                                    as num)
+                                .toDouble();
+                        final lng =
+                            (attendanceData.checkOut!.location!['longitude']
+                                    as num)
+                                .toDouble();
+                        final d = Geolocator.distanceBetween(
+                          lat,
+                          lng,
+                          26.816224,
+                          75.845444,
+                        );
+                        _checkOutLocation = d <= 100
+                            ? 'Main Building'
+                            : 'Outside Building';
                       }
                     }
                   } else {
@@ -284,18 +322,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _checkOutTime = null;
                     _checkOutLocation = null;
                   }
-                  
+
                   // Calculate worked duration
                   if (_isCheckedIn) {
-                    _workedDuration = DateTime.now().difference(checkInDateTime);
+                    _workedDuration = DateTime.now().difference(
+                      checkInDateTime,
+                    );
                   } else if (attendanceData.checkOut?.time != null) {
-                    final checkOutDateTime = DateTime.tryParse(attendanceData.checkOut!.time!);
+                    final checkOutDateTime = DateTime.tryParse(
+                      attendanceData.checkOut!.time!,
+                    );
                     if (checkOutDateTime != null) {
-                      _workedDuration = checkOutDateTime.difference(checkInDateTime);
+                      _workedDuration = checkOutDateTime.difference(
+                        checkInDateTime,
+                      );
                     }
                   }
-                  
-                  print('State updated - _isCheckedIn: $_isCheckedIn, checkInTime: $_checkInTime, checkOutTime: $_checkOutTime');
+
+                  print(
+                    'State updated - _isCheckedIn: $_isCheckedIn, checkInTime: $_checkInTime, checkOutTime: $_checkOutTime',
+                  );
                 } else {
                   // Attendance is from a previous day - reset state for new day
                   print('Attendance is from previous day - resetting state');
@@ -320,14 +366,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             print('Error parsing attendance data: $e');
             print('Stack trace: ${StackTrace.current}');
           }
-          
+
           _isLoadingAttendance = false;
         });
-        
+
         // Save the loaded state to local storage
         await _saveAttendanceState();
       } else {
-        print('Response is null - no attendance for today, clearing stale state');
+        print(
+          'Response is null - no attendance for today, clearing stale state',
+        );
         setState(() {
           _isLoadingAttendance = false;
           // No record from server means user hasn't checked in today.
@@ -363,7 +411,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     try {
       print('Connecting to announcements WebSocket...');
-      
+
       // Set a timeout - if no data received in 4 seconds, use REST API fallback
       bool dataReceived = false;
       Timer? timeoutTimer = Timer(const Duration(seconds: 4), () {
@@ -372,7 +420,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _loadAnnouncementsFallback();
         }
       });
-      
+
       // Listen to announcements stream
       _announcementsSubscription = _wsService.announcementsStream.listen(
         (announcements) {
@@ -385,9 +433,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _isLoadingAnnouncements = false;
               _unreadAnnouncementsCount = _calculateUnreadCount(announcements);
             });
-            print('Announcements updated via WebSocket: ${announcements.length} items (${_unreadAnnouncementsCount} unread)');
+            print(
+              'Announcements updated via WebSocket: ${announcements.length} items (${_unreadAnnouncementsCount} unread)',
+            );
             if (previousCount != _unreadAnnouncementsCount) {
-              print('Badge count changed: $previousCount -> $_unreadAnnouncementsCount');
+              print(
+                'Badge count changed: $previousCount -> $_unreadAnnouncementsCount',
+              );
             }
           }
         },
@@ -399,10 +451,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         },
       );
-      
+
       // Connect to WebSocket
       await _wsService.connect(widget.token!);
-      
     } catch (e) {
       print('Error connecting to announcements WebSocket: $e');
       if (mounted) {
@@ -410,7 +461,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _isLoadingAnnouncements = false;
         });
       }
-      
+
       // Fallback to REST API if WebSocket fails
       _loadAnnouncementsFallback();
     }
@@ -491,7 +542,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
 
       print('Announcements loaded: ${response.data.length} items');
-      
+
       if (mounted) {
         setState(() {
           _announcements = response.data;
@@ -525,26 +576,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
 
       print('Dashboard stats response received: ${response != null}');
-      
+
       if (response != null && mounted) {
         setState(() {
           _dashboardStats = response.data.stats;
           _isLoadingStats = false;
 
           // Populate announcements from dashboard response if WebSocket hasn't loaded them yet
-          if (_isLoadingAnnouncements && response.data.announcements.isNotEmpty) {
+          if (_isLoadingAnnouncements &&
+              response.data.announcements.isNotEmpty) {
             _announcements = response.data.announcements
-                .map((a) => Announcement(
-                      id: a.id,
-                      title: a.title,
-                      content: a.message,
-                      priority: 'normal',
-                      readBy: [],
-                      isActive: true,
-                      attachments: [],
-                      createdAt: a.createdAt,
-                      updatedAt: a.createdAt,
-                    ))
+                .map(
+                  (a) => Announcement(
+                    id: a.id,
+                    title: a.title,
+                    content: a.message,
+                    priority: 'normal',
+                    readBy: [],
+                    isActive: true,
+                    attachments: [],
+                    createdAt: a.createdAt,
+                    updatedAt: a.createdAt,
+                  ),
+                )
                 .toList();
             _isLoadingAnnouncements = false;
             _unreadAnnouncementsCount = _calculateUnreadCount(_announcements);
@@ -619,8 +673,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return {
           'type': a['type'] ?? '',
           'message': '${a['action'] ?? ''} — ${a['user'] ?? ''}',
-          'timestamp': DateTime.tryParse(a['time']?.toString() ?? '') ??
-              DateTime.now(),
+          'timestamp':
+              DateTime.tryParse(a['time']?.toString() ?? '') ?? DateTime.now(),
           'icon': iconForType(a['type']?.toString() ?? ''),
           'status': a['status'] ?? '',
         };
@@ -681,7 +735,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? Badge(
               label: Text(_unreadChatCount.toString()),
               backgroundColor: Colors.red,
-              child: Icon(Icons.chat_rounded, size: iconSize, color: Colors.white),
+              child: Icon(
+                Icons.chat_rounded,
+                size: iconSize,
+                color: Colors.white,
+              ),
             )
           : Icon(Icons.chat_rounded, size: iconSize, color: Colors.white),
       onPressed: () {
@@ -735,16 +793,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: AppTheme.primaryColor.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.notifications_outlined,
-                          color: AppTheme.primaryColor, size: 18),
+                      child: const Icon(
+                        Icons.notifications_outlined,
+                        color: AppTheme.primaryColor,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 10),
                     const Expanded(
-                      child: Text('Notifications',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold)),
+                      child: Text(
+                        'Notifications',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -769,12 +833,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 40),
                   child: Column(
                     children: [
-                      Icon(Icons.notifications_off_outlined,
-                          color: Colors.grey[700], size: 44),
+                      Icon(
+                        Icons.notifications_off_outlined,
+                        color: Colors.grey[700],
+                        size: 44,
+                      ),
                       const SizedBox(height: 10),
-                      Text('No notifications yet',
-                          style: TextStyle(
-                              color: Colors.grey[600], fontSize: 13)),
+                      Text(
+                        'No notifications yet',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      ),
                     ],
                   ),
                 )
@@ -783,7 +851,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: ListView.separated(
                     shrinkWrap: true,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     itemCount: recent.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 6),
                     itemBuilder: (_, i) {
@@ -819,25 +889,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               width: 32,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: (a.priority == 'high'
-                                        ? Colors.redAccent
-                                        : a.priority == 'medium'
+                                color:
+                                    (a.priority == 'high'
+                                            ? Colors.redAccent
+                                            : a.priority == 'medium'
                                             ? Colors.orangeAccent
                                             : Colors.blueAccent)
-                                    .withOpacity(0.15),
+                                        .withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(7),
                               ),
                               child: Icon(
                                 a.priority == 'high'
                                     ? Icons.warning_amber_rounded
                                     : a.priority == 'medium'
-                                        ? Icons.info_outline
-                                        : Icons.campaign_outlined,
+                                    ? Icons.info_outline
+                                    : Icons.campaign_outlined,
                                 color: a.priority == 'high'
                                     ? Colors.redAccent
                                     : a.priority == 'medium'
-                                        ? Colors.orangeAccent
-                                        : Colors.blueAccent,
+                                    ? Colors.orangeAccent
+                                    : Colors.blueAccent,
                                 size: 16,
                               ),
                             ),
@@ -846,21 +917,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(a.title,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: isRead
-                                            ? FontWeight.w400
-                                            : FontWeight.w600,
-                                      )),
+                                  Text(
+                                    a.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: isRead
+                                          ? FontWeight.w400
+                                          : FontWeight.w600,
+                                    ),
+                                  ),
                                   const SizedBox(height: 2),
-                                  Text(time,
-                                      style: TextStyle(
-                                          color: Colors.grey[600],
-                                          fontSize: 10)),
+                                  Text(
+                                    time,
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 10,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -887,22 +963,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const NotificationsScreen()),
+                      builder: (_) => const NotificationsScreen(),
+                    ),
                   );
                 },
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 20,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('View All Notifications',
-                          style: TextStyle(
-                              color: Colors.grey[400],
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500)),
-                      Icon(Icons.arrow_forward,
-                          color: Colors.grey[500], size: 16),
+                      Text(
+                        'View All Notifications',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: Colors.grey[500],
+                        size: 16,
+                      ),
                     ],
                   ),
                 ),
@@ -920,15 +1005,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       print('Cannot calculate unread count: user is null');
       return 0;
     }
-    
+
     final userId = widget.user!.id;
     final unreadCount = announcements.where((announcement) {
       // Check if user ID is NOT in the readBy list
       final isUnread = !announcement.readBy.contains(userId);
       return isUnread;
     }).length;
-    
-    print('Calculated unread count: $unreadCount (userId: $userId, total announcements: ${announcements.length})');
+
+    print(
+      'Calculated unread count: $unreadCount (userId: $userId, total announcements: ${announcements.length})',
+    );
     return unreadCount;
   }
 
@@ -984,7 +1071,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const AttendanceScreen(initialAction: 'checkIn'),
+          builder: (context) =>
+              const AttendanceScreen(initialAction: 'checkIn'),
         ),
       ).then((_) {
         _loadTodayAttendance();
@@ -997,16 +1085,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _checkLocationAndStartCheckIn() async {
     try {
       print('=== Check-In: Checking Location Permission ===');
-      
+
       // Check if location service is enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       print('Location service enabled: $serviceEnabled');
-      
+
       if (!serviceEnabled) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please enable location services to mark attendance'),
+              content: Text(
+                'Please enable location services to mark attendance',
+              ),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 3),
             ),
@@ -1018,33 +1108,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Check current location permission
       LocationPermission permission = await Geolocator.checkPermission();
       print('Current location permission: $permission');
-      
+
       // ALWAYS show our custom dialog first (except if already granted)
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         // Show custom dialog to explain why we need location
         if (mounted) {
           final shouldRequest = await LocationPermissionDialog.show(
-            context, 
-            isPermanentlyDenied: permission == LocationPermission.deniedForever
+            context,
+            isPermanentlyDenied: permission == LocationPermission.deniedForever,
           );
           print('Dialog result: $shouldRequest');
-          
+
           if (shouldRequest == null) {
             print('User cancelled');
             return;
           }
-          
+
           if (permission == LocationPermission.deniedForever) {
             // User needs to go to settings
             return;
           }
-          
+
           if (shouldRequest == true) {
             // User clicked "Enable", now request permission from system
             permission = await Geolocator.requestPermission();
             print('Permission after request: $permission');
-            
-            if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+
+            if (permission == LocationPermission.denied ||
+                permission == LocationPermission.deniedForever) {
               print('Permission denied by user');
               return;
             }
@@ -1074,7 +1166,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _handleCheckOut() async {
     print('=== Check-Out: Starting Process ===');
-    
+
     // Check if user is actually checked in
     if (!_isCheckedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1100,7 +1192,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Check if location service is enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       print('Location service enabled: $serviceEnabled');
-      
+
       if (!serviceEnabled) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1117,33 +1209,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Check current location permission
       LocationPermission permission = await Geolocator.checkPermission();
       print('Current location permission: $permission');
-      
+
       // ALWAYS show our custom dialog first (except if already granted)
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         // Show custom dialog to explain why we need location
         if (mounted) {
           final shouldRequest = await LocationPermissionDialog.show(
-            context, 
-            isPermanentlyDenied: permission == LocationPermission.deniedForever
+            context,
+            isPermanentlyDenied: permission == LocationPermission.deniedForever,
           );
           print('Dialog result: $shouldRequest');
-          
+
           if (shouldRequest == null) {
             print('User cancelled');
             return;
           }
-          
+
           if (permission == LocationPermission.deniedForever) {
             // User needs to go to settings
             return;
           }
-          
+
           if (shouldRequest == true) {
             // User clicked "Enable", now request permission from system
             permission = await Geolocator.requestPermission();
             print('Permission after request: $permission');
-            
-            if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+
+            if (permission == LocationPermission.denied ||
+                permission == LocationPermission.deniedForever) {
               print('Permission denied by user');
               return;
             }
@@ -1157,9 +1251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
       // Get location — medium accuracy + 8s timeout + last-known fallback
@@ -1174,7 +1266,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (position == null) {
         if (mounted) {
-          try { Navigator.of(context, rootNavigator: true).pop(); } catch (_) {}
+          try {
+            Navigator.of(context, rootNavigator: true).pop();
+          } catch (_) {}
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Could not get location. Please try again.'),
@@ -1186,8 +1280,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       print('=== Check-Out Process ===');
-      print('Attempting check-out with token: ${widget.token!.substring(0, 20)}...');
-      print('Location captured: Lat=${position.latitude}, Long=${position.longitude}');
+      print(
+        'Attempting check-out with token: ${widget.token!.substring(0, 20)}...',
+      );
+      print(
+        'Location captured: Lat=${position.latitude}, Long=${position.longitude}',
+      );
 
       // Call check-out API with location data
       final response = await AttendanceService.checkOut(
@@ -1195,7 +1293,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         latitude: position.latitude,
         longitude: position.longitude,
       );
-      
+
       print('Check-out API response received');
       print('Response message: ${response.message}');
       print('Response data: ${response.data}');
@@ -1207,14 +1305,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _isCheckedIn = false;
           _showPhotoUI = false;
           _todayAttendance = response.data;
-          
+
           // Parse check-in data
           _checkInTime = response.data.checkIn.time;
           if (response.data.checkIn.location != null) {
             final d = Geolocator.distanceBetween(
               response.data.checkIn.location!.latitude,
               response.data.checkIn.location!.longitude,
-              26.816224, 75.845444,
+              26.816224,
+              75.845444,
             );
             _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
           }
@@ -1226,20 +1325,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final d = Geolocator.distanceBetween(
                 response.data.checkOut!.location!.latitude,
                 response.data.checkOut!.location!.longitude,
-                26.816224, 75.845444,
+                26.816224,
+                75.845444,
               );
-              _checkOutLocation = d <= 100 ? 'Main Building' : 'Outside Building';
+              _checkOutLocation = d <= 100
+                  ? 'Main Building'
+                  : 'Outside Building';
             }
             // Calculate worked duration
             if (_checkInTime != null) {
-              _workedDuration = response.data.checkOut!.time.difference(_checkInTime!);
+              _workedDuration = response.data.checkOut!.time.difference(
+                _checkInTime!,
+              );
             }
           }
         });
 
         // Save the updated state to local storage
         await _saveAttendanceState();
-        
+
         // Reload dashboard stats to update attendance percentage
         _loadDashboardStats();
 
@@ -1258,13 +1362,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         try {
           Navigator.of(context, rootNavigator: true).pop();
         } catch (_) {}
-        
+
         // Parse error message to provide better feedback
         String errorMessage = e.toString();
         if (errorMessage.contains('Exception:')) {
           errorMessage = errorMessage.replaceFirst('Exception:', '').trim();
         }
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
@@ -1280,7 +1384,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _handleCheckInResult(dynamic result) async {
     // Unpack Map format returned by one-tap camera flow
     String? checkInAddress;
-    if (result is Map<String, dynamic> && result.containsKey('checkInAddress')) {
+    if (result is Map<String, dynamic> &&
+        result.containsKey('checkInAddress')) {
       checkInAddress = result['checkInAddress'] as String?;
       result = result['attendanceData'];
     }
@@ -1300,16 +1405,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final double dIn = Geolocator.distanceBetween(
             result.checkIn.location!.latitude,
             result.checkIn.location!.longitude,
-            26.816224, 75.845444,
+            26.816224,
+            75.845444,
           );
           _checkInLocation = dIn <= 100 ? 'Main Building' : 'Outside Building';
         }
         _workedDuration = DateTime.now().difference(result.checkIn.time);
       });
-      
+
       // Save the updated state to local storage
       await _saveAttendanceState();
-      
+
       // Reload dashboard stats to update attendance percentage
       _loadDashboardStats();
     } else if (result == 'refresh') {
@@ -1361,7 +1467,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationsScreen(),
+                      ),
                     );
                   },
                   icon: Icon(Icons.notifications_outlined, size: iconSize),
@@ -1370,7 +1478,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
       drawer: !isDesktopDevice
-          ? Drawer(child: SidebarMenu(user: widget.user, token: widget.token))
+          ? Drawer(
+              child: SidebarMenu(user: widget.user, token: widget.token),
+            )
           : null,
       backgroundColor: _bgDark,
       body: Row(
@@ -1393,7 +1503,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // ── Desktop Header ──
-                          if (isDesktopDevice) ...[  
+                          if (isDesktopDevice) ...[
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -1423,13 +1533,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   children: [
                                     IconButton(
                                       onPressed: _loadAdminDashboard,
-                                      icon: Icon(Icons.refresh, size: iconSize, color: Colors.grey[400]),
+                                      icon: Icon(
+                                        Icons.refresh,
+                                        size: iconSize,
+                                        color: Colors.grey[400],
+                                      ),
                                       tooltip: 'Refresh',
                                     ),
                                     SizedBox(width: isMobile ? 4 : 8),
                                     IconButton(
                                       onPressed: () {},
-                                      icon: Icon(Icons.settings_outlined, size: iconSize, color: Colors.grey[400]),
+                                      icon: Icon(
+                                        Icons.settings_outlined,
+                                        size: iconSize,
+                                        color: Colors.grey[400],
+                                      ),
                                       tooltip: 'Settings',
                                     ),
                                   ],
@@ -1437,7 +1555,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ],
                             ),
                             SizedBox(height: verticalSpacing),
-                          ] else ...[  
+                          ] else ...[
                             // Mobile welcome
                             Padding(
                               padding: const EdgeInsets.only(bottom: 4),
@@ -1453,7 +1571,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
 
                           // ── System Overview ──
-                          _buildSectionHeader('System Overview', Icons.dashboard, _accentBlue),
+                          _buildSectionHeader(
+                            'System Overview',
+                            Icons.dashboard,
+                            _accentBlue,
+                          ),
                           const SizedBox(height: 12),
                           GridView.count(
                             shrinkWrap: true,
@@ -1461,7 +1583,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisCount: isMobile ? 2 : (isTablet ? 3 : 4),
                             crossAxisSpacing: isMobile ? 10 : 12,
                             mainAxisSpacing: isMobile ? 10 : 12,
-                            childAspectRatio: isMobile ? 1.2 : (isTablet ? 1.35 : 1.5),
+                            childAspectRatio: isMobile
+                                ? 1.2
+                                : (isTablet ? 1.35 : 1.5),
                             children: [
                               _buildAdminStatCard(
                                 'Total Companies',
@@ -1496,7 +1620,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           SizedBox(height: verticalSpacing),
 
                           // ── Quick Stats ──
-                          _buildSectionHeader('Quick Stats', Icons.speed, _accentPink),
+                          _buildSectionHeader(
+                            'Quick Stats',
+                            Icons.speed,
+                            _accentPink,
+                          ),
                           const SizedBox(height: 12),
                           GridView.count(
                             shrinkWrap: true,
@@ -1504,7 +1632,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisCount: isMobile ? 2 : (isTablet ? 3 : 4),
                             crossAxisSpacing: isMobile ? 10 : 12,
                             mainAxisSpacing: isMobile ? 10 : 12,
-                            childAspectRatio: isMobile ? 1.2 : (isTablet ? 1.35 : 1.5),
+                            childAspectRatio: isMobile
+                                ? 1.2
+                                : (isTablet ? 1.35 : 1.5),
                             children: [
                               _buildAdminStatCard(
                                 'Pending Leaves',
@@ -1543,18 +1673,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(flex: 1, child: _buildRecentActivitySection()),
+                                Expanded(
+                                  flex: 1,
+                                  child: _buildRecentActivitySection(),
+                                ),
                                 const SizedBox(width: 16),
-                                Expanded(flex: 1, child: _buildSystemAlertsSection()),
+                                Expanded(
+                                  flex: 1,
+                                  child: _buildSystemAlertsSection(),
+                                ),
                               ],
                             )
-                          else ...[  
+                          else ...[
                             _buildRecentActivitySection(),
                             SizedBox(height: verticalSpacing),
                             _buildSystemAlertsSection(),
                           ],
                           SizedBox(height: verticalSpacing),
-                          
+
                           // ── Quick Actions ──
                           _buildQuickActionsSection(isMobile),
                           SizedBox(height: verticalSpacing),
@@ -1607,7 +1743,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ── Admin Stat Card ──
-  Widget _buildAdminStatCard(String title, String value, IconData icon, Color color, {bool isMobile = false}) {
+  Widget _buildAdminStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color, {
+    bool isMobile = false,
+  }) {
     final cardPadding = isMobile ? 12.0 : 16.0;
     final iconSize = isMobile ? 18.0 : 22.0;
     final iconPadding = isMobile ? 8.0 : 10.0;
@@ -1615,7 +1757,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final titleFontSize = isMobile ? 11.0 : 12.0;
     final spacerHeight = isMobile ? 8.0 : 12.0;
     final borderRadius = isMobile ? 12.0 : 16.0;
-    
+
     return Container(
       padding: EdgeInsets.all(cardPadding),
       decoration: BoxDecoration(
@@ -1640,15 +1782,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             decoration: BoxDecoration(
               color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(isMobile ? 8 : 12),
-              border: Border.all(
-                color: color.withOpacity(0.2),
-                width: 0.5,
-              ),
+              border: Border.all(color: color.withOpacity(0.2), width: 0.5),
             ),
             child: Icon(icon, color: color, size: iconSize),
           ),
           SizedBox(height: spacerHeight),
-          
+
           // Value Text
           Expanded(
             child: Column(
@@ -1666,7 +1805,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: isMobile ? 2 : 4),
-                
+
                 // Title Text
                 Text(
                   title,
@@ -1731,7 +1870,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          
+
           // Activity List
           if (_recentActivity.isEmpty)
             Padding(
@@ -1767,7 +1906,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   } else {
                     timeStr = '${diff.inDays}d ago';
                   }
-                  
+
                   return Column(
                     children: [
                       if (i > 0)
@@ -1803,7 +1942,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            
+
                             // Message & User
                             Expanded(
                               child: Column(
@@ -1831,7 +1970,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            
+
                             // Time
                             Text(
                               timeStr,
@@ -1875,7 +2014,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: Colors.redAccent.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.redAccent,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -1900,16 +2043,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // No Alerts Message
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: _accentGreen.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _accentGreen.withOpacity(0.2),
-              ),
+              border: Border.all(color: _accentGreen.withOpacity(0.2)),
             ),
             child: Row(
               children: [
@@ -1928,9 +2069,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // System Health Section
           Text(
             'System Health',
@@ -1941,7 +2082,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Server Load
           _buildHealthMetric(
             label: 'Server Load',
@@ -1949,7 +2090,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: Colors.redAccent,
           ),
           const SizedBox(height: 14),
-          
+
           // Database
           _buildHealthMetric(
             label: 'Database',
@@ -1957,7 +2098,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: _accentGreen,
           ),
           const SizedBox(height: 14),
-          
+
           // Storage
           _buildHealthMetric(
             label: 'Storage',
@@ -2017,9 +2158,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ── Quick Actions Section ──
   Widget _buildQuickActionsSection(bool isMobile) {
     final actions = [
-      {'icon': Icons.person_add, 'label': 'Add Employee', 'color': _accentGreen},
+      {
+        'icon': Icons.person_add,
+        'label': 'Add Employee',
+        'color': _accentGreen,
+      },
       {'icon': Icons.add_task, 'label': 'Create Task', 'color': _accentBlue},
-      {'icon': Icons.calendar_month, 'label': 'Leave Requests', 'color': _accentOrange},
+      {
+        'icon': Icons.calendar_month,
+        'label': 'Leave Requests',
+        'color': _accentOrange,
+      },
       {'icon': Icons.receipt_long, 'label': 'Expenses', 'color': _accentPink},
       {'icon': Icons.campaign, 'label': 'Announcement', 'color': Colors.amber},
       {'icon': Icons.bar_chart, 'label': 'Reports', 'color': Colors.tealAccent},
@@ -2071,7 +2220,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onTap: () {},
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: (action['color'] as Color).withOpacity(0.08),
                       borderRadius: BorderRadius.circular(12),
@@ -2124,29 +2276,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Get screen dimensions and orientation using MediaQuery
     final mediaQuery = MediaQuery.of(context);
     final screenWidth = mediaQuery.size.width;
-    
+
     // Responsive breakpoints
     final isMobile = screenWidth < 600;
     final isTablet = screenWidth >= 600 && screenWidth < 900;
     final isLargeDesktop = screenWidth >= 1200;
-    
+
     // Combined desktop check
     final isDesktopDevice = screenWidth > 800;
-    
+
     // Responsive dimensions
     final sidebarWidth = isLargeDesktop ? 280.0 : 250.0;
     final horizontalPadding = isMobile ? 16.0 : (isTablet ? 20.0 : 24.0);
     final verticalSpacing = isMobile ? 16.0 : 20.0;
-    
+
     // Responsive font sizes
     final titleFontSize = isMobile ? 20.0 : (isTablet ? 22.0 : 24.0);
     final iconSize = isMobile ? 24.0 : 28.0;
-    
+
     // Grid configuration
     final gridCrossAxisCount = isMobile ? 2 : (isTablet ? 3 : 4);
     final gridChildAspectRatio = isMobile ? 1.3 : (isTablet ? 1.4 : 1.6);
     final gridSpacing = isMobile ? 12.0 : 15.0;
-    
+
     // Calculate progress (Assuming 8 hour workday target)
     double progress = _workedDuration.inMinutes / (8 * 60);
     // Calculate work hours as double for welcome card
@@ -2176,7 +2328,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ? null
               : AppBar(
                   title: Text(
-                    "Employee Dashboard", 
+                    "Employee Dashboard",
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: titleFontSize,
@@ -2189,11 +2341,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _buildNotificationIconButton(iconSize),
                   ],
                 ),
-          
-            drawer: !isDesktopDevice
-              ? Drawer(child: SidebarMenu(user: widget.user, token: widget.token))
+
+          drawer: !isDesktopDevice
+              ? Drawer(
+                  child: SidebarMenu(user: widget.user, token: widget.token),
+                )
               : null,
-          
+
           body: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2266,7 +2420,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                       SizedBox(height: verticalSpacing),
 
-
                       // Profile Card
                       ProfileCardWidget(
                         name: widget.user?.name,
@@ -2275,8 +2428,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         phone: widget.user?.phone,
                         email: widget.user?.email,
                         address: widget.user?.address,
-                        dateOfBirth: widget.user?.dateOfBirth?.toIso8601String(),
-                        isActive: (widget.user?.status ?? '').toLowerCase() == 'active',
+                        dateOfBirth: widget.user?.dateOfBirth
+                            ?.toIso8601String(),
+                        isActive:
+                            (widget.user?.status ?? '').toLowerCase() ==
+                            'active',
                       ),
                       SizedBox(height: verticalSpacing),
 
@@ -2297,15 +2453,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         mainAxisSpacing: gridSpacing,
                         childAspectRatio: gridChildAspectRatio,
                         children: _isLoadingStats
-                            ? List.generate(4, (index) => Container(
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).cardColor,
-                                  borderRadius: BorderRadius.circular(16),
+                            ? List.generate(
+                                4,
+                                (index) => Container(
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).cardColor,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
                                 ),
-                                child: const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ))
+                              )
                             : [
                                 // StatCard(
                                 //   title: "Casual Leave",
@@ -2392,8 +2551,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ],
                       SizedBox(height: verticalSpacing),
-
-                      
                     ],
                   ),
                 ),

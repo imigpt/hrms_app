@@ -118,14 +118,14 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     setState(() {
       _filteredRecords = _allRecords.where((r) {
         // Text search: name, employeeId, department
-        final matchSearch = q.isEmpty ||
+        final matchSearch =
+            q.isEmpty ||
             r.user.name.toLowerCase().contains(q) ||
             r.user.employeeId.toLowerCase().contains(q) ||
             r.user.department.toLowerCase().contains(q);
 
         // Status filter
-        final matchStatus =
-            _statusFilter == 'all' || r.status == _statusFilter;
+        final matchStatus = _statusFilter == 'all' || r.status == _statusFilter;
 
         return matchSearch && matchStatus;
       }).toList();
@@ -186,7 +186,8 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
   Future<void> _openMaps(double lat, double lng) async {
     final url = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
@@ -268,139 +269,156 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : _error != null
-              ? _buildError()
-              : RefreshIndicator(
-                  onRefresh: _loadAttendance,
-                  color: _primary,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: EdgeInsets.all(isMobile ? 12 : 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── Stats Row ────────────────────────────────────────
-                        isMobile
-                            ? GridView.count(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 10,
-                                childAspectRatio: 1.6,
-                                children: _statsCards(),
-                              )
-                            : Row(
-                                children: _statsCards()
-                                    .map((c) => Expanded(
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(right: 12),
-                                            child: c,
-                                          ),
-                                        ))
-                                    .toList(),
-                              ),
-                        const SizedBox(height: 20),
-
-                        // ── Attendance Records Card ───────────────────────────
-                        Container(
-                          decoration: BoxDecoration(
-                            color: _card,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: _border.withOpacity(0.4), width: 1),
+          ? _buildError()
+          : RefreshIndicator(
+              onRefresh: _loadAttendance,
+              color: _primary,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(isMobile ? 12 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Stats Row ────────────────────────────────────────
+                    isMobile
+                        ? GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 1.6,
+                            children: _statsCards(),
+                          )
+                        : Row(
+                            children: _statsCards()
+                                .map(
+                                  (c) => Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 12),
+                                      child: c,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header
-                              Padding(
-                                padding: EdgeInsets.all(isMobile ? 14 : 20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 20),
+
+                    // ── Attendance Records Card ───────────────────────────
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _card,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _border.withOpacity(0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header
+                          Padding(
+                            padding: EdgeInsets.all(isMobile ? 14 : 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    Row(
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: _primary.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        Icons.schedule_rounded,
+                                        color: _primary,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: _primary.withOpacity(0.15),
-                                            borderRadius: BorderRadius.circular(10),
+                                        const Text(
+                                          'Attendance Records',
+                                          style: TextStyle(
+                                            color: _textLight,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
                                           ),
-                                          child: Icon(Icons.schedule_rounded, color: _primary, size: 18),
                                         ),
-                                        const SizedBox(width: 10),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              'Attendance Records',
-                                              style: TextStyle(
-                                                color: _textLight,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            Text(
-                                              "Today's attendance overview",
-                                              style: TextStyle(
-                                                color: _textGrey,
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ],
+                                        Text(
+                                          "Today's attendance overview",
+                                          style: TextStyle(
+                                            color: _textGrey,
+                                            fontSize: 11,
+                                          ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 14),
-                                    // Search + Filters
-                                    isMobile
-                                        ? Column(
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                // Search + Filters
+                                isMobile
+                                    ? Column(
+                                        children: [
+                                          _buildSearchBar(),
+                                          const SizedBox(height: 8),
+                                          Row(
                                             children: [
-                                              _buildSearchBar(),
-                                              const SizedBox(height: 8),
-                                              Row(
-                                                children: [
-                                                  Expanded(child: _buildStatusFilter()),
-                                                  const SizedBox(width: 8),
-                                                  _buildExportButton(),
-                                                ],
+                                              Expanded(
+                                                child: _buildStatusFilter(),
                                               ),
-                                            ],
-                                          )
-                                        : Row(
-                                            children: [
-                                              Expanded(child: _buildSearchBar()),
-                                              const SizedBox(width: 10),
-                                              _buildStatusFilter(),
-                                              const SizedBox(width: 10),
+                                              const SizedBox(width: 8),
                                               _buildExportButton(),
                                             ],
                                           ),
-                                  ],
-                                ),
-                              ),
-
-                              // Table
-                              _filteredRecords.isEmpty
-                                  ? _buildEmpty()
-                                  : _buildTable(isMobile),
-                            ],
+                                        ],
+                                      )
+                                    : Row(
+                                        children: [
+                                          Expanded(child: _buildSearchBar()),
+                                          const SizedBox(width: 10),
+                                          _buildStatusFilter(),
+                                          const SizedBox(width: 10),
+                                          _buildExportButton(),
+                                        ],
+                                      ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
+
+                          // Table
+                          _filteredRecords.isEmpty
+                              ? _buildEmpty()
+                              : _buildTable(isMobile),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
+              ),
+            ),
     );
   }
 
   // ── Stats Cards ─────────────────────────────────────────────────────────────
   List<Widget> _statsCards() => [
-        _statCard(Icons.check_circle_outline_rounded, _green, 'Present', _presentCount),
-        _statCard(Icons.schedule_rounded, _orange, 'Late', _lateCount),
-        _statCard(Icons.cancel_outlined, _red, 'Absent', _absentCount),
-        _statCard(Icons.timelapse_rounded, _primary, 'Half Day', _halfDayCount),
-      ];
+    _statCard(
+      Icons.check_circle_outline_rounded,
+      _green,
+      'Present',
+      _presentCount,
+    ),
+    _statCard(Icons.schedule_rounded, _orange, 'Late', _lateCount),
+    _statCard(Icons.cancel_outlined, _red, 'Absent', _absentCount),
+    _statCard(Icons.timelapse_rounded, _primary, 'Half Day', _halfDayCount),
+  ];
 
   Widget _statCard(IconData icon, Color color, String label, int count) {
     return Container(
@@ -498,11 +516,26 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
           value: _statusFilter,
           dropdownColor: _card,
           style: const TextStyle(color: _textLight, fontSize: 13),
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: _textGrey, size: 18),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: _textGrey,
+            size: 18,
+          ),
           items: const [
-            DropdownMenuItem(value: 'all', child: Row(
-              children: [Icon(Icons.filter_alt_outlined, size: 14, color: Color(0xFF8E8E93)), SizedBox(width: 6), Text('All Status')],
-            )),
+            DropdownMenuItem(
+              value: 'all',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.filter_alt_outlined,
+                    size: 14,
+                    color: Color(0xFF8E8E93),
+                  ),
+                  SizedBox(width: 6),
+                  Text('All Status'),
+                ],
+              ),
+            ),
             DropdownMenuItem(value: 'present', child: Text('Present')),
             DropdownMenuItem(value: 'late', child: Text('Late')),
             DropdownMenuItem(value: 'absent', child: Text('Absent')),
@@ -522,7 +555,10 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   Widget _buildExportButton() {
     return GestureDetector(
       onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Export feature coming soon'), duration: Duration(seconds: 2)),
+        const SnackBar(
+          content: Text('Export feature coming soon'),
+          duration: Duration(seconds: 2),
+        ),
       ),
       child: Container(
         height: 42,
@@ -539,7 +575,11 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             const SizedBox(width: 6),
             const Text(
               'Export',
-              style: TextStyle(color: _textLight, fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: _textLight,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -567,7 +607,10 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     _colHeader('Employee', 180),
@@ -651,7 +694,10 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                         if (r.user.department.isNotEmpty)
                           Text(
                             r.user.department,
-                            style: const TextStyle(color: _textGrey, fontSize: 11),
+                            style: const TextStyle(
+                              color: _textGrey,
+                              fontSize: 11,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                       ],
@@ -700,11 +746,17 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             SizedBox(
               width: 100,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
+                  border: Border.all(
+                    color: statusColor.withOpacity(0.3),
+                    width: 1,
+                  ),
                 ),
                 child: Text(
                   _statusLabel(r.status),
@@ -750,7 +802,11 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                       onTap: () => _openMaps(checkInLat, checkInLng!),
                       child: Row(
                         children: [
-                          Icon(Icons.location_on_outlined, color: _primary.withOpacity(0.7), size: 14),
+                          Icon(
+                            Icons.location_on_outlined,
+                            color: _primary.withOpacity(0.7),
+                            size: 14,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             '${checkInLat.toStringAsFixed(4)},\n${checkInLng!.toStringAsFixed(4)}',
@@ -766,9 +822,16 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                     )
                   : Row(
                       children: [
-                        Icon(Icons.location_on_outlined, color: _textGrey, size: 14),
+                        Icon(
+                          Icons.location_on_outlined,
+                          color: _textGrey,
+                          size: 14,
+                        ),
                         const SizedBox(width: 4),
-                        Text('-', style: TextStyle(color: _textGrey, fontSize: 12)),
+                        Text(
+                          '-',
+                          style: TextStyle(color: _textGrey, fontSize: 12),
+                        ),
                       ],
                     ),
             ),
@@ -780,7 +843,11 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                       onTap: () => _openMaps(checkOutLat, checkOutLng!),
                       child: Row(
                         children: [
-                          Icon(Icons.location_on_outlined, color: _primary.withOpacity(0.7), size: 14),
+                          Icon(
+                            Icons.location_on_outlined,
+                            color: _primary.withOpacity(0.7),
+                            size: 14,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             '${checkOutLat.toStringAsFixed(4)},\n${checkOutLng!.toStringAsFixed(4)}',
@@ -796,9 +863,16 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                     )
                   : Row(
                       children: [
-                        Icon(Icons.location_on_outlined, color: _textGrey, size: 14),
+                        Icon(
+                          Icons.location_on_outlined,
+                          color: _textGrey,
+                          size: 14,
+                        ),
                         const SizedBox(width: 4),
-                        Text('-', style: TextStyle(color: _textGrey, fontSize: 12)),
+                        Text(
+                          '-',
+                          style: TextStyle(color: _textGrey, fontSize: 12),
+                        ),
                       ],
                     ),
             ),
@@ -838,7 +912,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     final parts = name.trim().split(RegExp(r'\s+'));
     final first = parts.isNotEmpty && parts[0].isNotEmpty ? parts[0][0] : '';
     final last = parts.length > 1 && parts[1].isNotEmpty ? parts[1][0] : '';
-    return (first + last).toUpperCase().isEmpty ? '?' : (first + last).toUpperCase();
+    return (first + last).toUpperCase().isEmpty
+        ? '?'
+        : (first + last).toUpperCase();
   }
 
   // ── Empty / Error ─────────────────────────────────────────────────────────────
@@ -884,7 +960,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],

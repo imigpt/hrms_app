@@ -35,12 +35,12 @@ class AdminLeaveData {
   final LeaveUser? user;
   final String leaveType; // sick | paid | unpaid
   final bool isHalfDay;
-  final String? session;  // morning | afternoon | null
+  final String? session; // morning | afternoon | null
   final DateTime startDate;
   final DateTime endDate;
   final double days;
   final String reason;
-  final String status;    // pending | approved | rejected | cancelled
+  final String status; // pending | approved | rejected | cancelled
   final LeaveUser? reviewedBy;
   final DateTime? reviewedAt;
   final String? reviewNote;
@@ -133,13 +133,13 @@ class LeaveUser {
   });
 
   factory LeaveUser.fromJson(Map<String, dynamic> json) => LeaveUser(
-        id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-        name: json['name']?.toString(),
-        employeeId: json['employeeId']?.toString(),
-        department: json['department']?.toString(),
-        position: json['position']?.toString(),
-        email: json['email']?.toString(),
-        profilePhoto: json['profilePhoto']?.toString(),
-        role: json['role']?.toString(),
-      );
+    id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+    name: json['name']?.toString(),
+    employeeId: json['employeeId']?.toString(),
+    department: json['department']?.toString(),
+    position: json['position']?.toString(),
+    email: json['email']?.toString(),
+    profilePhoto: json['profilePhoto']?.toString(),
+    role: json['role']?.toString(),
+  );
 }

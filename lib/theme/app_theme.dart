@@ -22,7 +22,7 @@ class AppTheme {
       scaffoldBackgroundColor: background,
       cardColor: cardColor,
       primaryColor: primaryColor,
-      
+
       // Color scheme
       colorScheme: const ColorScheme.dark(
         primary: primaryColor,
@@ -34,18 +34,29 @@ class AppTheme {
       ),
 
       // AppBar theme
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: background,
         foregroundColor: onBackground,
         elevation: 0,
         centerTitle: false,
+        toolbarHeight: 56,
+        titleTextStyle: const TextStyle(
+          color: onBackground,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+        iconTheme: const IconThemeData(color: onBackground, size: 18),
+        actionsIconTheme: const IconThemeData(color: onBackground, size: 18),
       ),
 
       // TextField theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: outline),
@@ -110,8 +121,11 @@ class AppTheme {
 
       // Checkbox & Radio theme
       checkboxTheme: CheckboxThemeData(
-        fillColor: MaterialStateProperty.resolveWith((states) =>
-            states.contains(MaterialState.selected) ? primaryColor : surfaceVariant),
+        fillColor: MaterialStateProperty.resolveWith(
+          (states) => states.contains(MaterialState.selected)
+              ? primaryColor
+              : surfaceVariant,
+        ),
       ),
 
       // BottomSheet theme

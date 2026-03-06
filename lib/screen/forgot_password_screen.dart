@@ -153,7 +153,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           children: [
             const Icon(Icons.error_outline_rounded, color: Colors.white),
             const SizedBox(width: 10),
-            Expanded(child: Text(message, style: const TextStyle(color: Colors.white))),
+            Expanded(
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
           ],
         ),
         backgroundColor: Colors.redAccent,
@@ -178,7 +180,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -258,7 +263,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           color: kInputBg,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(Icons.arrow_back_ios_new, color: kTextWhite, size: 16),
+                        child: Icon(
+                          Icons.arrow_back_ios_new,
+                          color: kTextWhite,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -306,7 +315,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       enabled: !_step1Loading,
                       style: TextStyle(color: kTextWhite),
                       keyboardType: TextInputType.emailAddress,
-                      decoration: _inputDecoration('Enter your email', Icons.email_outlined),
+                      decoration: _inputDecoration(
+                        'Enter your email',
+                        Icons.email_outlined,
+                      ),
                     ),
                     const SizedBox(height: 24),
 
@@ -330,7 +342,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 width: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation(Colors.black),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Colors.black,
+                                  ),
                                 ),
                               )
                             : const Text(
@@ -343,7 +357,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                     ),
                   ]
-
                   // ── STEP 2: Code & Password ────────────────────────────────
                   else ...[
                     // Reset Code
@@ -366,8 +379,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       keyboardType: TextInputType.number,
                       maxLength: 6,
                       enabled: !_step2Loading,
-                      decoration: _inputDecoration('Enter 6-digit code', Icons.password_rounded)
-                          .copyWith(counterText: ''),
+                      decoration: _inputDecoration(
+                        'Enter 6-digit code',
+                        Icons.password_rounded,
+                      ).copyWith(counterText: ''),
                     ),
                     const SizedBox(height: 16),
 
@@ -385,7 +400,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           onPressed: _step1Loading ? null : _requestResetCode,
                           child: Text(
                             'Didn\'t receive? Resend code',
-                            style: TextStyle(color: kPinkColor, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                              color: kPinkColor,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -410,14 +428,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       obscureText: !_showPassword,
                       enabled: !_step2Loading,
                       style: TextStyle(color: kTextWhite),
-                      decoration: _inputDecoration('Enter new password', Icons.lock_outline)
-                          .copyWith(
+                      decoration:
+                          _inputDecoration(
+                            'Enter new password',
+                            Icons.lock_outline,
+                          ).copyWith(
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _showPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                _showPassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
                                 color: kTextGrey,
                               ),
-                              onPressed: () => setState(() => _showPassword = !_showPassword),
+                              onPressed: () => setState(
+                                () => _showPassword = !_showPassword,
+                              ),
                             ),
                           ),
                     ),
@@ -442,14 +467,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       obscureText: !_showConfirm,
                       enabled: !_step2Loading,
                       style: TextStyle(color: kTextWhite),
-                      decoration: _inputDecoration('Confirm password', Icons.lock_outline)
-                          .copyWith(
+                      decoration:
+                          _inputDecoration(
+                            'Confirm password',
+                            Icons.lock_outline,
+                          ).copyWith(
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _showConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                                _showConfirm
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
                                 color: kTextGrey,
                               ),
-                              onPressed: () => setState(() => _showConfirm = !_showConfirm),
+                              onPressed: () =>
+                                  setState(() => _showConfirm = !_showConfirm),
                             ),
                           ),
                     ),
@@ -475,7 +506,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 width: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
                             : const Text(
@@ -514,11 +547,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.arrow_back_ios_new, color: kTextGrey, size: 12),
+                        Icon(
+                          Icons.arrow_back_ios_new,
+                          color: kTextGrey,
+                          size: 12,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Back to Login',
-                          style: TextStyle(color: kTextGrey, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            color: kTextGrey,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),

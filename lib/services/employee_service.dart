@@ -13,9 +13,9 @@ class EmployeeService {
 
   // ── Shared header builder ─────────────────────────────────────────────────
   static Map<String, String> _headers(String token) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
 
   // ── Shared error extractor ────────────────────────────────────────────────
   static String _extractError(http.Response response, String fallback) {
@@ -95,11 +95,13 @@ class EmployeeService {
       if (dateOfBirth != null) request.fields['dateOfBirth'] = dateOfBirth;
 
       if (profilePhoto != null) {
-        request.files.add(await http.MultipartFile.fromPath(
-          'profilePhoto',
-          profilePhoto.path,
-          contentType: MediaType('image', 'jpeg'),
-        ));
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'profilePhoto',
+            profilePhoto.path,
+            contentType: MediaType('image', 'jpeg'),
+          ),
+        );
       }
 
       final streamed = await request.send();
@@ -157,9 +159,9 @@ class EmployeeService {
     String? status,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl/employees/tasks').replace(
-        queryParameters: status != null ? {'status': status} : null,
-      );
+      final uri = Uri.parse(
+        '$_baseUrl/employees/tasks',
+      ).replace(queryParameters: status != null ? {'status': status} : null);
       print('EmployeeService.getMyTasks: $uri');
 
       final response = await http.get(uri, headers: _headers(token));
@@ -183,9 +185,9 @@ class EmployeeService {
     String? status,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl/employees/leaves').replace(
-        queryParameters: status != null ? {'status': status} : null,
-      );
+      final uri = Uri.parse(
+        '$_baseUrl/employees/leaves',
+      ).replace(queryParameters: status != null ? {'status': status} : null);
       print('EmployeeService.getMyLeaves: $uri');
 
       final response = await http.get(uri, headers: _headers(token));
@@ -209,9 +211,9 @@ class EmployeeService {
     String? status,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl/employees/expenses').replace(
-        queryParameters: status != null ? {'status': status} : null,
-      );
+      final uri = Uri.parse(
+        '$_baseUrl/employees/expenses',
+      ).replace(queryParameters: status != null ? {'status': status} : null);
       print('EmployeeService.getMyExpenses: $uri');
 
       final response = await http.get(uri, headers: _headers(token));
@@ -240,9 +242,9 @@ class EmployeeService {
       if (startDate != null) queryParams['startDate'] = startDate;
       if (endDate != null) queryParams['endDate'] = endDate;
 
-      final uri = Uri.parse('$_baseUrl/employees/attendance').replace(
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      );
+      final uri = Uri.parse(
+        '$_baseUrl/employees/attendance',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
       print('EmployeeService.getMyAttendance: $uri');
 
       final response = await http.get(uri, headers: _headers(token));

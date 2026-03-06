@@ -4,6 +4,7 @@ import 'package:hrms_app/models/profile_model.dart';
 import 'package:hrms_app/screen/dashboard_screen.dart';
 import 'package:hrms_app/screen/forgot_password_screen.dart';
 import 'package:hrms_app/services/auth_service.dart';
+import 'package:hrms_app/services/notification_service.dart';
 import 'package:hrms_app/services/profile_service.dart';
 import 'package:hrms_app/services/token_storage_service.dart';
 
@@ -58,7 +59,10 @@ class _LoginScreenState extends State<LoginScreen> {
     _loadingTimer?.cancel();
     // Progressive messages as server wakes up
     _loadingTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       final secs = t.tick;
       String msg;
       if (secs < 5) {
@@ -99,7 +103,10 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: kPinkColor.withValues(alpha: 0.5), width: 1),
+        borderSide: BorderSide(
+          color: kPinkColor.withValues(alpha: 0.5),
+          width: 1,
+        ),
       ),
     );
 
@@ -107,7 +114,13 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: kBackground,
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          // Make bottom padding responsive to the keyboard to avoid small overflows
+          padding: EdgeInsets.only(
+            left: 24.0,
+            right: 24.0,
+            top: 24.0,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24.0,
+          ),
           child: Container(
             // The main dark card
             width: double.infinity,
@@ -130,6 +143,22 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 1. App Logo
+                Container(
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: kCardBg,
+                  ),
+                  child: Image.asset(
+                    'assets/images/aselea-logo.jpeg',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
                 // 2. Welcome Text
                 Text(
                   "Welcome Back",
@@ -221,88 +250,128 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _isLoading
                         ? null
                         : () async {
-                      // 1. Get the text from controllers
-                      final email = _emailController.text.trim();
-                      final password = _passwordController.text.trim();
+                            // 1. Get the text from controllers
+                            final email = _emailController.text.trim();
+                            final password = _passwordController.text.trim();
 
-                      // 2. simple validation logic
-                      if (email.isEmpty || password.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Please enter both email and password",
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
+                            // 2. simple validation logic
+                            if (email.isEmpty || password.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Please enter both email and password",
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
 
-                      setState(() {
-                        _isLoading = true;
-                      });
-                      _startLoadingTimer();
+                            setState(() {
+                              _isLoading = true;
+                            });
+                            _startLoadingTimer();
 
-                      // Capture context-dependent objects before async gaps
-                      final navigator = Navigator.of(context);
-                      final scaffoldMessenger = ScaffoldMessenger.of(context);
+                            // Capture context-dependent objects before async gaps
+                            final navigator = Navigator.of(context);
+                            final scaffoldMessenger = ScaffoldMessenger.of(
+                              context,
+                            );
 
-                      try {
-                        final result = await _authService.login(
-                          email,
-                          password,
-                        );
+                            try {
+                              final result = await _authService.login(
+                                email,
+                                password,
+                              );
 
-                        if (!mounted) return;
-                        _stopLoadingTimer();
-                        setState(() => _isLoading = false);
+                              if (!mounted) return;
+                              _stopLoadingTimer();
+                              setState(() => _isLoading = false);
 
-                        // Save token and user info (fire-and-forget)
-                        _tokenStorage.saveLoginData(
-                          token: result.token,
-                          userId: result.user.id,
-                          email: result.user.email,
-                          name: result.user.name,
-                          role: result.user.role,
-                        );
+                              debugPrint(
+                                '✓ Login Screen: Login successful for $email',
+                              );
 
-                        // Navigate immediately with data from login response.
-                        // Profile enrichment (phone, address, etc.) happens
-                        // lazily in the background on the dashboard.
-                        final user = ProfileUser.fromAuth(result.user);
+                              // IMPORTANT: Wait for token to be saved before navigating
+                              // This ensures the token is persisted before the user is taken to dashboard
+                              try {
+                                await _tokenStorage.saveLoginData(
+                                  token: result.token,
+                                  userId: result.user.id,
+                                  email: result.user.email,
+                                  name: result.user.name,
+                                  role: result.user.role,
+                                );
+                                debugPrint(
+                                  '✓ Login Screen: Token and user data saved successfully',
+                                );
+                                // Register FCM token with backend (fire-and-forget)
+                                NotificationService()
+                                    .registerFcmToken(result.token)
+                                    .catchError((_) {});
+                              } catch (e) {
+                                debugPrint(
+                                  '✗ Login Screen: Error saving login data: $e',
+                                );
+                                if (mounted) {
+                                  scaffoldMessenger.showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                        'Error saving login data. Please try again.',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                                setState(() => _isLoading = false);
+                                return;
+                              }
 
-                        if (!mounted) return;
+                              // Navigate immediately with data from login response.
+                              // Profile enrichment (phone, address, etc.) happens
+                              // lazily in the background on the dashboard.
+                              final user = ProfileUser.fromAuth(result.user);
 
-                        // For employees, start background profile fetch so
-                        // the dashboard can update once it arrives.
-                        if (result.user.role.toLowerCase() != 'admin') {
-                          _profileService
-                              .fetchProfile(result.token)
-                              .then((_) {}) // result wired up inside DashboardScreen
-                              .catchError((_) {});
-                        }
+                              if (!mounted) return;
 
-                        navigator.pushReplacement(
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                DashboardScreen(user: user, token: result.token),
-                          ),
-                        );
-                      } catch (e) {
-                        if (!mounted) return;
-                        _stopLoadingTimer();
-                        final message = e
-                            .toString()
-                            .replaceFirst('Exception: ', '');
-                        scaffoldMessenger.showSnackBar(
-                          SnackBar(
-                            content: Text(message),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        setState(() => _isLoading = false);
-                      }
-                    },
+                              // For employees, start background profile fetch so
+                              // the dashboard can update once it arrives.
+                              if (result.user.role.toLowerCase() != 'admin') {
+                                _profileService
+                                    .fetchProfile(result.token)
+                                    .then(
+                                      (_) {},
+                                    ) // result wired up inside DashboardScreen
+                                    .catchError((_) {});
+                              }
+
+                              navigator.pushReplacement(
+                                MaterialPageRoute(
+                                  builder: (context) => DashboardScreen(
+                                    user: user,
+                                    token: result.token,
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!mounted) return;
+                              _stopLoadingTimer();
+                              final message = e.toString().replaceFirst(
+                                'Exception: ',
+                                '',
+                              );
+                              debugPrint(
+                                '✗ Login Screen: Login failed: $message',
+                              );
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(message),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              setState(() => _isLoading = false);
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kPinkColor,
                       foregroundColor: Colors.black, // Black text color
@@ -324,8 +393,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 width: 18,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor:
-                                      AlwaysStoppedAnimation<Color>(Colors.black),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.black,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 4),

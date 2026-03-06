@@ -37,9 +37,13 @@ class WelcomeCard extends StatelessWidget {
     // If user has checked out, show Day Complete card
     if (checkOutTime != null && checkInTime != null) {
       // Format check-in and check-out times
-      final String checkInTimeStr = DateFormat('hh:mm a').format(checkInTime!.toLocal());
-      final String checkOutTimeStr = DateFormat('hh:mm a').format(checkOutTime!.toLocal());
-      
+      final String checkInTimeStr = DateFormat(
+        'hh:mm a',
+      ).format(checkInTime!.toLocal());
+      final String checkOutTimeStr = DateFormat(
+        'hh:mm a',
+      ).format(checkOutTime!.toLocal());
+
       // Calculate work hours in "Xh Ym" format
       String workHoursStr = 'N/A';
       if (workHours != null) {
@@ -47,7 +51,7 @@ class WelcomeCard extends StatelessWidget {
         final minutes = ((workHours! - hours) * 60).round();
         workHoursStr = '${hours}h ${minutes}m';
       }
-      
+
       return Container(
         padding: const EdgeInsets.all(40),
         decoration: BoxDecoration(
@@ -80,9 +84,9 @@ class WelcomeCard extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Title
             const Text(
               'Day Complete',
@@ -92,9 +96,9 @@ class WelcomeCard extends StatelessWidget {
                 color: Colors.white,
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Check in and Check out times
             Text(
               'Check in: $checkInTimeStr • Check out: $checkOutTimeStr',
@@ -105,19 +109,25 @@ class WelcomeCard extends StatelessWidget {
                 height: 1.5,
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Locations if available
             if (checkInLocation != null || checkOutLocation != null) ...[
               if (checkInLocation != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.green.withOpacity(0.3), width: 1.5),
+                    border: Border.all(
+                      color: Colors.green.withOpacity(0.3),
+                      width: 1.5,
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -127,7 +137,11 @@ class WelcomeCard extends StatelessWidget {
                           color: Colors.green.withOpacity(0.2),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.login, color: Colors.green, size: 16),
+                        child: const Icon(
+                          Icons.login,
+                          color: Colors.green,
+                          size: 16,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -158,15 +172,21 @@ class WelcomeCard extends StatelessWidget {
                     ],
                   ),
                 ),
-              
+
               if (checkOutLocation != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.red.withOpacity(0.3), width: 1.5),
+                    border: Border.all(
+                      color: Colors.red.withOpacity(0.3),
+                      width: 1.5,
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -176,7 +196,11 @@ class WelcomeCard extends StatelessWidget {
                           color: Colors.red.withOpacity(0.2),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.logout, color: Colors.red, size: 16),
+                        child: const Icon(
+                          Icons.logout,
+                          color: Colors.red,
+                          size: 16,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -208,7 +232,7 @@ class WelcomeCard extends StatelessWidget {
                   ),
                 ),
             ],
-            
+
             // Total work hours
             Text(
               'Total: $workHoursStr',
@@ -224,7 +248,7 @@ class WelcomeCard extends StatelessWidget {
         ),
       );
     }
-    
+
     // If showing photo UI, display the photo attendance card
     if (showPhotoUI) {
       return Container(
@@ -259,9 +283,9 @@ class WelcomeCard extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Title
             const Text(
               'Not Checked In',
@@ -271,9 +295,9 @@ class WelcomeCard extends StatelessWidget {
                 color: Colors.white,
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             // Subtitle
             Text(
               'Take a selfie photo to mark\nattendance',
@@ -284,9 +308,9 @@ class WelcomeCard extends StatelessWidget {
                 height: 1.5,
               ),
             ),
-            
+
             const SizedBox(height: 40),
-            
+
             // Take Photo Button
             SizedBox(
               width: double.infinity,
@@ -300,7 +324,7 @@ class WelcomeCard extends StatelessWidget {
                       builder: (context) => const CameraScreen(),
                     ),
                   );
-                  
+
                   // Pass the result to the callback (could be AttendanceData, 'refresh' string, or null)
                   onCheckInResult(result);
                 },
@@ -330,20 +354,24 @@ class WelcomeCard extends StatelessWidget {
         ),
       );
     }
-    
+
     // If user is checked in, show the welcome message
     if (isCheckedIn) {
       // 1. Get today's date dynamically (e.g., "Friday, February 6, 2026")
-      final String todayDate = DateFormat('EEEE, MMMM d, y').format(DateTime.now());
+      final String todayDate = DateFormat(
+        'EEEE, MMMM d, y',
+      ).format(DateTime.now());
 
       // 2. Format the check-in time if it exists (e.g., "04:49 AM")
-      final String timeString = checkInTime != null 
-          ? DateFormat('hh:mm a').format(checkInTime!) 
+      final String timeString = checkInTime != null
+          ? DateFormat('hh:mm a').format(checkInTime!)
           : "--:--";
-      
+
       // 3. Get user name
       final String userName = user?.name ?? 'User';
-      final locColor = checkInLocation == 'Main Building' ? Colors.green : Colors.orange;
+      final locColor = checkInLocation == 'Main Building'
+          ? Colors.green
+          : Colors.orange;
 
       return Container(
         decoration: BoxDecoration(
@@ -365,8 +393,12 @@ class WelcomeCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               decoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.12),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                border: Border(bottom: BorderSide(color: Colors.green.withOpacity(0.2))),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+                border: Border(
+                  bottom: BorderSide(color: Colors.green.withOpacity(0.2)),
+                ),
               ),
               child: Row(
                 children: [
@@ -377,7 +409,11 @@ class WelcomeCard extends StatelessWidget {
                       color: Colors.green.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 24),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.green,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -395,13 +431,19 @@ class WelcomeCard extends StatelessWidget {
                         ),
                         Text(
                           'Checked in at $timeString',
-                          style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.green.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(20),
@@ -419,7 +461,14 @@ class WelcomeCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 5),
-                        const Text('Live', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Live',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -435,11 +484,18 @@ class WelcomeCard extends StatelessWidget {
                 children: [
                   Text(
                     'Hello, $userName!',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 4),
-                  Text(todayDate, style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-                  
+                  Text(
+                    todayDate,
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  ),
+
                   if (checkInLocation != null) ...[
                     const SizedBox(height: 14),
                     Container(
@@ -459,7 +515,9 @@ class WelcomeCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
-                              checkInLocation == 'Main Building' ? Icons.business_rounded : Icons.place_rounded,
+                              checkInLocation == 'Main Building'
+                                  ? Icons.business_rounded
+                                  : Icons.place_rounded,
                               color: locColor,
                               size: 20,
                             ),
@@ -468,10 +526,20 @@ class WelcomeCard extends StatelessWidget {
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Check-In Location', style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                              Text(
+                                'Check-In Location',
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 11,
+                                ),
+                              ),
                               Text(
                                 checkInLocation!,
-                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
@@ -488,14 +556,24 @@ class WelcomeCard extends StatelessWidget {
                     height: 52,
                     child: ElevatedButton.icon(
                       onPressed: onCheckInToggle,
-                      icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                      icon: const Icon(
+                        Icons.logout_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       label: const Text(
                         'Check Out',
-                        style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.red.shade700,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
                     ),
@@ -509,7 +587,9 @@ class WelcomeCard extends StatelessWidget {
     }
 
     // If user is NOT checked in and not showing photo UI, show regular welcome card
-    final String todayDate = DateFormat('EEEE, MMMM d, y').format(DateTime.now());
+    final String todayDate = DateFormat(
+      'EEEE, MMMM d, y',
+    ).format(DateTime.now());
     final String userName = user?.name ?? 'User';
 
     return Container(
@@ -525,8 +605,12 @@ class WelcomeCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.grey.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.07))),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              border: Border(
+                bottom: BorderSide(color: Colors.white.withOpacity(0.07)),
+              ),
             ),
             child: Row(
               children: [
@@ -537,7 +621,11 @@ class WelcomeCard extends StatelessWidget {
                     color: Colors.grey.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.schedule_rounded, color: Colors.grey[400], size: 22),
+                  child: Icon(
+                    Icons.schedule_rounded,
+                    color: Colors.grey[400],
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Column(
@@ -569,10 +657,17 @@ class WelcomeCard extends StatelessWidget {
               children: [
                 Text(
                   'Good Morning, $userName!',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(todayDate, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                Text(
+                  todayDate,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                ),
                 const SizedBox(height: 20),
 
                 // Check In Button
@@ -581,14 +676,24 @@ class WelcomeCard extends StatelessWidget {
                   height: 52,
                   child: ElevatedButton.icon(
                     onPressed: onCheckInToggle,
-                    icon: const Icon(Icons.login_rounded, color: Colors.black, size: 20),
+                    icon: const Icon(
+                      Icons.login_rounded,
+                      color: Colors.black,
+                      size: 20,
+                    ),
                     label: const Text(
                       'Check In',
-                      style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 0,
                     ),
                   ),

@@ -29,8 +29,9 @@ class _AdminPdfFontsScreenState extends State<AdminPdfFontsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getLocalizationSettings(widget.token ?? '');
+      final res = await SettingsService.getLocalizationSettings(
+        widget.token ?? '',
+      );
       final d = res['data'];
       if (d != null) {
         setState(() {
@@ -96,32 +97,42 @@ class _AdminPdfFontsScreenState extends State<AdminPdfFontsScreen> {
                                 value: _font,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'Helvetica',
-                                      child: Text('Helvetica')),
+                                    value: 'Helvetica',
+                                    child: Text('Helvetica'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'Times-Roman',
-                                      child: Text('Times Roman')),
+                                    value: 'Times-Roman',
+                                    child: Text('Times Roman'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'Courier',
-                                      child: Text('Courier')),
+                                    value: 'Courier',
+                                    child: Text('Courier'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'Roboto',
-                                      child: Text('Roboto')),
+                                    value: 'Roboto',
+                                    child: Text('Roboto'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'Open Sans',
-                                      child: Text('Open Sans')),
+                                    value: 'Open Sans',
+                                    child: Text('Open Sans'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'Lato', child: Text('Lato')),
+                                    value: 'Lato',
+                                    child: Text('Lato'),
+                                  ),
                                 ],
-                                onChanged: (v) =>
-                                    setState(() => _font = v!),
+                                onChanged: (v) => setState(() => _font = v!),
                               ),
                               right: AdminDropdown(
                                 label: 'Font Size',
                                 value: _fontSize,
                                 items: ['10', '11', '12', '13', '14']
-                                    .map((s) => DropdownMenuItem(
-                                        value: s, child: Text('${s}pt')))
+                                    .map(
+                                      (s) => DropdownMenuItem(
+                                        value: s,
+                                        child: Text('${s}pt'),
+                                      ),
+                                    )
                                     .toList(),
                                 onChanged: (v) =>
                                     setState(() => _fontSize = v!),
@@ -138,11 +149,13 @@ class _AdminPdfFontsScreenState extends State<AdminPdfFontsScreen> {
                                 value: _orientation,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'portrait',
-                                      child: Text('Portrait')),
+                                    value: 'portrait',
+                                    child: Text('Portrait'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'landscape',
-                                      child: Text('Landscape')),
+                                    value: 'landscape',
+                                    child: Text('Landscape'),
+                                  ),
                                 ],
                                 onChanged: (v) =>
                                     setState(() => _orientation = v!),
@@ -161,32 +174,42 @@ class _AdminPdfFontsScreenState extends State<AdminPdfFontsScreen> {
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color:
-                                    const Color(0xFF64748B).withOpacity(0.08),
+                                color: const Color(
+                                  0xFF64748B,
+                                ).withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                    color: const Color(0xFF64748B)
-                                        .withOpacity(0.2)),
+                                  color: const Color(
+                                    0xFF64748B,
+                                  ).withOpacity(0.2),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.picture_as_pdf_rounded,
-                                      color: Colors.grey[500]),
+                                  Icon(
+                                    Icons.picture_as_pdf_rounded,
+                                    color: Colors.grey[500],
+                                  ),
                                   const SizedBox(width: 12),
                                   Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                          '$_font · ${_fontSize}pt · ${_orientation[0].toUpperCase()}${_orientation.substring(1)}',
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600)),
-                                      Text('Header: ${_headerColorCtrl.text}',
-                                          style: TextStyle(
-                                              color: Colors.grey[500],
-                                              fontSize: 11)),
+                                        '$_font · ${_fontSize}pt · ${_orientation[0].toUpperCase()}${_orientation.substring(1)}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Header: ${_headerColorCtrl.text}',
+                                        style: TextStyle(
+                                          color: Colors.grey[500],
+                                          fontSize: 11,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ],

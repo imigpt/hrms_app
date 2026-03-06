@@ -63,15 +63,17 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
           final res = await ChatService.getCompanyUsers(token: token);
           if (!res.success) {
             return _TestResult(
-                name: name,
-                status: _Status.fail,
-                detail: 'success=false, count=${res.count}');
+              name: name,
+              status: _Status.fail,
+              detail: 'success=false, count=${res.count}',
+            );
           }
           if (res.data.isNotEmpty) _firstUserId = res.data.first.id;
           return _TestResult(
             name: name,
             status: _Status.pass,
-            detail: '${res.count} user(s)'
+            detail:
+                '${res.count} user(s)'
                 '${_firstUserId != null ? ' — first id: $_firstUserId' : ''}',
           );
 
@@ -80,7 +82,10 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
           final res = await ChatService.searchUsers(token: token, query: 'a');
           if (!res.success) {
             return _TestResult(
-                name: name, status: _Status.fail, detail: 'success=false');
+              name: name,
+              status: _Status.fail,
+              detail: 'success=false',
+            );
           }
           return _TestResult(
             name: name,
@@ -93,7 +98,10 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
           final res = await ChatService.getUnreadCount(token: token);
           if (!res.success) {
             return _TestResult(
-                name: name, status: _Status.fail, detail: 'success=false');
+              name: name,
+              status: _Status.fail,
+              detail: 'success=false',
+            );
           }
           return _TestResult(
             name: name,
@@ -106,7 +114,10 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
           final res = await ChatService.getChatRooms(token: token);
           if (!res.success) {
             return _TestResult(
-                name: name, status: _Status.fail, detail: 'success=false');
+              name: name,
+              status: _Status.fail,
+              detail: 'success=false',
+            );
           }
           if (res.data.isNotEmpty) {
             _testRoomId ??= res.data.first.id;
@@ -114,7 +125,8 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
           return _TestResult(
             name: name,
             status: _Status.pass,
-            detail: '${res.count} room(s)'
+            detail:
+                '${res.count} room(s)'
                 '${_testRoomId != null ? ' — roomId: $_testRoomId' : ''}',
           );
 
@@ -122,15 +134,21 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
         case '5. Start Personal Chat':
           if (_firstUserId == null) {
             return _TestResult(
-                name: name,
-                status: _Status.skip,
-                detail: 'No userId from Test 1');
+              name: name,
+              status: _Status.skip,
+              detail: 'No userId from Test 1',
+            );
           }
           final res = await ChatService.getOrCreatePersonalChat(
-              token: token, userId: _firstUserId!);
+            token: token,
+            userId: _firstUserId!,
+          );
           if (!res.success) {
             return _TestResult(
-                name: name, status: _Status.fail, detail: 'success=false');
+              name: name,
+              status: _Status.fail,
+              detail: 'success=false',
+            );
           }
           _testRoomId ??= res.data.id;
           return _TestResult(
@@ -143,36 +161,48 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
         case '6. Get Room Messages':
           if (_testRoomId == null) {
             return _TestResult(
-                name: name,
-                status: _Status.skip,
-                detail: 'No roomId from Tests 4/5');
+              name: name,
+              status: _Status.skip,
+              detail: 'No roomId from Tests 4/5',
+            );
           }
           final res = await ChatService.getRoomMessages(
-              token: token, roomId: _testRoomId!, limit: 20);
+            token: token,
+            roomId: _testRoomId!,
+            limit: 20,
+          );
           if (!res.success) {
             return _TestResult(
-                name: name, status: _Status.fail, detail: 'success=false');
+              name: name,
+              status: _Status.fail,
+              detail: 'success=false',
+            );
           }
           return _TestResult(
             name: name,
             status: _Status.pass,
-            detail:
-                '${res.count} message(s), hasMore=${res.hasMore}',
+            detail: '${res.count} message(s), hasMore=${res.hasMore}',
           );
 
         // ── Test 7: Mark Room as Read ──────────────────────────────────────
         case '7. Mark Room as Read':
           if (_testRoomId == null) {
             return _TestResult(
-                name: name,
-                status: _Status.skip,
-                detail: 'No roomId from Tests 4/5');
+              name: name,
+              status: _Status.skip,
+              detail: 'No roomId from Tests 4/5',
+            );
           }
           final res = await ChatService.markRoomAsRead(
-              token: token, roomId: _testRoomId!);
+            token: token,
+            roomId: _testRoomId!,
+          );
           if (!res.success) {
             return _TestResult(
-                name: name, status: _Status.fail, detail: 'success=false');
+              name: name,
+              status: _Status.fail,
+              detail: 'success=false',
+            );
           }
           return _TestResult(
             name: name,
@@ -184,9 +214,10 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
         case '8. Send Message':
           if (_testRoomId == null) {
             return _TestResult(
-                name: name,
-                status: _Status.skip,
-                detail: 'No roomId from Tests 4/5');
+              name: name,
+              status: _Status.skip,
+              detail: 'No roomId from Tests 4/5',
+            );
           }
           final res = await ChatService.sendRoomMessage(
             token: token,
@@ -195,7 +226,10 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
           );
           if (!res.success) {
             return _TestResult(
-                name: name, status: _Status.fail, detail: 'success=false');
+              name: name,
+              status: _Status.fail,
+              detail: 'success=false',
+            );
           }
           return _TestResult(
             name: name,
@@ -205,7 +239,10 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
 
         default:
           return _TestResult(
-              name: name, status: _Status.fail, detail: 'Unknown test');
+            name: name,
+            status: _Status.fail,
+            detail: 'Unknown test',
+          );
       }
     } catch (e) {
       return _TestResult(name: name, status: _Status.fail, detail: 'Error: $e');
@@ -215,9 +252,9 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
   void _add(_TestResult r) => setState(() => _results.add(r));
 
   void _update(String name, _TestResult updated) => setState(() {
-        final idx = _results.indexWhere((r) => r.name == name);
-        if (idx != -1) _results[idx] = updated;
-      });
+    final idx = _results.indexWhere((r) => r.name == name);
+    if (idx != -1) _results[idx] = updated;
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -229,8 +266,10 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
       backgroundColor: const Color(0xFF050505),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0F0F0F),
-        title: const Text('Chat API Tests',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Chat API Tests',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           if (!_running)
@@ -248,8 +287,7 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
             Container(
               width: double.infinity,
               color: const Color(0xFF0F0F0F),
-              padding:
-                  const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
               child: Text(
                 'Passed: $passed  Failed: $failed  Skipped: $skipped',
                 style: TextStyle(
@@ -261,8 +299,9 @@ class _ChatApiTestScreenState extends State<ChatApiTestScreen> {
 
           if (_running)
             const LinearProgressIndicator(
-                backgroundColor: Color(0xFF0F0F0F),
-                color: Colors.pinkAccent),
+              backgroundColor: Color(0xFF0F0F0F),
+              color: Colors.pinkAccent,
+            ),
 
           Expanded(
             child: ListView.separated(
@@ -341,7 +380,9 @@ class _ResultTile extends StatelessWidget {
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: color),
+                    strokeWidth: 2,
+                    color: color,
+                  ),
                 )
               : Icon(icon, color: color, size: 20),
           const SizedBox(width: 10),
@@ -349,16 +390,20 @@ class _ResultTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(result.name,
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14)),
+                Text(
+                  result.name,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
                 if (result.detail != null) ...[
                   const SizedBox(height: 4),
-                  Text(result.detail!,
-                      style:
-                          TextStyle(color: color, fontSize: 12)),
+                  Text(
+                    result.detail!,
+                    style: TextStyle(color: color, fontSize: 12),
+                  ),
                 ],
               ],
             ),

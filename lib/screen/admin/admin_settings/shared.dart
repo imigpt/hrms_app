@@ -26,8 +26,9 @@ class AdminSubScreenHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       decoration: BoxDecoration(
         color: AppTheme.background,
-        border:
-            Border(bottom: BorderSide(color: Colors.white.withOpacity(0.06))),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.06)),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -41,8 +42,11 @@ class AdminSubScreenHeader extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -59,15 +63,20 @@ class AdminSubScreenHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text(subtitle,
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                    maxLines: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  maxLines: 2,
+                ),
               ],
             ),
           ),
@@ -86,8 +95,12 @@ class AdminSaveButton extends StatelessWidget {
   final VoidCallback onTap;
   final String label;
 
-  const AdminSaveButton(
-      {super.key, required this.saving, required this.onTap, this.label = 'Update'});
+  const AdminSaveButton({
+    super.key,
+    required this.saving,
+    required this.onTap,
+    this.label = 'Update',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -107,18 +120,24 @@ class AdminSaveButton extends StatelessWidget {
           children: [
             if (saving)
               const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
             else
               const Icon(Icons.save_rounded, size: 16, color: Colors.white),
             const SizedBox(width: 6),
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
           ],
         ),
       ),
@@ -138,9 +157,14 @@ class AdminSectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(top: topPad ? 8 : 0, bottom: 4),
-      child: Text(label,
-          style: const TextStyle(
-              color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
@@ -187,35 +211,35 @@ class AdminTextField extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           style: TextStyle(
-              color: readOnly ? Colors.grey[500] : Colors.white, fontSize: 14),
+            color: readOnly ? Colors.grey[500] : Colors.white,
+            fontSize: 14,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
             filled: true,
-            fillColor:
-                readOnly ? AppTheme.background : AppTheme.surfaceVariant,
+            fillColor: readOnly ? AppTheme.background : AppTheme.surfaceVariant,
             suffixIcon: suffix,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.07)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.07)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: AppTheme.errorColor),
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
       ],
@@ -257,21 +281,20 @@ class AdminDropdown extends StatelessWidget {
             fillColor: AppTheme.surfaceVariant,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.07)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.07)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
           items: items,
         ),
@@ -312,16 +335,20 @@ class AdminToggleRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
-                  Text(subtitle!,
-                      style:
-                          TextStyle(color: Colors.grey[600], fontSize: 11)),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                  ),
                 ],
               ],
             ),
@@ -375,84 +402,104 @@ class _AdminChipInputState extends State<AdminChipInput> {
       children: [
         AdminSectionLabel(widget.label, topPad: false),
         const SizedBox(height: 6),
-        Row(children: [
-          Expanded(
-            child: TextFormField(
-              controller: _ctrl,
-              onFieldSubmitted: (_) => _add(),
-              style:
-                  const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: widget.hint,
-                hintStyle:
-                    TextStyle(color: Colors.grey[700], fontSize: 13),
-                filled: true,
-                fillColor: AppTheme.surfaceVariant,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      BorderSide(color: Colors.white.withOpacity(0.07)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide:
-                      BorderSide(color: Colors.white.withOpacity(0.07)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                      color: AppTheme.primaryColor, width: 1.5),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _ctrl,
+                onFieldSubmitted: (_) => _add(),
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: widget.hint,
+                  hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                  filled: true,
+                  fillColor: AppTheme.surfaceVariant,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Colors.white.withOpacity(0.07),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Colors.white.withOpacity(0.07),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: AppTheme.primaryColor,
+                      width: 1.5,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _add,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor,
-                borderRadius: BorderRadius.circular(12),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _add,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
-              child: const Icon(Icons.add_rounded,
-                  color: Colors.white, size: 18),
             ),
-          ),
-        ]),
+          ],
+        ),
         if (widget.chips.isNotEmpty) ...[
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: widget.chips
-                .map((c) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardColor,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.1)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(c,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 12)),
-                          const SizedBox(width: 6),
-                          GestureDetector(
-                            onTap: () => widget.onChanged(
-                                widget.chips.where((x) => x != c).toList()),
-                            child: Icon(Icons.close_rounded,
-                                size: 14, color: Colors.grey[500]),
+                .map(
+                  (c) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          c,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
                           ),
-                        ],
-                      ),
-                    ))
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => widget.onChanged(
+                            widget.chips.where((x) => x != c).toList(),
+                          ),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -483,11 +530,14 @@ class AdminCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (title != null) ...[
-            Text(title!,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600)),
+            Text(
+              title!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             Divider(color: Colors.white.withOpacity(0.07), height: 20),
           ],
           ...children,
@@ -521,11 +571,9 @@ class AdminYesNoToggle extends StatelessWidget {
         const SizedBox(height: 8),
         Row(
           children: [
-            _Btn('Yes', value, () => onChanged(true),
-                const Color(0xFF3B82F6)),
+            _Btn('Yes', value, () => onChanged(true), const Color(0xFF3B82F6)),
             const SizedBox(width: 8),
-            _Btn('No', !value, () => onChanged(false),
-                const Color(0xFFEF4444)),
+            _Btn('No', !value, () => onChanged(false), const Color(0xFFEF4444)),
           ],
         ),
       ],
@@ -546,21 +594,22 @@ class _Btn extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
         decoration: BoxDecoration(
           color: active ? activeColor : AppTheme.cardColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-              color: active
-                  ? activeColor
-                  : Colors.white.withOpacity(0.1)),
+            color: active ? activeColor : Colors.white.withOpacity(0.1),
+          ),
         ),
-        child: Text(label,
-            style: TextStyle(
-                color: active ? Colors.white : Colors.grey[500],
-                fontSize: 13,
-                fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.white : Colors.grey[500],
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -604,25 +653,26 @@ class AdminMultiChipSelect extends StatelessWidget {
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: active
-                      ? AppTheme.primaryColor
-                      : AppTheme.cardColor,
+                  color: active ? AppTheme.primaryColor : AppTheme.cardColor,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: active
-                          ? AppTheme.primaryColor
-                          : Colors.white.withOpacity(0.1)),
+                    color: active
+                        ? AppTheme.primaryColor
+                        : Colors.white.withOpacity(0.1),
+                  ),
                 ),
                 child: Text(
                   o[0].toUpperCase() + o.substring(1),
                   style: TextStyle(
-                      color:
-                          active ? Colors.white : Colors.grey[500],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500),
+                    color: active ? Colors.white : Colors.grey[500],
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             );
@@ -637,42 +687,49 @@ class AdminMultiChipSelect extends StatelessWidget {
 // Loading / error / empty helpers
 // ─────────────────────────────────────────────────────────────────────────────
 Widget adminLoader() => const Center(
-    child: Padding(
-        padding: EdgeInsets.all(60),
-        child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(Color(0xFFf4879a)))));
+  child: Padding(
+    padding: EdgeInsets.all(60),
+    child: CircularProgressIndicator(
+      valueColor: AlwaysStoppedAnimation(Color(0xFFf4879a)),
+    ),
+  ),
+);
 
 Widget adminError(String msg, VoidCallback retry) => Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline_rounded,
-                color: Colors.grey[600], size: 48),
-            const SizedBox(height: 12),
-            Text(msg,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: retry,
-              child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFf4879a),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text('Retry',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600))),
-            ),
-          ],
+  child: Padding(
+    padding: const EdgeInsets.all(40),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.error_outline_rounded, color: Colors.grey[600], size: 48),
+        const SizedBox(height: 12),
+        Text(
+          msg,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey[600], fontSize: 13),
         ),
-      ),
-    );
+        const SizedBox(height: 16),
+        GestureDetector(
+          onTap: retry,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFf4879a),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Text(
+              'Retry',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Small two-column row helper
@@ -697,13 +754,15 @@ class AdminRow2 extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Snack helper
 // ─────────────────────────────────────────────────────────────────────────────
-void showAdminSnack(BuildContext context, String msg,
-    {bool error = false}) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(msg),
-    backgroundColor:
-        error ? const Color(0xFFEF4444) : const Color(0xFF22C55E),
-    behavior: SnackBarBehavior.floating,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-  ));
+void showAdminSnack(BuildContext context, String msg, {bool error = false}) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(msg),
+      backgroundColor: error
+          ? const Color(0xFFEF4444)
+          : const Color(0xFF22C55E),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+  );
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/admin_clients_service.dart';
 import '../utils/responsive_utils.dart';
+import 'package:hrms_app/theme/app_theme.dart';
 
 class AllClientsScreen extends StatefulWidget {
   final String? token;
@@ -13,16 +14,16 @@ class AllClientsScreen extends StatefulWidget {
 
 class _AllClientsScreenState extends State<AllClientsScreen> {
   // Theme
-  static const Color _bg = Color(0xFF050505);
-  static const Color _card = Color(0xFF141414);
-  static const Color _input = Color(0xFF1C1C1C);
-  static const Color _border = Color(0xFF2A2A2A);
-  static const Color _pink = Color(0xFFFF8FA3);
-  static const Color _green = Color(0xFF00C853);
-  static const Color _red = Color(0xFFEF5350);
+  static const Color _bg = AppTheme.background;
+  static const Color _card = AppTheme.cardColor;
+  static const Color _input = AppTheme.surface;
+  static const Color _border = AppTheme.outline;
+  static const Color _pink = AppTheme.primaryColor;
+  static const Color _green = AppTheme.successColor;
+  static const Color _red = AppTheme.errorColor;
   static const Color _textGrey = Color(0xFF9E9E9E);
-  static const Color _textLight = Color(0xFFE0E0E0);
-  static const Color _tableHeader = Color(0xFF1A1A1A);
+  static const Color _textLight = AppTheme.onSurface;
+  static const Color _tableHeader = AppTheme.surfaceVariant;
 
   // State
   bool _isLoading = true;
@@ -57,7 +58,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
       if (!mounted) return;
 
       List<dynamic> data = [];
-      
+
       // Handle different response formats from backend
       // Check for success flag and data key
       if (result['success'] == true && result['data'] is List) {
@@ -67,7 +68,9 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
       } else if (result['clients'] is List) {
         // Alternative structure
         data = result['clients'] as List<dynamic>;
-      } else if (result.isNotEmpty && result.values.isNotEmpty && result.values.first is List) {
+      } else if (result.isNotEmpty &&
+          result.values.isNotEmpty &&
+          result.values.first is List) {
         // Fallback: if first value in map is a list
         data = result.values.first as List<dynamic>;
       }
@@ -92,15 +95,15 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
     setState(() {
       _filtered = _allClients.where((client) {
         if (_selectedStatus.isNotEmpty) {
-          if ((client['status']?.toString() ?? '') != _selectedStatus) return false;
+          if ((client['status']?.toString() ?? '') != _selectedStatus)
+            return false;
         }
         if (q.isNotEmpty) {
           final name = (client['name'] ?? '').toString().toLowerCase();
           final email = (client['email'] ?? '').toString().toLowerCase();
           final company = (client['company'] ?? '').toString().toLowerCase();
-          if (!name.contains(q) &&
-              !email.contains(q) &&
-              !company.contains(q)) return false;
+          if (!name.contains(q) && !email.contains(q) && !company.contains(q))
+            return false;
         }
         return true;
       }).toList();
@@ -163,8 +166,10 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
         color: bg,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label,
-          style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
@@ -181,8 +186,8 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: _pink))
             : _error != null
-                ? _buildError()
-                : _buildBody(isMobile, responsive),
+            ? _buildError()
+            : _buildBody(isMobile, responsive),
       ),
     );
   }
@@ -197,7 +202,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
       ),
       title: const Text(
         'Clients',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+        ),
       ),
       actions: [
         if (isMobile)
@@ -237,7 +246,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
-                  isMobile ? 16 : 24, 16, isMobile ? 16 : 24, 16),
+                isMobile ? 16 : 24,
+                16,
+                isMobile ? 16 : 24,
+                16,
+              ),
               child: _buildStatsRow(isMobile),
             ),
           ),
@@ -255,7 +268,10 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
           // Results count
           SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: 4),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 16 : 24,
+                vertical: 4,
+              ),
               child: Text(
                 'Showing ${_filtered.length} of $_totalCount clients',
                 style: const TextStyle(color: _textGrey, fontSize: 12),
@@ -298,15 +314,18 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
       label: Text(
         compact ? 'Add' : 'Add Client',
         style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: compact ? 13 : 14),
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+          fontSize: compact ? 13 : 14,
+        ),
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor: _pink,
         foregroundColor: Colors.black,
         padding: EdgeInsets.symmetric(
-            horizontal: compact ? 12 : 18, vertical: compact ? 8 : 12),
+          horizontal: compact ? 12 : 18,
+          vertical: compact ? 8 : 12,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 0,
       ),
@@ -347,7 +366,8 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
           crossAxisCount: 2,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 2.2,
+          // Slightly taller tiles to avoid bottom overflow on small devices
+          childAspectRatio: 1.95,
         ),
         itemCount: stats.length,
         itemBuilder: (_, i) => _statsCard(stats[i]),
@@ -360,8 +380,9 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
         final s = entry.value;
         return Expanded(
           child: Padding(
-            padding:
-                i < stats.length - 1 ? const EdgeInsets.only(right: 14) : EdgeInsets.zero,
+            padding: i < stats.length - 1
+                ? const EdgeInsets.only(right: 14)
+                : EdgeInsets.zero,
             child: _statsCard(s),
           ),
         );
@@ -370,46 +391,64 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
   }
 
   Widget _statsCard(Map<String, dynamic> stat) {
+    final accent = stat['iconColor'] as Color;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: _card,
+        color: AppTheme.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _border),
+        border: Border.all(color: AppTheme.outline),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: stat['iconBg'] as Color,
-              borderRadius: BorderRadius.circular(10),
+      // ensure accent strip and content align without forcing extra height
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // icon bubble
+            Container(
+              width: 56,
+              margin: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: (stat['iconBg'] as Color),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Icon(stat['icon'] as IconData, color: accent, size: 20),
+              ),
             ),
-            child: Icon(stat['icon'] as IconData,
-                color: stat['iconColor'] as Color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${stat['value']}',
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  stat['label'] as String,
-                  style: const TextStyle(color: _textGrey, fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${stat['value']}',
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      stat['label'] as String,
+                      style: TextStyle(
+                        color: AppTheme.onSurface.withOpacity(0.7),
+                        fontSize: 12,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -417,11 +456,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
   // Mobile filters
   Widget _buildMobileFilters() {
     return Column(
-      children: [
-        _searchField(),
-        const SizedBox(height: 10),
-        _statusDropdown(),
-      ],
+      children: [_searchField(), const SizedBox(height: 10), _statusDropdown()],
     );
   }
 
@@ -449,21 +484,28 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
       height: 46,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: _input,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _border),
+        border: Border.all(color: AppTheme.outline),
       ),
       child: TextField(
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        style: TextStyle(color: AppTheme.onSurface, fontSize: 14),
         onChanged: (v) {
           _searchQuery = v;
           _applyFilters();
         },
         decoration: InputDecoration(
           hintText: 'Search by name or email...',
-          hintStyle: TextStyle(color: _textGrey.withOpacity(0.6), fontSize: 14),
+          hintStyle: TextStyle(
+            color: AppTheme.onSurface.withOpacity(0.6),
+            fontSize: 14,
+          ),
           border: InputBorder.none,
-          icon: const Icon(Icons.search_rounded, color: _textGrey, size: 18),
+          icon: Icon(
+            Icons.search_rounded,
+            color: AppTheme.onSurface.withOpacity(0.6),
+            size: 18,
+          ),
         ),
       ),
     );
@@ -485,27 +527,21 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
             setState(() => _selectedStatus = v ?? '');
             _applyFilters();
           },
-          items: const [
-            DropdownMenuItem(
-              value: '',
-              child: Text('All Status'),
-            ),
-            DropdownMenuItem(
-              value: 'active',
-              child: Text('Active'),
-            ),
-            DropdownMenuItem(
-              value: 'inactive',
-              child: Text('Inactive'),
-            ),
-          ]
-              .map((item) {
+          items:
+              const [
+                DropdownMenuItem(value: '', child: Text('All Status')),
+                DropdownMenuItem(value: 'active', child: Text('Active')),
+                DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+              ].map((item) {
                 final isSelected = item.value == _selectedStatus;
                 return DropdownMenuItem<String>(
                   value: item.value,
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
@@ -519,8 +555,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                     ),
                   ),
                 );
-              })
-              .toList(),
+              }).toList(),
           dropdownColor: const Color(0xFF1E1E1E),
           iconEnabledColor: _textGrey,
           style: const TextStyle(color: _textLight, fontSize: 13),
@@ -546,7 +581,8 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _filtered.length,
-            separatorBuilder: (_, __) => const Divider(color: _border, height: 1),
+            separatorBuilder: (_, __) =>
+                const Divider(color: _border, height: 1),
             itemBuilder: (_, i) => _buildTableRow(_filtered[i]),
           ),
         ],
@@ -556,7 +592,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
 
   Widget _buildTableHeader() {
     const style = TextStyle(
-        color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5);
+      color: _textGrey,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.5,
+    );
     return Container(
       color: _tableHeader,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -571,14 +611,15 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
         ],
       ),
     );
-  } 
+  }
 
   Widget _buildTableRow(Map<String, dynamic> client) {
     final name = client['name']?.toString() ?? 'Unknown';
     final email = client['email']?.toString() ?? '-';
     final phone = client['phone']?.toString() ?? '-';
     final companyName = client['companyName']?.toString() ?? '-';
-    final clientId = client['id']?.toString() ?? client['_id']?.toString() ?? '-';
+    final clientId =
+        client['id']?.toString() ?? client['_id']?.toString() ?? '-';
     final status = client['status']?.toString() ?? '-';
 
     return Padding(
@@ -593,10 +634,15 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                 _avatar(name, radius: 18),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(name,
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -607,39 +653,61 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  const Icon(Icons.email_outlined, color: _textGrey, size: 12),
-                  const SizedBox(width: 4),
-                  Expanded(
-                      child: Text(email,
-                          style: const TextStyle(color: _textLight, fontSize: 11),
-                          overflow: TextOverflow.ellipsis)),
-                ]),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.email_outlined,
+                      color: _textGrey,
+                      size: 12,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        email,
+                        style: const TextStyle(color: _textLight, fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 3),
-                Row(children: [
-                  const Icon(Icons.phone_outlined, color: _textGrey, size: 12),
-                  const SizedBox(width: 4),
-                  Expanded(
-                      child: Text(phone,
-                          style: const TextStyle(color: _textLight, fontSize: 11),
-                          overflow: TextOverflow.ellipsis)),
-                ]),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.phone_outlined,
+                      color: _textGrey,
+                      size: 12,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        phone,
+                        style: const TextStyle(color: _textLight, fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
           // Company
           Expanded(
             flex: 3,
-            child: Text(companyName,
-                style: const TextStyle(color: _textLight, fontSize: 12),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              companyName,
+              style: const TextStyle(color: _textLight, fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           // ID
           Expanded(
             flex: 2,
-            child: Text(clientId,
-                style: const TextStyle(color: _textLight, fontSize: 12),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              clientId,
+              style: const TextStyle(color: _textLight, fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           // Status
           Expanded(flex: 2, child: _statusBadge(status)),
@@ -649,7 +717,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.edit_rounded, color: _textGrey, size: 18),
+                  icon: const Icon(
+                    Icons.edit_rounded,
+                    color: _textGrey,
+                    size: 18,
+                  ),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   onPressed: () => _showEditClientDialog(client),
@@ -677,7 +749,8 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
     final email = client['email']?.toString() ?? '-';
     final phone = client['phone']?.toString() ?? '-';
     final companyName = client['companyName']?.toString() ?? '-';
-    final clientId = client['id']?.toString() ?? client['_id']?.toString() ?? '-';
+    final clientId =
+        client['id']?.toString() ?? client['_id']?.toString() ?? '-';
     final status = client['status']?.toString() ?? '-';
 
     return Container(
@@ -704,15 +777,22 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700)),
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         if (clientId != '-')
-                          Text(clientId,
-                              style: const TextStyle(
-                                  color: _textGrey, fontSize: 12)),
+                          Text(
+                            clientId,
+                            style: const TextStyle(
+                              color: _textGrey,
+                              fontSize: 12,
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -752,8 +832,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          _deleteClient(client['_id'].toString()),
+                      onPressed: () => _deleteClient(client['_id'].toString()),
                       icon: const Icon(Icons.delete, size: 16),
                       label: const Text('Delete'),
                       style: OutlinedButton.styleFrom(
@@ -781,9 +860,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
         Icon(icon, color: _textGrey, size: 13),
         const SizedBox(width: 6),
         Expanded(
-          child: Text(text,
-              style: const TextStyle(color: _textLight, fontSize: 12),
-              overflow: TextOverflow.ellipsis),
+          child: Text(
+            text,
+            style: const TextStyle(color: _textLight, fontSize: 12),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
@@ -795,7 +876,8 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
     final email = client['email']?.toString() ?? '-';
     final phone = client['phone']?.toString() ?? '-';
     final companyName = client['companyName']?.toString() ?? '-';
-    final clientId = client['id']?.toString() ?? client['_id']?.toString() ?? '-';
+    final clientId =
+        client['id']?.toString() ?? client['_id']?.toString() ?? '-';
     final status = client['status']?.toString() ?? '-';
     final address = client['address']?.toString() ?? '-';
 
@@ -803,7 +885,8 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
       context: context,
       backgroundColor: _card,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       isScrollControlled: true,
       builder: (_) => DraggableScrollableSheet(
         expand: false,
@@ -822,7 +905,9 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                        color: _border, borderRadius: BorderRadius.circular(2)),
+                      color: _border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -834,15 +919,22 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(name,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold)),
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           if (clientId != '-')
-                            Text(clientId,
-                                style: const TextStyle(
-                                    color: _textGrey, fontSize: 13)),
+                            Text(
+                              clientId,
+                              style: const TextStyle(
+                                color: _textGrey,
+                                fontSize: 13,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -875,15 +967,20 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
           const SizedBox(width: 10),
           SizedBox(
             width: 90,
-            child: Text(label,
-                style: const TextStyle(
-                    color: _textGrey,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _textGrey,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           Expanded(
-            child: Text(value,
-                style: const TextStyle(color: Colors.white, fontSize: 13)),
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -897,38 +994,45 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
     final emailCtrl = TextEditingController(text: client['email'] ?? '');
     final passwordCtrl = TextEditingController();
     final phoneCtrl = TextEditingController(text: client['phone'] ?? '');
-    final companyNameCtrl =
-        TextEditingController(text: client['companyName'] ?? '');
-    final notesCtrl =
-        TextEditingController(text: client['clientNotes'] ?? '');
+    final companyNameCtrl = TextEditingController(
+      text: client['companyName'] ?? '',
+    );
+    final notesCtrl = TextEditingController(text: client['clientNotes'] ?? '');
 
     bool isSubmitting = false;
     String? errorMessage;
 
     Widget fieldLabel(String label, {bool required = false}) => Row(
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    color: _textLight,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-            if (required)
-              const Text(' *', style: TextStyle(color: _red, fontSize: 13)),
-          ],
-        );
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: _textLight,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (required)
+          const Text(' *', style: TextStyle(color: _red, fontSize: 13)),
+      ],
+    );
 
-    Widget inputBox(TextEditingController ctrl,
-        {String hint = '',
-        bool obscure = false,
-        int maxLines = 1,
-        TextInputType? keyboardType}) {
+    Widget inputBox(
+      TextEditingController ctrl, {
+      String hint = '',
+      bool obscure = false,
+      int maxLines = 1,
+      TextInputType? keyboardType,
+    }) {
       return Container(
         padding: EdgeInsets.symmetric(
-            horizontal: 12, vertical: maxLines > 1 ? 10 : 0),
+          horizontal: 12,
+          vertical: maxLines > 1 ? 10 : 0,
+        ),
         decoration: BoxDecoration(
-          color: _input,
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _border),
+          border: Border.all(color: AppTheme.outline),
         ),
         child: TextField(
           controller: ctrl,
@@ -936,14 +1040,15 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
           maxLines: obscure ? 1 : maxLines,
           minLines: maxLines > 1 ? 3 : 1,
           keyboardType: keyboardType,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+          style: TextStyle(color: AppTheme.onSurface, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(color: _textGrey.withOpacity(0.6)),
+            hintStyle: TextStyle(color: AppTheme.onSurface.withOpacity(0.6)),
             border: InputBorder.none,
             isDense: maxLines == 1,
-            contentPadding:
-                maxLines == 1 ? const EdgeInsets.symmetric(vertical: 13) : null,
+            contentPadding: maxLines == 1
+                ? const EdgeInsets.symmetric(vertical: 13)
+                : null,
           ),
         ),
       );
@@ -961,8 +1066,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: _border.withOpacity(0.5)),
               boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.4), blurRadius: 24),
+                BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 24),
               ],
             ),
             constraints: const BoxConstraints(maxWidth: 520),
@@ -974,18 +1078,18 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [
-                        _pink.withOpacity(0.1),
-                        _pink.withOpacity(0.04)
-                      ],
+                      colors: [_pink.withOpacity(0.1), _pink.withOpacity(0.04)],
                     ),
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(20),
                       topRight: Radius.circular(20),
                     ),
                     border: Border(
-                        bottom: BorderSide(
-                            color: _border.withOpacity(0.3), width: 1)),
+                      bottom: BorderSide(
+                        color: _border.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -995,25 +1099,34 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                           color: _pink.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                              color: _pink.withOpacity(0.3), width: 1),
+                            color: _pink.withOpacity(0.3),
+                            width: 1,
+                          ),
                         ),
-                        child: const Icon(Icons.edit_rounded,
-                            color: _pink, size: 20),
+                        child: const Icon(
+                          Icons.edit_rounded,
+                          color: _pink,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Edit Client',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold)),
+                            const Text(
+                              'Edit Client',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text('Update client account details',
-                                style: TextStyle(
-                                    color: _textGrey, fontSize: 12)),
+                            Text(
+                              'Update client account details',
+                              style: TextStyle(color: _textGrey, fontSize: 12),
+                            ),
                           ],
                         ),
                       ),
@@ -1025,8 +1138,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                             color: _border.withOpacity(0.4),
                             borderRadius: BorderRadius.circular(9),
                           ),
-                          child: const Icon(Icons.close_rounded,
-                              color: _textGrey, size: 18),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: _textGrey,
+                            size: 18,
+                          ),
                         ),
                       ),
                     ],
@@ -1059,9 +1175,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                                 children: [
                                   fieldLabel('Phone'),
                                   const SizedBox(height: 8),
-                                  inputBox(phoneCtrl,
-                                      hint: '+1 234 567 890',
-                                      keyboardType: TextInputType.phone),
+                                  inputBox(
+                                    phoneCtrl,
+                                    hint: '+1 234 567 890',
+                                    keyboardType: TextInputType.phone,
+                                  ),
                                 ],
                               ),
                             ),
@@ -1071,20 +1189,28 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                         // Email
                         fieldLabel('Email Address', required: true),
                         const SizedBox(height: 8),
-                        inputBox(emailCtrl,
-                            hint: 'client@company.com',
-                            keyboardType: TextInputType.emailAddress),
+                        inputBox(
+                          emailCtrl,
+                          hint: 'client@company.com',
+                          keyboardType: TextInputType.emailAddress,
+                        ),
                         const SizedBox(height: 16),
                         // Password
                         fieldLabel('New Password'),
                         const SizedBox(height: 4),
-                        Text('Leave blank to keep current password',
-                            style: TextStyle(
-                                color: _textGrey.withOpacity(0.7),
-                                fontSize: 11)),
+                        Text(
+                          'Leave blank to keep current password',
+                          style: TextStyle(
+                            color: _textGrey.withOpacity(0.7),
+                            fontSize: 11,
+                          ),
+                        ),
                         const SizedBox(height: 8),
-                        inputBox(passwordCtrl,
-                            hint: 'Min 6 characters', obscure: true),
+                        inputBox(
+                          passwordCtrl,
+                          hint: 'Min 6 characters',
+                          obscure: true,
+                        ),
                         const SizedBox(height: 16),
                         // Client Company Name
                         fieldLabel('Client\'s Own Company Name'),
@@ -1094,9 +1220,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                         // Notes
                         fieldLabel('Notes (optional)'),
                         const SizedBox(height: 8),
-                        inputBox(notesCtrl,
-                            hint: 'Any relevant notes about this client',
-                            maxLines: 3),
+                        inputBox(
+                          notesCtrl,
+                          hint: 'Any relevant notes about this client',
+                          maxLines: 3,
+                        ),
                         // Error
                         if (errorMessage != null) ...[
                           const SizedBox(height: 14),
@@ -1107,9 +1235,10 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(color: _red.withOpacity(0.5)),
                             ),
-                            child: Text(errorMessage!,
-                                style: const TextStyle(
-                                    color: _red, fontSize: 12)),
+                            child: Text(
+                              errorMessage!,
+                              style: const TextStyle(color: _red, fontSize: 12),
+                            ),
                           ),
                         ],
                         const SizedBox(height: 22),
@@ -1122,20 +1251,25 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                                     ? null
                                     : () => Navigator.pop(ctx),
                                 child: Container(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 13),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: _border.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                        color: _border.withOpacity(0.5)),
+                                      color: _border.withOpacity(0.5),
+                                    ),
                                   ),
-                                  child: const Text('Cancel',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600)),
+                                  child: const Text(
+                                    'Cancel',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -1147,8 +1281,10 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                                     : () async {
                                         if (nameCtrl.text.trim().isEmpty ||
                                             emailCtrl.text.trim().isEmpty) {
-                                          setS(() => errorMessage =
-                                              'Name and Email are required');
+                                          setS(
+                                            () => errorMessage =
+                                                'Name and Email are required',
+                                          );
                                           return;
                                         }
                                         setS(() {
@@ -1156,15 +1292,14 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                                           errorMessage = null;
                                         });
                                         try {
-                                          await AdminClientsService
-                                              .updateClient(
+                                          await AdminClientsService.updateClient(
                                             token: widget.token ?? '',
                                             clientId: clientId,
                                             name: nameCtrl.text.trim(),
                                             email: emailCtrl.text.trim(),
                                             phone: phoneCtrl.text.trim(),
-                                            companyName:
-                                                companyNameCtrl.text.trim(),
+                                            companyName: companyNameCtrl.text
+                                                .trim(),
                                             password: passwordCtrl.text.isEmpty
                                                 ? null
                                                 : passwordCtrl.text,
@@ -1172,12 +1307,15 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                                           );
                                           if (mounted) {
                                             Navigator.pop(ctx);
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
                                               const SnackBar(
-                                                  content: Text(
-                                                      'Client updated successfully'),
-                                                  backgroundColor: _green),
+                                                content: Text(
+                                                  'Client updated successfully',
+                                                ),
+                                                backgroundColor: _green,
+                                              ),
                                             );
                                             _loadClients();
                                           }
@@ -1191,19 +1329,20 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                                         }
                                       },
                                 child: Container(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 13),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 13,
+                                  ),
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(colors: [
-                                      _pink,
-                                      _pink.withOpacity(0.8)
-                                    ]),
+                                    gradient: LinearGradient(
+                                      colors: [_pink, _pink.withOpacity(0.8)],
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                          color: _pink.withOpacity(0.3),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4))
+                                        color: _pink.withOpacity(0.3),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
                                     ],
                                   ),
                                   child: isSubmitting
@@ -1212,25 +1351,32 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                                             width: 18,
                                             height: 18,
                                             child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation(
-                                                        Colors.white)),
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation(
+                                                    Colors.white,
+                                                  ),
+                                            ),
                                           ),
                                         )
                                       : const Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
-                                            Icon(Icons.check_rounded,
-                                                color: Colors.white, size: 17),
+                                            Icon(
+                                              Icons.check_rounded,
+                                              color: Colors.white,
+                                              size: 17,
+                                            ),
                                             SizedBox(width: 6),
-                                            Text('Save Changes',
-                                                style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 14,
-                                                    fontWeight:
-                                                        FontWeight.w700)),
+                                            Text(
+                                              'Save Changes',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                 ),
@@ -1258,9 +1404,10 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
       child: Text(
         _initials(name),
         style: TextStyle(
-            color: Colors.white,
-            fontSize: radius * 0.65,
-            fontWeight: FontWeight.bold),
+          color: Colors.white,
+          fontSize: radius * 0.65,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -1291,7 +1438,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                   color: _red.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.delete_outline_rounded, color: _red, size: 32),
+                child: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: _red,
+                  size: 32,
+                ),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -1306,7 +1457,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
               const Text(
                 'Are you sure you want to delete this client? This action cannot be undone.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 13, height: 1.5),
+                style: TextStyle(
+                  color: Color(0xFF9E9E9E),
+                  fontSize: 13,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 24),
               Row(
@@ -1325,9 +1480,10 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                           'Cancel',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600),
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -1346,16 +1502,17 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                               color: _red.withOpacity(0.3),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
-                            )
+                            ),
                           ],
                         ),
                         child: const Text(
                           'Delete',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700),
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -1402,10 +1559,8 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _AddClientDialog(
-        token: widget.token,
-        onClientAdded: _loadClients,
-      ),
+      builder: (_) =>
+          _AddClientDialog(token: widget.token, onClientAdded: _loadClients),
     );
   }
 
@@ -1419,20 +1574,30 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration:
-                  BoxDecoration(color: _card, borderRadius: BorderRadius.circular(50)),
-              child: const Icon(Icons.people_outline_rounded,
-                  color: _textGrey, size: 40),
+              decoration: BoxDecoration(
+                color: _card,
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: const Icon(
+                Icons.people_outline_rounded,
+                color: _textGrey,
+                size: 40,
+              ),
             ),
             const SizedBox(height: 16),
-            const Text('No clients found',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600)),
+            const Text(
+              'No clients found',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 8),
-            const Text('Try adjusting your search or filters',
-                style: TextStyle(color: _textGrey, fontSize: 13)),
+            const Text(
+              'Try adjusting your search or filters',
+              style: TextStyle(color: _textGrey, fontSize: 13),
+            ),
             const SizedBox(height: 20),
             OutlinedButton.icon(
               onPressed: () {
@@ -1447,8 +1612,9 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: _pink,
                 side: const BorderSide(color: _pink),
-                shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -1467,30 +1633,44 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                  color: _red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(50)),
-              child:
-                  const Icon(Icons.error_outline_rounded, color: _red, size: 40),
+                color: _red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(50),
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: _red,
+                size: 40,
+              ),
             ),
             const SizedBox(height: 16),
-            const Text('Failed to load clients',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600)),
+            const Text(
+              'Failed to load clients',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(_error ?? '',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: _textGrey, fontSize: 13)),
+            Text(
+              _error ?? '',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _textGrey, fontSize: 13),
+            ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _loadClients,
-              icon: const Icon(Icons.refresh_rounded, size: 16, color: Colors.black),
+              icon: const Icon(
+                Icons.refresh_rounded,
+                size: 16,
+                color: Colors.black,
+              ),
               label: const Text('Retry', style: TextStyle(color: Colors.black)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _pink,
-                shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ],
@@ -1505,25 +1685,22 @@ class _AddClientDialog extends StatefulWidget {
   final String? token;
   final VoidCallback onClientAdded;
 
-  const _AddClientDialog({
-    required this.token,
-    required this.onClientAdded,
-  });
+  const _AddClientDialog({required this.token, required this.onClientAdded});
 
   @override
   State<_AddClientDialog> createState() => _AddClientDialogState();
 }
 
 class _AddClientDialogState extends State<_AddClientDialog> {
-  // Theme colors
-  static const Color _card = Color(0xFF141414);
-  static const Color _input = Color(0xFF1C1C1C);
-  static const Color _border = Color(0xFF2A2A2A);
-  static const Color _pink = Color(0xFFFF8FA3);
+  // Theme colors (use AppTheme for consistency)
+  static const Color _card = AppTheme.cardColor;
+  static const Color _input = AppTheme.surface;
+  static const Color _border = AppTheme.outline;
+  static const Color _pink = AppTheme.primaryColor;
   static const Color _textGrey = Color(0xFF9E9E9E);
-  static const Color _textLight = Color(0xFFE0E0E0);
-  static const Color _red = Color(0xFFEF5350);
-  static const Color _green = Color(0xFF00C853);
+  static const Color _textLight = AppTheme.onSurface;
+  static const Color _red = AppTheme.errorColor;
+  static const Color _green = AppTheme.successColor;
 
   // Form fields
   final _formKey = GlobalKey<FormState>();
@@ -1554,9 +1731,9 @@ class _AddClientDialogState extends State<_AddClientDialog> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: _card,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: const Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1567,25 +1744,22 @@ class _AddClientDialogState extends State<_AddClientDialog> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Add New Client',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppTheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         'Create a client account. They will have access to the chat panel only.',
-                        style: TextStyle(
-                          color: _textGrey,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: _textGrey, fontSize: 12),
                       ),
                     ],
                   ),
@@ -1686,10 +1860,7 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                           ),
                           child: Text(
                             _errorMessage!,
-                            style: const TextStyle(
-                              color: _red,
-                              fontSize: 12,
-                            ),
+                            style: const TextStyle(color: _red, fontSize: 12),
                           ),
                         ),
                       const SizedBox(height: 20),
@@ -1705,7 +1876,9 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
                                 side: const BorderSide(color: _border),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -1720,7 +1893,9 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: _pink,
                                 foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -1732,8 +1907,9 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                                       height: 16,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation(Colors.black),
+                                        valueColor: AlwaysStoppedAnimation(
+                                          Colors.black,
+                                        ),
                                       ),
                                     )
                                   : const Icon(Icons.check, size: 18),
@@ -1781,11 +1957,7 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (isRequired)
-              const Text(
-                ' *',
-                style: TextStyle(color: _red),
-              ),
+            if (isRequired) const Text(' *', style: TextStyle(color: _red)),
           ],
         ),
         const SizedBox(height: 8),
@@ -1793,16 +1965,16 @@ class _AddClientDialogState extends State<_AddClientDialog> {
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: _input,
+            color: AppTheme.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _border),
+            border: Border.all(color: AppTheme.outline),
           ),
           child: TextFormField(
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+            style: TextStyle(color: AppTheme.onSurface, fontSize: 14),
             obscureText: isPassword,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(color: _textGrey.withOpacity(0.6)),
+              hintStyle: TextStyle(color: AppTheme.onSurface.withOpacity(0.6)),
               border: InputBorder.none,
             ),
             onChanged: onChanged,
@@ -1846,17 +2018,17 @@ class _AddClientDialogState extends State<_AddClientDialog> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: _input,
+            color: AppTheme.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _border),
+            border: Border.all(color: AppTheme.outline),
           ),
           child: TextFormField(
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+            style: TextStyle(color: AppTheme.onSurface, fontSize: 14),
             maxLines: 4,
             minLines: 3,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(color: _textGrey.withOpacity(0.6)),
+              hintStyle: TextStyle(color: AppTheme.onSurface.withOpacity(0.6)),
               border: InputBorder.none,
             ),
             onChanged: onChanged,
@@ -1899,8 +2071,10 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                 final name = c['name']?.toString() ?? id;
                 return DropdownMenuItem<String>(
                   value: id,
-                  child: Text(name,
-                      style: const TextStyle(color: _textLight, fontSize: 14)),
+                  child: Text(
+                    name,
+                    style: const TextStyle(color: _textLight, fontSize: 14),
+                  ),
                 );
               }).toList(),
               onChanged: (v) {
@@ -1918,7 +2092,10 @@ class _AddClientDialogState extends State<_AddClientDialog> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_fullName.isEmpty || _email.isEmpty || _password.isEmpty || _clientCompanyName.isEmpty) {
+    if (_fullName.isEmpty ||
+        _email.isEmpty ||
+        _password.isEmpty ||
+        _clientCompanyName.isEmpty) {
       setState(() => _errorMessage = 'Please fill all required fields');
       return;
     }
@@ -1952,12 +2129,14 @@ class _AddClientDialogState extends State<_AddClientDialog> {
         Navigator.pop(context);
         widget.onClientAdded();
       } else {
-        setState(() =>
-            _errorMessage = result['message'] ?? 'Failed to create client');
+        setState(
+          () => _errorMessage = result['message'] ?? 'Failed to create client',
+        );
       }
     } catch (e) {
-      setState(() =>
-          _errorMessage = e.toString().replaceAll('Exception: ', ''));
+      setState(
+        () => _errorMessage = e.toString().replaceAll('Exception: ', ''),
+      );
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);

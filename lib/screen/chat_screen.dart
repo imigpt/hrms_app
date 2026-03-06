@@ -17,7 +17,9 @@ import '../services/chat_media_service.dart';
 // ─── Chat List Screen ─────────────────────────────────────────────────────────
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final String? recipientId;
+
+  const ChatScreen({super.key, this.recipientId});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -140,21 +142,21 @@ class _ChatScreenState extends State<ChatScreen> {
         _filtered = List.from(_allRooms);
       } else {
         final searchTerm = query.toLowerCase();
-        _filtered = _allRooms
-            .where((room) {
-              // Search by room name
-              if (room.name.toLowerCase().contains(searchTerm)) return true;
-              // Search by other user's name (for personal chats)
-              if (room.otherUser?.name.toLowerCase().contains(searchTerm) ?? false) {
-                return true;
-              }
-              // Search by last message content
-              if (room.lastMessage?.content.toLowerCase().contains(searchTerm) ?? false) {
-                return true;
-              }
-              return false;
-            })
-            .toList();
+        _filtered = _allRooms.where((room) {
+          // Search by room name
+          if (room.name.toLowerCase().contains(searchTerm)) return true;
+          // Search by other user's name (for personal chats)
+          if (room.otherUser?.name.toLowerCase().contains(searchTerm) ??
+              false) {
+            return true;
+          }
+          // Search by last message content
+          if (room.lastMessage?.content.toLowerCase().contains(searchTerm) ??
+              false) {
+            return true;
+          }
+          return false;
+        }).toList();
       }
     });
   }
@@ -172,6 +174,18 @@ class _ChatScreenState extends State<ChatScreen> {
     final parts = name.trim().split(' ');
     if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
+  /// Get display ID for a user (Employee ID, HR ID, Admin ID, or fallback)
+  String _getDisplayUserId(ChatParticipant? user) {
+    if (user == null) return 'Unknown';
+    return user.getDisplayId();
+  }
+
+  /// Get ID prefix label (EMP, HR, ADM, etc.)
+  String _getIdPrefix(ChatParticipant? user) {
+    if (user == null) return 'USR';
+    return user.getIdPrefix();
   }
 
   @override
@@ -331,10 +345,11 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildConversationTile(ChatRoom room) {
     final lastMsg = room.lastMessage;
     final hasUnread = room.unreadCount > 0;
-    // For personal rooms use the other user's name; group rooms use room.name
+    // For personal rooms display user ID; group rooms use room.name
     final isPersonal = room.type == 'personal';
     final displayName = isPersonal
-        ? (room.otherUser?.name ?? room.name)
+        ? (_getDisplayUserId(room.otherUser) +
+              ' (${_getIdPrefix(room.otherUser)})')
         : room.name;
     final isVoice = lastMsg?.isVoice ?? false;
     final msgText = lastMsg?.content ?? '';
@@ -663,6 +678,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   // Typing indicator
   bool _someoneTyping = false;
   String _typingUserName = '';
+  String _typingUserId = '';
+  String _typingUserIdPrefix = '';
   Timer? _typingDebounce;
   Timer? _typingHideTimer;
 
@@ -739,7 +756,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (!mounted) return;
       setState(() {
         // FIX: API ke data ko reverse karna zaroori hai taki newest message index 0 par aaye
-        _messages = res.data.reversed.toList(); 
+        _messages = res.data.reversed.toList();
         _hasMore = res.hasMore;
       });
       _scrollToBottom(jump: true);
@@ -765,9 +782,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         before: oldest,
       );
       if (!mounted) return;
-      
+
       // FIX: Purane messages ko bhi reverse karein aur list ke end me (addAll) jod dein
-      final olderReversed = res.data.reversed.toList(); 
+      final olderReversed = res.data.reversed.toList();
       final prevHeight = _scrollController.position.extentTotal;
       setState(() {
         _messages.addAll(olderReversed);
@@ -847,7 +864,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         if (msg.chatRoom != widget.room.id) return;
         if (msg.sender?.id == _currentUserId) return;
         if (_messages.any((m) => m.id == msg.id)) return;
-        
+
         // FIX: Naye message ko list ke top (index 0) par daalein taki bottom me dikhe
         setState(() => _messages.insert(0, msg));
         _scrollToBottom();
@@ -873,9 +890,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         if (evt.roomId != widget.room.id) return;
         if (evt.userId == _currentUserId) return;
         _typingHideTimer?.cancel();
+        // Try to get user info from room participants
+        final participant = widget.room.participants.firstWhere(
+          (p) => p.id == evt.userId,
+          orElse: () =>
+              ChatParticipant(id: evt.userId, name: evt.userName, email: ''),
+        );
         setState(() {
           _someoneTyping = true;
           _typingUserName = evt.userName;
+          _typingUserId = participant.getDisplayId();
+          _typingUserIdPrefix = participant.getIdPrefix();
         });
         _typingHideTimer = Timer(const Duration(seconds: 3), () {
           if (mounted) setState(() => _someoneTyping = false);
@@ -1168,7 +1193,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       allUsers = res.data;
       filtered = res.data;
     } catch (e) {
-      _showSnack('Failed to load users: ${e.toString().replaceFirst('Exception: ', '')}');
+      _showSnack(
+        'Failed to load users: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
       return;
     }
 
@@ -1178,7 +1205,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (ctx, setState) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           backgroundColor: const Color(0xFF1C1C1E),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1199,7 +1228,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white, size: 22),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                       onPressed: () => Navigator.pop(ctx),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1232,7 +1265,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   decoration: InputDecoration(
                     hintText: 'Search users...',
                     hintStyle: TextStyle(color: Colors.grey[600]),
-                    prefixIcon: Icon(Icons.search, color: Colors.grey[600], size: 18),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: Colors.grey[600],
+                      size: 18,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFF2C2C2E),
                     border: OutlineInputBorder(
@@ -1247,14 +1284,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               // User list
               Flexible(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   itemCount: filtered.length,
                   itemBuilder: (_, i) {
                     final user = filtered[i];
                     return ListTile(
                       title: Text(
                         user.name,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                       ),
                       subtitle: Text(
                         user.position ?? user.role,
@@ -1285,7 +1328,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       if (!mounted) return;
       _showSnack('Member added successfully');
     } catch (e) {
-      _showSnack('Failed to add member: ${e.toString().replaceFirst('Exception: ', '')}');
+      _showSnack(
+        'Failed to add member: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
     }
   }
 
@@ -1294,7 +1339,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF1C1C1E),
-        title: const Text('Delete Group', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Delete Group',
+          style: TextStyle(color: Colors.white),
+        ),
         content: Text(
           'Are you sure you want to delete "${widget.room.name}"? This action cannot be undone.',
           style: TextStyle(color: Colors.grey[400]),
@@ -1320,15 +1368,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   Future<void> _deleteGroup() async {
     try {
-      await ChatService.deleteGroup(
-        token: _token!,
-        groupId: widget.room.id,
-      );
+      await ChatService.deleteGroup(token: _token!, groupId: widget.room.id);
       if (!mounted) return;
       Navigator.pop(context);
       _showSnack('Group deleted successfully');
     } catch (e) {
-      _showSnack('Failed to delete group: ${e.toString().replaceFirst('Exception: ', '')}');
+      _showSnack(
+        'Failed to delete group: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
     }
   }
 
@@ -1427,7 +1474,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      name,
+                                      m.getDisplayId() +
+                                          ' (${m.getIdPrefix()})',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,
@@ -1523,11 +1571,36 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     return c[name.codeUnitAt(0) % c.length];
   }
 
+  /// Get display ID for a sender (Employee ID, HR ID, Admin ID, or fallback)
+  String _getSenderDisplayId(ChatMessageSender? sender) {
+    if (sender == null) return 'Unknown';
+    return sender.getDisplayId();
+  }
+
+  /// Get ID prefix label (EMP, HR, ADM, etc.)
+  String _getSenderIdPrefix(ChatMessageSender? sender) {
+    if (sender == null) return 'USR';
+    return sender.getIdPrefix();
+  }
+
+  /// Get display ID for a user (Employee ID, HR ID, Admin ID, or fallback)
+  String _getDisplayUserId(ChatParticipant? user) {
+    if (user == null) return 'Unknown';
+    return user.getDisplayId();
+  }
+
+  /// Get ID prefix label (EMP, HR, ADM, etc.)
+  String _getIdPrefix(ChatParticipant? user) {
+    if (user == null) return 'USR';
+    return user.getIdPrefix();
+  }
+
   // ── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final displayName = widget.room.type == 'personal'
-        ? (widget.room.otherUser?.name ?? widget.room.name)
+        ? (_getDisplayUserId(widget.room.otherUser) +
+              ' (${_getIdPrefix(widget.room.otherUser)})')
         : widget.room.name;
     final otherUserId = widget.room.otherUser?.id;
     final isPersonal = widget.room.type == 'personal';
@@ -1535,7 +1608,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         isPersonal &&
         otherUserId != null &&
         (_onlineUsers[otherUserId] ?? false);
-    
+
     // Use role-aware subtitle
     final subTitle = _getSubtitleByRole();
     final subColor = isPersonal
@@ -1610,20 +1683,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                       // Role badge
                       if (_userRole != null)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: _userRole == 'admin'
                                 ? Colors.red.withOpacity(0.3)
                                 : _userRole == 'employee'
-                                    ? Colors.blue.withOpacity(0.3)
-                                    : Colors.orange.withOpacity(0.3),
+                                ? Colors.blue.withOpacity(0.3)
+                                : Colors.orange.withOpacity(0.3),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: _userRole == 'admin'
                                   ? Colors.red.withOpacity(0.6)
                                   : _userRole == 'employee'
-                                      ? Colors.blue.withOpacity(0.6)
-                                      : Colors.orange.withOpacity(0.6),
+                                  ? Colors.blue.withOpacity(0.6)
+                                  : Colors.orange.withOpacity(0.6),
                               width: 0.5,
                             ),
                           ),
@@ -1633,8 +1709,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                               color: _userRole == 'admin'
                                   ? Colors.red
                                   : _userRole == 'employee'
-                                      ? Colors.blue
-                                      : Colors.orange,
+                                  ? Colors.blue
+                                  : Colors.orange,
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
                             ),
@@ -1644,7 +1720,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   ),
                   if (_someoneTyping)
                     Text(
-                      '$_typingUserName is typing...',
+                      '$_typingUserId ($_typingUserIdPrefix) is typing...',
                       style: const TextStyle(
                         color: AppTheme.primaryColor,
                         fontSize: 11,
@@ -1777,10 +1853,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   String _getSubtitleByRole() {
     if (widget.room.type == 'personal') {
       final otherUserId = widget.room.otherUser?.id;
-      final isOtherOnline = otherUserId != null && (_onlineUsers[otherUserId] ?? false);
-      
+      final isOtherOnline =
+          otherUserId != null && (_onlineUsers[otherUserId] ?? false);
+
       String baseStatus = isOtherOnline ? 'Online' : 'Offline';
-      
+
       // Add role info to subtitle for admins
       if (_userRole == 'admin') {
         return '$baseStatus • Admin Chat';
@@ -1789,17 +1866,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       } else if (_userRole == 'hr') {
         return '$baseStatus • HR Chat';
       }
-      
+
       return baseStatus;
     } else {
       String groupInfo = '${widget.room.participants.length} members';
-      
+
       if (_userRole == 'admin') {
         return '$groupInfo • Admin Group';
       } else if (_userRole == 'employee') {
         return '$groupInfo • Employee Group';
       }
-      
+
       return groupInfo;
     }
   }
@@ -1853,34 +1930,34 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     }
 
     return ListView.builder(
-  reverse: true, // 👈 Bottom-to-top messaging
-  controller: _scrollController,
-  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-  physics: const BouncingScrollPhysics(),
-  itemCount: _messages.length + (_someoneTyping ? 1 : 0),
-  itemBuilder: (context, index) {
-    
-    // FIX 1: Typing indicator hamesha sabse niche (index 0) hona chahiye
-    if (_someoneTyping && index == 0) {
-      return _TypingBubble(name: _typingUserName);
-    }
-    
-    // FIX 2: Agar koi type kar raha hai, toh message ka index 1 se start hoga
-    final msgIndex = _someoneTyping ? index - 1 : index;
-    final msg = _messages[msgIndex];
-    
-    // FIX 3: Date separator ab list reverse hone ke karan theek se show hoga
-    final showDate = msgIndex == _messages.length - 1 || 
-                     !_isSameDay(_messages[msgIndex + 1].createdAt, msg.createdAt);
+      reverse: true, // 👈 Bottom-to-top messaging
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      physics: const BouncingScrollPhysics(),
+      itemCount: _messages.length + (_someoneTyping ? 1 : 0),
+      itemBuilder: (context, index) {
+        // FIX 1: Typing indicator hamesha sabse niche (index 0) hona chahiye
+        if (_someoneTyping && index == 0) {
+          return _TypingBubble(name: '$_typingUserId ($_typingUserIdPrefix)');
+        }
 
-    return Column(
-      children: [
-        if (showDate) _DateDivider(date: msg.createdAt),
-        _buildSwipeable(msg),
-      ],
+        // FIX 2: Agar koi type kar raha hai, toh message ka index 1 se start hoga
+        final msgIndex = _someoneTyping ? index - 1 : index;
+        final msg = _messages[msgIndex];
+
+        // FIX 3: Date separator ab list reverse hone ke karan theek se show hoga
+        final showDate =
+            msgIndex == _messages.length - 1 ||
+            !_isSameDay(_messages[msgIndex + 1].createdAt, msg.createdAt);
+
+        return Column(
+          children: [
+            if (showDate) _DateDivider(date: msg.createdAt),
+            _buildSwipeable(msg),
+          ],
+        );
+      },
     );
-  },
-);
   }
 
   bool _isSameDay(DateTime a, DateTime b) =>
@@ -1898,11 +1975,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     final isMine =
         msg.sender?.id == _currentUserId || (msg.isTemp && msg.sender == null);
     final timeStr = DateFormat('hh:mm a').format(msg.createdAt.toLocal());
-    final senderName =
-        msg.sender?.name ??
-        (widget.room.type == 'personal'
-            ? (widget.room.otherUser?.name ?? widget.room.name)
-            : widget.room.name);
+    final senderDisplayId = msg.sender != null
+        ? (_getSenderDisplayId(msg.sender) +
+              ' (${_getSenderIdPrefix(msg.sender)})')
+        : (widget.room.type == 'personal'
+              ? (_getDisplayUserId(widget.room.otherUser) +
+                    ' (${_getIdPrefix(widget.room.otherUser)})')
+              : widget.room.name);
+    final senderName = msg.sender?.name ?? widget.room.name;
 
     return GestureDetector(
       onLongPress: () => _showBubbleMenu(msg),
@@ -1932,7 +2012,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                     Padding(
                       padding: const EdgeInsets.only(left: 4, bottom: 2),
                       child: Text(
-                        senderName,
+                        senderDisplayId,
                         style: TextStyle(
                           color: AppTheme.primaryColor,
                           fontSize: 11,
@@ -2103,9 +2183,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: const Color(0xFF1C1C1E),
-        title: const Text('Delete Message', style: TextStyle(color: Colors.white)),
-        content: const Text('Are you sure you want to delete this message?',
-            style: TextStyle(color: Colors.white70)),
+        title: const Text(
+          'Delete Message',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this message?',
+          style: TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -2116,7 +2201,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
               Navigator.pop(context);
               _deleteMessage(msg);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -2659,7 +2747,7 @@ class _ReplyQuoteState extends State<_ReplyQuote> {
         children: [
           if (widget.reply.senderName != null)
             Text(
-              widget.reply.senderName!,
+              widget.reply.getDisplayId() + ' (${widget.reply.getIdPrefix()})',
               style: const TextStyle(
                 color: AppTheme.primaryColor,
                 fontSize: 11,
@@ -2982,7 +3070,11 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Icon(Icons.error_outline, color: Colors.redAccent, size: 40),
+              const Icon(
+                Icons.error_outline,
+                color: Colors.redAccent,
+                size: 40,
+              ),
               const SizedBox(height: 12),
               const Text(
                 'Could not open document',
@@ -3069,7 +3161,9 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
                           width: 28,
                           height: 28,
                           child: CircularProgressIndicator(
-                            value: _downloadProgress > 0 ? _downloadProgress : null,
+                            value: _downloadProgress > 0
+                                ? _downloadProgress
+                                : null,
                             strokeWidth: 2.5,
                             color: widget.isMine
                                 ? Colors.white70
@@ -3373,7 +3467,10 @@ class _MenuTileState extends State<_MenuTile> {
             const SizedBox(width: 16),
             Text(
               widget.label,
-              style: TextStyle(color: widget.color ?? Colors.white, fontSize: 14),
+              style: TextStyle(
+                color: widget.color ?? Colors.white,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
@@ -3700,7 +3797,8 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      u.name,
+                                      u.getDisplayId() +
+                                          ' (${u.getIdPrefix()})',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,
@@ -3765,10 +3863,7 @@ class _CreateGroupDialog extends StatefulWidget {
   final String token;
   final VoidCallback onGroupCreated;
 
-  const _CreateGroupDialog({
-    required this.token,
-    required this.onGroupCreated,
-  });
+  const _CreateGroupDialog({required this.token, required this.onGroupCreated});
 
   @override
   State<_CreateGroupDialog> createState() => _CreateGroupDialogState();
@@ -3902,7 +3997,11 @@ class _CreateGroupDialogState extends State<_CreateGroupDialog> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white, size: 22),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                       onPressed: () => Navigator.pop(context),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -3971,63 +4070,65 @@ class _CreateGroupDialogState extends State<_CreateGroupDialog> {
                           ),
                         )
                       : _error != null
-                          ? Center(
-                              child: Text(
-                                _error!,
-                                style: TextStyle(color: Colors.grey[500]),
-                                textAlign: TextAlign.center,
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              itemCount: _filtered.length,
-                              itemBuilder: (_, i) {
-                                final user = _filtered[i];
-                                final isSelected = _selectedMemberIds.contains(user.id);
-                                return CheckboxListTile(
-                                  value: isSelected,
-                                  onChanged: (_) {
-                                    setState(() {
-                                      if (isSelected) {
-                                        _selectedMemberIds.remove(user.id);
-                                      } else {
-                                        _selectedMemberIds.add(user.id);
-                                      }
-                                    });
-                                  },
-                                  title: Text(
-                                    user.name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    user.position ?? user.role,
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  checkboxShape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  activeColor: AppTheme.primaryColor,
-                                  tileColor: const Color(0xFF2C2C2E),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
-                                  ),
-                                  dense: true,
-                                );
+                      ? Center(
+                          child: Text(
+                            _error!,
+                            style: TextStyle(color: Colors.grey[500]),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          itemCount: _filtered.length,
+                          itemBuilder: (_, i) {
+                            final user = _filtered[i];
+                            final isSelected = _selectedMemberIds.contains(
+                              user.id,
+                            );
+                            return CheckboxListTile(
+                              value: isSelected,
+                              onChanged: (_) {
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedMemberIds.remove(user.id);
+                                  } else {
+                                    _selectedMemberIds.add(user.id);
+                                  }
+                                });
                               },
-                            ),
+                              title: Text(
+                                user.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              subtitle: Text(
+                                user.position ?? user.role,
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              checkboxShape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              activeColor: AppTheme.primaryColor,
+                              tileColor: const Color(0xFF2C2C2E),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              dense: true,
+                            );
+                          },
+                        ),
                 ),
               ],
             ),

@@ -10,10 +10,7 @@ class DashboardStatsResponse {
   bool success;
   DashboardData data;
 
-  DashboardStatsResponse({
-    required this.success,
-    required this.data,
-  });
+  DashboardStatsResponse({required this.success, required this.data});
 
   factory DashboardStatsResponse.fromJson(Map<String, dynamic> json) =>
       DashboardStatsResponse(
@@ -21,10 +18,7 @@ class DashboardStatsResponse {
         data: DashboardData.fromJson(json["data"] ?? {}),
       );
 
-  Map<String, dynamic> toJson() => {
-        "success": success,
-        "data": data.toJson(),
-      };
+  Map<String, dynamic> toJson() => {"success": success, "data": data.toJson()};
 }
 
 class DashboardData {
@@ -43,45 +37,39 @@ class DashboardData {
   });
 
   factory DashboardData.fromJson(Map<String, dynamic> json) => DashboardData(
-        user: json["user"] != null
-            ? DashboardUser.fromJson(json["user"])
-            : null,
-        stats: DashboardStats.fromJson(json["stats"] ?? {}),
-        attendance: AttendanceStatus.fromJson(json["attendance"] ?? {}),
-        tasks: json["tasks"] != null
-            ? List<DashboardTask>.from(
-                json["tasks"].map((x) => DashboardTask.fromJson(x)))
-            : [],
-        announcements: json["announcements"] != null
-            ? List<DashboardAnnouncement>.from(json["announcements"]
-                .map((x) => DashboardAnnouncement.fromJson(x)))
-            : [],
-      );
+    user: json["user"] != null ? DashboardUser.fromJson(json["user"]) : null,
+    stats: DashboardStats.fromJson(json["stats"] ?? {}),
+    attendance: AttendanceStatus.fromJson(json["attendance"] ?? {}),
+    tasks: json["tasks"] != null
+        ? List<DashboardTask>.from(
+            json["tasks"].map((x) => DashboardTask.fromJson(x)),
+          )
+        : [],
+    announcements: json["announcements"] != null
+        ? List<DashboardAnnouncement>.from(
+            json["announcements"].map((x) => DashboardAnnouncement.fromJson(x)),
+          )
+        : [],
+  );
 
   Map<String, dynamic> toJson() => {
-        "user": user?.toJson(),
-        "stats": stats.toJson(),
-        "attendance": attendance.toJson(),
-        "tasks": List<dynamic>.from(tasks.map((x) => x.toJson())),
-        "announcements":
-            List<dynamic>.from(announcements.map((x) => x.toJson())),
-      };
+    "user": user?.toJson(),
+    "stats": stats.toJson(),
+    "attendance": attendance.toJson(),
+    "tasks": List<dynamic>.from(tasks.map((x) => x.toJson())),
+    "announcements": List<dynamic>.from(announcements.map((x) => x.toJson())),
+  };
 }
 
 class DashboardUser {
   String name;
 
-  DashboardUser({
-    required this.name,
-  });
+  DashboardUser({required this.name});
 
-  factory DashboardUser.fromJson(Map<String, dynamic> json) => DashboardUser(
-        name: json["name"] ?? "",
-      );
+  factory DashboardUser.fromJson(Map<String, dynamic> json) =>
+      DashboardUser(name: json["name"] ?? "");
 
-  Map<String, dynamic> toJson() => {
-        "name": name,
-      };
+  Map<String, dynamic> toJson() => {"name": name};
 }
 
 class LeaveBalance {
@@ -105,31 +93,31 @@ class LeaveBalance {
   int get total => annual + sick + casual;
 
   factory LeaveBalance.fromJson(Map<String, dynamic> json) => LeaveBalance(
-        annual: json["annual"] ?? 0,
-        sick: json["sick"] ?? 0,
-        casual: json["casual"] ?? 0,
-        maternity: json["maternity"] ?? 0,
-        paternity: json["paternity"] ?? 0,
-        unpaid: json["unpaid"] ?? 0,
-      );
+    annual: json["annual"] ?? 0,
+    sick: json["sick"] ?? 0,
+    casual: json["casual"] ?? 0,
+    maternity: json["maternity"] ?? 0,
+    paternity: json["paternity"] ?? 0,
+    unpaid: json["unpaid"] ?? 0,
+  );
 
   factory LeaveBalance.zero() => LeaveBalance(
-        annual: 0,
-        sick: 0,
-        casual: 0,
-        maternity: 0,
-        paternity: 0,
-        unpaid: 0,
-      );
+    annual: 0,
+    sick: 0,
+    casual: 0,
+    maternity: 0,
+    paternity: 0,
+    unpaid: 0,
+  );
 
   Map<String, dynamic> toJson() => {
-        "annual": annual,
-        "sick": sick,
-        "casual": casual,
-        "maternity": maternity,
-        "paternity": paternity,
-        "unpaid": unpaid,
-      };
+    "annual": annual,
+    "sick": sick,
+    "casual": casual,
+    "maternity": maternity,
+    "paternity": paternity,
+    "unpaid": unpaid,
+  };
 }
 
 class DashboardStats {
@@ -178,47 +166,46 @@ class DashboardStats {
   });
 
   factory DashboardStats.fromJson(Map<String, dynamic> json) => DashboardStats(
-        leaveBalance: json["leaveBalance"] is Map
-            ? LeaveBalance.fromJson(
-                Map<String, dynamic>.from(json["leaveBalance"]))
-            : LeaveBalance.zero(),
-        activeTasks: json["activeTasks"] ?? 0,
-        pendingExpenses: (json["pendingExpenses"] ?? 0).toDouble(),
-        attendancePercentage: (json["attendancePercentage"] ?? 0).toDouble(),
-        totalAttendance: json["totalAttendance"] ?? 0,
-        presentDays: json["presentDays"] ?? 0,
-        absentDays: json["absentDays"] ?? 0,
-        leaveDays: json["leaveDays"] ?? 0,
-        halfDayCount: json["halfDayCount"] ?? 0,
-        totalLeaves: json["totalLeaves"] ?? 0,
-        approvedLeaves: json["approvedLeaves"] ?? 0,
-        rejectedLeaves: json["rejectedLeaves"] ?? 0,
-        pendingLeaves: json["pendingLeaves"] ?? 0,
-        onTimeCount: json["onTimeCount"] ?? 0,
-        lateCount: json["lateCount"] ?? 0,
-        earlyCheckout: json["earlyCheckout"] ?? 0,
-        totalWorkHours: (json["totalWorkHours"] ?? 0).toDouble(),
-      );
+    leaveBalance: json["leaveBalance"] is Map
+        ? LeaveBalance.fromJson(Map<String, dynamic>.from(json["leaveBalance"]))
+        : LeaveBalance.zero(),
+    activeTasks: json["activeTasks"] ?? 0,
+    pendingExpenses: (json["pendingExpenses"] ?? 0).toDouble(),
+    attendancePercentage: (json["attendancePercentage"] ?? 0).toDouble(),
+    totalAttendance: json["totalAttendance"] ?? 0,
+    presentDays: json["presentDays"] ?? 0,
+    absentDays: json["absentDays"] ?? 0,
+    leaveDays: json["leaveDays"] ?? 0,
+    halfDayCount: json["halfDayCount"] ?? 0,
+    totalLeaves: json["totalLeaves"] ?? 0,
+    approvedLeaves: json["approvedLeaves"] ?? 0,
+    rejectedLeaves: json["rejectedLeaves"] ?? 0,
+    pendingLeaves: json["pendingLeaves"] ?? 0,
+    onTimeCount: json["onTimeCount"] ?? 0,
+    lateCount: json["lateCount"] ?? 0,
+    earlyCheckout: json["earlyCheckout"] ?? 0,
+    totalWorkHours: (json["totalWorkHours"] ?? 0).toDouble(),
+  );
 
   Map<String, dynamic> toJson() => {
-        "leaveBalance": leaveBalance.toJson(),
-        "activeTasks": activeTasks,
-        "pendingExpenses": pendingExpenses,
-        "attendancePercentage": attendancePercentage,
-        "totalAttendance": totalAttendance,
-        "presentDays": presentDays,
-        "absentDays": absentDays,
-        "leaveDays": leaveDays,
-        "halfDayCount": halfDayCount,
-        "totalLeaves": totalLeaves,
-        "approvedLeaves": approvedLeaves,
-        "rejectedLeaves": rejectedLeaves,
-        "pendingLeaves": pendingLeaves,
-        "onTimeCount": onTimeCount,
-        "lateCount": lateCount,
-        "earlyCheckout": earlyCheckout,
-        "totalWorkHours": totalWorkHours,
-      };
+    "leaveBalance": leaveBalance.toJson(),
+    "activeTasks": activeTasks,
+    "pendingExpenses": pendingExpenses,
+    "attendancePercentage": attendancePercentage,
+    "totalAttendance": totalAttendance,
+    "presentDays": presentDays,
+    "absentDays": absentDays,
+    "leaveDays": leaveDays,
+    "halfDayCount": halfDayCount,
+    "totalLeaves": totalLeaves,
+    "approvedLeaves": approvedLeaves,
+    "rejectedLeaves": rejectedLeaves,
+    "pendingLeaves": pendingLeaves,
+    "onTimeCount": onTimeCount,
+    "lateCount": lateCount,
+    "earlyCheckout": earlyCheckout,
+    "totalWorkHours": totalWorkHours,
+  };
 }
 
 class AttendanceStatus {
@@ -246,12 +233,12 @@ class AttendanceStatus {
       );
 
   Map<String, dynamic> toJson() => {
-        "isPunchedIn": isPunchedIn,
-        "punchTime": punchTime,
-        "workingHours": workingHours,
-        "workProgress": workProgress,
-        "workTarget": workTarget,
-      };
+    "isPunchedIn": isPunchedIn,
+    "punchTime": punchTime,
+    "workingHours": workingHours,
+    "workProgress": workProgress,
+    "workTarget": workTarget,
+  };
 }
 
 class DashboardTask {
@@ -270,22 +257,22 @@ class DashboardTask {
   });
 
   factory DashboardTask.fromJson(Map<String, dynamic> json) => DashboardTask(
-        id: json["_id"] ?? "",
-        title: json["title"] ?? "",
-        status: json["status"] ?? "",
-        priority: json["priority"] ?? "",
-        deadline: json["deadline"] != null
-            ? DateTime.parse(json["deadline"])
-            : null,
-      );
+    id: json["_id"] ?? "",
+    title: json["title"] ?? "",
+    status: json["status"] ?? "",
+    priority: json["priority"] ?? "",
+    deadline: json["deadline"] != null
+        ? DateTime.parse(json["deadline"])
+        : null,
+  );
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "title": title,
-        "status": status,
-        "priority": priority,
-        "deadline": deadline?.toIso8601String(),
-      };
+    "_id": id,
+    "title": title,
+    "status": status,
+    "priority": priority,
+    "deadline": deadline?.toIso8601String(),
+  };
 }
 
 class DashboardAnnouncement {
@@ -312,9 +299,9 @@ class DashboardAnnouncement {
       );
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "title": title,
-        "message": message,
-        "createdAt": createdAt.toIso8601String(),
-      };
+    "_id": id,
+    "title": title,
+    "message": message,
+    "createdAt": createdAt.toIso8601String(),
+  };
 }

@@ -57,7 +57,7 @@ class ChatSocketService {
   factory ChatSocketService() => _instance;
   ChatSocketService._internal();
 
-  static const String _socketUrl = 'https://hrms-backend-zzzc.onrender.com';
+  static const String _socketUrl = 'http://10.68.82.12:5000';
 
   io.Socket? _socket;
 

@@ -9,9 +9,9 @@ class AdminEmployeesService {
   static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
 
   static Map<String, String> _headers(String token) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
 
   /// GET /api/admin/employees
   /// Optional filters: company (ID), department (string), status (active|inactive|on-leave)
@@ -23,13 +23,15 @@ class AdminEmployeesService {
   }) async {
     try {
       final queryParams = <String, String>{};
-      if (company != null && company.isNotEmpty) queryParams['company'] = company;
-      if (department != null && department.isNotEmpty) queryParams['department'] = department;
+      if (company != null && company.isNotEmpty)
+        queryParams['company'] = company;
+      if (department != null && department.isNotEmpty)
+        queryParams['department'] = department;
       if (status != null && status.isNotEmpty) queryParams['status'] = status;
 
-      final uri = Uri.parse('$_baseUrl/admin/employees').replace(
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      );
+      final uri = Uri.parse(
+        '$_baseUrl/admin/employees',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await http
           .get(uri, headers: _headers(token))
@@ -41,7 +43,10 @@ class AdminEmployeesService {
         throw Exception('Unauthorized: Invalid or expired token');
       } else {
         final body = jsonDecode(response.body);
-        throw Exception(body['message'] ?? 'Failed to fetch employees (${response.statusCode})');
+        throw Exception(
+          body['message'] ??
+              'Failed to fetch employees (${response.statusCode})',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;
@@ -82,12 +87,18 @@ class AdminEmployeesService {
       request.fields['password'] = password;
       request.fields['email'] = email;
       if (phone != null && phone.isNotEmpty) request.fields['phone'] = phone;
-      if (dateOfBirth != null && dateOfBirth.isNotEmpty) request.fields['dateOfBirth'] = dateOfBirth;
-      if (address != null && address.isNotEmpty) request.fields['address'] = address;
-      if (department != null && department.isNotEmpty) request.fields['department'] = department;
-      if (position != null && position.isNotEmpty) request.fields['position'] = position;
-      if (joinDate != null && joinDate.isNotEmpty) request.fields['joinDate'] = joinDate;
-      if (status != null && status.isNotEmpty) request.fields['status'] = status;
+      if (dateOfBirth != null && dateOfBirth.isNotEmpty)
+        request.fields['dateOfBirth'] = dateOfBirth;
+      if (address != null && address.isNotEmpty)
+        request.fields['address'] = address;
+      if (department != null && department.isNotEmpty)
+        request.fields['department'] = department;
+      if (position != null && position.isNotEmpty)
+        request.fields['position'] = position;
+      if (joinDate != null && joinDate.isNotEmpty)
+        request.fields['joinDate'] = joinDate;
+      if (status != null && status.isNotEmpty)
+        request.fields['status'] = status;
 
       // Add profile photo if available
       if (profilePhoto != null) {
@@ -101,7 +112,9 @@ class AdminEmployeesService {
         );
       }
 
-      final response = await request.send().timeout(const Duration(seconds: 30));
+      final response = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
       final responseBody = await response.stream.bytesToString();
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -113,7 +126,9 @@ class AdminEmployeesService {
         throw Exception('Unauthorized: Invalid or expired token');
       } else {
         final body = jsonDecode(responseBody);
-        throw Exception(body['message'] ?? 'Failed to add employee (${response.statusCode})');
+        throw Exception(
+          body['message'] ?? 'Failed to add employee (${response.statusCode})',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;
@@ -151,12 +166,18 @@ class AdminEmployeesService {
       if (name != null && name.isNotEmpty) request.fields['name'] = name;
       if (email != null && email.isNotEmpty) request.fields['email'] = email;
       if (phone != null && phone.isNotEmpty) request.fields['phone'] = phone;
-      if (dateOfBirth != null && dateOfBirth.isNotEmpty) request.fields['dateOfBirth'] = dateOfBirth;
-      if (address != null && address.isNotEmpty) request.fields['address'] = address;
-      if (department != null && department.isNotEmpty) request.fields['department'] = department;
-      if (position != null && position.isNotEmpty) request.fields['position'] = position;
-      if (joinDate != null && joinDate.isNotEmpty) request.fields['joinDate'] = joinDate;
-      if (status != null && status.isNotEmpty) request.fields['status'] = status;
+      if (dateOfBirth != null && dateOfBirth.isNotEmpty)
+        request.fields['dateOfBirth'] = dateOfBirth;
+      if (address != null && address.isNotEmpty)
+        request.fields['address'] = address;
+      if (department != null && department.isNotEmpty)
+        request.fields['department'] = department;
+      if (position != null && position.isNotEmpty)
+        request.fields['position'] = position;
+      if (joinDate != null && joinDate.isNotEmpty)
+        request.fields['joinDate'] = joinDate;
+      if (status != null && status.isNotEmpty)
+        request.fields['status'] = status;
 
       // Add profile photo if available
       if (profilePhoto != null) {
@@ -170,7 +191,9 @@ class AdminEmployeesService {
         );
       }
 
-      final response = await request.send().timeout(const Duration(seconds: 30));
+      final response = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
       final responseBody = await response.stream.bytesToString();
 
       if (response.statusCode == 200) {
@@ -184,7 +207,10 @@ class AdminEmployeesService {
         throw Exception('Employee not found');
       } else {
         final body = jsonDecode(responseBody);
-        throw Exception(body['message'] ?? 'Failed to update employee (${response.statusCode})');
+        throw Exception(
+          body['message'] ??
+              'Failed to update employee (${response.statusCode})',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;
@@ -199,9 +225,9 @@ class AdminEmployeesService {
     int limit = 30,
   }) async {
     try {
-      final uri = Uri.parse('$_baseUrl/attendance/records').replace(
-        queryParameters: {'userId': userId, 'limit': limit.toString()},
-      );
+      final uri = Uri.parse(
+        '$_baseUrl/attendance/records',
+      ).replace(queryParameters: {'userId': userId, 'limit': limit.toString()});
       final response = await http
           .get(uri, headers: _headers(token))
           .timeout(const Duration(seconds: 30));
@@ -209,7 +235,8 @@ class AdminEmployeesService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data is Map && data['data'] is List) return data['data'] as List;
-        if (data is Map && data['records'] is List) return data['records'] as List;
+        if (data is Map && data['records'] is List)
+          return data['records'] as List;
         if (data is List) return data;
         return [];
       } else if (response.statusCode == 401) {
@@ -231,9 +258,9 @@ class AdminEmployeesService {
     String userId,
   ) async {
     try {
-      final uri = Uri.parse('$_baseUrl/admin/tasks').replace(
-        queryParameters: {'assignedTo': userId},
-      );
+      final uri = Uri.parse(
+        '$_baseUrl/admin/tasks',
+      ).replace(queryParameters: {'assignedTo': userId});
       final response = await http
           .get(uri, headers: _headers(token))
           .timeout(const Duration(seconds: 30));

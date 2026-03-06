@@ -7,9 +7,9 @@ class PayrollService {
   static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
 
   static Map<String, String> _headers(String token) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
 
   // ── My Salary ─────────────────────────────────────────────────────────────
 
@@ -54,7 +54,9 @@ class PayrollService {
   // ── Pre-Payments ──────────────────────────────────────────────────────────
 
   /// GET /api/payroll/pre-payments
-  static Future<PrePaymentListResponse> getPrePayments({required String token}) async {
+  static Future<PrePaymentListResponse> getPrePayments({
+    required String token,
+  }) async {
     try {
       final uri = Uri.parse('$_baseUrl/payroll/pre-payments');
       final response = await http
@@ -71,10 +73,78 @@ class PayrollService {
     }
   }
 
+  /// POST /api/payroll/pre-payments
+  static Future<PrePayment> createPrePayment({
+    required String token,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/pre-payments');
+      final response = await http
+          .post(uri, headers: _headers(token), body: json.encode(data))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return PrePayment.fromJson(decoded['data']);
+      }
+      throw Exception(_extractError(response, 'Failed to create pre-payment'));
+    } catch (e) {
+      print('PayrollService.createPrePayment error: $e');
+      rethrow;
+    }
+  }
+
+  /// PUT /api/payroll/pre-payments/:id
+  static Future<PrePayment> updatePrePayment({
+    required String token,
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/pre-payments/$id');
+      final response = await http
+          .put(uri, headers: _headers(token), body: json.encode(data))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return PrePayment.fromJson(decoded['data']);
+      }
+      throw Exception(_extractError(response, 'Failed to update pre-payment'));
+    } catch (e) {
+      print('PayrollService.updatePrePayment error: $e');
+      rethrow;
+    }
+  }
+
+  /// DELETE /api/payroll/pre-payments/:id
+  static Future<bool> deletePrePayment({
+    required String token,
+    required String id,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/pre-payments/$id');
+      final response = await http
+          .delete(uri, headers: _headers(token))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      throw Exception(_extractError(response, 'Failed to delete pre-payment'));
+    } catch (e) {
+      print('PayrollService.deletePrePayment error: $e');
+      rethrow;
+    }
+  }
+
   // ── Increments / Promotions ───────────────────────────────────────────────
 
   /// GET /api/payroll/increments
-  static Future<IncrementListResponse> getIncrements({required String token}) async {
+  static Future<IncrementListResponse> getIncrements({
+    required String token,
+  }) async {
     try {
       final uri = Uri.parse('$_baseUrl/payroll/increments');
       final response = await http
@@ -91,10 +161,100 @@ class PayrollService {
     }
   }
 
+  /// GET /api/payroll/increments/:id
+  static Future<IncrementPromotion> getIncrementById({
+    required String token,
+    required String id,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/increments/$id');
+      final response = await http
+          .get(uri, headers: _headers(token))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return IncrementPromotion.fromJson(decoded['data']);
+      }
+      throw Exception(_extractError(response, 'Failed to fetch increment'));
+    } catch (e) {
+      print('PayrollService.getIncrementById error: $e');
+      rethrow;
+    }
+  }
+
+  /// POST /api/payroll/increments
+  static Future<IncrementPromotion> createIncrement({
+    required String token,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/increments');
+      final response = await http
+          .post(uri, headers: _headers(token), body: json.encode(data))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return IncrementPromotion.fromJson(decoded['data']);
+      }
+      throw Exception(_extractError(response, 'Failed to create increment'));
+    } catch (e) {
+      print('PayrollService.createIncrement error: $e');
+      rethrow;
+    }
+  }
+
+  /// PUT /api/payroll/increments/:id
+  static Future<IncrementPromotion> updateIncrement({
+    required String token,
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/increments/$id');
+      final response = await http
+          .put(uri, headers: _headers(token), body: json.encode(data))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return IncrementPromotion.fromJson(decoded['data']);
+      }
+      throw Exception(_extractError(response, 'Failed to update increment'));
+    } catch (e) {
+      print('PayrollService.updateIncrement error: $e');
+      rethrow;
+    }
+  }
+
+  /// DELETE /api/payroll/increments/:id
+  static Future<bool> deleteIncrement({
+    required String token,
+    required String id,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/increments/$id');
+      final response = await http
+          .delete(uri, headers: _headers(token))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      throw Exception(_extractError(response, 'Failed to delete increment'));
+    } catch (e) {
+      print('PayrollService.deleteIncrement error: $e');
+      rethrow;
+    }
+  }
+
   // ── My Payrolls ───────────────────────────────────────────────────────────
 
   /// GET /api/payroll/my-payrolls
-  static Future<PayrollListResponse> getMyPayrolls({required String token}) async {
+  static Future<PayrollListResponse> getMyPayrolls({
+    required String token,
+  }) async {
     try {
       final uri = Uri.parse('$_baseUrl/payroll/my-payrolls');
       final response = await http

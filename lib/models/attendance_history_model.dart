@@ -2,34 +2,32 @@
 
 import 'dart:convert';
 
-AttendanceHistory attendanceHistoryFromJson(String str) => 
+AttendanceHistory attendanceHistoryFromJson(String str) =>
     AttendanceHistory.fromJson(json.decode(str));
 
-String attendanceHistoryToJson(AttendanceHistory data) => 
+String attendanceHistoryToJson(AttendanceHistory data) =>
     json.encode(data.toJson());
 
 class AttendanceHistory {
   bool success;
   List<AttendanceRecord> data;
 
-  AttendanceHistory({
-    required this.success,
-    required this.data,
-  });
+  AttendanceHistory({required this.success, required this.data});
 
-  factory AttendanceHistory.fromJson(Map<String, dynamic> json) => 
+  factory AttendanceHistory.fromJson(Map<String, dynamic> json) =>
       AttendanceHistory(
         success: json["success"] ?? false,
         data: json["data"] != null
             ? List<AttendanceRecord>.from(
-                json["data"].map((x) => AttendanceRecord.fromJson(x)))
+                json["data"].map((x) => AttendanceRecord.fromJson(x)),
+              )
             : [],
       );
 
   Map<String, dynamic> toJson() => {
-        "success": success,
-        "data": List<dynamic>.from(data.map((x) => x.toJson())),
-      };
+    "success": success,
+    "data": List<dynamic>.from(data.map((x) => x.toJson())),
+  };
 }
 
 class AttendanceRecord {
@@ -61,11 +59,11 @@ class AttendanceRecord {
   }
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "date": date.toIso8601String(),
-        "status": status,
-        "checkInTime": checkInTime,
-        "checkOutTime": checkOutTime,
-        "workHours": workHours,
-      };
+    "_id": id,
+    "date": date.toIso8601String(),
+    "status": status,
+    "checkInTime": checkInTime,
+    "checkOutTime": checkOutTime,
+    "workHours": workHours,
+  };
 }

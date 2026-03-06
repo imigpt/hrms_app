@@ -8,9 +8,9 @@ class PolicyService {
   static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
 
   static Map<String, String> _headers(String token) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
 
   // ── List Policies ─────────────────────────────────────────────────────────
 
@@ -25,7 +25,9 @@ class PolicyService {
         queryParams['search'] = search;
       }
 
-      final uri = Uri.parse('$_baseUrl/policies').replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl/policies',
+      ).replace(queryParameters: queryParams);
       final response = await http
           .get(uri, headers: _headers(token))
           .timeout(const Duration(seconds: 30));
@@ -89,14 +91,18 @@ class PolicyService {
         ..fields['location'] = location;
 
       if (file != null) {
-        request.files.add(await http.MultipartFile.fromPath(
-          'file',
-          file.path,
-          filename: fileName ?? file.path.split('/').last.split('\\').last,
-        ));
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            file.path,
+            filename: fileName ?? file.path.split('/').last.split('\\').last,
+          ),
+        );
       }
 
-      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
       final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 201) return;
@@ -128,6 +134,7 @@ class PolicyService {
       rethrow;
     }
   }
+
   static String _extractError(http.Response response, String fallback) {
     try {
       final body = json.decode(response.body);

@@ -75,8 +75,7 @@ class _AdminUserCredentialsScreenState
   Future<void> _generatePassword() async {
     setState(() => _generating = true);
     try {
-      final res =
-          await SettingsService.generatePassword(widget.token ?? '');
+      final res = await SettingsService.generatePassword(widget.token ?? '');
       final pwd = res['data']?.toString() ?? res['password']?.toString();
       if (pwd != null) setState(() => _newPwdCtrl.text = pwd);
     } catch (_) {}
@@ -88,7 +87,10 @@ class _AdminUserCredentialsScreenState
     setState(() => _resetting = true);
     try {
       await SettingsService.adminResetUserPassword(
-          widget.token ?? '', _selectedUser!['_id'], _newPwdCtrl.text);
+        widget.token ?? '',
+        _selectedUser!['_id'],
+        _newPwdCtrl.text,
+      );
       if (mounted) {
         Navigator.of(context).pop();
         showAdminSnack(context, 'Password reset successfully');
@@ -113,19 +115,23 @@ class _AdminUserCredentialsScreenState
       builder: (_) => StatefulBuilder(
         builder: (ctx, setDlg) => AlertDialog(
           backgroundColor: AppTheme.cardColor,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Reset Password',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w700)),
+              Text(
+                'Reset Password',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 4),
               Text(
                 user['name']?.toString() ?? user['email'] ?? '',
-                style:
-                    TextStyle(color: Colors.grey[500], fontSize: 12),
+                style: TextStyle(color: Colors.grey[500], fontSize: 12),
               ),
             ],
           ),
@@ -146,13 +152,13 @@ class _AdminUserCredentialsScreenState
                     children: [
                       IconButton(
                         icon: Icon(
-                            _showPwd
-                                ? Icons.visibility_off_rounded
-                                : Icons.visibility_rounded,
-                            color: Colors.grey[500],
-                            size: 18),
-                        onPressed: () =>
-                            setDlg(() => _showPwd = !_showPwd),
+                          _showPwd
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          color: Colors.grey[500],
+                          size: 18,
+                        ),
+                        onPressed: () => setDlg(() => _showPwd = !_showPwd),
                       ),
                       IconButton(
                         icon: _generating
@@ -160,10 +166,15 @@ class _AdminUserCredentialsScreenState
                                 width: 14,
                                 height: 14,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Color(0xFF3B82F6)))
-                            : const Icon(Icons.refresh_rounded,
-                                color: Color(0xFF3B82F6), size: 18),
+                                  strokeWidth: 2,
+                                  color: Color(0xFF3B82F6),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.refresh_rounded,
+                                color: Color(0xFF3B82F6),
+                                size: 18,
+                              ),
                         onPressed: _generating
                             ? null
                             : () async {
@@ -177,20 +188,26 @@ class _AdminUserCredentialsScreenState
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                        color: Colors.white.withOpacity(0.07)),
+                      color: Colors.white.withOpacity(0.07),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
-                        color: Colors.white.withOpacity(0.07)),
+                      color: Colors.white.withOpacity(0.07),
+                    ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                        BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                    borderSide: BorderSide(
+                      color: AppTheme.primaryColor,
+                      width: 1.5,
+                    ),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                 ),
               ),
               if (_newPwdCtrl.text.isNotEmpty)
@@ -198,18 +215,24 @@ class _AdminUserCredentialsScreenState
                   padding: const EdgeInsets.only(top: 8),
                   child: InkWell(
                     onTap: () {
-                      Clipboard.setData(
-                          ClipboardData(text: _newPwdCtrl.text));
+                      Clipboard.setData(ClipboardData(text: _newPwdCtrl.text));
                       showAdminSnack(context, 'Copied to clipboard');
                     },
                     child: Row(
                       children: [
-                        Icon(Icons.copy_rounded,
-                            size: 13, color: Colors.grey[600]),
+                        Icon(
+                          Icons.copy_rounded,
+                          size: 13,
+                          color: Colors.grey[600],
+                        ),
                         const SizedBox(width: 6),
-                        Text('Copy password',
-                            style: TextStyle(
-                                color: Colors.grey[600], fontSize: 11)),
+                        Text(
+                          'Copy password',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 11,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -219,14 +242,15 @@ class _AdminUserCredentialsScreenState
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel',
-                  style: TextStyle(color: Colors.grey[500])),
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[500])),
             ),
             GestureDetector(
               onTap: _resetting ? null : _resetPassword,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 9),
+                  horizontal: 16,
+                  vertical: 9,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryColor,
                   borderRadius: BorderRadius.circular(10),
@@ -236,12 +260,18 @@ class _AdminUserCredentialsScreenState
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text('Reset',
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Reset',
                         style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13)),
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -273,8 +303,7 @@ class _AdminUserCredentialsScreenState
             ),
             // Search + Role filter
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Row(
                 children: [
                   Expanded(
@@ -282,22 +311,32 @@ class _AdminUserCredentialsScreenState
                       decoration: BoxDecoration(
                         color: AppTheme.cardColor,
                         borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: Colors.white.withOpacity(0.07)),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.07),
+                        ),
                       ),
                       child: TextField(
                         controller: _searchCtrl,
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 13),
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Search users…',
-                          hintStyle:
-                              TextStyle(color: Colors.grey[600], fontSize: 13),
-                          prefixIcon:
-                              Icon(Icons.search_rounded, color: Colors.grey[600], size: 18),
+                          hintStyle: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search_rounded,
+                            color: Colors.grey[600],
+                            size: 18,
+                          ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
                       ),
                     ),
@@ -305,27 +344,36 @@ class _AdminUserCredentialsScreenState
                   const SizedBox(width: 10),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 2),
+                      horizontal: 12,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.cardColor,
                       borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: Colors.white.withOpacity(0.07)),
+                      border: Border.all(color: Colors.white.withOpacity(0.07)),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _roleFilter,
                         dropdownColor: AppTheme.cardColor,
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 13),
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
                         items: const [
                           DropdownMenuItem(
-                              value: 'all', child: Text('All Roles')),
+                            value: 'all',
+                            child: Text('All Roles'),
+                          ),
                           DropdownMenuItem(
-                              value: 'admin', child: Text('Admin')),
+                            value: 'admin',
+                            child: Text('Admin'),
+                          ),
                           DropdownMenuItem(value: 'hr', child: Text('HR')),
                           DropdownMenuItem(
-                              value: 'employee', child: Text('Employee')),
+                            value: 'employee',
+                            child: Text('Employee'),
+                          ),
                         ],
                         onChanged: (v) {
                           setState(() {
@@ -344,35 +392,40 @@ class _AdminUserCredentialsScreenState
               child: _loading
                   ? adminLoader()
                   : _users.isEmpty
-                      ? Center(
-                          child: Text('No users found.',
-                              style: TextStyle(
-                                  color: Colors.grey[600], fontSize: 13)))
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 4),
-                          itemCount: _users.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 6),
-                          itemBuilder: (_, i) =>
-                              _UserTile(
-                            user: _users[i],
-                            onReset: () => _openResetDialog(_users[i]),
-                          ),
-                        ),
+                  ? Center(
+                      child: Text(
+                        'No users found.',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 4,
+                      ),
+                      itemCount: _users.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
+                      itemBuilder: (_, i) => _UserTile(
+                        user: _users[i],
+                        onReset: () => _openResetDialog(_users[i]),
+                      ),
+                    ),
             ),
             // Pagination
             if (_totalPages > 1)
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 12),
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 color: AppTheme.background,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('$_total users total',
-                        style:
-                            TextStyle(color: Colors.grey[600], fontSize: 12)),
+                    Text(
+                      '$_total users total',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    ),
                     Row(
                       children: [
                         IconButton(
@@ -382,14 +435,18 @@ class _AdminUserCredentialsScreenState
                                   _load();
                                 }
                               : null,
-                          icon: Icon(Icons.chevron_left_rounded,
-                              color: _page > 1
-                                  ? Colors.white
-                                  : Colors.grey[700]),
+                          icon: Icon(
+                            Icons.chevron_left_rounded,
+                            color: _page > 1 ? Colors.white : Colors.grey[700],
+                          ),
                         ),
-                        Text('$_page / $_totalPages',
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 13)),
+                        Text(
+                          '$_page / $_totalPages',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ),
+                        ),
                         IconButton(
                           onPressed: _page < _totalPages
                               ? () {
@@ -397,10 +454,12 @@ class _AdminUserCredentialsScreenState
                                   _load();
                                 }
                               : null,
-                          icon: Icon(Icons.chevron_right_rounded,
-                              color: _page < _totalPages
-                                  ? Colors.white
-                                  : Colors.grey[700]),
+                          icon: Icon(
+                            Icons.chevron_right_rounded,
+                            color: _page < _totalPages
+                                ? Colors.white
+                                : Colors.grey[700],
+                          ),
                         ),
                       ],
                     ),
@@ -452,37 +511,45 @@ class _UserTile extends StatelessWidget {
           CircleAvatar(
             radius: 22,
             backgroundColor: _roleColor(role).withOpacity(0.15),
-            child: Text(initials,
-                style: TextStyle(
-                    color: _roleColor(role),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700)),
+            child: Text(
+              initials,
+              style: TextStyle(
+                color: _roleColor(role),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(email,
-                    style:
-                        TextStyle(color: Colors.grey[500], fontSize: 11),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                Text(
+                  email,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     _RoleBadge(role: role, color: _roleColor(role)),
                     if (dept != null && dept.isNotEmpty) ...[
                       const SizedBox(width: 6),
-                      Text(dept,
-                          style: TextStyle(
-                              color: Colors.grey[600], fontSize: 10)),
+                      Text(
+                        dept,
+                        style: TextStyle(color: Colors.grey[600], fontSize: 10),
+                      ),
                     ],
                   ],
                 ),
@@ -491,8 +558,7 @@ class _UserTile extends StatelessWidget {
           ),
           IconButton(
             onPressed: onReset,
-            icon: Icon(Icons.key_rounded,
-                color: Colors.grey[600], size: 18),
+            icon: Icon(Icons.key_rounded, color: Colors.grey[600], size: 18),
             tooltip: 'Reset password',
           ),
         ],
@@ -514,9 +580,14 @@ class _RoleBadge extends StatelessWidget {
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(role[0].toUpperCase() + role.substring(1),
-          style: TextStyle(
-              color: color, fontSize: 10, fontWeight: FontWeight.w600)),
+      child: Text(
+        role[0].toUpperCase() + role.substring(1),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

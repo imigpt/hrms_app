@@ -8,9 +8,9 @@ class AdminService {
   static const Duration _timeout = Duration(seconds: 30);
 
   static Map<String, String> _headers(String token) => {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      };
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  };
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
 
@@ -60,7 +60,9 @@ class AdminService {
 
   /// GET /api/admin/hr/:id
   static Future<Map<String, dynamic>> getHRDetail(
-      String token, String hrId) async {
+    String token,
+    String hrId,
+  ) async {
     final res = await http
         .get(Uri.parse('$_base/admin/hr/$hrId'), headers: _headers(token))
         .timeout(_timeout);
@@ -69,7 +71,9 @@ class AdminService {
 
   /// POST /api/admin/hr/:id/reset-password
   static Future<Map<String, dynamic>> resetHRPassword(
-      String token, String hrId) async {
+    String token,
+    String hrId,
+  ) async {
     final res = await http
         .post(
           Uri.parse('$_base/admin/hr/$hrId/reset-password'),
@@ -96,11 +100,10 @@ class AdminService {
     }
     if (status != null && status.isNotEmpty) params['status'] = status;
 
-    final uri = Uri.parse('$_base/admin/employees')
-        .replace(queryParameters: params.isEmpty ? null : params);
-    final res = await http
-        .get(uri, headers: _headers(token))
-        .timeout(_timeout);
+    final uri = Uri.parse(
+      '$_base/admin/employees',
+    ).replace(queryParameters: params.isEmpty ? null : params);
+    final res = await http.get(uri, headers: _headers(token)).timeout(_timeout);
     return _decode(res);
   }
 
@@ -116,11 +119,10 @@ class AdminService {
     if (status != null && status.isNotEmpty) params['status'] = status;
     if (company != null && company.isNotEmpty) params['company'] = company;
 
-    final uri = Uri.parse('$_base/admin/leaves')
-        .replace(queryParameters: params.isEmpty ? null : params);
-    final res = await http
-        .get(uri, headers: _headers(token))
-        .timeout(_timeout);
+    final uri = Uri.parse(
+      '$_base/admin/leaves',
+    ).replace(queryParameters: params.isEmpty ? null : params);
+    final res = await http.get(uri, headers: _headers(token)).timeout(_timeout);
     return _decode(res);
   }
 
@@ -136,11 +138,10 @@ class AdminService {
     if (status != null && status.isNotEmpty) params['status'] = status;
     if (company != null && company.isNotEmpty) params['company'] = company;
 
-    final uri = Uri.parse('$_base/admin/tasks')
-        .replace(queryParameters: params.isEmpty ? null : params);
-    final res = await http
-        .get(uri, headers: _headers(token))
-        .timeout(_timeout);
+    final uri = Uri.parse(
+      '$_base/admin/tasks',
+    ).replace(queryParameters: params.isEmpty ? null : params);
+    final res = await http.get(uri, headers: _headers(token)).timeout(_timeout);
     return _decode(res);
   }
 
@@ -150,10 +151,16 @@ class AdminService {
     try {
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode == 401) {
-        return {'success': false, 'message': 'Unauthorized. Please log in again.'};
+        return {
+          'success': false,
+          'message': 'Unauthorized. Please log in again.',
+        };
       }
       if (res.statusCode == 403) {
-        return {'success': false, 'message': 'Access denied. Admin role required.'};
+        return {
+          'success': false,
+          'message': 'Access denied. Admin role required.',
+        };
       }
       if (res.statusCode >= 400) {
         return {

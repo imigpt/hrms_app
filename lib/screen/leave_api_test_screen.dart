@@ -186,21 +186,22 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
   // ── Individual test implementations ────────────────────────────────────────
 
   Future<void> _testGetLeaveBalance(_ApiTest test) async {
-    final resp = await LeaveService.getLeaveBalance(
-      token: _token!,
-    );
+    final resp = await LeaveService.getLeaveBalance(token: _token!);
     if (!resp.success) {
       _setFailed(test, 'success=false');
       return;
     }
     final b = resp.data;
-    _setPassed(test, [
-      'paid: ${b?.paid ?? 0}',
-      'sick: ${b?.sick ?? 0}',
-      'unpaid: ${b?.unpaid ?? 0}',
-      'usedPaid: ${b?.usedPaid ?? 0}',
-      'usedSick: ${b?.usedSick ?? 0}',
-    ].join(' | '));
+    _setPassed(
+      test,
+      [
+        'paid: ${b?.paid ?? 0}',
+        'sick: ${b?.sick ?? 0}',
+        'unpaid: ${b?.unpaid ?? 0}',
+        'usedPaid: ${b?.usedPaid ?? 0}',
+        'usedSick: ${b?.usedSick ?? 0}',
+      ].join(' | '),
+    );
   }
 
   Future<void> _testGetLeaveStatistics(_ApiTest test) async {
@@ -211,16 +212,27 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
       return;
     }
     final s = resp.data;
-    _setPassed(test, [
-      'total: ${s?.total ?? 0}',
-      'approved: ${s?.approved ?? 0}',
-      'pending: ${s?.pending ?? 0}',
-      'daysTaken: ${s?.daysTaken ?? 0}',
-    ].join(' | '));
+    _setPassed(
+      test,
+      [
+        'total: ${s?.total ?? 0}',
+        'approved: ${s?.approved ?? 0}',
+        'pending: ${s?.pending ?? 0}',
+        'daysTaken: ${s?.daysTaken ?? 0}',
+      ].join(' | '),
+    );
   }
 
   Future<void> _testGetMyLeaves(_ApiTest test) async {
     final raw = await LeaveService.getMyLeaves(token: _token!);
+    print('DEBUG [API Response] getMyLeaves raw response:');
+    print(raw);
+    if (raw['data'] != null) {
+      for (var i = 0; i < (raw['data'] as List).length; i++) {
+        final l = raw['data'][i];
+        print('  Leave $i: status=${l['status']}, type=${l['leaveType']}, startDate=${l['startDate']}');
+      }
+    }
     final resp = LeaveListResponse.fromJson(raw);
     if (!resp.success) {
       _setFailed(test, raw['message'] ?? 'success=false');
@@ -263,12 +275,15 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
       _setFailed(test, raw['message'] ?? 'success=false or null data');
       return;
     }
-    _setPassed(test, [
-      'id: ${resp.data!.id.substring(0, 8)}…',
-      'type: ${resp.data!.leaveType}',
-      'status: ${resp.data!.status}',
-      'days: ${resp.data!.days}',
-    ].join(' | '));
+    _setPassed(
+      test,
+      [
+        'id: ${resp.data!.id.substring(0, 8)}…',
+        'type: ${resp.data!.leaveType}',
+        'status: ${resp.data!.status}',
+        'days: ${resp.data!.days}',
+      ].join(' | '),
+    );
   }
 
   Future<void> _testCancelLeave(_ApiTest test) async {
@@ -286,13 +301,17 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
       return;
     }
     _createdLeaveId = null; // cleaned up
-    _setPassed(test,
-        'status: ${resp.data?.status ?? "cancelled"} | msg: ${resp.message ?? "ok"}');
+    _setPassed(
+      test,
+      'status: ${resp.data?.status ?? "cancelled"} | msg: ${resp.message ?? "ok"}',
+    );
   }
 
   Future<void> _testGetPendingLeaves(_ApiTest test) async {
-    final raw =
-        await LeaveService.getMyLeaves(token: _token!, status: 'pending');
+    final raw = await LeaveService.getMyLeaves(
+      token: _token!,
+      status: 'pending',
+    );
     final resp = LeaveListResponse.fromJson(raw);
     if (!resp.success) {
       _setFailed(test, raw['message'] ?? 'success=false');
@@ -357,10 +376,11 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
       ),
       body: _isInitializing
           ? const Center(
-              child: CircularProgressIndicator(color: Colors.pinkAccent))
+              child: CircularProgressIndicator(color: Colors.pinkAccent),
+            )
           : _token == null
-              ? _buildNoToken()
-              : _buildTestList(),
+          ? _buildNoToken()
+          : _buildTestList(),
     );
   }
 
@@ -402,8 +422,7 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
         // Summary bar
         Container(
           color: const Color(0xFF0F0F0F),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             children: [
               _chip('$passed Passed', Colors.greenAccent),
@@ -434,8 +453,7 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
 
   Widget _chip(String label, Color color) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: color.withAlpha(25),
         borderRadius: BorderRadius.circular(12),
@@ -470,8 +488,7 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
         statusIcon = Icons.error_outline;
     }
 
-    final isWrite =
-        test.method == 'POST' || test.method == 'PUT';
+    final isWrite = test.method == 'POST' || test.method == 'PUT';
 
     return GestureDetector(
       onTap: () => _runTest(test),
@@ -528,8 +545,7 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
             const SizedBox(height: 6),
             Text(
               test.description,
-              style:
-                  const TextStyle(color: Colors.white54, fontSize: 12),
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
             // Progress / result
             if (test.status == _TestStatus.running) ...[
@@ -540,12 +556,18 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
               ),
             ] else if (test.responsePreview != null) ...[
               const SizedBox(height: 8),
-              _resultBox(test.responsePreview!, Colors.white.withAlpha(8),
-                  Colors.white70),
+              _resultBox(
+                test.responsePreview!,
+                Colors.white.withAlpha(8),
+                Colors.white70,
+              ),
             ] else if (test.errorMessage != null) ...[
               const SizedBox(height: 8),
-              _resultBox(test.errorMessage!,
-                  Colors.redAccent.withAlpha(20), Colors.redAccent),
+              _resultBox(
+                test.errorMessage!,
+                Colors.redAccent.withAlpha(20),
+                Colors.redAccent,
+              ),
             ],
             if (test.testedAt != null) ...[
               const SizedBox(height: 6),
@@ -590,11 +612,7 @@ class _LeaveApiTestScreenState extends State<LeaveApiTestScreen> {
       ),
       child: Text(
         text,
-        style: TextStyle(
-          color: fg,
-          fontSize: 11,
-          fontFamily: 'monospace',
-        ),
+        style: TextStyle(color: fg, fontSize: 11, fontFamily: 'monospace'),
       ),
     );
   }

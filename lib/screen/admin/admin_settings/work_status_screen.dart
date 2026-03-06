@@ -15,8 +15,12 @@ class _AdminWorkStatusScreenState extends State<AdminWorkStatusScreen> {
   bool _loading = true;
   bool _saving = false;
   List<String> _statuses = [
-    'active', 'on-leave', 'inactive', 'probation',
-    'notice-period', 'terminated',
+    'active',
+    'on-leave',
+    'inactive',
+    'probation',
+    'notice-period',
+    'terminated',
   ];
 
   @override
@@ -28,8 +32,9 @@ class _AdminWorkStatusScreenState extends State<AdminWorkStatusScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getWorkStatusSettings(widget.token ?? '');
+      final res = await SettingsService.getWorkStatusSettings(
+        widget.token ?? '',
+      );
       final data = res['data'];
       if (data is List) {
         setState(() => _statuses = List<String>.from(data));
@@ -42,7 +47,9 @@ class _AdminWorkStatusScreenState extends State<AdminWorkStatusScreen> {
     setState(() => _saving = true);
     try {
       await SettingsService.updateWorkStatusSettings(
-          widget.token ?? '', _statuses);
+        widget.token ?? '',
+        _statuses,
+      );
       if (mounted) showAdminSnack(context, 'Work statuses updated');
     } catch (_) {
       if (mounted) showAdminSnack(context, 'Failed to update', error: true);
@@ -88,14 +95,16 @@ class _AdminWorkStatusScreenState extends State<AdminWorkStatusScreen> {
                             if (_statuses.isEmpty)
                               Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    vertical: 24),
+                                  vertical: 24,
+                                ),
                                 child: Center(
                                   child: Text(
                                     'No statuses configured.\nUse the input above to add.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 13),
+                                      color: Colors.grey[600],
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               )
@@ -105,13 +114,15 @@ class _AdminWorkStatusScreenState extends State<AdminWorkStatusScreen> {
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 8),
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: AppTheme.background,
                                     borderRadius: BorderRadius.circular(10),
                                     border: Border.all(
-                                        color:
-                                            Colors.white.withOpacity(0.06)),
+                                      color: Colors.white.withOpacity(0.06),
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
@@ -120,8 +131,9 @@ class _AdminWorkStatusScreenState extends State<AdminWorkStatusScreen> {
                                         height: 8,
                                         decoration: BoxDecoration(
                                           color: const Color(0xFF22C55E),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 12),
@@ -129,15 +141,20 @@ class _AdminWorkStatusScreenState extends State<AdminWorkStatusScreen> {
                                         child: Text(
                                           s[0].toUpperCase() + s.substring(1),
                                           style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 13),
+                                            color: Colors.white,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ),
                                       GestureDetector(
-                                        onTap: () => setState(() =>
-                                            _statuses.removeAt(i)),
-                                        child: Icon(Icons.delete_outline_rounded,
-                                            color: Colors.grey[600], size: 18),
+                                        onTap: () => setState(
+                                          () => _statuses.removeAt(i),
+                                        ),
+                                        child: Icon(
+                                          Icons.delete_outline_rounded,
+                                          color: Colors.grey[600],
+                                          size: 18,
+                                        ),
                                       ),
                                     ],
                                   ),

@@ -31,19 +31,22 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getCompanySettings(widget.token ?? '');
+      final res = await SettingsService.getCompanySettings(widget.token ?? '');
       final locs = res['data']?['locations'];
       if (locs is List) {
-        setState(() => _locations = locs
-            .map<Map<String, String>>((l) => {
+        setState(
+          () => _locations = locs
+              .map<Map<String, String>>(
+                (l) => {
                   'name': l['name']?.toString() ?? '',
                   'address': l['address']?.toString() ?? '',
                   'city': l['city']?.toString() ?? '',
                   'state': l['state']?.toString() ?? '',
                   'country': l['country']?.toString() ?? '',
-                })
-            .toList());
+                },
+              )
+              .toList(),
+        );
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -73,8 +76,9 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await SettingsService.updateCompanySettings(
-          widget.token ?? '', {'locations': _locations});
+      await SettingsService.updateCompanySettings(widget.token ?? '', {
+        'locations': _locations,
+      });
       if (mounted) showAdminSnack(context, 'Locations updated');
     } catch (_) {
       if (mounted) showAdminSnack(context, 'Failed to update', error: true);
@@ -86,7 +90,11 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
   @override
   void dispose() {
     for (final c in [
-      _nameCtrl, _addressCtrl, _cityCtrl, _stateCtrl, _countryCtrl,
+      _nameCtrl,
+      _addressCtrl,
+      _cityCtrl,
+      _stateCtrl,
+      _countryCtrl,
     ]) {
       c.dispose();
     }
@@ -118,32 +126,37 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
                           children: [
                             AdminRow2(
                               left: AdminTextField(
-                                  label: 'Location Name *',
-                                  controller: _nameCtrl,
-                                  hint: 'e.g. Mumbai HQ'),
+                                label: 'Location Name *',
+                                controller: _nameCtrl,
+                                hint: 'e.g. Mumbai HQ',
+                              ),
                               right: AdminTextField(
-                                  label: 'Address',
-                                  controller: _addressCtrl),
+                                label: 'Address',
+                                controller: _addressCtrl,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             Row(
                               children: [
                                 Expanded(
                                   child: AdminTextField(
-                                      label: 'City *',
-                                      controller: _cityCtrl),
+                                    label: 'City *',
+                                    controller: _cityCtrl,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: AdminTextField(
-                                      label: 'State',
-                                      controller: _stateCtrl),
+                                    label: 'State',
+                                    controller: _stateCtrl,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: AdminTextField(
-                                      label: 'Country',
-                                      controller: _countryCtrl),
+                                    label: 'Country',
+                                    controller: _countryCtrl,
+                                  ),
                                 ),
                               ],
                             ),
@@ -154,27 +167,36 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
                                 onTap: _addLocation,
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                      vertical: 12),
+                                    vertical: 12,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor
-                                        .withOpacity(0.15),
+                                    color: AppTheme.primaryColor.withOpacity(
+                                      0.15,
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                        color: AppTheme.primaryColor
-                                            .withOpacity(0.4)),
+                                      color: AppTheme.primaryColor.withOpacity(
+                                        0.4,
+                                      ),
+                                    ),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.add_location_alt_rounded,
-                                          color: AppTheme.primaryColor,
-                                          size: 18),
+                                      Icon(
+                                        Icons.add_location_alt_rounded,
+                                        color: AppTheme.primaryColor,
+                                        size: 18,
+                                      ),
                                       const SizedBox(width: 8),
-                                      Text('Add Location',
-                                          style: TextStyle(
-                                              color: AppTheme.primaryColor,
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13)),
+                                      Text(
+                                        'Add Location',
+                                        style: TextStyle(
+                                          color: AppTheme.primaryColor,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -188,13 +210,15 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
                             if (_locations.isEmpty)
                               Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    vertical: 24),
+                                  vertical: 24,
+                                ),
                                 child: Center(
                                   child: Text(
                                     'No locations added yet.',
                                     style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 13),
+                                      color: Colors.grey[600],
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               )
@@ -208,22 +232,26 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
                                     color: AppTheme.background,
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                        color: Colors.white.withOpacity(0.06)),
+                                      color: Colors.white.withOpacity(0.06),
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
                                       Container(
                                         padding: const EdgeInsets.all(8),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFEF4444)
-                                              .withOpacity(0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                          color: const Color(
+                                            0xFFEF4444,
+                                          ).withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: const Icon(
-                                            Icons.location_on_rounded,
-                                            color: Color(0xFFEF4444),
-                                            size: 16),
+                                          Icons.location_on_rounded,
+                                          color: Color(0xFFEF4444),
+                                          size: 16,
+                                        ),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
@@ -231,35 +259,44 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            Text(l['name'] ?? '',
-                                                style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 13,
-                                                    fontWeight:
-                                                        FontWeight.w600)),
+                                            Text(
+                                              l['name'] ?? '',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
                                             if ((l['city'] ?? '').isNotEmpty)
                                               Text(
                                                 [
-                                                  l['city'],
-                                                  l['state'],
-                                                  l['country'],
-                                                ]
-                                                    .where((s) =>
-                                                        s != null &&
-                                                        s.isNotEmpty)
+                                                      l['city'],
+                                                      l['state'],
+                                                      l['country'],
+                                                    ]
+                                                    .where(
+                                                      (s) =>
+                                                          s != null &&
+                                                          s.isNotEmpty,
+                                                    )
                                                     .join(', '),
                                                 style: TextStyle(
-                                                    color: Colors.grey[500],
-                                                    fontSize: 11),
+                                                  color: Colors.grey[500],
+                                                  fontSize: 11,
+                                                ),
                                               ),
                                           ],
                                         ),
                                       ),
                                       GestureDetector(
                                         onTap: () => setState(
-                                            () => _locations.removeAt(i)),
-                                        child: Icon(Icons.delete_outline_rounded,
-                                            color: Colors.grey[600], size: 18),
+                                          () => _locations.removeAt(i),
+                                        ),
+                                        child: Icon(
+                                          Icons.delete_outline_rounded,
+                                          color: Colors.grey[600],
+                                          size: 18,
+                                        ),
                                       ),
                                     ],
                                   ),

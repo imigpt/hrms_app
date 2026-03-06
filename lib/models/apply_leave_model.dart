@@ -4,10 +4,10 @@
 
 import 'dart:convert';
 
-ApplyLeaveResponse applyLeaveResponseFromJson(String str) => 
+ApplyLeaveResponse applyLeaveResponseFromJson(String str) =>
     ApplyLeaveResponse.fromJson(json.decode(str));
 
-String applyLeaveResponseToJson(ApplyLeaveResponse data) => 
+String applyLeaveResponseToJson(ApplyLeaveResponse data) =>
     json.encode(data.toJson());
 
 class ApplyLeaveResponse {
@@ -21,7 +21,7 @@ class ApplyLeaveResponse {
     required this.data,
   });
 
-  factory ApplyLeaveResponse.fromJson(Map<String, dynamic> json) => 
+  factory ApplyLeaveResponse.fromJson(Map<String, dynamic> json) =>
       ApplyLeaveResponse(
         success: json["success"],
         message: json["message"],
@@ -29,10 +29,10 @@ class ApplyLeaveResponse {
       );
 
   Map<String, dynamic> toJson() => {
-        "success": success,
-        "message": message,
-        "data": data.toJson(),
-      };
+    "success": success,
+    "message": message,
+    "data": data.toJson(),
+  };
 }
 
 class LeaveData {
@@ -71,40 +71,40 @@ class LeaveData {
   });
 
   factory LeaveData.fromJson(Map<String, dynamic> json) => LeaveData(
-        user: json["user"],
-        company: json["company"],
-        leaveType: json["leaveType"],
-        startDate: DateTime.parse(json["startDate"]),
-        endDate: DateTime.parse(json["endDate"]),
-        days: (json["days"] as num?)?.toDouble() ?? 0.0,
-        reason: json["reason"],
-        status: json["status"],
-        attachments: List<dynamic>.from(json["attachments"].map((x) => x)),
-        balanceDeducted: (json["balanceDeducted"] as num?)?.toDouble() ?? 0.0,
-        balanceRestored: json["balanceRestored"],
-        id: json["_id"],
-        createdAt: DateTime.parse(json["createdAt"]),
-        updatedAt: DateTime.parse(json["updatedAt"]),
-        v: json["__v"],
-      );
+    user: json["user"],
+    company: json["company"],
+    leaveType: json["leaveType"],
+    startDate: DateTime.parse(json["startDate"]),
+    endDate: DateTime.parse(json["endDate"]),
+    days: (json["days"] as num?)?.toDouble() ?? 0.0,
+    reason: json["reason"],
+    status: json["status"],
+    attachments: List<dynamic>.from(json["attachments"].map((x) => x)),
+    balanceDeducted: (json["balanceDeducted"] as num?)?.toDouble() ?? 0.0,
+    balanceRestored: json["balanceRestored"],
+    id: json["_id"],
+    createdAt: DateTime.parse(json["createdAt"]),
+    updatedAt: DateTime.parse(json["updatedAt"]),
+    v: json["__v"],
+  );
 
   Map<String, dynamic> toJson() => {
-        "user": user,
-        "company": company,
-        "leaveType": leaveType,
-        "startDate": startDate.toIso8601String(),
-        "endDate": endDate.toIso8601String(),
-        "days": days,
-        "reason": reason,
-        "status": status,
-        "attachments": List<dynamic>.from(attachments.map((x) => x)),
-        "balanceDeducted": balanceDeducted,
-        "balanceRestored": balanceRestored,
-        "_id": id,
-        "createdAt": createdAt.toIso8601String(),
-        "updatedAt": updatedAt.toIso8601String(),
-        "__v": v,
-      };
+    "user": user,
+    "company": company,
+    "leaveType": leaveType,
+    "startDate": startDate.toIso8601String(),
+    "endDate": endDate.toIso8601String(),
+    "days": days,
+    "reason": reason,
+    "status": status,
+    "attachments": List<dynamic>.from(attachments.map((x) => x)),
+    "balanceDeducted": balanceDeducted,
+    "balanceRestored": balanceRestored,
+    "_id": id,
+    "createdAt": createdAt.toIso8601String(),
+    "updatedAt": updatedAt.toIso8601String(),
+    "__v": v,
+  };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -143,11 +143,7 @@ class LeaveDetailResponse {
   final String? message;
   final LeaveItem? data;
 
-  LeaveDetailResponse({
-    required this.success,
-    this.message,
-    this.data,
-  });
+  LeaveDetailResponse({required this.success, this.message, this.data});
 
   factory LeaveDetailResponse.fromJson(Map<String, dynamic> json) =>
       LeaveDetailResponse(
@@ -175,7 +171,7 @@ class LeaveItem {
   final bool balanceRestored;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final dynamic user;       // String id OR populated { name, employeeId, ... }
+  final dynamic user; // String id OR populated { name, employeeId, ... }
   final dynamic reviewedBy; // null OR populated { name, employeeId }
   final DateTime? reviewedAt;
   final String? reviewNote;
@@ -201,27 +197,25 @@ class LeaveItem {
   });
 
   factory LeaveItem.fromJson(Map<String, dynamic> json) => LeaveItem(
-        id: json['_id'] ?? '',
-        leaveType: json['leaveType'] ?? '',
-        startDate: DateTime.tryParse(json['startDate'] ?? '') ?? DateTime.now(),
-        endDate: DateTime.tryParse(json['endDate'] ?? '') ?? DateTime.now(),
-        days: (json['days'] as num?)?.toDouble() ?? 0.0,
-        reason: json['reason'] ?? '',
-        status: json['status'] ?? 'pending',
-        balanceDeducted: (json['balanceDeducted'] as num?)?.toDouble() ?? 0.0,
-        balanceRestored: json['balanceRestored'] ?? false,
-        createdAt:
-            DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
-        updatedAt:
-            DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
-        user: json['user'],
-        reviewedBy: json['reviewedBy'],
-        reviewedAt: json['reviewedAt'] != null
-            ? DateTime.tryParse(json['reviewedAt'])
-            : null,
-        reviewNote: json['reviewNote'],
-        company: json['company'],
-      );
+    id: json['_id'] ?? '',
+    leaveType: json['leaveType'] ?? '',
+    startDate: DateTime.tryParse(json['startDate'] ?? '') ?? DateTime.now(),
+    endDate: DateTime.tryParse(json['endDate'] ?? '') ?? DateTime.now(),
+    days: (json['days'] as num?)?.toDouble() ?? 0.0,
+    reason: json['reason'] ?? '',
+    status: json['status'] ?? 'pending',
+    balanceDeducted: (json['balanceDeducted'] as num?)?.toDouble() ?? 0.0,
+    balanceRestored: json['balanceRestored'] ?? false,
+    createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+    updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
+    user: json['user'],
+    reviewedBy: json['reviewedBy'],
+    reviewedAt: json['reviewedAt'] != null
+        ? DateTime.tryParse(json['reviewedAt'])
+        : null,
+    reviewNote: json['reviewNote'],
+    company: json['company'],
+  );
 
   /// Convenience: leave type with first letter capitalised + "Leave" suffix
   String get displayType {
@@ -278,15 +272,15 @@ class LeaveBalance {
   });
 
   factory LeaveBalance.fromJson(Map<String, dynamic> json) => LeaveBalance(
-        id: (json['_id'] ?? '') as String,
-        user: (json['user'] ?? '') as String,
-        paid: (json['paid'] ?? 0) as int,
-        sick: (json['sick'] ?? 0) as int,
-        unpaid: (json['unpaid'] ?? 0) as int,
-        usedPaid: (json['usedPaid'] ?? 0) as int,
-        usedSick: (json['usedSick'] ?? 0) as int,
-        usedUnpaid: (json['usedUnpaid'] ?? 0) as int,
-      );
+    id: (json['_id'] ?? '') as String,
+    user: (json['user'] ?? '') as String,
+    paid: (json['paid'] ?? 0) as int,
+    sick: (json['sick'] ?? 0) as int,
+    unpaid: (json['unpaid'] ?? 0) as int,
+    usedPaid: (json['usedPaid'] ?? 0) as int,
+    usedSick: (json['usedSick'] ?? 0) as int,
+    usedUnpaid: (json['usedUnpaid'] ?? 0) as int,
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -331,8 +325,9 @@ class LeaveStatistics {
 
   factory LeaveStatistics.fromJson(Map<String, dynamic> json) {
     final rawByType = json['byType'] as Map<String, dynamic>? ?? {};
-    final byType =
-        rawByType.map((k, v) => MapEntry(k, (v as num?)?.toDouble() ?? 0.0));
+    final byType = rawByType.map(
+      (k, v) => MapEntry(k, (v as num?)?.toDouble() ?? 0.0),
+    );
     return LeaveStatistics(
       total: (json['total'] as num?)?.toInt() ?? 0,
       pending: (json['pending'] as num?)?.toInt() ?? 0,
@@ -357,7 +352,7 @@ class ApplyHalfDayResponse {
     required this.data,
   });
 
-  factory ApplyHalfDayResponse.fromJson(Map<String, dynamic> json) => 
+  factory ApplyHalfDayResponse.fromJson(Map<String, dynamic> json) =>
       ApplyHalfDayResponse(
         success: json["success"] ?? true,
         message: json["message"] ?? "Half day request submitted",
@@ -365,10 +360,10 @@ class ApplyHalfDayResponse {
       );
 
   Map<String, dynamic> toJson() => {
-        "success": success,
-        "message": message,
-        "data": data.toJson(),
-      };
+    "success": success,
+    "message": message,
+    "data": data.toJson(),
+  };
 }
 
 class HalfDayData {
@@ -386,20 +381,19 @@ class HalfDayData {
     required this.id,
   });
 
-  factory HalfDayData.fromJson(Map<String, dynamic> json) => 
-      HalfDayData(
-        user: json["user"] ?? "",
-        date: json["date"] ?? "",
-        reason: json["reason"] ?? "",
-        status: json["status"] ?? "pending",
-        id: json["_id"] ?? json["id"] ?? "",
-      );
+  factory HalfDayData.fromJson(Map<String, dynamic> json) => HalfDayData(
+    user: json["user"] ?? "",
+    date: json["date"] ?? "",
+    reason: json["reason"] ?? "",
+    status: json["status"] ?? "pending",
+    id: json["_id"] ?? json["id"] ?? "",
+  );
 
   Map<String, dynamic> toJson() => {
-        "user": user,
-        "date": date,
-        "reason": reason,
-        "status": status,
-        "id": id,
-      };
+    "user": user,
+    "date": date,
+    "reason": reason,
+    "status": status,
+    "id": id,
+  };
 }

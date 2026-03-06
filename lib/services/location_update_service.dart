@@ -44,7 +44,9 @@ class LocationUpdateService {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      print('Got current position: ${position.latitude}, ${position.longitude}');
+      print(
+        'Got current position: ${position.latitude}, ${position.longitude}',
+      );
 
       // Update location on server
       final response = await _authService.updateLocation(

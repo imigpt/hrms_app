@@ -93,10 +93,7 @@ class MobileDashboardStats extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.grey.shade800,
                   borderRadius: BorderRadius.circular(50),
-                  border: Border.all(
-                    color: const Color(0xFFFF6B6B),
-                    width: 2,
-                  ),
+                  border: Border.all(color: const Color(0xFFFF6B6B), width: 2),
                 ),
                 child: profile.profilePhotoUrl.isNotEmpty
                     ? ClipRRect(
@@ -165,13 +162,21 @@ class MobileDashboardStats extends StatelessWidget {
           SizedBox(height: responsive.spacing / 2),
           _profileDetail(Icons.location_on, profile.address, responsive),
           SizedBox(height: responsive.spacing / 2),
-          _profileDetail(Icons.calendar_today, _formatDate(profile.joinDate), responsive),
+          _profileDetail(
+            Icons.calendar_today,
+            _formatDate(profile.joinDate),
+            responsive,
+          ),
         ],
       ),
     );
   }
 
-  Widget _profileDetail(IconData icon, String text, ResponsiveUtils responsive) {
+  Widget _profileDetail(
+    IconData icon,
+    String text,
+    ResponsiveUtils responsive,
+  ) {
     return Row(
       children: [
         Icon(
@@ -200,14 +205,29 @@ class MobileDashboardStats extends StatelessWidget {
   }
 
   String _monthName(int month) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return months[month - 1];
   }
 
   // ── ATTENDANCE CARD ────────────────────────────────────────────────────────
 
-  Widget _buildAttendanceCard(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildAttendanceCard(
+    BuildContext context,
+    ResponsiveUtils responsive,
+  ) {
     final total = stats?.totalAttendance ?? 0;
     final present = stats?.presentDays ?? 0;
     final absent = stats?.absentDays ?? 0;
@@ -256,20 +276,44 @@ class MobileDashboardStats extends StatelessWidget {
           responsive.isMobile
               ? Column(
                   children: [
-                    _buildPieChart(responsive, presentPercent, absentPercent, leavePercent, halfPercent),
+                    _buildPieChart(
+                      responsive,
+                      presentPercent,
+                      absentPercent,
+                      leavePercent,
+                      halfPercent,
+                    ),
                     SizedBox(height: responsive.spacing),
-                    _buildLegendColumn(present, absent, leave, halfDay, responsive),
+                    _buildLegendColumn(
+                      present,
+                      absent,
+                      leave,
+                      halfDay,
+                      responsive,
+                    ),
                   ],
                 )
               : Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: _buildPieChart(responsive, presentPercent, absentPercent, leavePercent, halfPercent),
+                      child: _buildPieChart(
+                        responsive,
+                        presentPercent,
+                        absentPercent,
+                        leavePercent,
+                        halfPercent,
+                      ),
                     ),
                     SizedBox(width: responsive.spacing),
                     Expanded(
-                      child: _buildLegendColumn(present, absent, leave, halfDay, responsive),
+                      child: _buildLegendColumn(
+                        present,
+                        absent,
+                        leave,
+                        halfDay,
+                        responsive,
+                      ),
                     ),
                   ],
                 ),
@@ -368,18 +412,33 @@ class MobileDashboardStats extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLegendItem('Present', present, const Color(0xFF00D084), responsive),
+        _buildLegendItem(
+          'Present',
+          present,
+          const Color(0xFF00D084),
+          responsive,
+        ),
         SizedBox(height: responsive.spacing / 2),
         _buildLegendItem('Absent', absent, const Color(0xFFFF6B6B), responsive),
         SizedBox(height: responsive.spacing / 2),
         _buildLegendItem('Leave', leave, const Color(0xFF4ECDC4), responsive),
         SizedBox(height: responsive.spacing / 2),
-        _buildLegendItem('Half Day', halfDay, const Color(0xFFFFA500), responsive),
+        _buildLegendItem(
+          'Half Day',
+          halfDay,
+          const Color(0xFFFFA500),
+          responsive,
+        ),
       ],
     );
   }
 
-  Widget _buildLegendItem(String label, int count, Color color, ResponsiveUtils responsive) {
+  Widget _buildLegendItem(
+    String label,
+    int count,
+    Color color,
+    ResponsiveUtils responsive,
+  ) {
     return Row(
       children: [
         Container(
@@ -459,10 +518,30 @@ class MobileDashboardStats extends StatelessWidget {
             crossAxisSpacing: responsive.spacing / 2,
             mainAxisSpacing: responsive.spacing / 2,
             children: [
-              _buildLeaveStatBox('Total Leaves', totalLeaves.toString(), Colors.blue, responsive),
-              _buildLeaveStatBox('Approved', approved.toString(), const Color(0xFF00D084), responsive),
-              _buildLeaveStatBox('Rejected', rejected.toString(), const Color(0xFFFF6B6B), responsive),
-              _buildLeaveStatBox('Pending', pending.toString(), const Color(0xFFFFA500), responsive),
+              _buildLeaveStatBox(
+                'Total Leaves',
+                totalLeaves.toString(),
+                Colors.blue,
+                responsive,
+              ),
+              _buildLeaveStatBox(
+                'Approved',
+                approved.toString(),
+                const Color(0xFF00D084),
+                responsive,
+              ),
+              _buildLeaveStatBox(
+                'Rejected',
+                rejected.toString(),
+                const Color(0xFFFF6B6B),
+                responsive,
+              ),
+              _buildLeaveStatBox(
+                'Pending',
+                pending.toString(),
+                const Color(0xFFFFA500),
+                responsive,
+              ),
             ],
           ),
         ],
@@ -512,7 +591,10 @@ class MobileDashboardStats extends StatelessWidget {
 
   // ── QUICK STATS GRID ───────────────────────────────────────────────────────
 
-  Widget _buildQuickStatsGrid(BuildContext context, ResponsiveUtils responsive) {
+  Widget _buildQuickStatsGrid(
+    BuildContext context,
+    ResponsiveUtils responsive,
+  ) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -569,11 +651,7 @@ class MobileDashboardStats extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            color: color,
-            size: responsive.isMobile ? 24 : 32,
-          ),
+          Icon(icon, color: color, size: responsive.isMobile ? 24 : 32),
           SizedBox(height: responsive.spacing / 4),
           Text(
             value,
@@ -622,24 +700,17 @@ class MobileDashboardStats extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFF6B6B),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFFFF6B6B), width: 1),
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.error_outline,
-            color: Color(0xFFFF6B6B),
-            size: 48,
-          ),
+          const Icon(Icons.error_outline, color: Color(0xFFFF6B6B), size: 48),
           const SizedBox(height: 12),
           Text(
             'Unable to load statistics',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Colors.white),
           ),
           const SizedBox(height: 12),
           ElevatedButton(

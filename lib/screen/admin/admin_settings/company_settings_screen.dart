@@ -39,8 +39,7 @@ class _AdminCompanySettingsScreenState
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getCompanySettings(widget.token ?? '');
+      final res = await SettingsService.getCompanySettings(widget.token ?? '');
       final data = res['data'];
       if (data != null) {
         final c = data['company'];
@@ -92,8 +91,15 @@ class _AdminCompanySettingsScreenState
   @override
   void dispose() {
     for (final c in [
-      _nameCtrl, _emailCtrl, _phoneCtrl, _addressCtrl,
-      _websiteCtrl, _industryCtrl, _shortNameCtrl, _mapsKeyCtrl, _timezoneCtrl,
+      _nameCtrl,
+      _emailCtrl,
+      _phoneCtrl,
+      _addressCtrl,
+      _websiteCtrl,
+      _industryCtrl,
+      _shortNameCtrl,
+      _mapsKeyCtrl,
+      _timezoneCtrl,
     ]) {
       c.dispose();
     }
@@ -125,24 +131,27 @@ class _AdminCompanySettingsScreenState
                           children: [
                             AdminRow2(
                               left: AdminTextField(
-                                  label: 'Company Name',
-                                  controller: _nameCtrl),
+                                label: 'Company Name',
+                                controller: _nameCtrl,
+                              ),
                               right: AdminTextField(
-                                  label: 'Short Name',
-                                  controller: _shortNameCtrl,
-                                  hint: 'e.g. ACME'),
+                                label: 'Short Name',
+                                controller: _shortNameCtrl,
+                                hint: 'e.g. ACME',
+                              ),
                             ),
                             const SizedBox(height: 14),
                             AdminRow2(
                               left: AdminTextField(
-                                  label: 'Company Email',
-                                  controller: _emailCtrl,
-                                  keyboardType:
-                                      TextInputType.emailAddress),
+                                label: 'Company Email',
+                                controller: _emailCtrl,
+                                keyboardType: TextInputType.emailAddress,
+                              ),
                               right: AdminTextField(
-                                  label: 'Phone Number',
-                                  controller: _phoneCtrl,
-                                  keyboardType: TextInputType.phone),
+                                label: 'Phone Number',
+                                controller: _phoneCtrl,
+                                keyboardType: TextInputType.phone,
+                              ),
                             ),
                             const SizedBox(height: 14),
                             AdminTextField(
@@ -153,13 +162,15 @@ class _AdminCompanySettingsScreenState
                             const SizedBox(height: 14),
                             AdminRow2(
                               left: AdminTextField(
-                                  label: 'Website',
-                                  controller: _websiteCtrl,
-                                  hint: 'https://'),
+                                label: 'Website',
+                                controller: _websiteCtrl,
+                                hint: 'https://',
+                              ),
                               right: AdminTextField(
-                                  label: 'Industry',
-                                  controller: _industryCtrl,
-                                  hint: 'e.g. Technology'),
+                                label: 'Industry',
+                                controller: _industryCtrl,
+                                hint: 'e.g. Technology',
+                              ),
                             ),
                           ],
                         ),
@@ -168,12 +179,14 @@ class _AdminCompanySettingsScreenState
                           children: [
                             AdminRow2(
                               left: AdminTextField(
-                                  label: 'Google Maps API Key',
-                                  controller: _mapsKeyCtrl,
-                                  hint: 'AIzaSy...'),
+                                label: 'Google Maps API Key',
+                                controller: _mapsKeyCtrl,
+                                hint: 'AIzaSy...',
+                              ),
                               right: AdminTextField(
-                                  label: 'Timezone',
-                                  controller: _timezoneCtrl),
+                                label: 'Timezone',
+                                controller: _timezoneCtrl,
+                              ),
                             ),
                           ],
                         ),

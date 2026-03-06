@@ -21,8 +21,8 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Define the color based on alert status
     final Color iconColor = isAlert ? AppTheme.primaryColor : Colors.white70;
-    final Color iconBgColor = isAlert 
-        ? AppTheme.primaryColor.withOpacity(0.15) 
+    final Color iconBgColor = isAlert
+        ? AppTheme.primaryColor.withOpacity(0.15)
         : Colors.white.withOpacity(0.05);
 
     return Material(
@@ -36,7 +36,9 @@ class StatCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.08)), // Subtle border
+            border: Border.all(
+              color: Colors.white.withOpacity(0.08),
+            ), // Subtle border
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.2),
@@ -56,18 +58,18 @@ class StatCard extends StatelessWidget {
                   // Title Text
                   Expanded(
                     child: Text(
-                      title, 
+                      title,
                       style: TextStyle(
-                        color: Colors.grey[400], 
-                        fontSize: 13, 
-                        fontWeight: FontWeight.w500
-                      ), 
+                        color: Colors.grey[400],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 2,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  
+
                   // Icon Container
                   Container(
                     padding: const EdgeInsets.all(8),
@@ -76,16 +78,16 @@ class StatCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(icon, size: 18, color: iconColor),
-                  )
+                  ),
                 ],
               ),
-              
+
               // Value Text
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 24, 
-                  fontWeight: FontWeight.bold, 
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                   color: Colors.white,
                   letterSpacing: -0.5,
                 ),

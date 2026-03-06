@@ -114,12 +114,12 @@ class ReportingTo {
   });
 
   factory ReportingTo.fromJson(Map<String, dynamic> json) => ReportingTo(
-        id: json['_id'] ?? '',
-        name: json['name'] ?? '',
-        email: json['email'] ?? '',
-        position: json['position'] ?? '',
-        phone: json['phone'],
-      );
+    id: json['_id'] ?? '',
+    name: json['name'] ?? '',
+    email: json['email'] ?? '',
+    position: json['position'] ?? '',
+    phone: json['phone'],
+  );
 }
 
 class CompanyRef {
@@ -128,19 +128,14 @@ class CompanyRef {
   final String? email;
   final String? phone;
 
-  CompanyRef({
-    required this.id,
-    required this.name,
-    this.email,
-    this.phone,
-  });
+  CompanyRef({required this.id, required this.name, this.email, this.phone});
 
   factory CompanyRef.fromJson(Map<String, dynamic> json) => CompanyRef(
-        id: json['_id'] ?? '',
-        name: json['name'] ?? '',
-        email: json['email'],
-        phone: json['phone'],
-      );
+    id: json['_id'] ?? '',
+    name: json['name'] ?? '',
+    email: json['email'],
+    phone: json['phone'],
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -170,8 +165,11 @@ class EmployeeTasksResponse {
   final int count;
   final List<EmployeeTask> data;
 
-  EmployeeTasksResponse(
-      {required this.success, required this.count, required this.data});
+  EmployeeTasksResponse({
+    required this.success,
+    required this.count,
+    required this.data,
+  });
 
   factory EmployeeTasksResponse.fromJson(Map<String, dynamic> json) =>
       EmployeeTasksResponse(
@@ -179,7 +177,8 @@ class EmployeeTasksResponse {
         count: json['count'] ?? 0,
         data: json['data'] is List
             ? List<EmployeeTask>.from(
-                json['data'].map((x) => EmployeeTask.fromJson(x)))
+                json['data'].map((x) => EmployeeTask.fromJson(x)),
+              )
             : [],
       );
 }
@@ -206,17 +205,17 @@ class EmployeeTask {
   });
 
   factory EmployeeTask.fromJson(Map<String, dynamic> json) => EmployeeTask(
-        id: json['_id'] ?? '',
-        title: json['title'] ?? '',
-        status: json['status'] ?? '',
-        priority: json['priority'] ?? '',
-        dueDate: _parseDate(json['dueDate']),
-        deadline: _parseDate(json['deadline']),
-        description: json['description'],
-        assignedBy: json['assignedBy'] is Map
-            ? TaskAssignedBy.fromJson(json['assignedBy'])
-            : null,
-      );
+    id: json['_id'] ?? '',
+    title: json['title'] ?? '',
+    status: json['status'] ?? '',
+    priority: json['priority'] ?? '',
+    dueDate: _parseDate(json['dueDate']),
+    deadline: _parseDate(json['deadline']),
+    description: json['description'],
+    assignedBy: json['assignedBy'] is Map
+        ? TaskAssignedBy.fromJson(json['assignedBy'])
+        : null,
+  );
 }
 
 class TaskAssignedBy {
@@ -233,11 +232,11 @@ class TaskAssignedBy {
   });
 
   factory TaskAssignedBy.fromJson(Map<String, dynamic> json) => TaskAssignedBy(
-        id: json['_id'] ?? '',
-        name: json['name'] ?? '',
-        email: json['email'] ?? '',
-        position: json['position'] ?? '',
-      );
+    id: json['_id'] ?? '',
+    name: json['name'] ?? '',
+    email: json['email'] ?? '',
+    position: json['position'] ?? '',
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -251,8 +250,11 @@ class EmployeeLeavesResponse {
   final int count;
   final List<EmployeeLeave> data;
 
-  EmployeeLeavesResponse(
-      {required this.success, required this.count, required this.data});
+  EmployeeLeavesResponse({
+    required this.success,
+    required this.count,
+    required this.data,
+  });
 
   factory EmployeeLeavesResponse.fromJson(Map<String, dynamic> json) =>
       EmployeeLeavesResponse(
@@ -260,7 +262,8 @@ class EmployeeLeavesResponse {
         count: json['count'] ?? 0,
         data: json['data'] is List
             ? List<EmployeeLeave>.from(
-                json['data'].map((x) => EmployeeLeave.fromJson(x)))
+                json['data'].map((x) => EmployeeLeave.fromJson(x)),
+              )
             : [],
       );
 }
@@ -287,16 +290,15 @@ class EmployeeLeave {
   });
 
   factory EmployeeLeave.fromJson(Map<String, dynamic> json) => EmployeeLeave(
-        id: json['_id'] ?? '',
-        leaveType: json['leaveType'] ?? '',
-        startDate:
-            _parseDate(json['startDate']) ?? DateTime.now(),
-        endDate: _parseDate(json['endDate']) ?? DateTime.now(),
-        days: json['days'] ?? 0,
-        reason: json['reason'] ?? '',
-        status: json['status'] ?? '',
-        createdAt: _parseDate(json['createdAt']) ?? DateTime.now(),
-      );
+    id: json['_id'] ?? '',
+    leaveType: json['leaveType'] ?? '',
+    startDate: _parseDate(json['startDate']) ?? DateTime.now(),
+    endDate: _parseDate(json['endDate']) ?? DateTime.now(),
+    days: json['days'] ?? 0,
+    reason: json['reason'] ?? '',
+    status: json['status'] ?? '',
+    createdAt: _parseDate(json['createdAt']) ?? DateTime.now(),
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -310,8 +312,11 @@ class EmployeeExpensesResponse {
   final int count;
   final List<EmployeeExpense> data;
 
-  EmployeeExpensesResponse(
-      {required this.success, required this.count, required this.data});
+  EmployeeExpensesResponse({
+    required this.success,
+    required this.count,
+    required this.data,
+  });
 
   factory EmployeeExpensesResponse.fromJson(Map<String, dynamic> json) =>
       EmployeeExpensesResponse(
@@ -319,7 +324,8 @@ class EmployeeExpensesResponse {
         count: json['count'] ?? 0,
         data: json['data'] is List
             ? List<EmployeeExpense>.from(
-                json['data'].map((x) => EmployeeExpense.fromJson(x)))
+                json['data'].map((x) => EmployeeExpense.fromJson(x)),
+              )
             : [],
       );
 }
@@ -369,15 +375,19 @@ class EmployeeAttendanceResponse {
   final List<EmployeeAttendanceRecord> data;
   final AttendanceStats stats;
 
-  EmployeeAttendanceResponse(
-      {required this.success, required this.data, required this.stats});
+  EmployeeAttendanceResponse({
+    required this.success,
+    required this.data,
+    required this.stats,
+  });
 
   factory EmployeeAttendanceResponse.fromJson(Map<String, dynamic> json) =>
       EmployeeAttendanceResponse(
         success: json['success'] ?? false,
         data: json['data'] is List
             ? List<EmployeeAttendanceRecord>.from(
-                json['data'].map((x) => EmployeeAttendanceRecord.fromJson(x)))
+                json['data'].map((x) => EmployeeAttendanceRecord.fromJson(x)),
+              )
             : [],
         stats: json['stats'] is Map
             ? AttendanceStats.fromJson(json['stats'])
@@ -410,8 +420,9 @@ class EmployeeAttendanceRecord {
         totalHours: json['totalHours'] != null
             ? (json['totalHours']).toDouble()
             : null,
-        checkIn:
-            json['checkIn'] is Map ? Map<String, dynamic>.from(json['checkIn']) : null,
+        checkIn: json['checkIn'] is Map
+            ? Map<String, dynamic>.from(json['checkIn'])
+            : null,
         checkOut: json['checkOut'] is Map
             ? Map<String, dynamic>.from(json['checkOut'])
             : null,
@@ -442,8 +453,13 @@ class AttendanceStats {
         averageHours: (json['averageHours'] ?? 0).toDouble(),
       );
 
-  factory AttendanceStats.empty() =>
-      AttendanceStats(total: 0, present: 0, late: 0, absent: 0, averageHours: 0);
+  factory AttendanceStats.empty() => AttendanceStats(
+    total: 0,
+    present: 0,
+    late: 0,
+    absent: 0,
+    averageHours: 0,
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -482,8 +498,11 @@ class EmployeeTeamResponse {
   final int count;
   final List<TeamMember> data;
 
-  EmployeeTeamResponse(
-      {required this.success, required this.count, required this.data});
+  EmployeeTeamResponse({
+    required this.success,
+    required this.count,
+    required this.data,
+  });
 
   factory EmployeeTeamResponse.fromJson(Map<String, dynamic> json) =>
       EmployeeTeamResponse(
@@ -491,7 +510,8 @@ class EmployeeTeamResponse {
         count: json['count'] ?? 0,
         data: json['data'] is List
             ? List<TeamMember>.from(
-                json['data'].map((x) => TeamMember.fromJson(x)))
+                json['data'].map((x) => TeamMember.fromJson(x)),
+              )
             : [],
       );
 }
@@ -514,11 +534,11 @@ class TeamMember {
   });
 
   factory TeamMember.fromJson(Map<String, dynamic> json) => TeamMember(
-        id: json['_id'] ?? '',
-        name: json['name'] ?? '',
-        email: json['email'] ?? '',
-        position: json['position'] ?? '',
-        status: json['status'] ?? '',
-        profilePhoto: json['profilePhoto'],
-      );
+    id: json['_id'] ?? '',
+    name: json['name'] ?? '',
+    email: json['email'] ?? '',
+    position: json['position'] ?? '',
+    status: json['status'] ?? '',
+    profilePhoto: json['profilePhoto'],
+  );
 }

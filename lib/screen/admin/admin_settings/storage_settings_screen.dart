@@ -27,7 +27,8 @@ class _AdminStorageSettingsScreenState
   final _awsSecretKeyCtrl = TextEditingController();
   int _maxUpload = 10;
   final _extensionsCtrl = TextEditingController(
-      text: 'jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,txt');
+    text: 'jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,txt',
+  );
 
   bool _showCloudSecret = false;
   bool _showAwsSecret = false;
@@ -41,8 +42,7 @@ class _AdminStorageSettingsScreenState
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getStorageSettings(widget.token ?? '');
+      final res = await SettingsService.getStorageSettings(widget.token ?? '');
       final d = res['data'];
       if (d != null) {
         setState(() => _driver = d['storageDriver'] ?? 'cloudinary');
@@ -55,7 +55,8 @@ class _AdminStorageSettingsScreenState
         _awsSecretKeyCtrl.text = d['awsSecretKey'] ?? '';
         setState(() {
           _maxUpload = (d['maxUploadSize'] ?? 10) as int;
-          _extensionsCtrl.text = d['allowedExtensions'] ??
+          _extensionsCtrl.text =
+              d['allowedExtensions'] ??
               'jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,ppt,pptx,csv,txt';
         });
       }
@@ -89,9 +90,14 @@ class _AdminStorageSettingsScreenState
   @override
   void dispose() {
     for (final c in [
-      _cloudNameCtrl, _cloudKeyCtrl, _cloudSecretCtrl,
-      _awsBucketCtrl, _awsRegionCtrl, _awsAccessKeyCtrl,
-      _awsSecretKeyCtrl, _extensionsCtrl,
+      _cloudNameCtrl,
+      _cloudKeyCtrl,
+      _cloudSecretCtrl,
+      _awsBucketCtrl,
+      _awsRegionCtrl,
+      _awsAccessKeyCtrl,
+      _awsSecretKeyCtrl,
+      _extensionsCtrl,
     ]) {
       c.dispose();
     }
@@ -127,23 +133,27 @@ class _AdminStorageSettingsScreenState
                                 value: _driver,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'cloudinary',
-                                      child: Text('Cloudinary')),
+                                    value: 'cloudinary',
+                                    child: Text('Cloudinary'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'aws-s3',
-                                      child: Text('AWS S3')),
+                                    value: 'aws-s3',
+                                    child: Text('AWS S3'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'local',
-                                      child: Text('Local Storage')),
+                                    value: 'local',
+                                    child: Text('Local Storage'),
+                                  ),
                                 ],
-                                onChanged: (v) =>
-                                    setState(() => _driver = v!),
+                                onChanged: (v) => setState(() => _driver = v!),
                               ),
                               right: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const AdminSectionLabel('Max Upload Size',
-                                      topPad: false),
+                                  const AdminSectionLabel(
+                                    'Max Upload Size',
+                                    topPad: false,
+                                  ),
                                   const SizedBox(height: 6),
                                   Row(
                                     children: [
@@ -156,7 +166,8 @@ class _AdminStorageSettingsScreenState
                                           activeColor: AppTheme.primaryColor,
                                           inactiveColor: AppTheme.cardColor,
                                           onChanged: (v) => setState(
-                                              () => _maxUpload = v.toInt()),
+                                            () => _maxUpload = v.toInt(),
+                                          ),
                                         ),
                                       ),
                                       SizedBox(
@@ -164,9 +175,10 @@ class _AdminStorageSettingsScreenState
                                         child: Text(
                                           '$_maxUpload MB',
                                           style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600),
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                           textAlign: TextAlign.right,
                                         ),
                                       ),
@@ -188,28 +200,32 @@ class _AdminStorageSettingsScreenState
                             title: 'Cloudinary Configuration',
                             children: [
                               AdminTextField(
-                                  label: 'Cloud Name',
-                                  controller: _cloudNameCtrl,
-                                  hint: 'my-cloud'),
+                                label: 'Cloud Name',
+                                controller: _cloudNameCtrl,
+                                hint: 'my-cloud',
+                              ),
                               const SizedBox(height: 12),
                               AdminRow2(
                                 left: AdminTextField(
-                                    label: 'API Key',
-                                    controller: _cloudKeyCtrl),
+                                  label: 'API Key',
+                                  controller: _cloudKeyCtrl,
+                                ),
                                 right: AdminTextField(
                                   label: 'API Secret',
                                   controller: _cloudSecretCtrl,
                                   obscure: !_showCloudSecret,
                                   suffix: IconButton(
                                     icon: Icon(
-                                        _showCloudSecret
-                                            ? Icons.visibility_off_rounded
-                                            : Icons.visibility_rounded,
-                                        color: Colors.grey[500],
-                                        size: 18),
+                                      _showCloudSecret
+                                          ? Icons.visibility_off_rounded
+                                          : Icons.visibility_rounded,
+                                      color: Colors.grey[500],
+                                      size: 18,
+                                    ),
                                     onPressed: () => setState(
-                                        () => _showCloudSecret =
-                                            !_showCloudSecret),
+                                      () =>
+                                          _showCloudSecret = !_showCloudSecret,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -221,31 +237,36 @@ class _AdminStorageSettingsScreenState
                             children: [
                               AdminRow2(
                                 left: AdminTextField(
-                                    label: 'Bucket Name',
-                                    controller: _awsBucketCtrl),
+                                  label: 'Bucket Name',
+                                  controller: _awsBucketCtrl,
+                                ),
                                 right: AdminTextField(
-                                    label: 'Region',
-                                    controller: _awsRegionCtrl,
-                                    hint: 'us-east-1'),
+                                  label: 'Region',
+                                  controller: _awsRegionCtrl,
+                                  hint: 'us-east-1',
+                                ),
                               ),
                               const SizedBox(height: 12),
                               AdminRow2(
                                 left: AdminTextField(
-                                    label: 'Access Key',
-                                    controller: _awsAccessKeyCtrl),
+                                  label: 'Access Key',
+                                  controller: _awsAccessKeyCtrl,
+                                ),
                                 right: AdminTextField(
                                   label: 'Secret Key',
                                   controller: _awsSecretKeyCtrl,
                                   obscure: !_showAwsSecret,
                                   suffix: IconButton(
                                     icon: Icon(
-                                        _showAwsSecret
-                                            ? Icons.visibility_off_rounded
-                                            : Icons.visibility_rounded,
-                                        color: Colors.grey[500],
-                                        size: 18),
+                                      _showAwsSecret
+                                          ? Icons.visibility_off_rounded
+                                          : Icons.visibility_rounded,
+                                      color: Colors.grey[500],
+                                      size: 18,
+                                    ),
                                     onPressed: () => setState(
-                                        () => _showAwsSecret = !_showAwsSecret),
+                                      () => _showAwsSecret = !_showAwsSecret,
+                                    ),
                                   ),
                                 ),
                               ),

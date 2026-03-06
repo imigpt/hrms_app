@@ -9,20 +9,38 @@ class AttendanceHistoryScreen extends StatefulWidget {
   const AttendanceHistoryScreen({super.key});
 
   @override
-  State<AttendanceHistoryScreen> createState() => _AttendanceHistoryScreenState();
+  State<AttendanceHistoryScreen> createState() =>
+      _AttendanceHistoryScreenState();
 }
 
 class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   String _selectedFilter = 'All';
   int _selectedMonth = 2; // February (current month)
   int _selectedYear = 2026;
-  
-  final List<String> _filters = ['All', 'Present', 'Absent', 'Late', 'Half Day', 'Leave'];
-  final List<String> _monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+
+  final List<String> _filters = [
+    'All',
+    'Present',
+    'Absent',
+    'Late',
+    'Half Day',
+    'Leave',
   ];
-  
+  final List<String> _monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
   // API state
   bool _isLoading = true;
   List<AttendanceRecord> _records = [];
@@ -53,7 +71,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       // Calculate start and end dates for the selected month
       final startDate = DateTime(_selectedYear, _selectedMonth, 1);
       final endDate = DateTime(_selectedYear, _selectedMonth + 1, 0);
-      
+
       final startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
       final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
 
@@ -100,17 +118,19 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     if (_selectedFilter == 'All') {
       return _records;
     }
-    
+
     // Filter records by status (handle Half Day separately)
     return _records.where((record) {
       final recordStatus = record.status.toLowerCase();
       final filterLower = _selectedFilter.toLowerCase();
-      
+
       // Handle "Half Day" filter matching both "halfday" and "half_day"
       if (filterLower == 'half day') {
-        return recordStatus == 'halfday' || recordStatus == 'half_day' || recordStatus == 'half day';
+        return recordStatus == 'halfday' ||
+            recordStatus == 'half_day' ||
+            recordStatus == 'half day';
       }
-      
+
       return recordStatus == filterLower;
     }).toList();
   }
@@ -189,13 +209,19 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                             // No need to fetch again, just update UI filter
                           },
                           backgroundColor: const Color(0xFF1A1A1A),
-                          selectedColor: const Color(0xFFFF8B94).withOpacity(0.2),
+                          selectedColor: const Color(
+                            0xFFFF8B94,
+                          ).withOpacity(0.2),
                           labelStyle: TextStyle(
-                            color: isSelected ? const Color(0xFFFF8B94) : Colors.white70,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            color: isSelected
+                                ? const Color(0xFFFF8B94)
+                                : Colors.white70,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
                           side: BorderSide(
-                            color: isSelected 
+                            color: isSelected
                                 ? const Color(0xFFFF8B94)
                                 : Colors.white.withOpacity(0.1),
                           ),
@@ -224,24 +250,24 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
               children: [
                 _buildStatItem('Total', '${_records.length}', Colors.blue),
                 _buildStatItem(
-                  'Present', 
-                  '${_records.where((r) => r.status.toLowerCase() == 'present').length}', 
-                  Colors.green
+                  'Present',
+                  '${_records.where((r) => r.status.toLowerCase() == 'present').length}',
+                  Colors.green,
                 ),
                 _buildStatItem(
-                  'Absent', 
-                  '${_records.where((r) => r.status.toLowerCase() == 'absent').length}', 
-                  Colors.red
+                  'Absent',
+                  '${_records.where((r) => r.status.toLowerCase() == 'absent').length}',
+                  Colors.red,
                 ),
                 _buildStatItem(
-                  'Late', 
-                  '${_records.where((r) => r.status.toLowerCase() == 'late').length}', 
-                  Colors.orange
+                  'Late',
+                  '${_records.where((r) => r.status.toLowerCase() == 'late').length}',
+                  Colors.orange,
                 ),
                 _buildStatItem(
-                  'Half Day', 
-                  '${_records.where((r) => r.status.toLowerCase() == 'halfday' || r.status.toLowerCase() == 'half_day' || r.status.toLowerCase() == 'half day').length}', 
-                  Colors.amber
+                  'Half Day',
+                  '${_records.where((r) => r.status.toLowerCase() == 'halfday' || r.status.toLowerCase() == 'half_day' || r.status.toLowerCase() == 'half day').length}',
+                  Colors.amber,
                 ),
               ],
             ),
@@ -254,34 +280,34 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                     child: CircularProgressIndicator(color: Colors.white),
                   )
                 : _filteredRecords.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.calendar_today_outlined,
-                              size: 64,
-                              color: Colors.grey[700],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No records found',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 64,
+                          color: Colors.grey[700],
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _filteredRecords.length,
-                        itemBuilder: (context, index) {
-                          final record = _filteredRecords[index];
-                          return _buildAttendanceCard(record, index);
-                        },
-                      ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No records found',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _filteredRecords.length,
+                    itemBuilder: (context, index) {
+                      final record = _filteredRecords[index];
+                      return _buildAttendanceCard(record, index);
+                    },
+                  ),
           ),
         ],
       ),
@@ -300,26 +326,24 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 12,
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
       ],
     );
   }
 
   Widget _buildAttendanceCard(AttendanceRecord record, int index) {
-    final status = record.status.substring(0, 1).toUpperCase() + record.status.substring(1);
-    
+    final status =
+        record.status.substring(0, 1).toUpperCase() +
+        record.status.substring(1);
+
     // Format times
-    final checkInTime = DateFormat('hh:mm a').format(record.checkIn.time.toLocal());
-    final checkOutTime = record.checkOut != null 
-        ? DateFormat('hh:mm a').format(record.checkOut!.time.toLocal()) 
+    final checkInTime = DateFormat(
+      'hh:mm a',
+    ).format(record.checkIn.time.toLocal());
+    final checkOutTime = record.checkOut != null
+        ? DateFormat('hh:mm a').format(record.checkOut!.time.toLocal())
         : '-';
-    
+
     // Calculate duration
     String duration = '-';
     if (record.checkOut != null) {
@@ -327,13 +351,13 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       final minutes = ((record.workHours - hours) * 60).round();
       duration = '${hours}h ${minutes}m';
     }
-    
+
     // Check if has photo
     final hasPhoto = record.checkIn.photo.url.isNotEmpty;
-    
+
     // Format date
     final dateStr = DateFormat('MMM d, y').format(record.date);
-    
+
     Color statusColor;
     Color statusBgColor;
 
@@ -389,7 +413,10 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusBgColor,
                     borderRadius: BorderRadius.circular(12),
@@ -405,12 +432,16 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 ),
               ],
             ),
-            
-            if (status.toLowerCase() == 'present' || status.toLowerCase() == 'late' || status.toLowerCase() == 'halfday' || status.toLowerCase() == 'half_day' || status.toLowerCase() == 'half day') ...[
+
+            if (status.toLowerCase() == 'present' ||
+                status.toLowerCase() == 'late' ||
+                status.toLowerCase() == 'halfday' ||
+                status.toLowerCase() == 'half_day' ||
+                status.toLowerCase() == 'half day') ...[
               const SizedBox(height: 12),
               const Divider(color: Color(0xFF1A1A1A), height: 1),
               const SizedBox(height: 12),
-              
+
               // Time Details
               Row(
                 children: [
@@ -442,11 +473,11 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 16),
               const Divider(color: Color(0xFF1A1A1A), height: 1),
               const SizedBox(height: 12),
-              
+
               // Location and Photo Info
               Row(
                 children: [
@@ -454,12 +485,15 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                     child: InkWell(
                       onTap: record.checkIn.location != null
                           ? () => _openGoogleMaps(
-                                record.checkIn.location!.latitude,
-                                record.checkIn.location!.longitude,
-                              )
+                              record.checkIn.location!.latitude,
+                              record.checkIn.location!.longitude,
+                            )
                           : null,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.blue.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
@@ -496,14 +530,17 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                           ? () => _showPhotoDialog(record.checkIn.photo.url)
                           : null,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: hasPhoto 
+                          color: hasPhoto
                               ? Colors.green.withOpacity(0.1)
                               : Colors.grey.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: hasPhoto 
+                            color: hasPhoto
                                 ? Colors.green.withOpacity(0.3)
                                 : Colors.grey.withOpacity(0.3),
                           ),
@@ -512,7 +549,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              hasPhoto ? Icons.image : Icons.image_not_supported,
+                              hasPhoto
+                                  ? Icons.image
+                                  : Icons.image_not_supported,
                               size: 16,
                               color: hasPhoto ? Colors.green : Colors.grey,
                             ),
@@ -533,9 +572,10 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 ],
               ),
             ],
-            
+
             // For Absent and Leave - show only location and photo status
-            if (status.toLowerCase() == 'absent' || status.toLowerCase() == 'leave') ...[
+            if (status.toLowerCase() == 'absent' ||
+                status.toLowerCase() == 'leave') ...[
               const SizedBox(height: 12),
               const Divider(color: Color(0xFF1A1A1A), height: 1),
               const SizedBox(height: 12),
@@ -552,7 +592,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
-                            status.toLowerCase() == 'absent' ? 'No attendance recorded' : 'On leave',
+                            status.toLowerCase() == 'absent'
+                                ? 'No attendance recorded'
+                                : 'On leave',
                             style: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 12,
@@ -572,7 +614,12 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     );
   }
 
-  Widget _buildTimeInfo(String label, String value, IconData icon, Color color) {
+  Widget _buildTimeInfo(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -582,10 +629,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
             const SizedBox(width: 4),
             Text(
               label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 11,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 11),
             ),
           ],
         ),
@@ -605,10 +649,10 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   // Open Google Maps with coordinates
   Future<void> _openGoogleMaps(double latitude, double longitude) async {
     // Try multiple methods to open maps
-    
+
     // Method 1: Use geo: scheme (native Android maps)
     final geoUri = Uri.parse('geo:$latitude,$longitude?q=$latitude,$longitude');
-    
+
     try {
       if (await canLaunchUrl(geoUri)) {
         await launchUrl(geoUri, mode: LaunchMode.externalApplication);
@@ -617,10 +661,12 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     } catch (e) {
       print('Geo URI failed: $e');
     }
-    
+
     // Method 2: Use Google Maps URL
-    final googleMapsUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
-    
+    final googleMapsUri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+    );
+
     try {
       if (await canLaunchUrl(googleMapsUri)) {
         await launchUrl(googleMapsUri, mode: LaunchMode.externalApplication);
@@ -629,10 +675,12 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     } catch (e) {
       print('Google Maps URL failed: $e');
     }
-    
+
     // Method 3: Try direct Google Maps app link
-    final mapsAppUri = Uri.parse('https://maps.google.com/?q=$latitude,$longitude');
-    
+    final mapsAppUri = Uri.parse(
+      'https://maps.google.com/?q=$latitude,$longitude',
+    );
+
     try {
       if (await canLaunchUrl(mapsAppUri)) {
         await launchUrl(mapsAppUri, mode: LaunchMode.externalApplication);
@@ -641,12 +689,14 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     } catch (e) {
       print('Maps app URL failed: $e');
     }
-    
+
     // If all methods fail, show error
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Could not open Google Maps. Please install Google Maps app.'),
+          content: Text(
+            'Could not open Google Maps. Please install Google Maps app.',
+          ),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -674,7 +724,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                         color: Colors.white,
                         value: loadingProgress.expectedTotalBytes != null
                             ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
+                                  loadingProgress.expectedTotalBytes!
                             : null,
                       ),
                     );
@@ -685,7 +735,11 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                          Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.red[300],
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             'Failed to load image',

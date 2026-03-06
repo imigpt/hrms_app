@@ -9,9 +9,9 @@ class LeaveService {
   static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
 
   static Map<String, String> _authHeaders(String token) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
 
   // ── POST /api/leaves/half-day ──────────────────────────────────────────────
   /// Apply for half-day leave. Returns [ApplyLeaveResponse] on success.
@@ -24,7 +24,7 @@ class LeaveService {
   }) async {
     // Format date as yyyy-MM-dd
     final dateStr = DateFormat('yyyy-MM-dd').format(date);
-    
+
     final payload = {
       'date': dateStr,
       'session': session.toLowerCase(),
@@ -52,13 +52,14 @@ class LeaveService {
         final detail = e is Map
             ? e.values.join(', ')
             : e is List
-                ? (e).join(', ')
-                : '';
+            ? (e).join(', ')
+            : '';
         throw Exception('$message: $detail');
       }
       throw Exception(message);
     } catch (e) {
-      if (e is FormatException) throw Exception('Server error (${response.statusCode})');
+      if (e is FormatException)
+        throw Exception('Server error (${response.statusCode})');
       rethrow;
     }
   }
@@ -73,18 +74,23 @@ class LeaveService {
     required String reason,
     double? days, // Optional parameter for custom days (e.g., 0.5 for half day)
   }) async {
-    print('🔵 [ApplyLeave] Input dates: startDate=$startDate, endDate=$endDate');
-    
+    print(
+      '🔵 [ApplyLeave] Input dates: startDate=$startDate, endDate=$endDate',
+    );
+
     // Strip trailing " Leave" suffix and lowercase (backend expects e.g. "annual")
-    final normalizedType =
-        leaveType.replaceAll(RegExp(r'\s*[Ll]eave$'), '').toLowerCase();
+    final normalizedType = leaveType
+        .replaceAll(RegExp(r'\s*[Ll]eave$'), '')
+        .toLowerCase();
     final calculatedDays = days ?? (endDate.difference(startDate).inDays + 1);
 
     // Format dates as yyyy-MM-dd
     final startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
     final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
 
-    print('✅ [ApplyLeave] Formatted dates: startDate=$startDateStr, endDate=$endDateStr, type=$normalizedType, days=$calculatedDays, reason=$reason');
+    print(
+      '✅ [ApplyLeave] Formatted dates: startDate=$startDateStr, endDate=$endDateStr, type=$normalizedType, days=$calculatedDays, reason=$reason',
+    );
 
     final body = {
       'leaveType': normalizedType,
@@ -93,7 +99,7 @@ class LeaveService {
       'days': calculatedDays,
       'reason': reason,
     };
-    
+
     print('📤 [ApplyLeave] Request body: ${jsonEncode(body)}');
 
     final response = await http.post(
@@ -119,13 +125,14 @@ class LeaveService {
         final detail = e is Map
             ? e.values.join(', ')
             : e is List
-                ? (e).join(', ')
-                : '';
+            ? (e).join(', ')
+            : '';
         throw Exception('$message: $detail');
       }
       throw Exception(message);
     } catch (e) {
-      if (e is FormatException) throw Exception('Server error (${response.statusCode})');
+      if (e is FormatException)
+        throw Exception('Server error (${response.statusCode})');
       rethrow;
     }
   }
@@ -141,12 +148,15 @@ class LeaveService {
     if (status != null) params['status'] = status;
     final uri = Uri.parse('$baseUrl/leaves').replace(queryParameters: params);
 
-    final response = await http.get(uri,
-        headers: {'Authorization': 'Bearer $token'});
+    final response = await http.get(
+      uri,
+      headers: {'Authorization': 'Bearer $token'},
+    );
 
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception(
-        _errorMessage(response.body) ?? 'Failed to fetch leave requests');
+      _errorMessage(response.body) ?? 'Failed to fetch leave requests',
+    );
   }
 
   // ── GET /api/leaves/:id ──────────────────────────────────────────────────
@@ -162,7 +172,8 @@ class LeaveService {
 
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception(
-        _errorMessage(response.body) ?? 'Failed to fetch leave request');
+      _errorMessage(response.body) ?? 'Failed to fetch leave request',
+    );
   }
 
   // ── GET /api/leave-balance/me ───────────────────────────────────────────
@@ -176,7 +187,7 @@ class LeaveService {
     final path = (userId != null && userId.isNotEmpty)
         ? '$baseUrl/leave-balance/$userId'
         : '$baseUrl/leave-balance/me';
-    
+
     final response = await http.get(
       Uri.parse(path),
       headers: {
@@ -188,13 +199,14 @@ class LeaveService {
     if (response.statusCode == 200) {
       return LeaveBalanceResponse.fromJson(json.decode(response.body));
     }
-    
+
     // Better error handling
     if (response.statusCode == 403) {
       throw Exception('Access denied to leave balance');
     }
     throw Exception(
-        _errorMessage(response.body) ?? 'Failed to fetch leave balance');
+      _errorMessage(response.body) ?? 'Failed to fetch leave balance',
+    );
   }
 
   // ── GET /api/leaves/statistics ───────────────────────────────────────────
@@ -207,8 +219,9 @@ class LeaveService {
     final params = <String, String>{};
     if (year != null) params['year'] = year.toString();
     // Do NOT pass userId - let backend use current user from token
-    final uri =
-        Uri.parse('$baseUrl/leaves/statistics').replace(queryParameters: params);
+    final uri = Uri.parse(
+      '$baseUrl/leaves/statistics',
+    ).replace(queryParameters: params);
 
     final response = await http.get(
       uri,
@@ -221,13 +234,14 @@ class LeaveService {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     }
-    
+
     // Better error handling
     if (response.statusCode == 403) {
       throw Exception('Access denied to leave statistics');
     }
     throw Exception(
-        _errorMessage(response.body) ?? 'Failed to fetch leave statistics');
+      _errorMessage(response.body) ?? 'Failed to fetch leave statistics',
+    );
   }
 
   // ── PUT /api/leaves/:id/cancel ───────────────────────────────────────────
@@ -243,7 +257,8 @@ class LeaveService {
 
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception(
-        _errorMessage(response.body) ?? 'Failed to cancel leave request');
+      _errorMessage(response.body) ?? 'Failed to cancel leave request',
+    );
   }
 
   // ── Internal helper ──────────────────────────────────────────────────────
@@ -264,19 +279,22 @@ class LeaveService {
   }) async {
     final params = <String, String>{};
     if (status != null && status.isNotEmpty) params['status'] = status;
-    final uri =
-        Uri.parse('$baseUrl/leaves').replace(queryParameters: params);
+    final uri = Uri.parse('$baseUrl/leaves').replace(queryParameters: params);
 
     final response = await http.get(
       uri,
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
     );
 
     if (response.statusCode == 200) {
       return adminLeavesResponseFromJson(response.body);
     }
     throw Exception(
-        _errorMessage(response.body) ?? 'Failed to fetch leave requests');
+      _errorMessage(response.body) ?? 'Failed to fetch leave requests',
+    );
   }
 
   // ── PUT /api/leaves/:id/approve ────────────────────────────────────────────
@@ -287,17 +305,22 @@ class LeaveService {
     String? reviewNote,
   }) async {
     final body = <String, dynamic>{};
-    if (reviewNote != null && reviewNote.isNotEmpty) body['reviewNote'] = reviewNote;
+    if (reviewNote != null && reviewNote.isNotEmpty)
+      body['reviewNote'] = reviewNote;
 
     final response = await http.put(
       Uri.parse('$baseUrl/leaves/$leaveId/approve'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
       body: jsonEncode(body),
     );
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception(
-          _errorMessage(response.body) ?? 'Failed to approve leave request');
+        _errorMessage(response.body) ?? 'Failed to approve leave request',
+      );
     }
   }
 
@@ -309,17 +332,22 @@ class LeaveService {
     String? reviewNote,
   }) async {
     final body = <String, dynamic>{};
-    if (reviewNote != null && reviewNote.isNotEmpty) body['reviewNote'] = reviewNote;
+    if (reviewNote != null && reviewNote.isNotEmpty)
+      body['reviewNote'] = reviewNote;
 
     final response = await http.put(
       Uri.parse('$baseUrl/leaves/$leaveId/reject'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
       body: jsonEncode(body),
     );
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception(
-          _errorMessage(response.body) ?? 'Failed to reject leave request');
+        _errorMessage(response.body) ?? 'Failed to reject leave request',
+      );
     }
   }
 
@@ -328,25 +356,30 @@ class LeaveService {
   /// GET /api/leave-balance?role=&search=
   static Future<LeaveBalanceListResponse> getLeaveBalances({
     required String token,
-    String role   = 'all',
+    String role = 'all',
     String search = '',
   }) async {
     final params = <String, String>{};
     if (role.isNotEmpty && role != 'all') params['role'] = role;
     if (search.isNotEmpty) params['search'] = search;
 
-    final uri = Uri.parse('$baseUrl/leave-balance')
-        .replace(queryParameters: params.isEmpty ? null : params);
+    final uri = Uri.parse(
+      '$baseUrl/leave-balance',
+    ).replace(queryParameters: params.isEmpty ? null : params);
 
-    final response = await http.get(uri,
-        headers: {'Authorization': 'Bearer $token'});
+    final response = await http.get(
+      uri,
+      headers: {'Authorization': 'Bearer $token'},
+    );
 
     if (response.statusCode == 200) {
       return LeaveBalanceListResponse.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
-    throw Exception(_errorMessage(response.body) ??
-        'Failed to fetch leave balances');
+    throw Exception(
+      _errorMessage(response.body) ?? 'Failed to fetch leave balances',
+    );
   }
 
   /// PUT /api/leave-balance/:userId  — assign / update balance
@@ -359,12 +392,16 @@ class LeaveService {
   }) async {
     final response = await http.put(
       Uri.parse('$baseUrl/leave-balance/$userId'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
       body: jsonEncode({'paid': paid, 'sick': sick, 'unpaid': unpaid}),
     );
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception(_errorMessage(response.body) ??
-          'Failed to assign leave balance');
+      throw Exception(
+        _errorMessage(response.body) ?? 'Failed to assign leave balance',
+      );
     }
   }
 
@@ -378,12 +415,21 @@ class LeaveService {
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/leave-balance/bulk'),
-      headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-      body: jsonEncode({'userIds': userIds, 'paid': paid, 'sick': sick, 'unpaid': unpaid}),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'userIds': userIds,
+        'paid': paid,
+        'sick': sick,
+        'unpaid': unpaid,
+      }),
     );
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception(_errorMessage(response.body) ??
-          'Failed to bulk assign balances');
+      throw Exception(
+        _errorMessage(response.body) ?? 'Failed to bulk assign balances',
+      );
     }
   }
 }

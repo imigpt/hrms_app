@@ -5,9 +5,9 @@ class AdminClientsService {
   static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
 
   static Map<String, String> _headers(String token) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
 
   /// GET /api/clients
   /// Optional filter: status (active|inactive)
@@ -19,9 +19,9 @@ class AdminClientsService {
       final queryParams = <String, String>{};
       if (status != null && status.isNotEmpty) queryParams['status'] = status;
 
-      final uri = Uri.parse('$_baseUrl/clients').replace(
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      );
+      final uri = Uri.parse(
+        '$_baseUrl/clients',
+      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       final response = await http
           .get(uri, headers: _headers(token))
@@ -33,7 +33,9 @@ class AdminClientsService {
         throw Exception('Unauthorized: Invalid or expired token');
       } else {
         final body = jsonDecode(response.body);
-        throw Exception(body['message'] ?? 'Failed to fetch clients (${response.statusCode})');
+        throw Exception(
+          body['message'] ?? 'Failed to fetch clients (${response.statusCode})',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;
@@ -58,10 +60,13 @@ class AdminClientsService {
         'name': name,
         'email': email,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
-        if (companyName != null && companyName.isNotEmpty) 'companyName': companyName,
+        if (companyName != null && companyName.isNotEmpty)
+          'companyName': companyName,
         if (password != null && password.isNotEmpty) 'password': password,
-        if (assignedCompanyId != null && assignedCompanyId.isNotEmpty) 'assignedCompanyId': assignedCompanyId,
-        if (clientNotes != null && clientNotes.isNotEmpty) 'clientNotes': clientNotes,
+        if (assignedCompanyId != null && assignedCompanyId.isNotEmpty)
+          'assignedCompanyId': assignedCompanyId,
+        if (clientNotes != null && clientNotes.isNotEmpty)
+          'clientNotes': clientNotes,
       };
 
       final response = await http
@@ -81,7 +86,9 @@ class AdminClientsService {
         throw Exception('Unauthorized: Invalid or expired token');
       } else {
         final body = jsonDecode(response.body);
-        throw Exception(body['message'] ?? 'Failed to add client (${response.statusCode})');
+        throw Exception(
+          body['message'] ?? 'Failed to add client (${response.statusCode})',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;
@@ -107,10 +114,13 @@ class AdminClientsService {
         if (name != null) 'name': name,
         if (email != null) 'email': email,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
-        if (companyName != null && companyName.isNotEmpty) 'companyName': companyName,
+        if (companyName != null && companyName.isNotEmpty)
+          'companyName': companyName,
         if (password != null && password.isNotEmpty) 'password': password,
-        if (assignedCompanyId != null && assignedCompanyId.isNotEmpty) 'assignedCompanyId': assignedCompanyId,
-        if (clientNotes != null && clientNotes.isNotEmpty) 'clientNotes': clientNotes,
+        if (assignedCompanyId != null && assignedCompanyId.isNotEmpty)
+          'assignedCompanyId': assignedCompanyId,
+        if (clientNotes != null && clientNotes.isNotEmpty)
+          'clientNotes': clientNotes,
       };
 
       final response = await http
@@ -129,7 +139,9 @@ class AdminClientsService {
         throw Exception('Unauthorized: Invalid or expired token');
       } else {
         final body = jsonDecode(response.body);
-        throw Exception(body['message'] ?? 'Failed to update client (${response.statusCode})');
+        throw Exception(
+          body['message'] ?? 'Failed to update client (${response.statusCode})',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;
@@ -159,7 +171,9 @@ class AdminClientsService {
         throw Exception('Unauthorized: Invalid or expired token');
       } else {
         final body = jsonDecode(response.body);
-        throw Exception(body['message'] ?? 'Failed to delete client (${response.statusCode})');
+        throw Exception(
+          body['message'] ?? 'Failed to delete client (${response.statusCode})',
+        );
       }
     } catch (e) {
       if (e is Exception) rethrow;
@@ -172,10 +186,7 @@ class AdminClientsService {
   static Future<List<Map<String, dynamic>>> getCompanies(String token) async {
     try {
       final response = await http
-          .get(
-            Uri.parse('$_baseUrl/admin/companies'),
-            headers: _headers(token),
-          )
+          .get(Uri.parse('$_baseUrl/admin/companies'), headers: _headers(token))
           .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {

@@ -4,31 +4,25 @@
 
 import 'dart:convert';
 
-AttendanceSummary attendanceSummaryFromJson(String str) => 
+AttendanceSummary attendanceSummaryFromJson(String str) =>
     AttendanceSummary.fromJson(json.decode(str));
 
-String attendanceSummaryToJson(AttendanceSummary data) => 
+String attendanceSummaryToJson(AttendanceSummary data) =>
     json.encode(data.toJson());
 
 class AttendanceSummary {
   bool success;
   AttendanceSummaryData data;
 
-  AttendanceSummary({
-    required this.success,
-    required this.data,
-  });
+  AttendanceSummary({required this.success, required this.data});
 
-  factory AttendanceSummary.fromJson(Map<String, dynamic> json) => 
+  factory AttendanceSummary.fromJson(Map<String, dynamic> json) =>
       AttendanceSummary(
         success: json["success"],
         data: AttendanceSummaryData.fromJson(json["data"]),
       );
 
-  Map<String, dynamic> toJson() => {
-        "success": success,
-        "data": data.toJson(),
-      };
+  Map<String, dynamic> toJson() => {"success": success, "data": data.toJson()};
 }
 
 class AttendanceSummaryData {
@@ -52,7 +46,7 @@ class AttendanceSummaryData {
     required this.averageWorkHours,
   });
 
-  factory AttendanceSummaryData.fromJson(Map<String, dynamic> json) => 
+  factory AttendanceSummaryData.fromJson(Map<String, dynamic> json) =>
       AttendanceSummaryData(
         totalDays: ((json["totalDays"] ?? 0) as num).toInt(),
         present: ((json["present"] ?? 0) as num).toInt(),
@@ -67,28 +61,28 @@ class AttendanceSummaryData {
   // Helper method to handle averageWorkHours which can be String, int, or double
   static String _parseAverageWorkHours(dynamic value) {
     if (value == null) return "0h 0m";
-    
+
     // If it's already a string, return it
     if (value is String) return value;
-    
+
     // If it's a number, convert to "Xh Ym" format
     if (value is num) {
       final hours = value.floor();
       final minutes = ((value - hours) * 60).round();
       return '${hours}h ${minutes}m';
     }
-    
+
     return "0h 0m";
   }
 
   Map<String, dynamic> toJson() => {
-        "totalDays": totalDays,
-        "present": present,
-        "late": late,
-        "halfDay": halfDay,
-        "absent": absent,
-        "wfh": wfh,
-        "totalWorkHours": totalWorkHours,
-        "averageWorkHours": averageWorkHours,
-      };
+    "totalDays": totalDays,
+    "present": present,
+    "late": late,
+    "halfDay": halfDay,
+    "absent": absent,
+    "wfh": wfh,
+    "totalWorkHours": totalWorkHours,
+    "averageWorkHours": averageWorkHours,
+  };
 }

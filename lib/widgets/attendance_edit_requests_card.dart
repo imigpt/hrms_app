@@ -8,10 +8,7 @@ import 'package:hrms_app/theme/app_theme.dart';
 class AttendanceEditRequestsCard extends StatefulWidget {
   final String? userId;
 
-  const AttendanceEditRequestsCard({
-    super.key,
-    this.userId,
-  });
+  const AttendanceEditRequestsCard({super.key, this.userId});
 
   @override
   State<AttendanceEditRequestsCard> createState() =>
@@ -77,10 +74,7 @@ class _AttendanceEditRequestsCardState
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -110,11 +104,14 @@ class _AttendanceEditRequestsCardState
               ),
               if (!_isLoading)
                 IconButton(
-                  icon: const Icon(Icons.refresh,
-                      color: AppTheme.primaryColor, size: 20),
+                  icon: const Icon(
+                    Icons.refresh,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
                   onPressed: _loadEditRequests,
                   tooltip: 'Refresh',
-                )
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -125,7 +122,9 @@ class _AttendanceEditRequestsCardState
               padding: const EdgeInsets.symmetric(vertical: 30),
               alignment: Alignment.center,
               child: const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppTheme.primaryColor,
+                ),
               ),
             )
           else if (_error != null)
@@ -182,10 +181,7 @@ class _AttendanceEditRequestsCardState
                     _buildRequestItem(request),
                     if (!isLast) ...[
                       const SizedBox(height: 12),
-                      const Divider(
-                        color: Colors.white24,
-                        height: 1,
-                      ),
+                      const Divider(color: Colors.white24, height: 1),
                       const SizedBox(height: 12),
                     ],
                   ],
@@ -223,7 +219,10 @@ class _AttendanceEditRequestsCardState
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: _getStatusColor(request.status).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(6),
@@ -247,8 +246,11 @@ class _AttendanceEditRequestsCardState
           // Time info
           Row(
             children: [
-              Icon(Icons.access_time_outlined,
-                  color: Colors.grey.withOpacity(0.6), size: 16),
+              Icon(
+                Icons.access_time_outlined,
+                color: Colors.grey.withOpacity(0.6),
+                size: 16,
+              ),
               const SizedBox(width: 6),
               Text(
                 '${DateFormat('HH:mm').format(request.requestedCheckIn)} - ${DateFormat('HH:mm').format(request.requestedCheckOut)}',
@@ -264,8 +266,11 @@ class _AttendanceEditRequestsCardState
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.note_outlined,
-                    color: Colors.grey.withOpacity(0.6), size: 16),
+                Icon(
+                  Icons.note_outlined,
+                  color: Colors.grey.withOpacity(0.6),
+                  size: 16,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(

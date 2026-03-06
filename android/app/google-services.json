@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "23625991695",
+    "project_id": "hrms-app-c251b",
+    "storage_bucket": "hrms-app-c251b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:23625991695:android:3a38957d7895305de3c57a",
+        "android_client_info": {
+          "package_name": "com.aselea.hrms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEKaKnqPSQXNs4Yum-RGTs2_Ub0UyfAUA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

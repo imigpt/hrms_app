@@ -11,9 +11,9 @@ class TaskService {
   // ─── Helper Methods ────────────────────────────────────────────────────────
 
   static Map<String, String> _getHeaders(String token) => {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      };
+    'Authorization': 'Bearer $token',
+    'Content-Type': 'application/json',
+  };
 
   static String _parseError(http.Response response) {
     try {
@@ -205,7 +205,7 @@ class TaskService {
     try {
       final body = <String, dynamic>{
         'status': ?status,
-        'progress': ?completionPercentage,  // API expects 'progress'
+        'progress': ?completionPercentage, // API expects 'progress'
         'notes': ?notes,
       };
 
@@ -282,18 +282,16 @@ class TaskService {
         ),
       );
 
-      final response = await request
-          .send()
-          .timeout(const Duration(seconds: 30));
+      final response = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final body = await response.stream.bytesToString();
         return jsonDecode(body);
       } else {
         final body = await response.stream.bytesToString();
-        throw Exception(_parseError(
-          http.Response(body, response.statusCode),
-        ));
+        throw Exception(_parseError(http.Response(body, response.statusCode)));
       }
     } catch (e) {
       throw Exception('Failed to add attachment: $e');
@@ -304,7 +302,11 @@ class TaskService {
 
   /// Delete attachment from task
   /// DELETE /api/tasks/:taskId/attachments/:attachmentId
-  static Future<void> deleteAttachment(String token, String taskId, String attachmentId) async {
+  static Future<void> deleteAttachment(
+    String token,
+    String taskId,
+    String attachmentId,
+  ) async {
     try {
       final response = await http
           .delete(
@@ -368,11 +370,7 @@ class TaskService {
     String taskId,
     String status,
   ) async {
-    return updateTask(
-      token,
-      taskId,
-      status: status,
-    );
+    return updateTask(token, taskId, status: status);
   }
 
   /// Mark task as complete (convenience method)
@@ -410,10 +408,7 @@ class TaskService {
     required int rating,
   }) async {
     try {
-      final body = {
-        'comment': comment,
-        'rating': rating,
-      };
+      final body = {'comment': comment, 'rating': rating};
       final response = await http
           .put(
             Uri.parse('$baseUrl/tasks/$taskId/review'),

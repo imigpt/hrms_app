@@ -35,7 +35,7 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       // Get available cameras
       final cameras = await availableCameras();
-      
+
       if (cameras.isEmpty) {
         setState(() {
           _error = 'No cameras found on this device';
@@ -130,7 +130,7 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       // Try last known position first (INSTANT)
       Position? position = await Geolocator.getLastKnownPosition();
-      
+
       if (position != null) {
         _updateLocationState(position);
       }
@@ -155,9 +155,14 @@ class _CameraScreenState extends State<CameraScreen> {
 
   void _updateLocationState(Position position) {
     final double distMeters = Geolocator.distanceBetween(
-      position.latitude, position.longitude, 26.816224, 75.845444,
+      position.latitude,
+      position.longitude,
+      26.816224,
+      75.845444,
     );
-    final String locationLabel = distMeters <= 100 ? 'Main Building' : 'Outside Building';
+    final String locationLabel = distMeters <= 100
+        ? 'Main Building'
+        : 'Outside Building';
 
     if (mounted) {
       setState(() {
@@ -208,7 +213,7 @@ class _CameraScreenState extends State<CameraScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
-        
+
         if (e.toString().toLowerCase().contains('already checked in')) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -222,7 +227,9 @@ class _CameraScreenState extends State<CameraScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Check-in failed: ${e.toString().replaceAll('Exception:', '').trim()}'),
+              content: Text(
+                'Check-in failed: ${e.toString().replaceAll('Exception:', '').trim()}',
+              ),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 2),
             ),
@@ -244,41 +251,39 @@ class _CameraScreenState extends State<CameraScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            )
+          ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          color: Colors.red,
-                          size: 64,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Go Back'),
-                        ),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 64,
                     ),
-                  ),
-                )
-              : SafeArea(
-                  child: _capturedImagePath != null
-                      ? _buildPhotoPreview()
-                      : _buildCameraView(),
+                    const SizedBox(height: 16),
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Go Back'),
+                    ),
+                  ],
                 ),
+              ),
+            )
+          : SafeArea(
+              child: _capturedImagePath != null
+                  ? _buildPhotoPreview()
+                  : _buildCameraView(),
+            ),
     );
   }
 
@@ -311,10 +316,7 @@ class _CameraScreenState extends State<CameraScreen> {
         // Instructions
         const Text(
           'Position yourself in the frame and click capture',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Colors.white70, fontSize: 14),
           textAlign: TextAlign.center,
         ),
 
@@ -332,9 +334,7 @@ class _CameraScreenState extends State<CameraScreen> {
             child: _controller != null
                 ? CameraPreview(_controller!)
                 : const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
+                    child: CircularProgressIndicator(color: Colors.white),
                   ),
           ),
         ),
@@ -378,8 +378,9 @@ class _CameraScreenState extends State<CameraScreen> {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: const Color(0xFFFF8B94),
-                    disabledBackgroundColor:
-                        const Color(0xFFFF8B94).withValues(alpha: 0.5),
+                    disabledBackgroundColor: const Color(
+                      0xFFFF8B94,
+                    ).withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -394,7 +395,11 @@ class _CameraScreenState extends State<CameraScreen> {
                             strokeWidth: 2.5,
                           ),
                         )
-                      : const Icon(Icons.camera_alt, color: Colors.white, size: 22),
+                      : const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                   label: Text(
                     _isSubmitting ? 'Submitting...' : 'Capture',
                     style: const TextStyle(
@@ -425,7 +430,9 @@ class _CameraScreenState extends State<CameraScreen> {
             alignment: Alignment.topRight,
             child: IconButton(
               icon: const Icon(Icons.close, color: Colors.white, size: 28),
-              onPressed: _isSubmitting ? null : () => Navigator.pop(context, false),
+              onPressed: _isSubmitting
+                  ? null
+                  : () => Navigator.pop(context, false),
             ),
           ),
 
@@ -445,10 +452,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
           const Text(
             'Click "Confirm Check In" to proceed',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
 
           const SizedBox(height: 30),
@@ -522,7 +526,9 @@ class _CameraScreenState extends State<CameraScreen> {
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: const Color(0xFFFF8B94),
-                disabledBackgroundColor: const Color(0xFFFF8B94).withValues(alpha: 0.5),
+                disabledBackgroundColor: const Color(
+                  0xFFFF8B94,
+                ).withValues(alpha: 0.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -537,11 +543,7 @@ class _CameraScreenState extends State<CameraScreen> {
                         strokeWidth: 2.5,
                       ),
                     )
-                  : const Icon(
-                      Icons.login,
-                      color: Colors.white,
-                      size: 22,
-                    ),
+                  : const Icon(Icons.login, color: Colors.white, size: 22),
               label: Text(
                 _isSubmitting ? 'Checking in...' : 'Confirm Check In',
                 style: const TextStyle(

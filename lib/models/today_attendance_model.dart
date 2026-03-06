@@ -19,11 +19,7 @@ class AttendanceCheckPoint {
   Map<String, dynamic>? location;
   Map<String, dynamic>? photo;
 
-  AttendanceCheckPoint({
-    this.time,
-    this.location,
-    this.photo,
-  });
+  AttendanceCheckPoint({this.time, this.location, this.photo});
 
   factory AttendanceCheckPoint.fromJson(Map<String, dynamic> json) =>
       AttendanceCheckPoint(
@@ -33,10 +29,10 @@ class AttendanceCheckPoint {
       );
 
   Map<String, dynamic> toJson() => {
-        "time": time,
-        "location": location,
-        "photo": photo,
-      };
+    "time": time,
+    "location": location,
+    "photo": photo,
+  };
 }
 
 class AttendanceData {
@@ -56,24 +52,27 @@ class AttendanceData {
     required this.hasCheckedOut,
   });
 
-  factory AttendanceData.fromJson(Map<String, dynamic> json) =>
-      AttendanceData(
-        checkIn: json["checkIn"] != null ? AttendanceCheckPoint.fromJson(json["checkIn"]) : null,
-        checkOut: json["checkOut"] != null ? AttendanceCheckPoint.fromJson(json["checkOut"]) : null,
-        status: json["status"],
-        workHours: json["workHours"]?.toDouble(),
-        hasCheckedIn: json["hasCheckedIn"] ?? false,
-        hasCheckedOut: json["hasCheckedOut"] ?? false,
-      );
+  factory AttendanceData.fromJson(Map<String, dynamic> json) => AttendanceData(
+    checkIn: json["checkIn"] != null
+        ? AttendanceCheckPoint.fromJson(json["checkIn"])
+        : null,
+    checkOut: json["checkOut"] != null
+        ? AttendanceCheckPoint.fromJson(json["checkOut"])
+        : null,
+    status: json["status"],
+    workHours: json["workHours"]?.toDouble(),
+    hasCheckedIn: json["hasCheckedIn"] ?? false,
+    hasCheckedOut: json["hasCheckedOut"] ?? false,
+  );
 
   Map<String, dynamic> toJson() => {
-        "checkIn": checkIn?.toJson(),
-        "checkOut": checkOut?.toJson(),
-        "status": status,
-        "workHours": workHours,
-        "hasCheckedIn": hasCheckedIn,
-        "hasCheckedOut": hasCheckedOut,
-      };
+    "checkIn": checkIn?.toJson(),
+    "checkOut": checkOut?.toJson(),
+    "status": status,
+    "workHours": workHours,
+    "hasCheckedIn": hasCheckedIn,
+    "hasCheckedOut": hasCheckedOut,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,10 +83,7 @@ class TodayAttendance {
   bool success;
   AttendanceData? data;
 
-  TodayAttendance({
-    required this.success,
-    this.data,
-  });
+  TodayAttendance({required this.success, this.data});
 
   factory TodayAttendance.fromJson(Map<String, dynamic> json) {
     // hasCheckedIn / hasCheckedOut live at the RESPONSE root,
@@ -107,8 +103,5 @@ class TodayAttendance {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        "success": success,
-        "data": data?.toJson(),
-      };
+  Map<String, dynamic> toJson() => {"success": success, "data": data?.toJson()};
 }

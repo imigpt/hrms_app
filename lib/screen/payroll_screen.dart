@@ -13,7 +13,8 @@ class PayrollScreen extends StatefulWidget {
   State<PayrollScreen> createState() => _PayrollScreenState();
 }
 
-class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProviderStateMixin {
+class _PayrollScreenState extends State<PayrollScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String? _token;
   late bool _isAdmin;
@@ -22,13 +23,13 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   List<dynamic> _employees = [];
   bool _isLoadingEmployees = false;
   String _selectedEmployeeId = '';
-  
+
   // Filters
   String _filterUserId = 'all';
   String _filterYear = DateTime.now().year.toString();
   String _filterMonth = 'all';
   bool _isGenerateOpen = false;
-  
+
   // Generate dialog
   String _genUserId = '';
   String _genMonth = '';
@@ -76,20 +77,24 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       _fetchPrePayments(token),
       _fetchIncrements(token),
     ];
-    
+
     if (_isAdmin) {
       futures.add(_fetchEmployees(token));
     } else {
       futures.add(_fetchSalary(token));
     }
-    
+
     await Future.wait(futures);
   }
 
   Future<void> _fetchSalary(String token) async {
     try {
       final res = await PayrollService.getMySalary(token: token);
-      if (mounted) setState(() { _salary = res.data; _isLoadingSalary = false; });
+      if (mounted)
+        setState(() {
+          _salary = res.data;
+          _isLoadingSalary = false;
+        });
     } catch (e) {
       print('Salary fetch error: $e');
       if (mounted) setState(() => _isLoadingSalary = false);
@@ -100,8 +105,8 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     try {
       final res = await PayrollService.getMyPayrolls(token: token);
       if (mounted) {
-        setState(() { 
-          _payrolls = res.data; 
+        setState(() {
+          _payrolls = res.data;
           _isLoadingPayrolls = false;
         });
         _applyFilters();
@@ -115,7 +120,11 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   Future<void> _fetchPrePayments(String token) async {
     try {
       final res = await PayrollService.getPrePayments(token: token);
-      if (mounted) setState(() { _prePayments = res.data; _isLoadingPrePayments = false; });
+      if (mounted)
+        setState(() {
+          _prePayments = res.data;
+          _isLoadingPrePayments = false;
+        });
     } catch (e) {
       print('PrePayments fetch error: $e');
       if (mounted) setState(() => _isLoadingPrePayments = false);
@@ -125,7 +134,11 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   Future<void> _fetchIncrements(String token) async {
     try {
       final res = await PayrollService.getIncrements(token: token);
-      if (mounted) setState(() { _increments = res.data; _isLoadingIncrements = false; });
+      if (mounted)
+        setState(() {
+          _increments = res.data;
+          _isLoadingIncrements = false;
+        });
     } catch (e) {
       print('Increments fetch error: $e');
       if (mounted) setState(() => _isLoadingIncrements = false);
@@ -151,8 +164,10 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     setState(() {
       _filteredPayrolls = _payrolls.where((p) {
         if (_filterUserId != 'all' && p.userId != _filterUserId) return false;
-        if (_filterYear != 'all' && p.year.toString() != _filterYear) return false;
-        if (_filterMonth != 'all' && p.month.toString() != _filterMonth) return false;
+        if (_filterYear != 'all' && p.year.toString() != _filterYear)
+          return false;
+        if (_filterMonth != 'all' && p.month.toString() != _filterMonth)
+          return false;
         return true;
       }).toList();
     });
@@ -161,12 +176,15 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   Future<void> _generatePayroll() async {
     if (_genUserId.isEmpty || _genMonth.isEmpty || _genYear.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select employee, month, and year'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please select employee, month, and year'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
     if (_token == null) return;
-    
+
     try {
       // TODO: Call payroll API to generate payroll
       // await PayrollService.generatePayroll({
@@ -174,9 +192,12 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       //   month: int.parse(_genMonth),
       //   year: int.parse(_genYear),
       // }, _token!);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payroll generated successfully'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Payroll generated successfully'),
+          backgroundColor: Colors.green,
+        ),
       );
       setState(() => _isGenerateOpen = false);
       _fetchPayrolls(_token!);
@@ -195,9 +216,12 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       //   status: 'paid',
       //   paymentDate: DateTime.now().toIso8601String(),
       // }, _token!);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payroll marked as paid'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Payroll marked as paid'),
+          backgroundColor: Colors.green,
+        ),
       );
       _fetchPayrolls(_token!);
     } catch (e) {
@@ -212,8 +236,14 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text('Delete Payroll', style: TextStyle(color: Colors.white)),
-        content: const Text('Are you sure you want to delete this payroll record?', style: TextStyle(color: Colors.white70)),
+        title: const Text(
+          'Delete Payroll',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this payroll record?',
+          style: TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -228,13 +258,16 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     );
 
     if (confirm != true || _token == null) return;
-    
+
     try {
       // TODO: Call payroll API to delete
       // await PayrollService.deletePayroll(payrollId, _token!);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payroll deleted'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Payroll deleted'),
+          backgroundColor: Colors.green,
+        ),
       );
       _fetchPayrolls(_token!);
     } catch (e) {
@@ -251,7 +284,10 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       appBar: AppBar(
         backgroundColor: const Color(0xFF0A0A0A),
         elevation: 0,
-        title: const Text('Payroll', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 22)),
+        title: const Text(
+          'Payroll',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: () => Navigator.pop(context),
@@ -313,11 +349,16 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                             label: 'Employee',
                             value: _filterUserId,
                             items: [
-                              DropdownMenuItem(value: 'all', child: const Text('All Employees')),
-                              ..._employees.map((e) => DropdownMenuItem(
-                                value: e['_id']?.toString() ?? '',
-                                child: Text(e['name']?.toString() ?? ''),
-                              )),
+                              DropdownMenuItem(
+                                value: 'all',
+                                child: const Text('All Employees'),
+                              ),
+                              ..._employees.map(
+                                (e) => DropdownMenuItem(
+                                  value: e['_id']?.toString() ?? '',
+                                  child: Text(e['name']?.toString() ?? ''),
+                                ),
+                              ),
                             ],
                             onChanged: (v) {
                               setState(() => _filterUserId = v ?? 'all');
@@ -333,14 +374,23 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                             label: 'Year',
                             value: _filterYear,
                             items: [
-                              DropdownMenuItem(value: 'all', child: const Text('All Years')),
+                              DropdownMenuItem(
+                                value: 'all',
+                                child: const Text('All Years'),
+                              ),
                               ...List.generate(5, (i) {
                                 final year = DateTime.now().year - i;
-                                return DropdownMenuItem(value: year.toString(), child: Text(year.toString()));
+                                return DropdownMenuItem(
+                                  value: year.toString(),
+                                  child: Text(year.toString()),
+                                );
                               }),
                             ],
                             onChanged: (v) {
-                              setState(() => _filterYear = v ?? DateTime.now().year.toString());
+                              setState(
+                                () => _filterYear =
+                                    v ?? DateTime.now().year.toString(),
+                              );
                               _applyFilters();
                             },
                           ),
@@ -353,19 +403,58 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                             label: 'Month',
                             value: _filterMonth,
                             items: [
-                              DropdownMenuItem(value: 'all', child: const Text('All Months')),
-                              DropdownMenuItem(value: '1', child: const Text('January')),
-                              DropdownMenuItem(value: '2', child: const Text('February')),
-                              DropdownMenuItem(value: '3', child: const Text('March')),
-                              DropdownMenuItem(value: '4', child: const Text('April')),
-                              DropdownMenuItem(value: '5', child: const Text('May')),
-                              DropdownMenuItem(value: '6', child: const Text('June')),
-                              DropdownMenuItem(value: '7', child: const Text('July')),
-                              DropdownMenuItem(value: '8', child: const Text('August')),
-                              DropdownMenuItem(value: '9', child: const Text('September')),
-                              DropdownMenuItem(value: '10', child: const Text('October')),
-                              DropdownMenuItem(value: '11', child: const Text('November')),
-                              DropdownMenuItem(value: '12', child: const Text('December')),
+                              DropdownMenuItem(
+                                value: 'all',
+                                child: const Text('All Months'),
+                              ),
+                              DropdownMenuItem(
+                                value: '1',
+                                child: const Text('January'),
+                              ),
+                              DropdownMenuItem(
+                                value: '2',
+                                child: const Text('February'),
+                              ),
+                              DropdownMenuItem(
+                                value: '3',
+                                child: const Text('March'),
+                              ),
+                              DropdownMenuItem(
+                                value: '4',
+                                child: const Text('April'),
+                              ),
+                              DropdownMenuItem(
+                                value: '5',
+                                child: const Text('May'),
+                              ),
+                              DropdownMenuItem(
+                                value: '6',
+                                child: const Text('June'),
+                              ),
+                              DropdownMenuItem(
+                                value: '7',
+                                child: const Text('July'),
+                              ),
+                              DropdownMenuItem(
+                                value: '8',
+                                child: const Text('August'),
+                              ),
+                              DropdownMenuItem(
+                                value: '9',
+                                child: const Text('September'),
+                              ),
+                              DropdownMenuItem(
+                                value: '10',
+                                child: const Text('October'),
+                              ),
+                              DropdownMenuItem(
+                                value: '11',
+                                child: const Text('November'),
+                              ),
+                              DropdownMenuItem(
+                                value: '12',
+                                child: const Text('December'),
+                              ),
                             ],
                             onChanged: (v) {
                               setState(() => _filterMonth = v ?? 'all');
@@ -382,7 +471,9 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue.withOpacity(0.2),
                             foregroundColor: Colors.blue,
-                            side: BorderSide(color: Colors.blue.withOpacity(0.5)),
+                            side: BorderSide(
+                              color: Colors.blue.withOpacity(0.5),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -394,7 +485,9 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green.withOpacity(0.2),
                             foregroundColor: Colors.green,
-                            side: BorderSide(color: Colors.green.withOpacity(0.5)),
+                            side: BorderSide(
+                              color: Colors.green.withOpacity(0.5),
+                            ),
                           ),
                         ),
                       ],
@@ -408,13 +501,13 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
           _isLoadingPayrolls
               ? SliverFillRemaining(child: _loader())
               : _filteredPayrolls.isEmpty
-                  ? SliverFillRemaining(child: _emptyState('No payrolls found'))
-                  : SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (ctx, i) => _buildPayrollTableRow(_filteredPayrolls[i]),
-                        childCount: _filteredPayrolls.length,
-                      ),
-                    ),
+              ? SliverFillRemaining(child: _emptyState('No payrolls found'))
+              : SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => _buildPayrollTableRow(_filteredPayrolls[i]),
+                    childCount: _filteredPayrolls.length,
+                  ),
+                ),
         ],
       ),
     );
@@ -435,11 +528,18 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
               children: [
                 const Text(
                   'Generate Payroll',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 // Employee Dropdown
-                const Text('Employee', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const Text(
+                  'Employee',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -450,17 +550,27 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                   ),
                   child: DropdownButton<String>(
                     value: _genUserId.isEmpty ? null : _genUserId,
-                    items: _employees.map((e) => DropdownMenuItem(
-                      value: e['_id']?.toString() ?? '',
-                      child: Text(e['name']?.toString() ?? '', style: const TextStyle(color: Colors.white)),
-                    )).toList(),
+                    items: _employees
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e['_id']?.toString() ?? '',
+                            child: Text(
+                              e['name']?.toString() ?? '',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (v) => setState(() => _genUserId = v ?? ''),
                     dropdownColor: const Color(0xFF1A1A1A),
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     iconEnabledColor: Colors.white54,
                     underline: const SizedBox(),
                     isExpanded: true,
-                    hint: const Text('Select employee', style: TextStyle(color: Colors.white54)),
+                    hint: const Text(
+                      'Select employee',
+                      style: TextStyle(color: Colors.white54),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -471,29 +581,62 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Month', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          const Text(
+                            'Month',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             decoration: BoxDecoration(
                               color: const Color(0xFF141414),
-                              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                              border: Border.all(
+                                color: Colors.grey.withOpacity(0.3),
+                              ),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: DropdownButton<String>(
                               value: _genMonth.isEmpty ? null : _genMonth,
-                              items: List.generate(12, (i) => DropdownMenuItem(
-                                value: (i + 1).toString(),
-                                child: Text(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i],
-                                    style: const TextStyle(color: Colors.white)),
-                              )).toList(),
-                              onChanged: (v) => setState(() => _genMonth = v ?? ''),
+                              items: List.generate(
+                                12,
+                                (i) => DropdownMenuItem(
+                                  value: (i + 1).toString(),
+                                  child: Text(
+                                    [
+                                      'Jan',
+                                      'Feb',
+                                      'Mar',
+                                      'Apr',
+                                      'May',
+                                      'Jun',
+                                      'Jul',
+                                      'Aug',
+                                      'Sep',
+                                      'Oct',
+                                      'Nov',
+                                      'Dec',
+                                    ][i],
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              ).toList(),
+                              onChanged: (v) =>
+                                  setState(() => _genMonth = v ?? ''),
                               dropdownColor: const Color(0xFF1A1A1A),
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
                               iconEnabledColor: Colors.white54,
                               underline: const SizedBox(),
                               isExpanded: true,
-                              hint: const Text('Month', style: TextStyle(color: Colors.white54)),
+                              hint: const Text(
+                                'Month',
+                                style: TextStyle(color: Colors.white54),
+                              ),
                             ),
                           ),
                         ],
@@ -504,24 +647,44 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Year', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          const Text(
+                            'Year',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             decoration: BoxDecoration(
                               color: const Color(0xFF141414),
-                              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                              border: Border.all(
+                                color: Colors.grey.withOpacity(0.3),
+                              ),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: DropdownButton<String>(
                               value: _genYear,
                               items: List.generate(5, (i) {
                                 final year = DateTime.now().year - i;
-                                return DropdownMenuItem(value: year.toString(), child: Text(year.toString(), style: const TextStyle(color: Colors.white)));
+                                return DropdownMenuItem(
+                                  value: year.toString(),
+                                  child: Text(
+                                    year.toString(),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                );
                               }).toList(),
-                              onChanged: (v) => setState(() => _genYear = v ?? DateTime.now().year.toString()),
+                              onChanged: (v) => setState(
+                                () => _genYear =
+                                    v ?? DateTime.now().year.toString(),
+                              ),
                               dropdownColor: const Color(0xFF1A1A1A),
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
                               iconEnabledColor: Colors.white54,
                               underline: const SizedBox(),
                               isExpanded: true,
@@ -539,7 +702,9 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(ctx),
-                        style: OutlinedButton.styleFrom(foregroundColor: Colors.white54),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white54,
+                        ),
                         child: const Text('Cancel'),
                       ),
                     ),
@@ -550,8 +715,13 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                           _generatePayroll();
                           Navigator.pop(ctx);
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green.withOpacity(0.3)),
-                        child: const Text('Generate', style: TextStyle(color: Colors.green)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.withOpacity(0.3),
+                        ),
+                        child: const Text(
+                          'Generate',
+                          style: TextStyle(color: Colors.green),
+                        ),
                       ),
                     ),
                   ],
@@ -654,11 +824,18 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                   children: [
                     Text(
                       payroll.userName ?? payroll.userId ?? 'Unknown',
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     Text(
                       '${_monthName(payroll.month)} ${payroll.year}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -675,8 +852,15 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _labelValue('Gross', _currency(payroll.grossSalary ?? 0)),
-                    _labelValue('Deductions', _currency(payroll.totalDeductions ?? 0)),
-                    _labelValue('Net', _currency(payroll.netSalary ?? 0), valueBold: true),
+                    _labelValue(
+                      'Deductions',
+                      _currency(payroll.totalDeductions ?? 0),
+                    ),
+                    _labelValue(
+                      'Net',
+                      _currency(payroll.netSalary ?? 0),
+                      valueBold: true,
+                    ),
                   ],
                 ),
               ),
@@ -698,7 +882,10 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.withOpacity(0.2),
                   foregroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -710,7 +897,10 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.withOpacity(0.2),
                     foregroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                   ),
                 ),
               const Spacer(),
@@ -728,7 +918,20 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   }
 
   String _monthName(int? month) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return month != null && month > 0 && month <= 12 ? months[month - 1] : '';
   }
 
@@ -744,19 +947,44 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildStatCard('Generated', generated.toString(), Icons.file_present_rounded, Colors.blue),
+          _buildStatCard(
+            'Generated',
+            generated.toString(),
+            Icons.file_present_rounded,
+            Colors.blue,
+          ),
           const SizedBox(width: 12),
-          _buildStatCard('Paid', paid.toString(), Icons.check_circle_rounded, Colors.green),
+          _buildStatCard(
+            'Paid',
+            paid.toString(),
+            Icons.check_circle_rounded,
+            Colors.green,
+          ),
           const SizedBox(width: 12),
-          _buildStatCard('Pending', pending.toString(), Icons.schedule_rounded, Colors.orange),
+          _buildStatCard(
+            'Pending',
+            pending.toString(),
+            Icons.schedule_rounded,
+            Colors.orange,
+          ),
           const SizedBox(width: 12),
-          _buildStatCard('Total Paid', _currency(totalPaid), Icons.currency_rupee_rounded, Colors.purple),
+          _buildStatCard(
+            'Total Paid',
+            _currency(totalPaid),
+            Icons.currency_rupee_rounded,
+            Colors.purple,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       width: 140,
       padding: const EdgeInsets.all(14),
@@ -811,7 +1039,7 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
 
     final s = _salary!;
     final ctc = s.basicSalary + s.totalAllowances;
-    
+
     return RefreshIndicator(
       onRefresh: () => _fetchSalary(_token!),
       child: SingleChildScrollView(
@@ -833,7 +1061,10 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.blue.withOpacity(0.2), width: 1),
+                border: Border.all(
+                  color: Colors.blue.withOpacity(0.2),
+                  width: 1,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -869,7 +1100,11 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                           color: Colors.blue.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(Icons.payments_rounded, color: Colors.blue[300], size: 32),
+                        child: Icon(
+                          Icons.payments_rounded,
+                          color: Colors.blue[300],
+                          size: 32,
+                        ),
                       ),
                     ],
                   ),
@@ -884,14 +1119,16 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                   ),
                   if (s.effectiveFrom != null) ...[
                     const SizedBox(height: 12),
-                    Text('Effective from ${DateFormat('dd MMM yyyy').format(s.effectiveFrom!)}',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                    Text(
+                      'Effective from ${DateFormat('dd MMM yyyy').format(s.effectiveFrom!)}',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                    ),
                   ],
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Earnings Section
             if (s.allowances.isNotEmpty) ...[
               const Text(
@@ -910,14 +1147,17 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                     if (s.allowances.isNotEmpty)
                       const Divider(color: Colors.white12, height: 16),
                     ...s.allowances
-                        .map((a) => _salaryRow(a.name, a.amount, Colors.greenAccent))
+                        .map(
+                          (a) =>
+                              _salaryRow(a.name, a.amount, Colors.greenAccent),
+                        )
                         .toList(),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
             ],
-            
+
             // Deductions Section
             if (s.deductions.isNotEmpty) ...[
               const Text(
@@ -935,20 +1175,30 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                     ...s.deductions
                         .asMap()
                         .entries
-                        .map((e) => Column(
-                          children: [
-                            _salaryRow(e.value.name, e.value.amount, Colors.redAccent, isDeduction: true),
-                            if (e.key < s.deductions.length - 1)
-                              const Divider(color: Colors.white12, height: 16),
-                          ],
-                        ))
+                        .map(
+                          (e) => Column(
+                            children: [
+                              _salaryRow(
+                                e.value.name,
+                                e.value.amount,
+                                Colors.redAccent,
+                                isDeduction: true,
+                              ),
+                              if (e.key < s.deductions.length - 1)
+                                const Divider(
+                                  color: Colors.white12,
+                                  height: 16,
+                                ),
+                            ],
+                          ),
+                        )
                         .toList(),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
             ],
-            
+
             // Net Salary Summary
             _card(
               child: Column(
@@ -1031,7 +1281,12 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     );
   }
 
-  Widget _salaryRow(String label, double amount, Color color, {bool isDeduction = false}) {
+  Widget _salaryRow(
+    String label,
+    double amount,
+    Color color, {
+    bool isDeduction = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
@@ -1079,7 +1334,7 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
         itemBuilder: (_, i) {
           final p = _payrolls[i];
           final statusColor = _payrollStatusColor(p.status);
-          
+
           return _card(
             margin: const EdgeInsets.only(bottom: 12),
             onTap: () => _showPayslipDetail(p),
@@ -1090,40 +1345,64 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                        color: Theme.of(
+                          context,
+                        ).primaryColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text('${p.monthName} ${p.year}',
-                          style: TextStyle(
-                            color: Theme.of(context).primaryColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          )),
+                      child: Text(
+                        '${p.monthName} ${p.year}',
+                        style: TextStyle(
+                          color: Theme.of(context).primaryColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                     const Spacer(),
                     _statusBadge(p.status, statusColor),
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Summary stats row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildPayslipStat('Gross Salary', _currency(p.grossSalary), Colors.blue),
-                    _buildPayslipStat('Deductions', '- ${_currency(p.totalDeductions)}', Colors.red),
-                    _buildPayslipStat('Net Salary', _currency(p.netSalary), Colors.green, highlight: true),
+                    _buildPayslipStat(
+                      'Gross Salary',
+                      _currency(p.grossSalary),
+                      Colors.blue,
+                    ),
+                    _buildPayslipStat(
+                      'Deductions',
+                      '- ${_currency(p.totalDeductions)}',
+                      Colors.red,
+                    ),
+                    _buildPayslipStat(
+                      'Net Salary',
+                      _currency(p.netSalary),
+                      Colors.green,
+                      highlight: true,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Payment date if available
                 if (p.paymentDate != null)
                   Row(
                     children: [
-                      Icon(Icons.calendar_today_rounded, size: 14, color: Colors.grey[600]),
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 14,
+                        color: Colors.grey[600],
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Paid on ${DateFormat('dd MMM yyyy').format(p.paymentDate!)}',
@@ -1134,11 +1413,18 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                 else
                   Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, size: 14, color: Colors.orange[400]),
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 14,
+                        color: Colors.orange[400],
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Payment pending',
-                        style: TextStyle(color: Colors.orange[400], fontSize: 12),
+                        style: TextStyle(
+                          color: Colors.orange[400],
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -1150,7 +1436,12 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildPayslipStat(String label, String value, Color color, {bool highlight = false}) {
+  Widget _buildPayslipStat(
+    String label,
+    String value,
+    Color color, {
+    bool highlight = false,
+  }) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1203,42 +1494,91 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
           children: [
             Center(
               child: Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            Text('${p.monthName} ${p.year} Payslip',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(
+              '${p.monthName} ${p.year} Payslip',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
             const SizedBox(height: 20),
             _labelValue('Basic Salary', _currency(p.basicSalary)),
             if (p.allowances.isNotEmpty) ...[
               const SizedBox(height: 12),
-              const Text('Allowances', style: TextStyle(color: Colors.grey, fontSize: 12)),
-              ...p.allowances.map((a) => _labelValue('  ${a.name}', _currency(a.amount), valueColor: Colors.greenAccent)),
+              const Text(
+                'Allowances',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              ...p.allowances.map(
+                (a) => _labelValue(
+                  '  ${a.name}',
+                  _currency(a.amount),
+                  valueColor: Colors.greenAccent,
+                ),
+              ),
             ],
             if (p.deductions.isNotEmpty) ...[
               const SizedBox(height: 12),
-              const Text('Deductions', style: TextStyle(color: Colors.grey, fontSize: 12)),
-              ...p.deductions.map((d) => _labelValue('  ${d.name}', '- ${_currency(d.amount)}', valueColor: Colors.redAccent)),
+              const Text(
+                'Deductions',
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              ...p.deductions.map(
+                (d) => _labelValue(
+                  '  ${d.name}',
+                  '- ${_currency(d.amount)}',
+                  valueColor: Colors.redAccent,
+                ),
+              ),
             ],
             if (p.prePaymentDeductions > 0)
-              _labelValue('  Pre-Payment', '- ${_currency(p.prePaymentDeductions)}', valueColor: Colors.redAccent),
+              _labelValue(
+                '  Pre-Payment',
+                '- ${_currency(p.prePaymentDeductions)}',
+                valueColor: Colors.redAccent,
+              ),
             const Divider(color: Colors.white12, height: 24),
             _labelValue('Gross Salary', _currency(p.grossSalary)),
-            _labelValue('Total Deductions', '- ${_currency(p.totalDeductions)}', valueColor: Colors.redAccent),
+            _labelValue(
+              'Total Deductions',
+              '- ${_currency(p.totalDeductions)}',
+              valueColor: Colors.redAccent,
+            ),
             const Divider(color: Colors.white12, height: 24),
-            _labelValue('Net Salary', _currency(p.netSalary),
-                valueColor: Colors.white, valueBold: true, large: true),
+            _labelValue(
+              'Net Salary',
+              _currency(p.netSalary),
+              valueColor: Colors.white,
+              valueBold: true,
+              large: true,
+            ),
             if (p.paymentDate != null) ...[
               const SizedBox(height: 8),
-              Text('Paid on ${DateFormat('dd MMM yyyy').format(p.paymentDate!)}',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+              Text(
+                'Paid on ${DateFormat('dd MMM yyyy').format(p.paymentDate!)}',
+                style: TextStyle(color: Colors.grey[500], fontSize: 11),
+              ),
             ],
             if (p.notes != null && p.notes!.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text('Note: ${p.notes}',
-                  style: TextStyle(color: Colors.grey[400], fontSize: 12, fontStyle: FontStyle.italic)),
+              Text(
+                'Note: ${p.notes}',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
             ],
           ],
         ),
@@ -1275,15 +1615,27 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                 Row(
                   children: [
                     Expanded(
-                      child: _buildPrePaymentStat('Approved', _currency(totalApproved), Colors.green),
+                      child: _buildPrePaymentStat(
+                        'Approved',
+                        _currency(totalApproved),
+                        Colors.green,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildPrePaymentStat('Pending', _currency(totalPending), Colors.orange),
+                      child: _buildPrePaymentStat(
+                        'Pending',
+                        _currency(totalPending),
+                        Colors.orange,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildPrePaymentStat('Rejected', _currency(totalRejected), Colors.red),
+                      child: _buildPrePaymentStat(
+                        'Rejected',
+                        _currency(totalRejected),
+                        Colors.red,
+                      ),
                     ),
                   ],
                 ),
@@ -1300,99 +1652,107 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
               ]),
             ),
           ),
-          
+
           // Pre-payments list
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (_, i) {
-                  final pp = _prePayments[i];
-                  final color = _prePaymentColor(pp.status);
-                  
-                  return _card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header with amount and status
+              delegate: SliverChildBuilderDelegate((_, i) {
+                final pp = _prePayments[i];
+                final color = _prePaymentColor(pp.status);
+
+                return _card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header with amount and status
+                      Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.payments_outlined,
+                              color: color,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _currency(pp.amount),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  pp.deductMonth ?? 'No deduction month',
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _statusBadge(pp.status, color),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Description if available
+                      if (pp.description != null && pp.description!.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900]?.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            pp.description!,
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+
+                      // Date information
+                      const SizedBox(height: 8),
+                      if (pp.createdAt != null)
                         Row(
                           children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: color.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(Icons.payments_outlined, color: color, size: 24),
+                            Icon(
+                              Icons.calendar_today_rounded,
+                              size: 12,
+                              color: Colors.grey[600],
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _currency(pp.amount),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    pp.deductMonth ?? 'No deduction month',
-                                    style: TextStyle(
-                                      color: Colors.grey[500],
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
+                            const SizedBox(width: 4),
+                            Text(
+                              'Requested on ${DateFormat('dd MMM yyyy').format(pp.createdAt!)}',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 11,
                               ),
                             ),
-                            _statusBadge(pp.status, color),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        
-                        // Description if available
-                        if (pp.description != null && pp.description!.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[900]?.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              pp.description!,
-                              style: TextStyle(
-                                color: Colors.grey[400],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        
-                        // Date information
-                        const SizedBox(height: 8),
-                        if (pp.createdAt != null)
-                          Row(
-                            children: [
-                              Icon(Icons.calendar_today_rounded, size: 12, color: Colors.grey[600]),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Requested on ${DateFormat('dd MMM yyyy').format(pp.createdAt!)}',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 11),
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  );
-                },
-                childCount: _prePayments.length,
-              ),
+                    ],
+                  ),
+                );
+              }, childCount: _prePayments.length),
             ),
           ),
         ],
@@ -1439,12 +1799,15 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
 
   Widget _buildIncrementsTab() {
     if (_isLoadingIncrements) return _loader();
-    if (_increments.isEmpty) return _emptyState('No increment / promotion records');
+    if (_increments.isEmpty)
+      return _emptyState('No increment / promotion records');
 
     // Count statistics
     final increments = _increments.where((ip) => ip.type == 'increment').length;
     final promotions = _increments.where((ip) => ip.type == 'promotion').length;
-    final others = _increments.where((ip) => ip.type != 'increment' && ip.type != 'promotion').length;
+    final others = _increments
+        .where((ip) => ip.type != 'increment' && ip.type != 'promotion')
+        .length;
 
     return RefreshIndicator(
       onRefresh: () => _fetchIncrements(_token!),
@@ -1458,15 +1821,27 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
                 Row(
                   children: [
                     Expanded(
-                      child: _buildIncrementStat('Increments', increments.toString(), Colors.green),
+                      child: _buildIncrementStat(
+                        'Increments',
+                        increments.toString(),
+                        Colors.green,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildIncrementStat('Promotions', promotions.toString(), Colors.blue),
+                      child: _buildIncrementStat(
+                        'Promotions',
+                        promotions.toString(),
+                        Colors.blue,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildIncrementStat('Others', others.toString(), Colors.purple),
+                      child: _buildIncrementStat(
+                        'Others',
+                        others.toString(),
+                        Colors.purple,
+                      ),
                     ),
                   ],
                 ),
@@ -1483,237 +1858,256 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
               ]),
             ),
           ),
-          
+
           // Increments list
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (_, i) {
-                  final ip = _increments[i];
-                  final isPositive = ip.type == 'increment' || ip.type == 'promotion';
-                  final ctcChange = ip.newCTC != null && ip.previousCTC != null
-                      ? ip.newCTC! - ip.previousCTC!
-                      : 0.0;
-                  
-                  return _card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header with type badge and date
-                        Row(
-                          children: [
-                            _typeBadge(ip),
-                            const Spacer(),
-                            if (ip.effectiveDate != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[800],
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  DateFormat('dd MMM yyyy').format(ip.effectiveDate!),
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 11),
-                                ),
+              delegate: SliverChildBuilderDelegate((_, i) {
+                final ip = _increments[i];
+                final isPositive =
+                    ip.type == 'increment' || ip.type == 'promotion';
+                final ctcChange = ip.newCTC != null && ip.previousCTC != null
+                    ? ip.newCTC! - ip.previousCTC!
+                    : 0.0;
+
+                return _card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header with type badge and date
+                      Row(
+                        children: [
+                          _typeBadge(ip),
+                          const Spacer(),
+                          if (ip.effectiveDate != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        
-                        // Designation change
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Current Designation',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[800],
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                DateFormat(
+                                  'dd MMM yyyy',
+                                ).format(ip.effectiveDate!),
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              ip.currentDesignation,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Designation change
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Current Designation',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
-                        ),
-                        
-                        if (ip.newDesignation != null && ip.newDesignation!.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'New Designation',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      ip.newDesignation!,
-                                      style: const TextStyle(
-                                        color: Colors.greenAccent,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[800],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(Icons.arrow_forward_rounded, 
-                                  color: Colors.grey[600], size: 18),
-                              ),
-                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            ip.currentDesignation,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
-                        
-                        // CTC change
-                        if (ip.previousCTC != null && ip.newCTC != null) ...[
-                          const SizedBox(height: 14),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isPositive 
-                                ? Colors.greenAccent.withOpacity(0.1)
-                                : Colors.redAccent.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isPositive 
-                                  ? Colors.greenAccent.withOpacity(0.3)
-                                  : Colors.redAccent.withOpacity(0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Previous CTC',
-                                      style: TextStyle(
-                                        color: Colors.grey[500],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Text(
-                                      _currency(ip.previousCTC!),
-                                      style: TextStyle(
-                                        color: Colors.grey[400],
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Icon(Icons.trending_up,
-                                      color: isPositive ? Colors.greenAccent : Colors.redAccent,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            'New CTC',
-                                            style: TextStyle(
-                                              color: Colors.grey[400],
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          Text(
-                                            _currency(ip.newCTC!),
-                                            style: TextStyle(
-                                              color: isPositive ? Colors.greenAccent : Colors.redAccent,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (ctcChange != 0) ...[
-                                  const SizedBox(height: 8),
+                      ),
+
+                      if (ip.newDesignation != null &&
+                          ip.newDesignation!.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    '${isPositive ? '+' : ''} ${_currency(ctcChange)} change',
+                                    'New Designation',
                                     style: TextStyle(
-                                      color: isPositive ? Colors.greenAccent : Colors.redAccent,
-                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    ip.newDesignation!,
+                                    style: const TextStyle(
+                                      color: Colors.greenAccent,
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ],
-                              ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[800],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.arrow_forward_rounded,
+                                color: Colors.grey[600],
+                                size: 18,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      // CTC change
+                      if (ip.previousCTC != null && ip.newCTC != null) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isPositive
+                                ? Colors.greenAccent.withOpacity(0.1)
+                                : Colors.redAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isPositive
+                                  ? Colors.greenAccent.withOpacity(0.3)
+                                  : Colors.redAccent.withOpacity(0.3),
+                              width: 1,
                             ),
                           ),
-                        ],
-                        
-                        // Reason if available
-                        if (ip.reason != null && ip.reason!.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[900]?.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Previous CTC',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Text(
+                                    _currency(ip.previousCTC!),
+                                    style: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.trending_up,
+                                    color: isPositive
+                                        ? Colors.greenAccent
+                                        : Colors.redAccent,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'New CTC',
+                                          style: TextStyle(
+                                            color: Colors.grey[400],
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        Text(
+                                          _currency(ip.newCTC!),
+                                          style: TextStyle(
+                                            color: isPositive
+                                                ? Colors.greenAccent
+                                                : Colors.redAccent,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (ctcChange != 0) ...[
+                                const SizedBox(height: 8),
                                 Text(
-                                  'Reason',
+                                  '${isPositive ? '+' : ''} ${_currency(ctcChange)} change',
                                   style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 11,
+                                    color: isPositive
+                                        ? Colors.greenAccent
+                                        : Colors.redAccent,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  ip.reason!,
-                                  style: TextStyle(
-                                    color: Colors.grey[400],
-                                    fontSize: 12,
-                                  ),
-                                ),
                               ],
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ],
-                    ),
-                  );
-                },
-                childCount: _increments.length,
-              ),
+
+                      // Reason if available
+                      if (ip.reason != null && ip.reason!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900]?.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Reason',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                ip.reason!,
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }, childCount: _increments.length),
             ),
           ),
         ],
@@ -1759,20 +2153,24 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   Widget _loader() => const Center(child: CircularProgressIndicator());
 
   Widget _emptyState(String msg) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.inbox_rounded, size: 48, color: Colors.grey[700]),
-              const SizedBox(height: 12),
-              Text(msg, style: TextStyle(color: Colors.grey[500], fontSize: 14)),
-            ],
-          ),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.inbox_rounded, size: 48, color: Colors.grey[700]),
+          const SizedBox(height: 12),
+          Text(msg, style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+        ],
+      ),
+    ),
+  );
 
-  Widget _card({required Widget child, EdgeInsets? margin, VoidCallback? onTap}) {
+  Widget _card({
+    required Widget child,
+    EdgeInsets? margin,
+    VoidCallback? onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1788,29 +2186,49 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     );
   }
 
-  Widget _labelValue(String label, String value,
-      {Color? valueColor, bool valueBold = false, bool large = false}) {
+  Widget _labelValue(
+    String label,
+    String value, {
+    Color? valueColor,
+    bool valueBold = false,
+    bool large = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey[400], fontSize: large ? 14 : 13)),
-          Text(value,
-              style: TextStyle(
-                color: valueColor ?? Colors.white70,
-                fontWeight: valueBold ? FontWeight.bold : FontWeight.w500,
-                fontSize: large ? 16 : 13,
-              )),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[400],
+              fontSize: large ? 14 : 13,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor ?? Colors.white70,
+              fontWeight: valueBold ? FontWeight.bold : FontWeight.w500,
+              fontSize: large ? 16 : 13,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _sectionTitle(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(text, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600, fontSize: 14)),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white70,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+      ),
+    ),
+  );
 
   Widget _componentTile(String name, double amount, String type, Color color) {
     return _card(
@@ -1818,10 +2236,19 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(name, style: const TextStyle(color: Colors.white70, fontSize: 13)),
           Text(
-            type == 'percentage' ? '${amount.toStringAsFixed(1)}%' : _currency(amount),
-            style: TextStyle(color: color, fontWeight: FontWeight.w500, fontSize: 13),
+            name,
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          Text(
+            type == 'percentage'
+                ? '${amount.toStringAsFixed(1)}%'
+                : _currency(amount),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
           ),
         ],
       ),
@@ -1829,34 +2256,39 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
   }
 
   Widget _statusBadge(String status, Color color) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          status[0].toUpperCase() + status.substring(1),
-          style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.15),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      status[0].toUpperCase() + status.substring(1),
+      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+    ),
+  );
 
   Widget _miniStat(String label, String value, {bool highlight = false}) {
     return Column(
       children: [
         Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 11)),
         const SizedBox(height: 2),
-        Text(value,
-            style: TextStyle(
-              color: highlight ? Colors.white : Colors.white70,
-              fontWeight: highlight ? FontWeight.bold : FontWeight.w500,
-              fontSize: 13,
-            )),
+        Text(
+          value,
+          style: TextStyle(
+            color: highlight ? Colors.white : Colors.white70,
+            fontWeight: highlight ? FontWeight.bold : FontWeight.w500,
+            fontSize: 13,
+          ),
+        ),
       ],
     );
   }
 
   Widget _typeBadge(IncrementPromotion ip) {
-    final isPositive = ip.type == 'increment' || ip.type == 'promotion' || ip.type == 'increment-promotion';
+    final isPositive =
+        ip.type == 'increment' ||
+        ip.type == 'promotion' ||
+        ip.type == 'increment-promotion';
     final color = isPositive ? Colors.greenAccent : Colors.orangeAccent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1864,8 +2296,14 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(ip.typeLabel,
-          style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(
+        ip.typeLabel,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -1891,5 +2329,6 @@ class _PayrollScreenState extends State<PayrollScreen> with SingleTickerProvider
     }
   }
 
-  String _currency(double amount) => '\u{20B9}${NumberFormat('#,##,###.##').format(amount)}';
+  String _currency(double amount) =>
+      '\u{20B9}${NumberFormat('#,##,###.##').format(amount)}';
 }

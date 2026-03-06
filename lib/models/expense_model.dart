@@ -42,10 +42,10 @@ class ExpenseListResponse {
       );
 
   Map<String, dynamic> toJson() => {
-        "success": success,
-        "count": count,
-        "data": List<dynamic>.from(data.map((x) => x.toJson())),
-      };
+    "success": success,
+    "count": count,
+    "data": List<dynamic>.from(data.map((x) => x.toJson())),
+  };
 }
 
 class ExpenseSubmitResponse {
@@ -67,10 +67,10 @@ class ExpenseSubmitResponse {
       );
 
   Map<String, dynamic> toJson() => {
-        "success": success,
-        "message": message,
-        "data": data.toJson(),
-      };
+    "success": success,
+    "message": message,
+    "data": data.toJson(),
+  };
 }
 
 class Expense {
@@ -86,11 +86,11 @@ class Expense {
   String status;
   bool isLocked;
   // Review/payment tracking fields
-  String? reviewedBy;   // Reviewer user ID (populated or ObjectId string)
+  String? reviewedBy; // Reviewer user ID (populated or ObjectId string)
   DateTime? reviewedAt;
   String? reviewNote;
   DateTime? paidAt;
-  String? paidBy;       // Payer user ID
+  String? paidBy; // Payer user ID
   DateTime createdAt;
   DateTime updatedAt;
 
@@ -116,66 +116,58 @@ class Expense {
   });
 
   factory Expense.fromJson(Map<String, dynamic> json) => Expense(
-        id: json["_id"] ?? "",
-        user: json["user"] != null
-            ? (json["user"] is String
-                ? null
-                : ExpenseUser.fromJson(json["user"]))
-            : null,
-        company: json["company"],
-        category: json["category"] ?? "",
-        amount: (json["amount"] ?? 0).toDouble(),
-        currency: json["currency"] ?? "INR",
-        date: json["date"] != null
-            ? DateTime.parse(json["date"])
-            : DateTime.now(),
-        description: json["description"] ?? "",
-        receipt: json["receipt"] != null
-            ? Receipt.fromJson(json["receipt"])
-            : null,
-        status: json["status"] ?? "pending",
-        isLocked: json["isLocked"] ?? false,
-        reviewedBy: json["reviewedBy"] is String
-            ? json["reviewedBy"]
-            : (json["reviewedBy"]?["_id"]),
-        reviewedAt: json["reviewedAt"] != null
-            ? DateTime.parse(json["reviewedAt"])
-            : null,
-        reviewNote: json["reviewNote"],
-        paidAt: json["paidAt"] != null
-            ? DateTime.parse(json["paidAt"])
-            : null,
-        paidBy: json["paidBy"] is String
-            ? json["paidBy"]
-            : (json["paidBy"]?["_id"]),
-        createdAt: json["createdAt"] != null
-            ? DateTime.parse(json["createdAt"])
-            : DateTime.now(),
-        updatedAt: json["updatedAt"] != null
-            ? DateTime.parse(json["updatedAt"])
-            : DateTime.now(),
-      );
+    id: json["_id"] ?? "",
+    user: json["user"] != null
+        ? (json["user"] is String ? null : ExpenseUser.fromJson(json["user"]))
+        : null,
+    company: json["company"],
+    category: json["category"] ?? "",
+    amount: (json["amount"] ?? 0).toDouble(),
+    currency: json["currency"] ?? "INR",
+    date: json["date"] != null ? DateTime.parse(json["date"]) : DateTime.now(),
+    description: json["description"] ?? "",
+    receipt: json["receipt"] != null ? Receipt.fromJson(json["receipt"]) : null,
+    status: json["status"] ?? "pending",
+    isLocked: json["isLocked"] ?? false,
+    reviewedBy: json["reviewedBy"] is String
+        ? json["reviewedBy"]
+        : (json["reviewedBy"]?["_id"]),
+    reviewedAt: json["reviewedAt"] != null
+        ? DateTime.parse(json["reviewedAt"])
+        : null,
+    reviewNote: json["reviewNote"],
+    paidAt: json["paidAt"] != null ? DateTime.parse(json["paidAt"]) : null,
+    paidBy: json["paidBy"] is String
+        ? json["paidBy"]
+        : (json["paidBy"]?["_id"]),
+    createdAt: json["createdAt"] != null
+        ? DateTime.parse(json["createdAt"])
+        : DateTime.now(),
+    updatedAt: json["updatedAt"] != null
+        ? DateTime.parse(json["updatedAt"])
+        : DateTime.now(),
+  );
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "user": user?.toJson(),
-        "company": company,
-        "category": category,
-        "amount": amount,
-        "currency": currency,
-        "date": date.toIso8601String(),
-        "description": description,
-        "receipt": receipt?.toJson(),
-        "status": status,
-        "isLocked": isLocked,
-        if (reviewedBy != null) "reviewedBy": reviewedBy,
-        if (reviewedAt != null) "reviewedAt": reviewedAt!.toIso8601String(),
-        if (reviewNote != null) "reviewNote": reviewNote,
-        if (paidAt != null) "paidAt": paidAt!.toIso8601String(),
-        if (paidBy != null) "paidBy": paidBy,
-        "createdAt": createdAt.toIso8601String(),
-        "updatedAt": updatedAt.toIso8601String(),
-      };
+    "_id": id,
+    "user": user?.toJson(),
+    "company": company,
+    "category": category,
+    "amount": amount,
+    "currency": currency,
+    "date": date.toIso8601String(),
+    "description": description,
+    "receipt": receipt?.toJson(),
+    "status": status,
+    "isLocked": isLocked,
+    if (reviewedBy != null) "reviewedBy": reviewedBy,
+    if (reviewedAt != null) "reviewedAt": reviewedAt!.toIso8601String(),
+    if (reviewNote != null) "reviewNote": reviewNote,
+    if (paidAt != null) "paidAt": paidAt!.toIso8601String(),
+    if (paidBy != null) "paidBy": paidBy,
+    "createdAt": createdAt.toIso8601String(),
+    "updatedAt": updatedAt.toIso8601String(),
+  };
 }
 
 class ExpenseUser {
@@ -194,40 +186,32 @@ class ExpenseUser {
   });
 
   factory ExpenseUser.fromJson(Map<String, dynamic> json) => ExpenseUser(
-        id: json["_id"] ?? "",
-        employeeId: json["employeeId"] ?? "",
-        name: json["name"] ?? "",
-        department: json["department"] ?? "",
-        position: json["position"] ?? "",
-      );
+    id: json["_id"] ?? "",
+    employeeId: json["employeeId"] ?? "",
+    name: json["name"] ?? "",
+    department: json["department"] ?? "",
+    position: json["position"] ?? "",
+  );
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "employeeId": employeeId,
-        "name": name,
-        "department": department,
-        "position": position,
-      };
+    "_id": id,
+    "employeeId": employeeId,
+    "name": name,
+    "department": department,
+    "position": position,
+  };
 }
 
 class Receipt {
   String url;
   String publicId;
 
-  Receipt({
-    required this.url,
-    required this.publicId,
-  });
+  Receipt({required this.url, required this.publicId});
 
-  factory Receipt.fromJson(Map<String, dynamic> json) => Receipt(
-        url: json["url"] ?? "",
-        publicId: json["publicId"] ?? "",
-      );
+  factory Receipt.fromJson(Map<String, dynamic> json) =>
+      Receipt(url: json["url"] ?? "", publicId: json["publicId"] ?? "");
 
-  Map<String, dynamic> toJson() => {
-        "url": url,
-        "publicId": publicId,
-      };
+  Map<String, dynamic> toJson() => {"url": url, "publicId": publicId};
 }
 
 // ── Expense Statistics ────────────────────────────────────────────────────────
@@ -236,10 +220,7 @@ class ExpenseStatisticsResponse {
   bool success;
   ExpenseStatistics data;
 
-  ExpenseStatisticsResponse({
-    required this.success,
-    required this.data,
-  });
+  ExpenseStatisticsResponse({required this.success, required this.data});
 
   factory ExpenseStatisticsResponse.fromJson(Map<String, dynamic> json) =>
       ExpenseStatisticsResponse(
@@ -247,10 +228,7 @@ class ExpenseStatisticsResponse {
         data: ExpenseStatistics.fromJson(json["data"] ?? {}),
       );
 
-  Map<String, dynamic> toJson() => {
-        "success": success,
-        "data": data.toJson(),
-      };
+  Map<String, dynamic> toJson() => {"success": success, "data": data.toJson()};
 }
 
 class ExpenseStatistics {
@@ -304,16 +282,16 @@ class ExpenseStatistics {
   }
 
   Map<String, dynamic> toJson() => {
-        "total": total,
-        "draft": draft,
-        "pending": pending,
-        "approved": approved,
-        "rejected": rejected,
-        "paid": paid,
-        "totalAmount": totalAmount,
-        "approvedAmount": approvedAmount,
-        "paidAmount": paidAmount,
-        "pendingAmount": pendingAmount,
-        "byCategory": byCategory,
-      };
+    "total": total,
+    "draft": draft,
+    "pending": pending,
+    "approved": approved,
+    "rejected": rejected,
+    "paid": paid,
+    "totalAmount": totalAmount,
+    "approvedAmount": approvedAmount,
+    "paidAmount": paidAmount,
+    "pendingAmount": pendingAmount,
+    "byCategory": byCategory,
+  };
 }

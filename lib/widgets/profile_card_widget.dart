@@ -30,10 +30,7 @@ class ProfileCardWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.1),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -123,22 +120,16 @@ class ProfileCardWidget extends StatelessWidget {
             AppTheme.primaryColor,
           ),
           const SizedBox(height: 12),
-          _buildInfoRow(
-            Icons.email_outlined,
-            email ?? 'N/A',
-            Colors.cyan,
-          ),
+          _buildInfoRow(Icons.email_outlined, email ?? 'N/A', Colors.cyan),
           const SizedBox(height: 12),
-          _buildInfoRow(
-            Icons.home_outlined,
-            address ?? 'N/A',
-            Colors.orange,
-          ),
+          _buildInfoRow(Icons.home_outlined, address ?? 'N/A', Colors.orange),
           const SizedBox(height: 12),
           _buildInfoRow(
             Icons.calendar_today_outlined,
             dateOfBirth != null
-                ? DateFormat('MMMM d, yyyy').format(DateTime.parse(dateOfBirth!))
+                ? DateFormat(
+                    'MMMM d, yyyy',
+                  ).format(DateTime.parse(dateOfBirth!))
                 : 'N/A',
             Colors.blue,
           ),
@@ -150,19 +141,12 @@ class ProfileCardWidget extends StatelessWidget {
   Widget _buildInfoRow(IconData icon, String value, Color color) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: color,
-          size: 20,
-        ),
+        Icon(icon, color: color, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             value,
-            style: TextStyle(
-              color: Colors.grey.withOpacity(0.8),
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.grey.withOpacity(0.8), fontSize: 13),
             overflow: TextOverflow.ellipsis,
           ),
         ),

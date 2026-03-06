@@ -7,6 +7,7 @@ import 'package:hrms_app/screen/profile_screen.dart';
 import 'package:hrms_app/screen/tasks_screen.dart';
 import 'package:hrms_app/screen/login_screen.dart';
 import 'package:hrms_app/services/auth_service.dart';
+import 'package:hrms_app/services/notification_service.dart';
 import 'package:hrms_app/services/token_storage_service.dart';
 import 'package:hrms_app/screen/chat_screen.dart';
 import 'package:hrms_app/screen/payroll_screen.dart';
@@ -44,7 +45,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
   void initState() {
     super.initState();
     // Determine user role
-    _userRole = (widget.user?.role.toLowerCase() == 'admin') ? 'admin' : 'employee';
+    _userRole = (widget.user?.role.toLowerCase() == 'admin')
+        ? 'admin'
+        : 'employee';
   }
 
   late final List<Map<String, dynamic>> _employeeMenuItems = [
@@ -67,7 +70,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Clients", "icon": Icons.people_outline_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded},
     {"title": "Edit Request", "icon": Icons.description_rounded},
-    {"title": "Leaves", "icon": Icons.calendar_month_rounded, "hasSubmenu": true},
+    {
+      "title": "Leaves",
+      "icon": Icons.calendar_month_rounded,
+      "hasSubmenu": true,
+    },
     {"title": "Tasks", "icon": Icons.task_alt_rounded},
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
@@ -98,14 +105,14 @@ class _SidebarMenuState extends State<SidebarMenu> {
   Widget build(BuildContext context) {
     // Deep dark theme background
     return Container(
-      color: const Color(0xFF050505), 
+      color: const Color(0xFF050505),
       child: Column(
         children: [
           const SizedBox(height: 40),
-          
+
           // --- LOGO AREA ---
           _buildLogo(context),
-          
+
           const SizedBox(height: 50),
 
           // --- MENU ITEMS ---
@@ -117,15 +124,16 @@ class _SidebarMenuState extends State<SidebarMenu> {
                 ..._menuItems.asMap().entries.map((entry) {
                   int idx = entry.key;
                   Map<String, dynamic> menuItem = entry.value;
-                  
+
                   // If this is Payroll with submenu
-                  if (menuItem['title'] == 'Payroll' && menuItem['hasSubmenu'] == true) {
+                  if (menuItem['title'] == 'Payroll' &&
+                      menuItem['hasSubmenu'] == true) {
                     return Column(
                       children: [
                         _buildMenuItemWithSubmenu(
-                          context, 
+                          context,
                           index: idx,
-                          title: menuItem['title'], 
+                          title: menuItem['title'],
                           icon: menuItem['icon'],
                           isExpanded: _payrollExpanded,
                         ),
@@ -140,13 +148,14 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   }
 
                   // If this is Leaves with submenu
-                  if (menuItem['title'] == 'Leaves' && menuItem['hasSubmenu'] == true) {
+                  if (menuItem['title'] == 'Leaves' &&
+                      menuItem['hasSubmenu'] == true) {
                     return Column(
                       children: [
                         _buildMenuItemWithSubmenu(
-                          context, 
+                          context,
                           index: idx,
-                          title: menuItem['title'], 
+                          title: menuItem['title'],
                           icon: menuItem['icon'],
                           isExpanded: _leavesExpanded,
                         ),
@@ -159,19 +168,19 @@ class _SidebarMenuState extends State<SidebarMenu> {
                       ],
                     );
                   }
-                  
+
                   // Regular menu item
                   return _buildMenuItem(
-                    context, 
+                    context,
                     index: idx,
-                    title: menuItem['title'], 
-                    icon: menuItem['icon']
+                    title: menuItem['title'],
+                    icon: menuItem['icon'],
                   );
                 }).toList(),
               ],
             ),
           ),
-          
+
           // --- PROFILE SUMMARY ---
           _buildProfileSummary(),
           _buildLogoutButton(),
@@ -188,26 +197,31 @@ class _SidebarMenuState extends State<SidebarMenu> {
           SizedBox(
             height: 60,
             width: 80,
-            child: Image.asset('assets/images/aselea-logo.jpeg', height: 50, width: 70),
+            child: Image.asset(
+              'assets/images/aselea-logo.jpeg',
+              height: 50,
+              width: 70,
+            ),
           ),
           const SizedBox(width: 14),
           const Text(
-            "Aselea", 
+            "Aselea",
             style: TextStyle(
-              fontSize: 24, 
-              fontWeight: FontWeight.w700, 
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
               letterSpacing: 0.8,
-              color: Colors.white
-            )
+              color: Colors.white,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMenuItemWithSubmenu(BuildContext context, {
-    required int index, 
-    required String title, 
+  Widget _buildMenuItemWithSubmenu(
+    BuildContext context, {
+    required int index,
+    required String title,
     required IconData icon,
     required bool isExpanded,
   }) {
@@ -234,29 +248,33 @@ class _SidebarMenuState extends State<SidebarMenu> {
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isExpanded ? primaryColor.withOpacity(0.12) : Colors.transparent,
+              color: isExpanded
+                  ? primaryColor.withOpacity(0.12)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
-              border: isExpanded 
+              border: isExpanded
                   ? Border.all(color: primaryColor.withOpacity(0.1), width: 1)
                   : Border.all(color: Colors.transparent),
             ),
             child: Row(
               children: [
                 Icon(
-                  icon, 
+                  icon,
                   color: isExpanded ? primaryColor : Colors.grey[600],
                   size: 22,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    title, 
+                    title,
                     style: TextStyle(
                       color: isExpanded ? Colors.white : Colors.grey[500],
-                      fontWeight: isExpanded ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: isExpanded
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                       fontSize: 14,
                       letterSpacing: 0.3,
-                    )
+                    ),
                   ),
                 ),
                 AnimatedRotation(
@@ -264,12 +282,13 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   duration: const Duration(milliseconds: 300),
                   child: Icon(
                     Icons.expand_more_rounded,
-                    color: isExpanded ? Theme.of(context).primaryColor : Colors.grey[600],
+                    color: isExpanded
+                        ? Theme.of(context).primaryColor
+                        : Colors.grey[600],
                     size: 20,
                   ),
                 ),
-                if (isExpanded)
-                  const SizedBox(width: 8)
+                if (isExpanded) const SizedBox(width: 8),
               ],
             ),
           ),
@@ -307,11 +326,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Icon(
-                  subItem['icon'],
-                  color: Colors.grey[500],
-                  size: 18,
-                ),
+                Icon(subItem['icon'], color: Colors.grey[500], size: 18),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -361,11 +376,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Icon(
-                  subItem['icon'],
-                  color: Colors.grey[500],
-                  size: 18,
-                ),
+                Icon(subItem['icon'], color: Colors.grey[500], size: 18),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -386,10 +397,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, {
-    required int index, 
-    required String title, 
-    required IconData icon
+  Widget _buildMenuItem(
+    BuildContext context, {
+    required int index,
+    required String title,
+    required IconData icon,
   }) {
     bool isActive = _selectedIndex == index;
     Color primaryColor = Theme.of(context).primaryColor;
@@ -407,9 +419,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
             curve: Curves.easeOutCubic,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isActive ? primaryColor.withOpacity(0.12) : Colors.transparent,
+              color: isActive
+                  ? primaryColor.withOpacity(0.12)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
-              border: isActive 
+              border: isActive
                   ? Border.all(color: primaryColor.withOpacity(0.1), width: 1)
                   : Border.all(color: Colors.transparent),
             ),
@@ -417,38 +431,42 @@ class _SidebarMenuState extends State<SidebarMenu> {
               children: [
                 // Animated Icon
                 Icon(
-                  icon, 
+                  icon,
                   color: isActive ? primaryColor : Colors.grey[600],
                   size: 22,
                 ),
                 const SizedBox(width: 16),
-                
+
                 // Title
                 Expanded(
                   child: Text(
-                    title, 
+                    title,
                     style: TextStyle(
                       color: isActive ? Colors.white : Colors.grey[500],
                       fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                       fontSize: 14,
                       letterSpacing: 0.3,
-                    )
+                    ),
                   ),
                 ),
-                
+
                 // Active Indicator (Glowing Dot)
                 if (isActive)
                   Container(
-                    width: 6, 
-                    height: 6, 
+                    width: 6,
+                    height: 6,
                     decoration: BoxDecoration(
                       color: primaryColor,
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: primaryColor.withOpacity(0.6), blurRadius: 6, spreadRadius: 1)
-                      ]
-                    )
-                  )
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.6),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -481,7 +499,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
                 border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
               child: const Center(
-                child: Icon(Icons.person_outline, size: 18, color: AppTheme.primaryColor),
+                child: Icon(
+                  Icons.person_outline,
+                  size: 18,
+                  color: AppTheme.primaryColor,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -527,10 +549,18 @@ class _SidebarMenuState extends State<SidebarMenu> {
         ),
         child: ListTile(
           visualDensity: VisualDensity.compact,
-          leading: Icon(Icons.logout_rounded, color: Colors.redAccent.shade100, size: 20),
+          leading: Icon(
+            Icons.logout_rounded,
+            color: Colors.redAccent.shade100,
+            size: 20,
+          ),
           title: Text(
             "Log Out",
-            style: TextStyle(color: Colors.redAccent.shade100, fontSize: 14, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: Colors.redAccent.shade100,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           onTap: () => _handleLogout(context),
         ),
@@ -540,13 +570,13 @@ class _SidebarMenuState extends State<SidebarMenu> {
 
   void _handleLogout(BuildContext context) async {
     final tokenStorage = TokenStorageService();
-    
+
     if (widget.token == null) {
       // Clear any stored data and navigate to login
       await tokenStorage.clearLoginData();
-      
+
       if (!context.mounted) return;
-      
+
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
         (route) => false,
@@ -558,14 +588,15 @@ class _SidebarMenuState extends State<SidebarMenu> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     // Call logout API
     final authService = AuthService();
     final success = await authService.logout(widget.token!);
+
+    // Remove FCM token from backend (fire-and-forget)
+    NotificationService().removeFcmToken(widget.token!).catchError((_) {});
 
     // Clear stored token and user data
     await tokenStorage.clearLoginData();
@@ -583,7 +614,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
       // Show success/failure message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? 'Logged out successfully' : 'Logout completed'),
+          content: Text(
+            success ? 'Logged out successfully' : 'Logout completed',
+          ),
           backgroundColor: success ? Colors.green : Colors.orange,
           duration: const Duration(seconds: 2),
         ),
@@ -595,92 +628,108 @@ class _SidebarMenuState extends State<SidebarMenu> {
 
   void _handleMenuClick(BuildContext context, int index, String title) {
     setState(() => _selectedIndex = index);
-    
+
     // Close Drawer if open (Mobile)
     if (Scaffold.of(context).hasDrawer && Scaffold.of(context).isDrawerOpen) {
       Navigator.pop(context);
     }
 
     // Smooth Navigation
-    switch(title) {
+    switch (title) {
       case "Dashboard":
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('You are already on the Dashboard.')),
         );
         break;
-        
+
       case "My Profile":
-        Navigator.of(context).push(_createSmoothRoute(
-          ProfileScreen(user: widget.user, token: widget.token),
-        ));
+        Navigator.of(context).push(
+          _createSmoothRoute(
+            ProfileScreen(user: widget.user, token: widget.token),
+          ),
+        );
         break;
-        
+
       case "Attendance":
         if (_userRole == 'admin') {
-          Navigator.of(context).push(_createSmoothRoute(
-            AdminAttendanceScreen(token: widget.token),
-          ));
+          Navigator.of(context).push(
+            _createSmoothRoute(AdminAttendanceScreen(token: widget.token)),
+          );
         } else {
-          Navigator.of(context).push(_createSmoothRoute(const AttendanceScreen()));
+          Navigator.of(
+            context,
+          ).push(_createSmoothRoute(const AttendanceScreen()));
         }
         break;
-        
+
       case "Tasks":
-        Navigator.of(context).push(_createSmoothRoute(
-          TasksScreen(token: widget.token, role: _userRole),
-        ));
+        Navigator.of(context).push(
+          _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole)),
+        );
         break;
-        
+
       case "Expenses":
-        Navigator.of(context).push(_createSmoothRoute(ExpensesScreen(role: _userRole)));
+        Navigator.of(
+          context,
+        ).push(_createSmoothRoute(ExpensesScreen(role: _userRole)));
         break;
-        
+
       case "Chat":
         Navigator.of(context).push(_createSmoothRoute(const ChatScreen()));
         break;
-        
+
       case "Announcements":
-        Navigator.of(context).push(_createSmoothRoute(AnnouncementsScreen(role: _userRole, token: widget.token)));
+        Navigator.of(context).push(
+          _createSmoothRoute(
+            AnnouncementsScreen(role: _userRole, token: widget.token),
+          ),
+        );
         break;
-        
+
       case "Company Policy":
-        Navigator.of(context).push(_createSmoothRoute(PoliciesScreen(role: _userRole, token: widget.token)));
+        Navigator.of(context).push(
+          _createSmoothRoute(
+            PoliciesScreen(role: _userRole, token: widget.token),
+          ),
+        );
         break;
-        
+
       case "Settings":
-        Navigator.of(context).push(_createSmoothRoute(
-          SettingsScreen(user: widget.user, token: widget.token),
-        ));
+        Navigator.of(context).push(
+          _createSmoothRoute(
+            SettingsScreen(user: widget.user, token: widget.token),
+          ),
+        );
         break;
-        
+
       case "Edit Request":
-        Navigator.of(context).push(_createSmoothRoute(
-          EditRequestsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_createSmoothRoute(EditRequestsScreen(token: widget.token)));
         break;
-        
+
       case "Clients":
-        Navigator.of(context).push(_createSmoothRoute(
-          AllClientsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_createSmoothRoute(AllClientsScreen(token: widget.token)));
         break;
-        
+
       case "Employees":
-        Navigator.of(context).push(_createSmoothRoute(
-          AllEmployeesScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_createSmoothRoute(AllEmployeesScreen(token: widget.token)));
         break;
-        
+
       case "HR Accounts":
-        Navigator.of(context).push(_createSmoothRoute(
-          HRAccountsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_createSmoothRoute(HRAccountsScreen(token: widget.token)));
         break;
-        
+
       case "Leaves":
         // This is now a submenu parent, do nothing on direct click
         break;
-        
+
       default:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('This screen is under development.')),
@@ -698,7 +747,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
     if (title == "Pre Payments") {
       Navigator.of(context).push(_createSmoothRoute(const PrePaymentsScreen()));
     } else if (title == "Increment/Promotion") {
-      Navigator.of(context).push(_createSmoothRoute(const IncrementPromotionScreen()));
+      Navigator.of(
+        context,
+      ).push(_createSmoothRoute(const IncrementPromotionScreen()));
     } else if (title == "Payroll") {
       Navigator.of(context).push(_createSmoothRoute(const PayrollScreen()));
     } else if (title == "My Salary") {
@@ -714,13 +765,13 @@ class _SidebarMenuState extends State<SidebarMenu> {
 
     // Navigate to appropriate leaves subscreen
     if (title == "Leave Management") {
-      Navigator.of(context).push(_createSmoothRoute(
-        LeaveBalanceScreen(token: widget.token),
-      ));
+      Navigator.of(
+        context,
+      ).push(_createSmoothRoute(LeaveBalanceScreen(token: widget.token)));
     } else if (title == "Leaves") {
-      Navigator.of(context).push(_createSmoothRoute(
-        LeaveManagementScreen(token: widget.token),
-      ));
+      Navigator.of(
+        context,
+      ).push(_createSmoothRoute(LeaveManagementScreen(token: widget.token)));
     }
   }
 
@@ -730,15 +781,19 @@ class _SidebarMenuState extends State<SidebarMenu> {
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         // Defines the animation curve
-        const curve = Curves.easeOutQuart; 
-        
+        const curve = Curves.easeOutQuart;
+
         // 1. Slide from right (slightly)
-        var slideTween = Tween(begin: const Offset(0.05, 0.0), end: Offset.zero)
-            .chain(CurveTween(curve: curve));
-            
+        var slideTween = Tween(
+          begin: const Offset(0.05, 0.0),
+          end: Offset.zero,
+        ).chain(CurveTween(curve: curve));
+
         // 2. Fade in
-        var fadeTween = Tween(begin: 0.0, end: 1.0)
-            .chain(CurveTween(curve: curve));
+        var fadeTween = Tween(
+          begin: 0.0,
+          end: 1.0,
+        ).chain(CurveTween(curve: curve));
 
         return SlideTransition(
           position: animation.drive(slideTween),
@@ -748,7 +803,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
           ),
         );
       },
-      transitionDuration: const Duration(milliseconds: 600), // Slower = Smoother
+      transitionDuration: const Duration(
+        milliseconds: 600,
+      ), // Slower = Smoother
     );
   }
 }

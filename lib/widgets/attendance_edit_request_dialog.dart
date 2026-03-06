@@ -22,10 +22,12 @@ class AttendanceEditRequestDialog extends StatefulWidget {
   });
 
   @override
-  State<AttendanceEditRequestDialog> createState() => _AttendanceEditRequestDialogState();
+  State<AttendanceEditRequestDialog> createState() =>
+      _AttendanceEditRequestDialogState();
 }
 
-class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialog> {
+class _AttendanceEditRequestDialogState
+    extends State<AttendanceEditRequestDialog> {
   late TextEditingController _checkInController;
   late TextEditingController _checkOutController;
   late TextEditingController _reasonController;
@@ -36,8 +38,12 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
   @override
   void initState() {
     super.initState();
-    _checkInController = TextEditingController(text: widget.checkIn == '-' ? '' : widget.checkIn);
-    _checkOutController = TextEditingController(text: widget.checkOut == '-' ? '' : widget.checkOut);
+    _checkInController = TextEditingController(
+      text: widget.checkIn == '-' ? '' : widget.checkIn,
+    );
+    _checkOutController = TextEditingController(
+      text: widget.checkOut == '-' ? '' : widget.checkOut,
+    );
     _reasonController = TextEditingController();
     _reasonController.addListener(() {
       setState(() {
@@ -58,12 +64,12 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
   DateTime? _tryParseTime(String input) {
     final trimmed = input.trim();
     final formats = [
-      DateFormat('hh:mm a'),   // 09:30 AM
-      DateFormat('h:mm a'),    // 9:30 AM
-      DateFormat('HH:mm'),     // 14:30
-      DateFormat('H:mm'),      // 9:30
-      DateFormat('hh:mma'),    // 09:30AM
-      DateFormat('h:mma'),     // 9:30AM
+      DateFormat('hh:mm a'), // 09:30 AM
+      DateFormat('h:mm a'), // 9:30 AM
+      DateFormat('HH:mm'), // 14:30
+      DateFormat('H:mm'), // 9:30
+      DateFormat('hh:mma'), // 09:30AM
+      DateFormat('h:mma'), // 9:30AM
     ];
     for (final fmt in formats) {
       try {
@@ -101,7 +107,13 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
 
     if (picked != null) {
       final now = DateTime.now();
-      final dateTime = DateTime(now.year, now.month, now.day, picked.hour, picked.minute);
+      final dateTime = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        picked.hour,
+        picked.minute,
+      );
       controller.text = DateFormat('hh:mm a').format(dateTime);
       setState(() {});
     }
@@ -112,7 +124,9 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
     if (_characterCount < _minCharacters) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Please provide at least $_minCharacters characters for the reason'),
+          content: Text(
+            'Please provide at least $_minCharacters characters for the reason',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -166,7 +180,9 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
       // Convert time strings to ISO format (flexible parsing)
       final checkInTime = _tryParseTime(_checkInController.text);
       if (checkInTime == null) {
-        throw Exception('Invalid check-in time format. Use format like "09:30 AM"');
+        throw Exception(
+          'Invalid check-in time format. Use format like "09:30 AM"',
+        );
       }
       final checkInDateTime = DateTime(
         parsedDate.year,
@@ -178,7 +194,9 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
 
       final checkOutTime = _tryParseTime(_checkOutController.text);
       if (checkOutTime == null) {
-        throw Exception('Invalid check-out time format. Use format like "05:30 PM"');
+        throw Exception(
+          'Invalid check-out time format. Use format like "05:30 PM"',
+        );
       }
       final checkOutDateTime = DateTime(
         parsedDate.year,
@@ -189,8 +207,12 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
       );
 
       print('📝 [EDIT REQUEST] Formatted Date: $isoDate');
-      print('📝 [EDIT REQUEST] Check In DateTime: ${checkInDateTime.toIso8601String()}');
-      print('📝 [EDIT REQUEST] Check Out DateTime: ${checkOutDateTime.toIso8601String()}');
+      print(
+        '📝 [EDIT REQUEST] Check In DateTime: ${checkInDateTime.toIso8601String()}',
+      );
+      print(
+        '📝 [EDIT REQUEST] Check Out DateTime: ${checkOutDateTime.toIso8601String()}',
+      );
 
       if (widget.attendanceId.isEmpty) {
         throw Exception('Attendance ID is missing. Please try again.');
@@ -286,7 +308,11 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     onPressed: () => Navigator.pop(context),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -318,14 +344,18 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
                         Expanded(
                           child: _buildInfoCard(
                             'Check In',
-                            widget.checkIn == '-' ? 'Not recorded' : widget.checkIn,
+                            widget.checkIn == '-'
+                                ? 'Not recorded'
+                                : widget.checkIn,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _buildInfoCard(
                             'Check Out',
-                            widget.checkOut == '-' ? 'Not recorded' : widget.checkOut,
+                            widget.checkOut == '-'
+                                ? 'Not recorded'
+                                : widget.checkOut,
                           ),
                         ),
                       ],
@@ -363,10 +393,17 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
                       child: TextField(
                         controller: _reasonController,
                         maxLines: 4,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                         decoration: InputDecoration(
-                          hintText: 'Explain why you need to edit this attendance record (minimum $_minCharacters characters)',
-                          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          hintText:
+                              'Explain why you need to edit this attendance record (minimum $_minCharacters characters)',
+                          hintStyle: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.all(16),
                         ),
@@ -376,7 +413,9 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
                     Text(
                       '$_characterCount/$_minCharacters characters minimum',
                       style: TextStyle(
-                        color: _characterCount >= _minCharacters ? Colors.grey[600] : Colors.red,
+                        color: _characterCount >= _minCharacters
+                            ? Colors.grey[600]
+                            : Colors.red,
                         fontSize: 12,
                       ),
                     ),
@@ -412,7 +451,10 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: (_characterCount >= _minCharacters && !_isSubmitting) ? _submitRequest : null,
+                      onPressed:
+                          (_characterCount >= _minCharacters && !_isSubmitting)
+                          ? _submitRequest
+                          : null,
                       icon: _isSubmitting
                           ? const SizedBox(
                               width: 18,
@@ -463,10 +505,7 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
         children: [
           Text(
             '$label:',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 11,
-            ),
+            style: TextStyle(color: Colors.grey[600], fontSize: 11),
           ),
           const SizedBox(height: 4),
           Text(
@@ -494,16 +533,14 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
           ),
         ),
         if (isRequired)
-          const Text(
-            ' *',
-            style: TextStyle(color: Colors.red, fontSize: 14),
-          ),
+          const Text(' *', style: TextStyle(color: Colors.red, fontSize: 14)),
       ],
     );
   }
 
   Widget _buildTimeField(TextEditingController controller) {
-    final isValid = controller.text.isEmpty || _tryParseTime(controller.text) != null;
+    final isValid =
+        controller.text.isEmpty || _tryParseTime(controller.text) != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -537,7 +574,10 @@ class _AttendanceEditRequestDialogState extends State<AttendanceEditRequestDialo
               hintText: '09:30 AM',
               hintStyle: TextStyle(color: Colors.grey[700], fontSize: 14),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               suffixIcon: IconButton(
                 icon: Icon(
                   Icons.access_time_rounded,

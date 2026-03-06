@@ -113,8 +113,12 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   Widget build(BuildContext context) {
     final data = _detail ?? widget.announcement;
     final priorityColor = _priorityColor(data.priority);
-    final createdAt = DateFormat('MMMM d, yyyy • hh:mm a').format(data.createdAt);
-    final updatedAt = DateFormat('MMM d, yyyy • hh:mm a').format(data.updatedAt);
+    final createdAt = DateFormat(
+      'MMMM d, yyyy • hh:mm a',
+    ).format(data.createdAt);
+    final updatedAt = DateFormat(
+      'MMM d, yyyy • hh:mm a',
+    ).format(data.updatedAt);
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -122,12 +126,20 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         backgroundColor: _kBg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Announcement',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         actions: [
           if (_markedRead)
@@ -144,14 +156,19 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                 children: [
                   Icon(Icons.done_all, size: 13, color: Colors.green[400]),
                   const SizedBox(width: 4),
-                  Text('Read', style: TextStyle(fontSize: 11, color: Colors.green[400])),
+                  Text(
+                    'Read',
+                    style: TextStyle(fontSize: 11, color: Colors.green[400]),
+                  ),
                 ],
               ),
             ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.white24))
+          ? const Center(
+              child: CircularProgressIndicator(color: Colors.white24),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -161,24 +178,34 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: priorityColor.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: priorityColor.withOpacity(0.4)),
+                          border: Border.all(
+                            color: priorityColor.withOpacity(0.4),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(_priorityIcon(data.priority), size: 13, color: priorityColor),
+                            Icon(
+                              _priorityIcon(data.priority),
+                              size: 13,
+                              color: priorityColor,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               data.priority.toUpperCase(),
                               style: TextStyle(
-                                  color: priorityColor,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5),
+                                color: priorityColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ],
                         ),
@@ -267,7 +294,8 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
                         _metaRow(
                           icon: Icons.visibility_outlined,
                           label: 'Read by',
-                          value: '${data.readBy.length} member${data.readBy.length == 1 ? '' : 's'}',
+                          value:
+                              '${data.readBy.length} member${data.readBy.length == 1 ? '' : 's'}',
                         ),
                       ],
                     ),
@@ -281,10 +309,10 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
   }
 
   Widget _divider() => Container(
-        margin: const EdgeInsets.symmetric(vertical: 12),
-        height: 1,
-        color: _kDivider,
-      );
+    margin: const EdgeInsets.symmetric(vertical: 12),
+    height: 1,
+    color: _kDivider,
+  );
 
   Widget _metaRow({
     required IconData icon,
@@ -308,15 +336,24 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              Text(
+                label,
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+              ),
               const SizedBox(height: 2),
-              Text(value,
-                  style: const TextStyle(
-                      fontSize: 14, color: Colors.white, fontWeight: FontWeight.w500)),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               if (subtitle != null)
-                Text(subtitle,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                ),
             ],
           ),
         ),

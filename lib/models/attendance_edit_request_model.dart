@@ -4,10 +4,10 @@
 
 import 'dart:convert';
 
-AttendanceEditRequest attendanceEditRequestFromJson(String str) => 
+AttendanceEditRequest attendanceEditRequestFromJson(String str) =>
     AttendanceEditRequest.fromJson(json.decode(str));
 
-String attendanceEditRequestToJson(AttendanceEditRequest data) => 
+String attendanceEditRequestToJson(AttendanceEditRequest data) =>
     json.encode(data.toJson());
 
 class AttendanceEditRequest {
@@ -21,7 +21,7 @@ class AttendanceEditRequest {
     required this.data,
   });
 
-  factory AttendanceEditRequest.fromJson(Map<String, dynamic> json) => 
+  factory AttendanceEditRequest.fromJson(Map<String, dynamic> json) =>
       AttendanceEditRequest(
         success: json["success"],
         message: json["message"],
@@ -29,10 +29,10 @@ class AttendanceEditRequest {
       );
 
   Map<String, dynamic> toJson() => {
-        "success": success,
-        "message": message,
-        "data": data.toJson(),
-      };
+    "success": success,
+    "message": message,
+    "data": data.toJson(),
+  };
 }
 
 class AttendanceEditRequestData {
@@ -91,21 +91,23 @@ class AttendanceEditRequestData {
       );
 
   Map<String, dynamic> toJson() => {
-        "attendance": attendance,
-        "user": user,
-        if (company != null) "company": company,
-        "date": date.toIso8601String(),
-        if (originalCheckIn != null) "originalCheckIn": originalCheckIn!.toIso8601String(),
-        if (originalCheckOut != null) "originalCheckOut": originalCheckOut!.toIso8601String(),
-        "requestedCheckIn": requestedCheckIn.toIso8601String(),
-        "requestedCheckOut": requestedCheckOut.toIso8601String(),
-        "reason": reason,
-        "status": status,
-        "_id": id,
-        "createdAt": createdAt.toIso8601String(),
-        "updatedAt": updatedAt.toIso8601String(),
-        "__v": v,
-      };
+    "attendance": attendance,
+    "user": user,
+    if (company != null) "company": company,
+    "date": date.toIso8601String(),
+    if (originalCheckIn != null)
+      "originalCheckIn": originalCheckIn!.toIso8601String(),
+    if (originalCheckOut != null)
+      "originalCheckOut": originalCheckOut!.toIso8601String(),
+    "requestedCheckIn": requestedCheckIn.toIso8601String(),
+    "requestedCheckOut": requestedCheckOut.toIso8601String(),
+    "reason": reason,
+    "status": status,
+    "_id": id,
+    "createdAt": createdAt.toIso8601String(),
+    "updatedAt": updatedAt.toIso8601String(),
+    "__v": v,
+  };
 }
 
 // ─── List response wrapper ───────────────────────────────────────────────────
@@ -153,15 +155,15 @@ class EmployeeInfo {
   });
 
   factory EmployeeInfo.fromJson(Map<String, dynamic> json) => EmployeeInfo(
-        id: json["_id"] ?? json["id"] ?? "",
-        name: json["name"] ?? "Unknown",
-        employeeId: json["employeeId"]?.toString(),
-        department: json["department"]?.toString(),
-        position: json["position"]?.toString(),
-        email: json["email"]?.toString(),
-        profilePhoto: json["profilePhoto"]?.toString(),
-        role: json["role"]?.toString(),
-      );
+    id: json["_id"] ?? json["id"] ?? "",
+    name: json["name"] ?? "Unknown",
+    employeeId: json["employeeId"]?.toString(),
+    department: json["department"]?.toString(),
+    position: json["position"]?.toString(),
+    email: json["email"]?.toString(),
+    profilePhoto: json["profilePhoto"]?.toString(),
+    role: json["role"]?.toString(),
+  );
 }
 
 // ─── Admin edit request data (employee field is populated) ──────────────────
@@ -217,7 +219,8 @@ class AdminEditRequestData {
     String attendanceId = "";
     final rawAtt = json["attendance"];
     if (rawAtt is Map<String, dynamic>) {
-      attendanceId = rawAtt["_id"]?.toString() ?? rawAtt["id"]?.toString() ?? "";
+      attendanceId =
+          rawAtt["_id"]?.toString() ?? rawAtt["id"]?.toString() ?? "";
     } else if (rawAtt is String) {
       attendanceId = rawAtt;
     }
@@ -262,7 +265,9 @@ class AdminEditRequestsList {
         success: json["success"] ?? false,
         count: json["count"] ?? 0,
         data: (json["data"] as List<dynamic>? ?? [])
-            .map((e) => AdminEditRequestData.fromJson(e as Map<String, dynamic>))
+            .map(
+              (e) => AdminEditRequestData.fromJson(e as Map<String, dynamic>),
+            )
             .toList(),
       );
 }

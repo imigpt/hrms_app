@@ -10,20 +10,15 @@ class ProfileResponse {
   final bool success;
   final ProfileUser user;
 
-  ProfileResponse({
-    required this.success,
-    required this.user,
-  });
+  ProfileResponse({required this.success, required this.user});
 
-  factory ProfileResponse.fromJson(Map<String, dynamic> json) => ProfileResponse(
+  factory ProfileResponse.fromJson(Map<String, dynamic> json) =>
+      ProfileResponse(
         success: json["success"] == true,
         user: ProfileUser.fromJson(json["user"] as Map<String, dynamic>),
       );
 
-  Map<String, dynamic> toJson() => {
-        "success": success,
-        "user": user.toJson(),
-      };
+  Map<String, dynamic> toJson() => {"success": success, "user": user.toJson()};
 }
 
 class ProfileUser {
@@ -77,58 +72,57 @@ class ProfileUser {
   });
 
   factory ProfileUser.fromJson(Map<String, dynamic> json) => ProfileUser(
-        id: json["_id"] ?? json["id"] ?? "",
-        employeeId: json["employeeId"] ?? "",
-        name: json["name"] ?? "",
-        email: json["email"] ?? "",
-        phone: json["phone"] ?? "",
-        dateOfBirth: _parseDate(json["dateOfBirth"]),
-        address: json["address"] ?? "",
-        role: json["role"] ?? "",
-        department: json["department"] ?? "",
-        position: json["position"] ?? "",
-        joinDate: _parseDate(json["joinDate"]),
-        status: json["status"] ?? "",
-        profilePhoto: json["profilePhoto"],
-        leaveBalance: json["leaveBalance"] == null
-            ? null
-            : LeaveBalance.fromJson(json["leaveBalance"]
-                as Map<String, dynamic>),
-      );
+    id: json["_id"] ?? json["id"] ?? "",
+    employeeId: json["employeeId"] ?? "",
+    name: json["name"] ?? "",
+    email: json["email"] ?? "",
+    phone: json["phone"] ?? "",
+    dateOfBirth: _parseDate(json["dateOfBirth"]),
+    address: json["address"] ?? "",
+    role: json["role"] ?? "",
+    department: json["department"] ?? "",
+    position: json["position"] ?? "",
+    joinDate: _parseDate(json["joinDate"]),
+    status: json["status"] ?? "",
+    profilePhoto: json["profilePhoto"],
+    leaveBalance: json["leaveBalance"] == null
+        ? null
+        : LeaveBalance.fromJson(json["leaveBalance"] as Map<String, dynamic>),
+  );
 
   factory ProfileUser.fromAuth(AuthUser user) => ProfileUser(
-        id: user.id,
-        employeeId: user.employeeId,
-        name: user.name,
-        email: user.email,
-        phone: "",
-        dateOfBirth: null,
-        address: "",
-        role: user.role,
-        department: user.department ?? "",
-        position: user.position ?? "",
-        joinDate: null,
-        status: "",
-        profilePhoto: user.profilePhoto,
-        leaveBalance: null,
-      );
+    id: user.id,
+    employeeId: user.employeeId,
+    name: user.name,
+    email: user.email,
+    phone: "",
+    dateOfBirth: null,
+    address: "",
+    role: user.role,
+    department: user.department ?? "",
+    position: user.position ?? "",
+    joinDate: null,
+    status: "",
+    profilePhoto: user.profilePhoto,
+    leaveBalance: null,
+  );
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "employeeId": employeeId,
-        "name": name,
-        "email": email,
-        "phone": phone,
-        "dateOfBirth": dateOfBirth?.toIso8601String(),
-        "address": address,
-        "role": role,
-        "department": department,
-        "position": position,
-        "joinDate": joinDate?.toIso8601String(),
-        "status": status,
-        "profilePhoto": profilePhoto,
-        "leaveBalance": leaveBalance?.toJson(),
-      };
+    "_id": id,
+    "employeeId": employeeId,
+    "name": name,
+    "email": email,
+    "phone": phone,
+    "dateOfBirth": dateOfBirth?.toIso8601String(),
+    "address": address,
+    "role": role,
+    "department": department,
+    "position": position,
+    "joinDate": joinDate?.toIso8601String(),
+    "status": status,
+    "profilePhoto": profilePhoto,
+    "leaveBalance": leaveBalance?.toJson(),
+  };
 }
 
 class LeaveBalance {
@@ -149,22 +143,22 @@ class LeaveBalance {
   });
 
   factory LeaveBalance.fromJson(Map<String, dynamic> json) => LeaveBalance(
-        annual: json["annual"] ?? 0,
-        sick: json["sick"] ?? 0,
-        casual: json["casual"] ?? 0,
-        maternity: json["maternity"] ?? 0,
-        paternity: json["paternity"] ?? 0,
-        unpaid: json["unpaid"] ?? 0,
-      );
+    annual: json["annual"] ?? 0,
+    sick: json["sick"] ?? 0,
+    casual: json["casual"] ?? 0,
+    maternity: json["maternity"] ?? 0,
+    paternity: json["paternity"] ?? 0,
+    unpaid: json["unpaid"] ?? 0,
+  );
 
   Map<String, dynamic> toJson() => {
-        "annual": annual,
-        "sick": sick,
-        "casual": casual,
-        "maternity": maternity,
-        "paternity": paternity,
-        "unpaid": unpaid,
-      };
+    "annual": annual,
+    "sick": sick,
+    "casual": casual,
+    "maternity": maternity,
+    "paternity": paternity,
+    "unpaid": unpaid,
+  };
 }
 
 DateTime? _parseDate(dynamic value) {

@@ -18,7 +18,9 @@ class AnnouncementsScreen extends StatefulWidget {
 }
 
 class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
-  bool get _isAdmin => widget.role?.toLowerCase() == 'admin' || widget.role?.toLowerCase() == 'hr';
+  bool get _isAdmin =>
+      widget.role?.toLowerCase() == 'admin' ||
+      widget.role?.toLowerCase() == 'hr';
 
   List<Announcement> _allAnnouncements = [];
   bool _isLoading = true;
@@ -52,7 +54,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       if (token != null) {
         // You might need to decode the JWT token or make an API call to get user ID
         // For now, we'll use a simple approach - you can enhance this based on your token structure
-        _currentUserId = token.hashCode.toString(); // Simple approach using token hash
+        _currentUserId = token.hashCode
+            .toString(); // Simple approach using token hash
         // TODO: Replace with actual user ID extraction from token or API call
       }
     } catch (e) {
@@ -63,7 +66,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   Future<void> _loadPersistedReadIds() async {
     try {
       if (_currentUserId == null) return;
-      
+
       final prefs = await SharedPreferences.getInstance();
       final userSpecificKey = 'read_announcement_ids_$_currentUserId';
       final ids = prefs.getStringList(userSpecificKey) ?? [];
@@ -80,7 +83,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   Future<void> _persistReadId(String announcementId) async {
     try {
       if (_currentUserId == null) return;
-      
+
       final prefs = await SharedPreferences.getInstance();
       final userSpecificKey = 'read_announcement_ids_$_currentUserId';
       final ids = prefs.getStringList(userSpecificKey) ?? [];
@@ -116,14 +119,17 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
           _isLoading = false;
         });
-        
+
         // Show notifications for new announcements
         for (final announcement in response.data) {
           if (!_notifiedAnnouncementIds.contains(announcement.id)) {
             await NotificationService().showAnnouncementNotification(
               title: 'New Announcement',
               message: announcement.title ?? 'New announcement from management',
-              body: announcement.content ?? announcement.title ?? 'Check the announcements section for details',
+              body:
+                  announcement.content ??
+                  announcement.title ??
+                  'Check the announcements section for details',
               payload: {'id': announcement.id},
             );
             _notifiedAnnouncementIds.add(announcement.id);
@@ -167,16 +173,24 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     final kRedAccent = const Color(0xFFD32F2F);
     final kYellowAccent = const Color(0xFFFBC02D);
     final kPurpleAccent = const Color(0xFF7B1FA2);
-    
+
     // Filter Logic - filter by displayType
     List<Announcement> filteredList = _selectedFilter == 'All'
         ? _allAnnouncements
-        : _allAnnouncements.where((item) => item.displayType == _selectedFilter).toList();
+        : _allAnnouncements
+              .where((item) => item.displayType == _selectedFilter)
+              .toList();
 
     // Stats Calculation
-    int urgentCount = _allAnnouncements.where((i) => i.displayType == 'Urgent').length;
-    int importantCount = _allAnnouncements.where((i) => i.displayType == 'Important').length;
-    int infoCount = _allAnnouncements.where((i) => i.displayType == 'Info').length;
+    int urgentCount = _allAnnouncements
+        .where((i) => i.displayType == 'Urgent')
+        .length;
+    int importantCount = _allAnnouncements
+        .where((i) => i.displayType == 'Important')
+        .length;
+    int infoCount = _allAnnouncements
+        .where((i) => i.displayType == 'Info')
+        .length;
     int totalCount = _allAnnouncements.length;
 
     return Scaffold(
@@ -187,7 +201,10 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
               backgroundColor: const Color(0xFFFF8FA3),
               foregroundColor: Colors.black,
               icon: const Icon(Icons.add),
-              label: const Text('New Announcement', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text(
+                'New Announcement',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             )
           : null,
       appBar: AppBar(
@@ -195,12 +212,20 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Announcements",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         // actions: [
         //   Tooltip(
@@ -231,22 +256,42 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                   children: [
                     SizedBox(
                       width: 100,
-                      child: _buildStatCard("Urgent", urgentCount, Icons.warning_amber_rounded, kRedAccent),
+                      child: _buildStatCard(
+                        "Urgent",
+                        urgentCount,
+                        Icons.warning_amber_rounded,
+                        kRedAccent,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     SizedBox(
                       width: 100,
-                      child: _buildStatCard("Important", importantCount, Icons.notifications_active_outlined, kYellowAccent),
+                      child: _buildStatCard(
+                        "Important",
+                        importantCount,
+                        Icons.notifications_active_outlined,
+                        kYellowAccent,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     SizedBox(
                       width: 100,
-                      child: _buildStatCard("Info", infoCount, Icons.info_outline_rounded, kPurpleAccent),
+                      child: _buildStatCard(
+                        "Info",
+                        infoCount,
+                        Icons.info_outline_rounded,
+                        kPurpleAccent,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     SizedBox(
                       width: 100,
-                      child: _buildStatCard("Total", totalCount, Icons.campaign_outlined, Colors.blueAccent),
+                      child: _buildStatCard(
+                        "Total",
+                        totalCount,
+                        Icons.campaign_outlined,
+                        Colors.blueAccent,
+                      ),
                     ),
                   ],
                 ),
@@ -264,7 +309,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                     children: [
                       Text(
                         "Announcements",
-                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       SizedBox(height: 4),
                       Text(
@@ -273,7 +322,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                       ),
                     ],
                   ),
-                  
+
                   // Custom Filter Dropdown
                   Container(
                     height: 36,
@@ -287,19 +336,28 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                       child: DropdownButton<String>(
                         dropdownColor: kCardColor,
                         value: _selectedFilter,
-                        icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 18),
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Colors.white70,
+                          size: 18,
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
                         onChanged: (String? newValue) {
                           setState(() {
                             _selectedFilter = newValue!;
                           });
                         },
-                        items: ['All', 'Urgent', 'Important', 'Info'].map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
+                        items: ['All', 'Urgent', 'Important', 'Info']
+                            .map<DropdownMenuItem<String>>((String value) {
+                              return DropdownMenuItem<String>(
+                                value: value,
+                                child: Text(value),
+                              );
+                            })
+                            .toList(),
                       ),
                     ),
                   ),
@@ -313,22 +371,26 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
-                        ? _buildErrorState()
-                        : filteredList.isEmpty
-                            ? _buildEmptyState()
-                            : RefreshIndicator(
-                                onRefresh: _fetchAnnouncements,
-                                child: ListView.separated(
-                                  physics: const AlwaysScrollableScrollPhysics(
-                                    parent: BouncingScrollPhysics(),
-                                  ),
-                                  itemCount: filteredList.length,
-                                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                                  itemBuilder: (context, index) {
-                                    return _buildAnnouncementCard(filteredList[index], kCardColor);
-                                  },
-                                ),
-                              ),
+                    ? _buildErrorState()
+                    : filteredList.isEmpty
+                    ? _buildEmptyState()
+                    : RefreshIndicator(
+                        onRefresh: _fetchAnnouncements,
+                        child: ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          itemCount: filteredList.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            return _buildAnnouncementCard(
+                              filteredList[index],
+                              kCardColor,
+                            );
+                          },
+                        ),
+                      ),
               ),
             ],
           ),
@@ -353,180 +415,343 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       context: context,
       backgroundColor: kCardColor,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (sheetCtx) => StatefulBuilder(builder: (_, ss) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
-            left: 20, right: 20, top: 20,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)))),
-                const SizedBox(height: 16),
-                Row(children: [
-                  const Icon(Icons.campaign_outlined, color: Color(0xFFFF8FA3), size: 22),
-                  const SizedBox(width: 10),
-                  const Text('New Announcement', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  IconButton(onPressed: () => Navigator.pop(sheetCtx), icon: const Icon(Icons.close, color: Colors.white54, size: 20)),
-                ]),
-                const SizedBox(height: 20),
-                // Priority selector
-                const Text('Priority', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 10),
-                Row(children: [
-                  for (final p in [
-                    ('low', 'Info', const Color(0xFF7B1FA2)),
-                    ('medium', 'Important', const Color(0xFFFBC02D)),
-                    ('high', 'Urgent', const Color(0xFFD32F2F)),
-                  ])
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => ss(() => selectedPriority = p.$1),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: selectedPriority == p.$1 ? p.$3.withValues(alpha: 0.2) : kInputColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: selectedPriority == p.$1 ? p.$3 : Colors.white12,
-                              width: selectedPriority == p.$1 ? 1.5 : 1,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (_, ss) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+              left: 20,
+              right: 20,
+              top: 20,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.campaign_outlined,
+                        color: Color(0xFFFF8FA3),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'New Announcement',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetCtx),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white54,
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Priority selector
+                  const Text(
+                    'Priority',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      for (final p in [
+                        ('low', 'Info', const Color(0xFF7B1FA2)),
+                        ('medium', 'Important', const Color(0xFFFBC02D)),
+                        ('high', 'Urgent', const Color(0xFFD32F2F)),
+                      ])
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => ss(() => selectedPriority = p.$1),
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: selectedPriority == p.$1
+                                    ? p.$3.withValues(alpha: 0.2)
+                                    : kInputColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: selectedPriority == p.$1
+                                      ? p.$3
+                                      : Colors.white12,
+                                  width: selectedPriority == p.$1 ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Text(
+                                p.$2,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: selectedPriority == p.$1
+                                      ? p.$3
+                                      : Colors.grey,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
                           ),
-                          child: Text(p.$2, textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: selectedPriority == p.$1 ? p.$3 : Colors.grey,
-                              fontSize: 13, fontWeight: FontWeight.w600,
-                            )),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  // Category
+                  const Text(
+                    'Category',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: kInputColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedCategory,
+                        isExpanded: true,
+                        dropdownColor: kInputColor,
+                        hint: Text(
+                          'Select category',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: 13,
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Colors.white54,
+                          size: 20,
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        items:
+                            [
+                                  'Policy',
+                                  'Event',
+                                  'Benefits',
+                                  'IT',
+                                  'Facility',
+                                  'General',
+                                ]
+                                .map(
+                                  (c) => DropdownMenuItem(
+                                    value: c,
+                                    child: Text(c),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (v) => ss(() => selectedCategory = v),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Title
+                  const Text(
+                    'Title *',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: titleCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Announcement title',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 13,
+                      ),
+                      filled: true,
+                      fillColor: kInputColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Content
+                  const Text(
+                    'Content *',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: contentCtrl,
+                    maxLines: 5,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Write the announcement content...',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 13,
+                      ),
+                      filled: true,
+                      fillColor: kInputColor,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF8FA3),
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: submitting
+                          ? null
+                          : () async {
+                              final title = titleCtrl.text.trim();
+                              final content = contentCtrl.text.trim();
+                              if (title.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please enter a title'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+                              if (content.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please enter content'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+                              final token =
+                                  _authToken ??
+                                  widget.token ??
+                                  await TokenStorageService().getToken();
+                              if (token == null) return;
+                              ss(() => submitting = true);
+                              try {
+                                await AnnouncementService.createAnnouncement(
+                                  token: token,
+                                  title: title,
+                                  content: content,
+                                  priority: selectedPriority,
+                                  category: selectedCategory,
+                                );
+                                if (sheetCtx.mounted)
+                                  Navigator.pop(sheetCtx, true);
+                              } catch (e) {
+                                if (sheetCtx.mounted)
+                                  ss(() => submitting = false);
+                                if (mounted)
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        e.toString().replaceAll(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                              }
+                            },
+                      icon: submitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.black,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded, size: 18),
+                      label: Text(
+                        submitting ? 'Publishing...' : 'Publish Announcement',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
                         ),
                       ),
                     ),
-                ]),
-                const SizedBox(height: 20),
-                // Category
-                const Text('Category', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: kInputColor,
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedCategory,
-                      isExpanded: true,
-                      dropdownColor: kInputColor,
-                      hint: Text('Select category', style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 20),
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                      items: ['Policy', 'Event', 'Benefits', 'IT', 'Facility', 'General']
-                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                          .toList(),
-                      onChanged: (v) => ss(() => selectedCategory = v),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Title
-                const Text('Title *', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: titleCtrl,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Announcement title',
-                    hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
-                    filled: true, fillColor: kInputColor,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Content
-                const Text('Content *', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: contentCtrl,
-                  maxLines: 5,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Write the announcement content...',
-                    hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
-                    filled: true, fillColor: kInputColor,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity, height: 52,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF8FA3),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    onPressed: submitting ? null : () async {
-                      final title = titleCtrl.text.trim();
-                      final content = contentCtrl.text.trim();
-                      if (title.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter a title'), backgroundColor: Colors.red));
-                        return;
-                      }
-                      if (content.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter content'), backgroundColor: Colors.red));
-                        return;
-                      }
-                      final token = _authToken ?? widget.token ?? await TokenStorageService().getToken();
-                      if (token == null) return;
-                      ss(() => submitting = true);
-                      try {
-                        await AnnouncementService.createAnnouncement(
-                          token: token,
-                          title: title,
-                          content: content,
-                          priority: selectedPriority,
-                          category: selectedCategory,
-                        );
-                        if (sheetCtx.mounted) Navigator.pop(sheetCtx, true);
-                      } catch (e) {
-                        if (sheetCtx.mounted) ss(() => submitting = false);
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.red));
-                      }
-                    },
-                    icon: submitting
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                        : const Icon(Icons.send_rounded, size: 18),
-                    label: Text(submitting ? 'Publishing...' : 'Publish Announcement',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                  ),
-                ),
-                const SizedBox(height: 28),
-              ],
+                  const SizedBox(height: 28),
+                ],
+              ),
             ),
-          ),
-        );
-      }),
+          );
+        },
+      ),
     );
 
     titleCtrl.dispose();
     contentCtrl.dispose();
 
     if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Announcement published!'),
-        backgroundColor: Color(0xFF00C853),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Announcement published!'),
+          backgroundColor: Color(0xFF00C853),
+        ),
+      );
       _fetchAnnouncements();
     }
   }
@@ -554,7 +779,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
           const Spacer(),
           Text(
             "$count",
-            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           Text(
             label,
@@ -606,7 +835,10 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: typeColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
@@ -614,13 +846,20 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                   ),
                   child: Text(
                     item.displayType.toUpperCase(),
-                    style: TextStyle(color: typeColor, fontSize: 10, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: typeColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const Spacer(),
                 if (isRead)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.green.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
@@ -628,9 +867,19 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.done_all, size: 12, color: Colors.green[400]),
+                        Icon(
+                          Icons.done_all,
+                          size: 12,
+                          color: Colors.green[400],
+                        ),
                         const SizedBox(width: 4),
-                        Text('Read', style: TextStyle(fontSize: 10, color: Colors.green[400])),
+                        Text(
+                          'Read',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.green[400],
+                          ),
+                        ),
                       ],
                     ),
                   )
@@ -662,7 +911,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             const SizedBox(height: 8),
             Text(
               item.content,
-              style: TextStyle(fontSize: 13, color: Colors.grey[400], height: 1.4),
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[400],
+                height: 1.4,
+              ),
             ),
             if (item.createdBy != null) ...[
               const SizedBox(height: 12),
@@ -723,9 +976,16 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.mark_email_read_outlined, size: 48, color: Colors.grey[800]),
+          Icon(
+            Icons.mark_email_read_outlined,
+            size: 48,
+            color: Colors.grey[800],
+          ),
           const SizedBox(height: 16),
-          Text("No announcements found", style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+          Text(
+            "No announcements found",
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          ),
         ],
       ),
     );

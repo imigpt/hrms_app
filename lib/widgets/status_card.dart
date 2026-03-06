@@ -45,20 +45,22 @@ class StatusCard extends StatelessWidget {
           // ── Header row ────────────────────────────────────────────────
           Row(
             children: [
-              Icon(Icons.access_time_rounded,
-                  size: 18, color: Colors.redAccent.shade100),
+              Icon(
+                Icons.access_time_rounded,
+                size: 18,
+                color: Colors.redAccent.shade100,
+              ),
               const SizedBox(width: 6),
               const Text(
                 'Working Hour Details',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(8),
@@ -133,10 +135,7 @@ class _DetailRow extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -147,10 +146,7 @@ class _DetailRow extends StatelessWidget {
         ),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ],
     );

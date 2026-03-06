@@ -79,13 +79,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     // Handle initial action from dashboard navigation immediately
     if (widget.initialAction == 'checkIn') {
       // Directly show photo UI for check-in from dashboard
       _showPhotoUI = true;
     }
-    
+
     _fetchTodayAttendance();
     _fetchAttendanceSummary();
     _fetchAttendanceHistory();
@@ -125,43 +125,69 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         setState(() {
           final data = todayAttendance.data!;
           // Derive checked-in state: prefer model flags, fallback to actual data presence
-          final hasCheckedIn = data.hasCheckedIn || (data.checkIn?.time != null);
-          final hasCheckedOut = data.hasCheckedOut || (data.checkOut?.time != null);
+          final hasCheckedIn =
+              data.hasCheckedIn || (data.checkIn?.time != null);
+          final hasCheckedOut =
+              data.hasCheckedOut || (data.checkOut?.time != null);
           _isCheckedIn = hasCheckedIn && !hasCheckedOut;
-          
+
           // Parse check-in and check-out times from AttendanceCheckPoint objects
           try {
             if (data.checkIn != null && data.checkIn!.time != null) {
-              final checkInTime = (DateTime.tryParse(data.checkIn!.time!) ?? DateTime.now()).toLocal();
+              final checkInTime =
+                  (DateTime.tryParse(data.checkIn!.time!) ?? DateTime.now())
+                      .toLocal();
               _checkInDateTime = checkInTime;
               _checkInTime = _formatTime(checkInTime);
             }
-            
+
             if (data.checkOut != null && data.checkOut!.time != null) {
-              final checkOutTime = (DateTime.tryParse(data.checkOut!.time!) ?? DateTime.now()).toLocal();
+              final checkOutTime =
+                  (DateTime.tryParse(data.checkOut!.time!) ?? DateTime.now())
+                      .toLocal();
               _checkOutDateTime = checkOutTime;
               _checkOutTime = _formatTime(checkOutTime);
             }
-            
+
             // Set location labels based on distance from office
             if (data.checkIn?.location != null) {
-              final lat = (data.checkIn!.location!['latitude'] as num).toDouble();
-              final lng = (data.checkIn!.location!['longitude'] as num).toDouble();
-              final d = Geolocator.distanceBetween(lat, lng, 26.816224, 75.845444);
-              _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
+              final lat = (data.checkIn!.location!['latitude'] as num)
+                  .toDouble();
+              final lng = (data.checkIn!.location!['longitude'] as num)
+                  .toDouble();
+              final d = Geolocator.distanceBetween(
+                lat,
+                lng,
+                26.816224,
+                75.845444,
+              );
+              _checkInLocation = d <= 100
+                  ? 'Main Building'
+                  : 'Outside Building';
             }
             if (data.checkOut?.location != null) {
-              final lat = (data.checkOut!.location!['latitude'] as num).toDouble();
-              final lng = (data.checkOut!.location!['longitude'] as num).toDouble();
-              final d = Geolocator.distanceBetween(lat, lng, 26.816224, 75.845444);
-              _checkOutLocation = d <= 100 ? 'Main Building' : 'Outside Building';
+              final lat = (data.checkOut!.location!['latitude'] as num)
+                  .toDouble();
+              final lng = (data.checkOut!.location!['longitude'] as num)
+                  .toDouble();
+              final d = Geolocator.distanceBetween(
+                lat,
+                lng,
+                26.816224,
+                75.845444,
+              );
+              _checkOutLocation = d <= 100
+                  ? 'Main Building'
+                  : 'Outside Building';
             }
-            
+
             // Calculate worked duration
             if (_isCheckedIn && _checkInDateTime != null) {
               _workedDuration = DateTime.now().difference(_checkInDateTime!);
             } else if (_checkOutDateTime != null && _checkInDateTime != null) {
-              _workedDuration = _checkOutDateTime!.difference(_checkInDateTime!);
+              _workedDuration = _checkOutDateTime!.difference(
+                _checkInDateTime!,
+              );
             }
           } catch (e) {
             print('Error parsing attendance data: $e');
@@ -232,19 +258,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         year: _focusedDay.year,
       );
 
-      print('📅 Attendance history response: success=${history.success}, count=${history.data.length}');
-      
+      print(
+        '📅 Attendance history response: success=${history.success}, count=${history.data.length}',
+      );
+
       if (mounted) {
         final Map<DateTime, AttendanceStatus> attendanceMap = {};
-        
+
         if (history.success && history.data.isNotEmpty) {
           for (var record in history.data) {
             // Normalize the date to UTC midnight to avoid timezone issues
             final recordDate = record.date;
-            final normalizedDate = DateTime.utc(recordDate.year, recordDate.month, recordDate.day);
-            
+            final normalizedDate = DateTime.utc(
+              recordDate.year,
+              recordDate.month,
+              recordDate.day,
+            );
+
             print('📅 Record: date=$normalizedDate, status=${record.status}');
-            
+
             // Map backend status to enum
             AttendanceStatus status;
             switch (record.status.toLowerCase().trim()) {
@@ -271,16 +303,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 print('⚠️ Unknown status: ${record.status}');
                 status = AttendanceStatus.absent;
             }
-            
+
             attendanceMap[normalizedDate] = status;
           }
-          print('📅 Total attendance data loaded: ${attendanceMap.length} entries');
+          print(
+            '📅 Total attendance data loaded: ${attendanceMap.length} entries',
+          );
         } else if (!history.success) {
           print('⚠️ API returned success=false');
         } else {
           print('⚠️ API returned empty data');
         }
-        
+
         setState(() {
           _attendanceData = attendanceMap;
           _isLoadingHistory = false;
@@ -312,7 +346,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final now = DateTime.now();
       final startDate = DateTime(now.year, now.month, 1);
       final endDate = DateTime(now.year, now.month + 1, 0);
-      
+
       final startDateStr = DateFormat('yyyy-MM-dd').format(startDate);
       final endDateStr = DateFormat('yyyy-MM-dd').format(endDate);
 
@@ -328,8 +362,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (mounted) {
         setState(() {
           // Sort by date descending and take first 5
-          final sortedRecords = List<records.AttendanceRecord>.from(recordsResponse.data)
-            ..sort((a, b) => b.date.compareTo(a.date));
+          final sortedRecords = List<records.AttendanceRecord>.from(
+            recordsResponse.data,
+          )..sort((a, b) => b.date.compareTo(a.date));
           _latestRecords = sortedRecords.take(5).toList();
           _isLoadingRecords = false;
         });
@@ -362,11 +397,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           _checkOutTime = _formatTime(DateTime.now());
         }
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(isCheckingIn ? "Checked In Successfully!" : "Checked Out Successfully!"),
+            content: Text(
+              isCheckingIn
+                  ? "Checked In Successfully!"
+                  : "Checked Out Successfully!",
+            ),
             backgroundColor: isCheckingIn ? Colors.green : Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
@@ -399,13 +438,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   // Handle check-in result from camera
   void _handleCheckInResult(dynamic result) async {
     String? checkInAddress;
-    
+
     // Extract address if result is a Map with both data and address
-    if (result is Map<String, dynamic> && result.containsKey('checkInAddress')) {
+    if (result is Map<String, dynamic> &&
+        result.containsKey('checkInAddress')) {
       checkInAddress = result['checkInAddress'];
       result = result['attendanceData'];
     }
-    
+
     if (result != null && result is AttendanceData) {
       setState(() {
         _isCheckedIn = true;
@@ -415,22 +455,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _checkOutTime = "--:--";
         _checkOutDateTime = null;
         _showPhotoUI = false;
-        
+
         // Use human-readable address if provided, otherwise fall back to coordinates
         if (checkInAddress != null && checkInAddress.isNotEmpty) {
           _checkInLocation = checkInAddress;
         } else if (result.checkIn.location != null) {
-            final d = Geolocator.distanceBetween(
-              result.checkIn.location!.latitude,
-              result.checkIn.location!.longitude,
-              26.816224, 75.845444,
-            );
-            _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
-          }
-        
+          final d = Geolocator.distanceBetween(
+            result.checkIn.location!.latitude,
+            result.checkIn.location!.longitude,
+            26.816224,
+            75.845444,
+          );
+          _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
+        }
+
         _workedDuration = DateTime.now().difference(result.checkIn.time);
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Checked In Successfully!"),
@@ -465,10 +506,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _checkLocationAndStartCheckIn() async {
     try {
       print('\n🔍 [CHECK-IN DEBUG] === Quick Location Check ===');
-      
+
       // Quick location service check
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      
+
       if (!serviceEnabled) {
         if (mounted) {
           setState(() => _showPhotoUI = false);
@@ -485,11 +526,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       // Quick permission check
       LocationPermission permission = await Geolocator.checkPermission();
-      
+
       if (permission == LocationPermission.denied) {
         if (mounted) {
-          final shouldRequest = await LocationPermissionDialog.show(context, isPermanentlyDenied: false);
-          
+          final shouldRequest = await LocationPermissionDialog.show(
+            context,
+            isPermanentlyDenied: false,
+          );
+
           if (shouldRequest != true) {
             if (mounted) {
               setState(() => _showPhotoUI = false);
@@ -503,19 +547,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             }
             return;
           }
-          
+
           permission = await Geolocator.requestPermission();
         }
       } else if (permission == LocationPermission.deniedForever) {
         if (mounted) {
           setState(() => _showPhotoUI = false);
-          await LocationPermissionDialog.show(context, isPermanentlyDenied: true);
+          await LocationPermissionDialog.show(
+            context,
+            isPermanentlyDenied: true,
+          );
         }
         return;
       }
 
       // Allow check-in if permission granted
-      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
         if (mounted && !_showPhotoUI) {
           setState(() => _showPhotoUI = true);
         }
@@ -548,7 +596,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _handleCheckOut() async {
     print('\n🔍 [CHECK-OUT DEBUG] === Starting Quick Check-Out Process ===');
-    
+
     if (_token == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -588,20 +636,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       // Quick permission check
       LocationPermission permission = await Geolocator.checkPermission();
-      
-      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         if (mounted) {
           final shouldRequest = await LocationPermissionDialog.show(
-            context, 
-            isPermanentlyDenied: permission == LocationPermission.deniedForever
+            context,
+            isPermanentlyDenied: permission == LocationPermission.deniedForever,
           );
-          
+
           if (shouldRequest == null || shouldRequest == false) return;
-          
+
           if (permission == LocationPermission.deniedForever) return;
-          
+
           permission = await Geolocator.requestPermission();
-          if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
+          if (permission == LocationPermission.denied ||
+              permission == LocationPermission.deniedForever)
+            return;
         }
       }
 
@@ -639,13 +690,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       // Call check-out API in background (don't wait)
       _doCheckOutRequest(position);
-      
     } catch (e) {
       print('Check-out error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString().replaceAll('Exception:', '').trim()}'),
+            content: Text(
+              'Error: ${e.toString().replaceAll('Exception:', '').trim()}',
+            ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -665,14 +717,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         latitude: lat,
         longitude: lng,
       );
-      
+
       print('✅ [CHECK-OUT] API completed');
 
       if (mounted) {
         setState(() {
           _checkOutDateTime = response.data.checkOut!.time;
           _checkOutTime = _formatTime(response.data.checkOut!.time);
-          
+
           if (response.data.checkOut!.location != null) {
             final double distMeters = Geolocator.distanceBetween(
               response.data.checkOut!.location!.latitude,
@@ -680,10 +732,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               26.816224,
               75.845444,
             );
-            _checkOutLocation = distMeters <= 100 ? 'Main Building' : 'Outside Building';
+            _checkOutLocation = distMeters <= 100
+                ? 'Main Building'
+                : 'Outside Building';
           }
-          
-          _workedDuration = response.data.checkOut!.time.difference(response.data.checkIn.time);
+
+          _workedDuration = response.data.checkOut!.time.difference(
+            response.data.checkIn.time,
+          );
         });
       }
     } catch (e) {
@@ -708,7 +764,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Location services are disabled. Please enable them.'),
+                content: Text(
+                  'Location services are disabled. Please enable them.',
+                ),
                 backgroundColor: Colors.orange,
               ),
             );
@@ -731,7 +789,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             position.latitude,
             position.longitude,
           );
-          
+
           if (placemarks.isNotEmpty) {
             Placemark place = placemarks[0];
             // Format address: Street, Locality, State
@@ -742,20 +800,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             if (place.locality != null && place.locality!.isNotEmpty) {
               addressParts.add(place.locality!);
             }
-            if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
+            if (place.administrativeArea != null &&
+                place.administrativeArea!.isNotEmpty) {
               addressParts.add(place.administrativeArea!);
             }
-            
-            locationString = addressParts.isNotEmpty 
-                ? addressParts.join(', ') 
+
+            locationString = addressParts.isNotEmpty
+                ? addressParts.join(', ')
                 : '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
           } else {
-            locationString = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+            locationString =
+                '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
           }
         } catch (e) {
           print('Error reverse geocoding: $e');
           // Fallback to coordinates if geocoding fails
-          locationString = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+          locationString =
+              '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
         }
 
         setState(() {
@@ -802,12 +863,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   AttendanceStatus? _getStatus(DateTime day) {
     // Normalize the day to UTC midnight for consistent comparison
     final normalizedDay = DateTime.utc(day.year, day.month, day.day);
-    
+
     // Debug print
     if (_attendanceData.isNotEmpty) {
-      print('🔍 Looking for $normalizedDay in ${_attendanceData.keys.toList()}');
+      print(
+        '🔍 Looking for $normalizedDay in ${_attendanceData.keys.toList()}',
+      );
     }
-    
+
     for (var entry in _attendanceData.entries) {
       if (isSameDay(entry.key, normalizedDay)) {
         print('✅ Found status: ${entry.value} for $normalizedDay');
@@ -826,12 +889,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "My Attendance",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
         // actions: [
         //   Tooltip(
@@ -866,14 +937,28 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               const SizedBox(height: 32),
 
               // 2. Stats Grid
-              const Text("Overview", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const Text(
+                "Overview",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
               const SizedBox(height: 16),
               _buildStatsGrid(),
 
               const SizedBox(height: 32),
 
               // 3. NEW CALENDAR SECTION
-              const Text("Monthly Report", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+              const Text(
+                "Monthly Report",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
               const SizedBox(height: 16),
               _buildCalendarCard(), // <--- NEW WIDGET ADDED HERE
 
@@ -883,7 +968,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Daily Attendance Records", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const Text(
+                    "Daily Attendance Records",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                   TextButton(
                     onPressed: () {
                       Navigator.push(
@@ -892,8 +984,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           builder: (context) => const AttendanceHistoryScreen(),
                         ),
                       );
-                    }, 
-                    child: Text("View All", style: TextStyle(color: Theme.of(context).primaryColor)),
+                    },
+                    child: Text(
+                      "View All",
+                      style: TextStyle(color: Theme.of(context).primaryColor),
+                    ),
                   ),
                 ],
               ),
@@ -906,13 +1001,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('My Edit Requests', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const Text(
+                    'My Edit Requests',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                   TextButton(
                     onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const EditRequestsScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const EditRequestsScreen(),
+                      ),
                     ),
-                    child: Text('View All', style: TextStyle(color: Theme.of(context).primaryColor)),
+                    child: Text(
+                      'View All',
+                      style: TextStyle(color: Theme.of(context).primaryColor),
+                    ),
                   ),
                 ],
               ),
@@ -930,7 +1037,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildHeroStatusCard() {
     // Calculate work hours as double
     double workHours = _workedDuration.inMinutes / 60.0;
-    
+
     return WelcomeCard(
       isCheckedIn: _isCheckedIn,
       showPhotoUI: _showPhotoUI,
@@ -963,7 +1070,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final wfh = _summaryData?.wfh.toString() ?? '0';
     final totalWorkHours = _summaryData?.totalWorkHours ?? 0.0;
     final averageWorkHours = _summaryData?.averageWorkHours ?? '0h 0m';
-    
+
     // Format total work hours
     final hours = totalWorkHours.floor();
     final minutes = ((totalWorkHours - hours) * 60).round();
@@ -974,27 +1081,69 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         // First Row: Present, Late
         Row(
           children: [
-            Expanded(child: _buildStatCard("Present", present, Icons.check_circle, Colors.greenAccent)),
+            Expanded(
+              child: _buildStatCard(
+                "Present",
+                present,
+                Icons.check_circle,
+                Colors.greenAccent,
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _buildStatCard("Late", late, Icons.access_time, Colors.orangeAccent)),
+            Expanded(
+              child: _buildStatCard(
+                "Late",
+                late,
+                Icons.access_time,
+                Colors.orangeAccent,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
         // Second Row: Absent, Half Day
         Row(
           children: [
-            Expanded(child: _buildStatCard("Absent", absent, Icons.cancel, Colors.redAccent)),
+            Expanded(
+              child: _buildStatCard(
+                "Absent",
+                absent,
+                Icons.cancel,
+                Colors.redAccent,
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _buildStatCard("Half Day", halfDay, Icons.timelapse, Colors.amberAccent)),
+            Expanded(
+              child: _buildStatCard(
+                "Half Day",
+                halfDay,
+                Icons.timelapse,
+                Colors.amberAccent,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
         // Third Row: WFH, Total Days
         Row(
           children: [
-            Expanded(child: _buildStatCard("WFH", wfh, Icons.home, Colors.purpleAccent)),
+            Expanded(
+              child: _buildStatCard(
+                "WFH",
+                wfh,
+                Icons.home,
+                Colors.purpleAccent,
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _buildStatCard("Total Days", _summaryData?.totalDays.toString() ?? '0', Icons.calendar_today, Colors.blueAccent)),
+            Expanded(
+              child: _buildStatCard(
+                "Total Days",
+                _summaryData?.totalDays.toString() ?? '0',
+                Icons.calendar_today,
+                Colors.blueAccent,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -1014,12 +1163,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.access_time_filled, color: Colors.cyanAccent, size: 20),
+                        Icon(
+                          Icons.access_time_filled,
+                          color: Colors.cyanAccent,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
                             'Total Work Hours',
-                            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 12,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -1028,7 +1184,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     const SizedBox(height: 8),
                     Text(
                       totalWorkHoursStr,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),
@@ -1048,12 +1208,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.trending_up, color: Colors.greenAccent, size: 20),
+                        Icon(
+                          Icons.trending_up,
+                          color: Colors.greenAccent,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
                             'Avg. Work Hours',
-                            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 12,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -1062,7 +1229,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     const SizedBox(height: 8),
                     Text(
                       averageWorkHours,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),
@@ -1077,10 +1248,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   // --- NEW: CALENDAR WIDGET ---
   Widget _buildCalendarCard() {
     // Style constants for the calendar
-    final kGreenBg = const Color(0xFF1B3A24); 
-    final kGreenText = const Color(0xFF4CAF50); 
-    final kRedBg = const Color(0xFF3A1B1B);   
-    final kRedText = const Color(0xFFE57373);   
+    final kGreenBg = const Color(0xFF1B3A24);
+    final kGreenText = const Color(0xFF4CAF50);
+    final kRedBg = const Color(0xFF3A1B1B);
+    final kRedText = const Color(0xFFE57373);
     final kOrangeBg = const Color(0xFF3E2723);
     final kOrangeText = Colors.orangeAccent;
     final kAmberBg = const Color(0xFF3E3520);
@@ -1104,147 +1275,194 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   child: CircularProgressIndicator(color: Colors.white),
                 )
               : TableCalendar(
-        firstDay: DateTime.utc(2020, 10, 16),
-        lastDay: DateTime.utc(2030, 3, 14),
-        focusedDay: _focusedDay,
-        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-        
-        // Minimal Header Styling
-        headerStyle: const HeaderStyle(
-          formatButtonVisible: false,
-          titleCentered: true,
-          titleTextStyle: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-          leftChevronIcon: Icon(Icons.chevron_left, color: Colors.white70, size: 20),
-          rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white70, size: 20),
-        ),
+                  firstDay: DateTime.utc(2020, 10, 16),
+                  lastDay: DateTime.utc(2030, 3, 14),
+                  focusedDay: _focusedDay,
+                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
 
-        // Grid Styling
-        daysOfWeekStyle: const DaysOfWeekStyle(
-          weekdayStyle: TextStyle(color: Colors.grey, fontSize: 12),
-          weekendStyle: TextStyle(color: Colors.grey, fontSize: 12),
-        ),
-
-        // Custom Cell Builders
-        calendarBuilders: CalendarBuilders(
-          // 1. Prioritized Builder: Checks for status first
-          prioritizedBuilder: (context, day, focusedDay) {
-            AttendanceStatus? status = _getStatus(day);
-            bool isSelected = isSameDay(day, _selectedDay);
-            bool isToday = isSameDay(day, DateTime.now());
-
-            // Handle days with attendance status
-            if (status != null) {
-              Color bgColor;
-              Color textColor;
-              IconData icon;
-              
-              switch (status) {
-                case AttendanceStatus.present:
-                  bgColor = kGreenBg;
-                  textColor = kGreenText;
-                  icon = Icons.check;
-                  break;
-                case AttendanceStatus.absent:
-                  bgColor = kRedBg;
-                  textColor = kRedText;
-                  icon = Icons.close;
-                  break;
-                case AttendanceStatus.late:
-                  bgColor = kOrangeBg;
-                  textColor = kOrangeText;
-                  icon = Icons.access_time;
-                  break;
-                case AttendanceStatus.halfDay:
-                  bgColor = kAmberBg;
-                  textColor = kAmberText;
-                  icon = Icons.timelapse;
-                  break;
-                case AttendanceStatus.leave:
-                  bgColor = kPurpleBg;
-                  textColor = kPurpleText;
-                  icon = Icons.event_busy_outlined;
-                  break;
-              }
-              
-              return Container(
-                margin: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(8),
-                  border: isSelected 
-                      ? Border.all(color: AppTheme.primaryColor, width: 2)
-                      : (isToday ? Border.all(color: Colors.blueAccent, width: 2) : null),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${day.day}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
+                  // Minimal Header Styling
+                  headerStyle: const HeaderStyle(
+                    formatButtonVisible: false,
+                    titleCentered: true,
+                    titleTextStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(height: 2),
-                    Icon(icon, size: 12, color: textColor),
-                  ],
+                    leftChevronIcon: Icon(
+                      Icons.chevron_left,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                    rightChevronIcon: Icon(
+                      Icons.chevron_right,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                  ),
+
+                  // Grid Styling
+                  daysOfWeekStyle: const DaysOfWeekStyle(
+                    weekdayStyle: TextStyle(color: Colors.grey, fontSize: 12),
+                    weekendStyle: TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+
+                  // Custom Cell Builders
+                  calendarBuilders: CalendarBuilders(
+                    // 1. Prioritized Builder: Checks for status first
+                    prioritizedBuilder: (context, day, focusedDay) {
+                      AttendanceStatus? status = _getStatus(day);
+                      bool isSelected = isSameDay(day, _selectedDay);
+                      bool isToday = isSameDay(day, DateTime.now());
+
+                      // Handle days with attendance status
+                      if (status != null) {
+                        Color bgColor;
+                        Color textColor;
+                        IconData icon;
+
+                        switch (status) {
+                          case AttendanceStatus.present:
+                            bgColor = kGreenBg;
+                            textColor = kGreenText;
+                            icon = Icons.check;
+                            break;
+                          case AttendanceStatus.absent:
+                            bgColor = kRedBg;
+                            textColor = kRedText;
+                            icon = Icons.close;
+                            break;
+                          case AttendanceStatus.late:
+                            bgColor = kOrangeBg;
+                            textColor = kOrangeText;
+                            icon = Icons.access_time;
+                            break;
+                          case AttendanceStatus.halfDay:
+                            bgColor = kAmberBg;
+                            textColor = kAmberText;
+                            icon = Icons.timelapse;
+                            break;
+                          case AttendanceStatus.leave:
+                            bgColor = kPurpleBg;
+                            textColor = kPurpleText;
+                            icon = Icons.event_busy_outlined;
+                            break;
+                        }
+
+                        return Container(
+                          margin: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: bgColor,
+                            borderRadius: BorderRadius.circular(8),
+                            border: isSelected
+                                ? Border.all(
+                                    color: AppTheme.primaryColor,
+                                    width: 2,
+                                  )
+                                : (isToday
+                                      ? Border.all(
+                                          color: Colors.blueAccent,
+                                          width: 2,
+                                        )
+                                      : null),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                '${day.day}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Icon(icon, size: 12, color: textColor),
+                            ],
+                          ),
+                        );
+                      }
+
+                      // If no status, let other builders handle it
+                      return null;
+                    },
+
+                    // 2. Default Day (Empty)
+                    defaultBuilder: (context, day, focusedDay) {
+                      return Center(
+                        child: Text(
+                          '${day.day}',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      );
+                    },
+
+                    // 3. Today (Highlighted) - Only for days without attendance status
+                    todayBuilder: (context, day, focusedDay) {
+                      return Container(
+                        margin: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.blueAccent,
+                            width: 2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${day.day}',
+                            style: const TextStyle(
+                              color: Colors.blueAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+
+                    // 4. Selected Day - Only for days without attendance status
+                    selectedBuilder: (context, day, focusedDay) {
+                      return Container(
+                        margin: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppTheme.primaryColor,
+                            width: 2,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${day.day}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                    });
+                  },
+                  onPageChanged: (focusedDay) {
+                    setState(() {
+                      _focusedDay = focusedDay;
+                    });
+                    // Fetch attendance history for the new month
+                    _fetchAttendanceHistory();
+                    // Also update the summary
+                    _fetchAttendanceSummary();
+                  },
                 ),
-              );
-            }
-            
-            // If no status, let other builders handle it
-            return null;
-          },
 
-          // 2. Default Day (Empty)
-          defaultBuilder: (context, day, focusedDay) {
-             return Center(child: Text('${day.day}', style: const TextStyle(color: Colors.white70)));
-          },
-
-          // 3. Today (Highlighted) - Only for days without attendance status
-          todayBuilder: (context, day, focusedDay) {
-            return Container(
-              margin: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.blueAccent.withOpacity(0.2),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.blueAccent, width: 2),
-              ),
-              child: Center(child: Text('${day.day}', style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold))),
-            );
-          },
-          
-          // 4. Selected Day - Only for days without attendance status
-          selectedBuilder: (context, day, focusedDay) {
-            return Container(
-              margin: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppTheme.primaryColor, width: 2),
-                shape: BoxShape.circle,
-              ),
-              child: Center(child: Text('${day.day}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-            );
-          },
-        ),
-        
-        onDaySelected: (selectedDay, focusedDay) {
-          setState(() {
-            _selectedDay = selectedDay;
-            _focusedDay = focusedDay;
-          });
-        },
-        onPageChanged: (focusedDay) {
-          setState(() {
-            _focusedDay = focusedDay;
-          });
-          // Fetch attendance history for the new month
-          _fetchAttendanceHistory();
-          // Also update the summary
-          _fetchAttendanceSummary();
-        },
-      ),
-          
           // Legend
           const SizedBox(height: 16),
           const Divider(color: Colors.white10, height: 1),
@@ -1252,7 +1470,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildLegendItem(Icons.check_circle_outline, const Color(0xFF4CAF50), 'Present'),
+              _buildLegendItem(
+                Icons.check_circle_outline,
+                const Color(0xFF4CAF50),
+                'Present',
+              ),
               _buildLegendItem(Icons.close, const Color(0xFFE57373), 'Absent'),
               _buildLegendItem(Icons.access_time, Colors.orangeAccent, 'Late'),
             ],
@@ -1262,8 +1484,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildLegendItem(Icons.timelapse, Colors.amberAccent, 'Half Day'),
-              _buildLegendItem(Icons.event_busy_outlined, const Color(0xFFCE93D8), 'Leave'),
-              const SizedBox(width: 60),  // spacer for alignment
+              _buildLegendItem(
+                Icons.event_busy_outlined,
+                const Color(0xFFCE93D8),
+                'Leave',
+              ),
+              const SizedBox(width: 60), // spacer for alignment
             ],
           ),
         ],
@@ -1284,7 +1510,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   // Helper widget for specific calendar status cells
-  Widget _buildCalendarCell(DateTime day, Color bg, Color color, IconData icon) {
+  Widget _buildCalendarCell(
+    DateTime day,
+    Color bg,
+    Color color,
+    IconData icon,
+  ) {
     return Container(
       margin: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -1294,7 +1525,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('${day.day}', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+          Text(
+            '${day.day}',
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
           const SizedBox(height: 2),
           Icon(icon, size: 10, color: color),
         ],
@@ -1302,7 +1540,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1317,7 +1560,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Icon(icon, color: color, size: 20),
-              Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -1347,10 +1597,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               const SizedBox(height: 12),
               Text(
                 'No attendance records yet',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey[400], fontSize: 14),
               ),
             ],
           ),
@@ -1371,46 +1618,57 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   String _statusLabel(String raw) {
     switch (raw.toLowerCase().trim()) {
-      case 'present':   return 'Present';
-      case 'absent':    return 'Absent';
-      case 'late':      return 'Late';
+      case 'present':
+        return 'Present';
+      case 'absent':
+        return 'Absent';
+      case 'late':
+        return 'Late';
       case 'leave':
-      case 'on leave':  return 'Leave';
+      case 'on leave':
+        return 'Leave';
       case 'halfday':
       case 'half_day':
       case 'half day':
-      case 'half-day':  return 'Half Day';
+      case 'half-day':
+        return 'Half Day';
       default:
-        return raw.isNotEmpty
-            ? raw[0].toUpperCase() + raw.substring(1)
-            : raw;
+        return raw.isNotEmpty ? raw[0].toUpperCase() + raw.substring(1) : raw;
     }
   }
 
   IconData _statusIcon(String raw) {
     switch (raw.toLowerCase().trim()) {
-      case 'present':   return Icons.check_circle_outline;
-      case 'absent':    return Icons.cancel_outlined;
-      case 'late':      return Icons.access_time;
+      case 'present':
+        return Icons.check_circle_outline;
+      case 'absent':
+        return Icons.cancel_outlined;
+      case 'late':
+        return Icons.access_time;
       case 'leave':
-      case 'on leave':  return Icons.event_busy_outlined;
+      case 'on leave':
+        return Icons.event_busy_outlined;
       case 'halfday':
       case 'half_day':
       case 'half day':
-      case 'half-day':  return Icons.timelapse;
-      default:          return Icons.help_outline;
+      case 'half-day':
+        return Icons.timelapse;
+      default:
+        return Icons.help_outline;
     }
   }
 
   Widget _buildAttendanceRecordCard(records.AttendanceRecord record) {
     final status = _statusLabel(record.status);
-    
+
     // Format times
-    final checkInTime = DateFormat('hh:mm a').format(record.checkIn.time.toLocal());
-    final checkOutTime = record.checkOut != null 
-        ? DateFormat('hh:mm a').format(record.checkOut!.time.toLocal()) 
+    final checkInTime = DateFormat(
+      'hh:mm a',
+    ).format(record.checkIn.time.toLocal());
+    final checkOutTime = record.checkOut != null
+        ? DateFormat('hh:mm a').format(record.checkOut!.time.toLocal())
         : '-';
-    
+
     // Calculate duration
     String duration = '-';
     if (record.checkOut != null) {
@@ -1418,18 +1676,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final minutes = ((record.workHours - hours) * 60).round();
       duration = '${hours}h ${minutes}m';
     }
-    
+
     // Check if has photo
     final hasPhoto = record.checkIn.photo.url.isNotEmpty;
-    
+
     // Get location coordinates
     final hasLocation = record.checkIn.location != null;
     final latitude = hasLocation ? record.checkIn.location!.latitude : 0.0;
     final longitude = hasLocation ? record.checkIn.location!.longitude : 0.0;
-    
+
     // Format date
     final dateStr = DateFormat('MMM d, y').format(record.date);
-    
+
     Color statusColor;
     Color statusBgColor;
 
@@ -1486,7 +1744,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   // Status Badge
                   if (status != '-')
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: statusBgColor,
                         borderRadius: BorderRadius.circular(20),
@@ -1498,8 +1759,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(_statusIcon(record.status),
-                              color: statusColor, size: 13),
+                          Icon(
+                            _statusIcon(record.status),
+                            color: statusColor,
+                            size: 13,
+                          ),
                           const SizedBox(width: 5),
                           Text(
                             status,
@@ -1516,10 +1780,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   const SizedBox(width: 8),
                   // Edit Icon
                   IconButton(
-                    icon: Icon(Icons.edit_outlined, color: Colors.grey[600], size: 18),
+                    icon: Icon(
+                      Icons.edit_outlined,
+                      color: Colors.grey[600],
+                      size: 18,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    onPressed: () => _showEditRequestDialog(dateStr, checkInTime, checkOutTime, record.id),
+                    onPressed: () => _showEditRequestDialog(
+                      dateStr,
+                      checkInTime,
+                      checkOutTime,
+                      record.id,
+                    ),
                   ),
                 ],
               ),
@@ -1534,15 +1807,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildTimeInfo('Check In', checkInTime, Icons.login, Colors.green),
+                child: _buildTimeInfo(
+                  'Check In',
+                  checkInTime,
+                  Icons.login,
+                  Colors.green,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildTimeInfo('Check Out', checkOutTime, Icons.logout, Colors.orange),
+                child: _buildTimeInfo(
+                  'Check Out',
+                  checkOutTime,
+                  Icons.logout,
+                  Colors.orange,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildTimeInfo('Duration', duration, Icons.access_time, Colors.blue),
+                child: _buildTimeInfo(
+                  'Duration',
+                  duration,
+                  Icons.access_time,
+                  Colors.blue,
+                ),
               ),
             ],
           ),
@@ -1560,13 +1848,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ? () => _openGoogleMaps(latitude, longitude)
                       : null,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.blue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.blue.withOpacity(0.3),
-                      ),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1597,14 +1886,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       ? () => _showPhotoDialog(record.checkIn.photo.url)
                       : null,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
-                      color: hasPhoto 
+                      color: hasPhoto
                           ? Colors.green.withOpacity(0.1)
                           : Colors.grey.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: hasPhoto 
+                        color: hasPhoto
                             ? Colors.green.withOpacity(0.3)
                             : Colors.grey.withOpacity(0.3),
                       ),
@@ -1638,7 +1930,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildTimeInfo(String label, String value, IconData icon, Color color) {
+  Widget _buildTimeInfo(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1648,10 +1945,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             const SizedBox(width: 4),
             Text(
               label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 11,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 11),
             ),
           ],
         ),
@@ -1669,7 +1963,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   // Show edit request dialog
-  void _showEditRequestDialog(String date, String checkIn, String checkOut, String attendanceId) {
+  void _showEditRequestDialog(
+    String date,
+    String checkIn,
+    String checkOut,
+    String attendanceId,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AttendanceEditRequestDialog(
@@ -1711,7 +2010,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: CircularProgressIndicator(color: AppTheme.primaryColor, strokeWidth: 2),
+          child: CircularProgressIndicator(
+            color: AppTheme.primaryColor,
+            strokeWidth: 2,
+          ),
         ),
       );
     }
@@ -1736,8 +2038,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Column(
       children: _editRequests.map((req) {
         final dateStr = DateFormat('MMM d, yyyy').format(req.date.toLocal());
-        final checkInStr = DateFormat('hh:mm a').format(req.requestedCheckIn.toLocal());
-        final checkOutStr = DateFormat('hh:mm a').format(req.requestedCheckOut.toLocal());
+        final checkInStr = DateFormat(
+          'hh:mm a',
+        ).format(req.requestedCheckIn.toLocal());
+        final checkOutStr = DateFormat(
+          'hh:mm a',
+        ).format(req.requestedCheckOut.toLocal());
         final statusColor = _editRequestStatusColor(req.status);
 
         return Container(
@@ -1757,7 +2063,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   color: statusColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.edit_calendar_outlined, color: statusColor, size: 18),
+                child: Icon(
+                  Icons.edit_calendar_outlined,
+                  color: statusColor,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1766,7 +2076,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   children: [
                     Text(
                       dateStr,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -1801,19 +2115,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Color _editRequestStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'approved': return Colors.greenAccent;
-      case 'rejected': return Colors.redAccent;
-      default:         return Colors.orangeAccent;
+      case 'approved':
+        return Colors.greenAccent;
+      case 'rejected':
+        return Colors.redAccent;
+      default:
+        return Colors.orangeAccent;
     }
   }
 
   // Open Google Maps with coordinates
   Future<void> _openGoogleMaps(double latitude, double longitude) async {
     // Try multiple methods to open maps
-    
+
     // Method 1: Use geo: scheme (native Android maps)
     final geoUri = Uri.parse('geo:$latitude,$longitude?q=$latitude,$longitude');
-    
+
     try {
       if (await canLaunchUrl(geoUri)) {
         await launchUrl(geoUri, mode: LaunchMode.externalApplication);
@@ -1822,10 +2139,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     } catch (e) {
       print('Geo URI failed: $e');
     }
-    
+
     // Method 2: Use Google Maps URL
-    final googleMapsUri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$latitude,$longitude');
-    
+    final googleMapsUri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude',
+    );
+
     try {
       if (await canLaunchUrl(googleMapsUri)) {
         await launchUrl(googleMapsUri, mode: LaunchMode.externalApplication);
@@ -1834,10 +2153,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     } catch (e) {
       print('Google Maps URL failed: $e');
     }
-    
+
     // Method 3: Try direct Google Maps app link
-    final mapsAppUri = Uri.parse('https://maps.google.com/?q=$latitude,$longitude');
-    
+    final mapsAppUri = Uri.parse(
+      'https://maps.google.com/?q=$latitude,$longitude',
+    );
+
     try {
       if (await canLaunchUrl(mapsAppUri)) {
         await launchUrl(mapsAppUri, mode: LaunchMode.externalApplication);
@@ -1846,12 +2167,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     } catch (e) {
       print('Maps app URL failed: $e');
     }
-    
+
     // If all methods fail, show error
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Could not open Google Maps. Please install Google Maps app.'),
+          content: Text(
+            'Could not open Google Maps. Please install Google Maps app.',
+          ),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
@@ -1879,7 +2202,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         color: Colors.white,
                         value: loadingProgress.expectedTotalBytes != null
                             ? loadingProgress.cumulativeBytesLoaded /
-                                loadingProgress.expectedTotalBytes!
+                                  loadingProgress.expectedTotalBytes!
                             : null,
                       ),
                     );
@@ -1890,7 +2213,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                          Icon(
+                            Icons.error_outline,
+                            size: 48,
+                            color: Colors.red[300],
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             'Failed to load image',
@@ -1922,8 +2249,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
 // --- OLD DIALOG REMOVED - Now using separate widget from attendance_edit_request_dialog.dart ---
 
-
-
 // ------------------------------------------
 // FACE SCAN SCREEN (Unchanged)
 // ------------------------------------------
@@ -1934,15 +2259,19 @@ class FaceScanScreen extends StatefulWidget {
   State<FaceScanScreen> createState() => _FaceScanScreenState();
 }
 
-class _FaceScanScreenState extends State<FaceScanScreen> with SingleTickerProviderStateMixin {
+class _FaceScanScreenState extends State<FaceScanScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
     Future.delayed(const Duration(seconds: 3), () {
-      if(mounted) Navigator.pop(context, true);
+      if (mounted) Navigator.pop(context, true);
     });
   }
 
@@ -1966,7 +2295,10 @@ class _FaceScanScreenState extends State<FaceScanScreen> with SingleTickerProvid
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Scanning...", style: TextStyle(color: Colors.white, fontSize: 20)),
+                  const Text(
+                    "Scanning...",
+                    style: TextStyle(color: Colors.white, fontSize: 20),
+                  ),
                   const SizedBox(height: 20),
                   const CircularProgressIndicator(color: Colors.greenAccent),
                 ],

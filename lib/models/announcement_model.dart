@@ -23,15 +23,16 @@ class AnnouncementResponse {
         count: json["count"] ?? 0,
         data: json["data"] != null
             ? List<Announcement>.from(
-                json["data"].map((x) => Announcement.fromJson(x)))
+                json["data"].map((x) => Announcement.fromJson(x)),
+              )
             : [],
       );
 
   Map<String, dynamic> toJson() => {
-        "success": success,
-        "count": count,
-        "data": List<dynamic>.from(data.map((x) => x.toJson())),
-      };
+    "success": success,
+    "count": count,
+    "data": List<dynamic>.from(data.map((x) => x.toJson())),
+  };
 }
 
 class Announcement {
@@ -41,8 +42,10 @@ class Announcement {
   CreatedBy? createdBy;
   dynamic company;
   String priority;
+
   /// Optional: if set, announcement targets only this department
   String? targetDepartment;
+
   /// Optional: announcement expiry date
   DateTime? expiryDate;
   List<dynamic> readBy;
@@ -68,48 +71,48 @@ class Announcement {
   });
 
   factory Announcement.fromJson(Map<String, dynamic> json) => Announcement(
-        id: json["_id"] ?? "",
-        title: json["title"] ?? "",
-        content: json["content"] ?? "",
-        createdBy: json["createdBy"] != null
-            ? CreatedBy.fromJson(json["createdBy"])
-            : null,
-        company: json["company"],
-        priority: json["priority"] ?? "low",
-        targetDepartment: json["targetDepartment"],
-        expiryDate: json["expiryDate"] != null
-            ? DateTime.tryParse(json["expiryDate"])
-            : null,
-        readBy: json["readBy"] != null
-            ? List<dynamic>.from(json["readBy"].map((x) => x))
-            : [],
-        isActive: json["isActive"] ?? true,
-        attachments: json["attachments"] != null
-            ? List<dynamic>.from(json["attachments"].map((x) => x))
-            : [],
-        createdAt: json["createdAt"] != null
-            ? DateTime.parse(json["createdAt"])
-            : DateTime.now(),
-        updatedAt: json["updatedAt"] != null
-            ? DateTime.parse(json["updatedAt"])
-            : DateTime.now(),
-      );
+    id: json["_id"] ?? "",
+    title: json["title"] ?? "",
+    content: json["content"] ?? "",
+    createdBy: json["createdBy"] != null
+        ? CreatedBy.fromJson(json["createdBy"])
+        : null,
+    company: json["company"],
+    priority: json["priority"] ?? "low",
+    targetDepartment: json["targetDepartment"],
+    expiryDate: json["expiryDate"] != null
+        ? DateTime.tryParse(json["expiryDate"])
+        : null,
+    readBy: json["readBy"] != null
+        ? List<dynamic>.from(json["readBy"].map((x) => x))
+        : [],
+    isActive: json["isActive"] ?? true,
+    attachments: json["attachments"] != null
+        ? List<dynamic>.from(json["attachments"].map((x) => x))
+        : [],
+    createdAt: json["createdAt"] != null
+        ? DateTime.parse(json["createdAt"])
+        : DateTime.now(),
+    updatedAt: json["updatedAt"] != null
+        ? DateTime.parse(json["updatedAt"])
+        : DateTime.now(),
+  );
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "title": title,
-        "content": content,
-        "createdBy": createdBy?.toJson(),
-        "company": company,
-        "priority": priority,
-        if (targetDepartment != null) "targetDepartment": targetDepartment,
-        if (expiryDate != null) "expiryDate": expiryDate!.toIso8601String(),
-        "readBy": List<dynamic>.from(readBy.map((x) => x)),
-        "isActive": isActive,
-        "attachments": List<dynamic>.from(attachments.map((x) => x)),
-        "createdAt": createdAt.toIso8601String(),
-        "updatedAt": updatedAt.toIso8601String(),
-      };
+    "_id": id,
+    "title": title,
+    "content": content,
+    "createdBy": createdBy?.toJson(),
+    "company": company,
+    "priority": priority,
+    if (targetDepartment != null) "targetDepartment": targetDepartment,
+    if (expiryDate != null) "expiryDate": expiryDate!.toIso8601String(),
+    "readBy": List<dynamic>.from(readBy.map((x) => x)),
+    "isActive": isActive,
+    "attachments": List<dynamic>.from(attachments.map((x) => x)),
+    "createdAt": createdAt.toIso8601String(),
+    "updatedAt": updatedAt.toIso8601String(),
+  };
 
   // Helper: whether this announcement has expired
   bool get isExpired =>
@@ -143,16 +146,16 @@ class CreatedBy {
   });
 
   factory CreatedBy.fromJson(Map<String, dynamic> json) => CreatedBy(
-        id: json["_id"] ?? "",
-        name: json["name"] ?? "",
-        email: json["email"] ?? "",
-        position: json["position"] ?? "",
-      );
+    id: json["_id"] ?? "",
+    name: json["name"] ?? "",
+    email: json["email"] ?? "",
+    position: json["position"] ?? "",
+  );
 
   Map<String, dynamic> toJson() => {
-        "_id": id,
-        "name": name,
-        "email": email,
-        "position": position,
-      };
+    "_id": id,
+    "name": name,
+    "email": email,
+    "position": position,
+  };
 }

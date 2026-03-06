@@ -4,31 +4,26 @@
 
 import 'dart:convert';
 
-UpdateLocation updateLocationFromJson(String str) => 
+UpdateLocation updateLocationFromJson(String str) =>
     UpdateLocation.fromJson(json.decode(str));
 
-String updateLocationToJson(UpdateLocation data) => 
-    json.encode(data.toJson());
+String updateLocationToJson(UpdateLocation data) => json.encode(data.toJson());
 
 class UpdateLocation {
   bool success;
   CurrentLocation currentLocation;
 
-  UpdateLocation({
-    required this.success,
-    required this.currentLocation,
-  });
+  UpdateLocation({required this.success, required this.currentLocation});
 
-  factory UpdateLocation.fromJson(Map<String, dynamic> json) => 
-      UpdateLocation(
-        success: json["success"],
-        currentLocation: CurrentLocation.fromJson(json["currentLocation"]),
-      );
+  factory UpdateLocation.fromJson(Map<String, dynamic> json) => UpdateLocation(
+    success: json["success"],
+    currentLocation: CurrentLocation.fromJson(json["currentLocation"]),
+  );
 
   Map<String, dynamic> toJson() => {
-        "success": success,
-        "currentLocation": currentLocation.toJson(),
-      };
+    "success": success,
+    "currentLocation": currentLocation.toJson(),
+  };
 }
 
 class CurrentLocation {
@@ -44,7 +39,7 @@ class CurrentLocation {
     required this.lastUpdated,
   });
 
-  factory CurrentLocation.fromJson(Map<String, dynamic> json) => 
+  factory CurrentLocation.fromJson(Map<String, dynamic> json) =>
       CurrentLocation(
         latitude: (json["latitude"] as num).toDouble(),
         longitude: (json["longitude"] as num).toDouble(),
@@ -53,9 +48,9 @@ class CurrentLocation {
       );
 
   Map<String, dynamic> toJson() => {
-        "latitude": latitude,
-        "longitude": longitude,
-        "address": address,
-        "lastUpdated": lastUpdated.toIso8601String(),
-      };
+    "latitude": latitude,
+    "longitude": longitude,
+    "address": address,
+    "lastUpdated": lastUpdated.toIso8601String(),
+  };
 }

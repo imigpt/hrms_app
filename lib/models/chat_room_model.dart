@@ -7,6 +7,10 @@ class ChatParticipant {
   final String? profilePhoto;
   final String? position;
   final String status;
+  final String? employeeId; // for employees
+  final String? hrId; // for HR
+  final String? adminId; // for admins
+  final String? userRole; // 'employee' | 'hr' | 'admin'
 
   ChatParticipant({
     required this.id,
@@ -15,6 +19,10 @@ class ChatParticipant {
     this.profilePhoto,
     this.position,
     this.status = 'active',
+    this.employeeId,
+    this.hrId,
+    this.adminId,
+    this.userRole,
   });
 
   factory ChatParticipant.fromJson(Map<String, dynamic> json) {
@@ -34,7 +42,27 @@ class ChatParticipant {
       profilePhoto: photo,
       position: json['position'] as String?,
       status: json['status'] as String? ?? 'active',
+      employeeId: json['employeeId'] as String?,
+      hrId: json['hrId'] as String?,
+      adminId: json['adminId'] as String?,
+      userRole: json['userRole'] as String?,
     );
+  }
+
+  /// Returns the appropriate ID for display (Employee ID, HR ID, Admin ID, or User ID)
+  String getDisplayId() {
+    if (adminId != null && adminId!.isNotEmpty) return adminId!;
+    if (hrId != null && hrId!.isNotEmpty) return hrId!;
+    if (employeeId != null && employeeId!.isNotEmpty) return employeeId!;
+    return id.substring(0, 8); // fallback: first 8 chars of MongoDB ID
+  }
+
+  /// Returns a label for the display ID (e.g., "EMP-", "HR-", "ADM-")
+  String getIdPrefix() {
+    if (adminId != null && adminId!.isNotEmpty) return 'ADM';
+    if (hrId != null && hrId!.isNotEmpty) return 'HR';
+    if (employeeId != null && employeeId!.isNotEmpty) return 'EMP';
+    return 'USR';
   }
 }
 
@@ -113,16 +141,15 @@ class ChatRoom {
       participants: participantsList,
       description: json['description'] as String? ?? '',
       isActive: json['isActive'] as bool? ?? true,
-      onlyAdminsCanMessage:
-          settings['onlyAdminsCanMessage'] as bool? ?? false,
+      onlyAdminsCanMessage: settings['onlyAdminsCanMessage'] as bool? ?? false,
       lastMessage: json['lastMessage'] != null
           ? ChatLastMessage.fromJson(
-              json['lastMessage'] as Map<String, dynamic>)
+              json['lastMessage'] as Map<String, dynamic>,
+            )
           : null,
       unreadCount: json['unreadCount'] as int? ?? 0,
       otherUser: json['otherUser'] != null
-          ? ChatParticipant.fromJson(
-              json['otherUser'] as Map<String, dynamic>)
+          ? ChatParticipant.fromJson(json['otherUser'] as Map<String, dynamic>)
           : null,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
@@ -160,10 +187,7 @@ class ChatPersonalRoomResponse {
   final bool success;
   final ChatRoom data;
 
-  ChatPersonalRoomResponse({
-    required this.success,
-    required this.data,
-  });
+  ChatPersonalRoomResponse({required this.success, required this.data});
 
   factory ChatPersonalRoomResponse.fromJson(Map<String, dynamic> json) {
     return ChatPersonalRoomResponse(
@@ -182,12 +206,20 @@ class ChatMessageSender {
   final String name;
   final String? profilePhoto;
   final String? position;
+  final String? employeeId;
+  final String? hrId;
+  final String? adminId;
+  final String? userRole;
 
   ChatMessageSender({
     required this.id,
     required this.name,
     this.profilePhoto,
     this.position,
+    this.employeeId,
+    this.hrId,
+    this.adminId,
+    this.userRole,
   });
 
   factory ChatMessageSender.fromJson(Map<String, dynamic> json) {
@@ -200,7 +232,27 @@ class ChatMessageSender {
       name: json['name'] as String? ?? '',
       profilePhoto: photo,
       position: json['position'] as String?,
+      employeeId: json['employeeId'] as String?,
+      hrId: json['hrId'] as String?,
+      adminId: json['adminId'] as String?,
+      userRole: json['userRole'] as String?,
     );
+  }
+
+  /// Returns the appropriate ID for display
+  String getDisplayId() {
+    if (adminId != null && adminId!.isNotEmpty) return adminId!;
+    if (hrId != null && hrId!.isNotEmpty) return hrId!;
+    if (employeeId != null && employeeId!.isNotEmpty) return employeeId!;
+    return id.substring(0, 8);
+  }
+
+  /// Returns label prefix
+  String getIdPrefix() {
+    if (adminId != null && adminId!.isNotEmpty) return 'ADM';
+    if (hrId != null && hrId!.isNotEmpty) return 'HR';
+    if (employeeId != null && employeeId!.isNotEmpty) return 'EMP';
+    return 'USR';
   }
 }
 
@@ -220,12 +272,12 @@ class ChatAttachment {
   });
 
   factory ChatAttachment.fromJson(Map<String, dynamic> json) => ChatAttachment(
-        url: json['url'] as String? ?? '',
-        publicId: json['publicId'] as String?,
-        name: json['name'] as String?,
-        size: json['size'] as int?,
-        mimeType: json['mimeType'] as String?,
-      );
+    url: json['url'] as String? ?? '',
+    publicId: json['publicId'] as String?,
+    name: json['name'] as String?,
+    size: json['size'] as int?,
+    mimeType: json['mimeType'] as String?,
+  );
 }
 
 /// Lightweight quoted message shown inside a bubble when this is a reply
@@ -233,22 +285,62 @@ class ChatReplyMessage {
   final String id;
   final String content;
   final String? senderName;
+  final String? senderId;
+  final String? senderEmployeeId;
+  final String? senderHrId;
+  final String? senderAdminId;
 
   ChatReplyMessage({
     required this.id,
     required this.content,
     this.senderName,
+    this.senderId,
+    this.senderEmployeeId,
+    this.senderHrId,
+    this.senderAdminId,
   });
 
   factory ChatReplyMessage.fromJson(Map<String, dynamic> json) {
     String? senderName;
+    String? senderId;
+    String? senderEmployeeId;
+    String? senderHrId;
+    String? senderAdminId;
     final s = json['sender'];
-    if (s is Map<String, dynamic>) senderName = s['name'] as String?;
+    if (s is Map<String, dynamic>) {
+      senderName = s['name'] as String?;
+      senderId = s['_id'] as String?;
+      senderEmployeeId = s['employeeId'] as String?;
+      senderHrId = s['hrId'] as String?;
+      senderAdminId = s['adminId'] as String?;
+    }
     return ChatReplyMessage(
       id: json['_id'] as String? ?? '',
       content: json['content'] as String? ?? '',
       senderName: senderName,
+      senderId: senderId,
+      senderEmployeeId: senderEmployeeId,
+      senderHrId: senderHrId,
+      senderAdminId: senderAdminId,
     );
+  }
+
+  /// Returns the appropriate ID for display
+  String getDisplayId() {
+    if (senderAdminId != null && senderAdminId!.isNotEmpty)
+      return senderAdminId!;
+    if (senderHrId != null && senderHrId!.isNotEmpty) return senderHrId!;
+    if (senderEmployeeId != null && senderEmployeeId!.isNotEmpty)
+      return senderEmployeeId!;
+    return senderId?.substring(0, 8) ?? 'Unknown';
+  }
+
+  /// Returns label prefix
+  String getIdPrefix() {
+    if (senderAdminId != null && senderAdminId!.isNotEmpty) return 'ADM';
+    if (senderHrId != null && senderHrId!.isNotEmpty) return 'HR';
+    if (senderEmployeeId != null && senderEmployeeId!.isNotEmpty) return 'EMP';
+    return 'USR';
   }
 }
 
@@ -265,6 +357,7 @@ class ChatMessage {
   final ChatReplyMessage? replyTo;
   final DateTime createdAt;
   final DateTime updatedAt;
+
   /// For optimistic UI — a locally-generated temp id before server confirms.
   final String? tempId;
 
@@ -285,34 +378,31 @@ class ChatMessage {
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
-        id: json['_id'] as String? ?? '',
-        chatRoom: (json['chatRoom'] is String
-                ? json['chatRoom'] as String?
-                : (json['chatRoom'] as Map<String, dynamic>?)?['_id']
-                    as String?) ??
-            '',
-        sender: json['sender'] != null
-            ? ChatMessageSender.fromJson(
-                json['sender'] as Map<String, dynamic>)
-            : null,
-        content: json['content'] as String? ?? '',
-        messageType: json['messageType'] as String? ?? 'text',
-        isRead: json['isRead'] as bool? ?? false,
-        isDeleted: json['isDeleted'] as bool? ?? false,
-        isGroupMessage: json['isGroupMessage'] as bool? ?? false,
-        attachment: json['attachment'] != null
-            ? ChatAttachment.fromJson(
-                json['attachment'] as Map<String, dynamic>)
-            : null,
-        replyTo: json['replyTo'] is Map<String, dynamic>
-            ? ChatReplyMessage.fromJson(
-                json['replyTo'] as Map<String, dynamic>)
-            : null,
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-            DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
-            DateTime.now(),
-      );
+    id: json['_id'] as String? ?? '',
+    chatRoom:
+        (json['chatRoom'] is String
+            ? json['chatRoom'] as String?
+            : (json['chatRoom'] as Map<String, dynamic>?)?['_id'] as String?) ??
+        '',
+    sender: json['sender'] != null
+        ? ChatMessageSender.fromJson(json['sender'] as Map<String, dynamic>)
+        : null,
+    content: json['content'] as String? ?? '',
+    messageType: json['messageType'] as String? ?? 'text',
+    isRead: json['isRead'] as bool? ?? false,
+    isDeleted: json['isDeleted'] as bool? ?? false,
+    isGroupMessage: json['isGroupMessage'] as bool? ?? false,
+    attachment: json['attachment'] != null
+        ? ChatAttachment.fromJson(json['attachment'] as Map<String, dynamic>)
+        : null,
+    replyTo: json['replyTo'] is Map<String, dynamic>
+        ? ChatReplyMessage.fromJson(json['replyTo'] as Map<String, dynamic>)
+        : null,
+    createdAt:
+        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+    updatedAt:
+        DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
+  );
 
   bool get isMedia => messageType != 'text';
   bool get isTemp => id.isEmpty || id.startsWith('temp_');
@@ -415,6 +505,8 @@ class ChatUser {
   final String name;
   final String email;
   final String? employeeId;
+  final String? hrId;
+  final String? adminId;
   final String? profilePhoto;
   final String? position;
   final String? department;
@@ -425,6 +517,8 @@ class ChatUser {
     required this.name,
     required this.email,
     this.employeeId,
+    this.hrId,
+    this.adminId,
     this.profilePhoto,
     this.position,
     this.department,
@@ -441,11 +535,29 @@ class ChatUser {
       name: json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
       employeeId: json['employeeId'] as String?,
+      hrId: json['hrId'] as String?,
+      adminId: json['adminId'] as String?,
       profilePhoto: photo,
       position: json['position'] as String?,
       department: json['department'] as String?,
       role: json['role'] as String? ?? 'employee',
     );
+  }
+
+  /// Returns the appropriate ID for display
+  String getDisplayId() {
+    if (adminId != null && adminId!.isNotEmpty) return adminId!;
+    if (hrId != null && hrId!.isNotEmpty) return hrId!;
+    if (employeeId != null && employeeId!.isNotEmpty) return employeeId!;
+    return id.substring(0, 8);
+  }
+
+  /// Returns label prefix
+  String getIdPrefix() {
+    if (adminId != null && adminId!.isNotEmpty) return 'ADM';
+    if (hrId != null && hrId!.isNotEmpty) return 'HR';
+    if (employeeId != null && employeeId!.isNotEmpty) return 'EMP';
+    return 'USR';
   }
 }
 
@@ -470,4 +582,3 @@ class ChatUsersResponse {
             .toList(),
       );
 }
-

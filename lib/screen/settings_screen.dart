@@ -29,8 +29,7 @@ class SettingsScreen extends StatefulWidget {
 
   const SettingsScreen({super.key, this.user, this.token});
 
-  bool get isAdmin =>
-      (user?.role.toLowerCase() == 'admin');
+  bool get isAdmin => (user?.role.toLowerCase() == 'admin');
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -208,18 +207,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ];
 
   List<_SettingsItem> get _allItems => [
-        if (widget.isAdmin) ..._adminItems,
-        ..._baseItems,
-      ];
+    if (widget.isAdmin) ..._adminItems,
+    ..._baseItems,
+  ];
 
   List<_SettingsItem> get _filtered {
     if (_searchQuery.isEmpty) return _allItems;
     final q = _searchQuery.toLowerCase();
     return _allItems
-        .where((i) =>
-            i.title.toLowerCase().contains(q) ||
-            i.subtitle.toLowerCase().contains(q) ||
-            i.section.toLowerCase().contains(q))
+        .where(
+          (i) =>
+              i.title.toLowerCase().contains(q) ||
+              i.subtitle.toLowerCase().contains(q) ||
+              i.section.toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -241,80 +242,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _onItemTap(_SettingsItem item) {
     switch (item.route) {
       case 'profile':
-        Navigator.of(context).push(_route(
-          _ProfileSettingsScreen(user: widget.user, token: widget.token),
-        ));
+        Navigator.of(context).push(
+          _route(
+            _ProfileSettingsScreen(user: widget.user, token: widget.token),
+          ),
+        );
         break;
       case 'password':
-        Navigator.of(context).push(_route(
-          _ChangePasswordScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(_ChangePasswordScreen(token: widget.token)));
         break;
       // ── System Settings routes ────────────────────────────────────────
       case 'settings_company':
-        Navigator.of(context).push(_route(
-          AdminCompanySettingsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminCompanySettingsScreen(token: widget.token)));
         break;
       case 'settings_user_credentials':
-        Navigator.of(context).push(_route(
-          AdminUserCredentialsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminUserCredentialsScreen(token: widget.token)));
         break;
       case 'settings_translations':
-        Navigator.of(context).push(_route(
-          AdminTranslationsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminTranslationsScreen(token: widget.token)));
         break;
       case 'settings_roles':
-        Navigator.of(context).push(_route(
-          AdminRolesPermissionsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminRolesPermissionsScreen(token: widget.token)));
         break;
       case 'settings_work_status':
-        Navigator.of(context).push(_route(
-          AdminWorkStatusScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminWorkStatusScreen(token: widget.token)));
         break;
       case 'settings_currencies':
-        Navigator.of(context).push(_route(
-          AdminCurrenciesScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminCurrenciesScreen(token: widget.token)));
         break;
       case 'settings_locations':
-        Navigator.of(context).push(_route(
-          AdminLocationsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminLocationsScreen(token: widget.token)));
         break;
       case 'settings_pdf_fonts':
-        Navigator.of(context).push(_route(
-          AdminPdfFontsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminPdfFontsScreen(token: widget.token)));
         break;
       case 'settings_hrm':
-        Navigator.of(context).push(_route(
-          AdminHRMSettingsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminHRMSettingsScreen(token: widget.token)));
         break;
       case 'settings_payroll':
-        Navigator.of(context).push(_route(
-          AdminPayrollSettingsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminPayrollSettingsScreen(token: widget.token)));
         break;
       case 'settings_employee_id':
-        Navigator.of(context).push(_route(
-          AdminEmployeeIDScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminEmployeeIDScreen(token: widget.token)));
         break;
       case 'settings_email':
-        Navigator.of(context).push(_route(
-          AdminEmailSettingsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminEmailSettingsScreen(token: widget.token)));
         break;
       case 'settings_storage':
-        Navigator.of(context).push(_route(
-          AdminStorageSettingsScreen(token: widget.token),
-        ));
+        Navigator.of(
+          context,
+        ).push(_route(AdminStorageSettingsScreen(token: widget.token)));
         break;
       default:
         ScaffoldMessenger.of(context).showSnackBar(
@@ -322,25 +325,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
             content: Text('${item.title} — coming soon'),
             backgroundColor: AppTheme.surface,
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         );
     }
   }
 
   PageRouteBuilder _route(Widget page) => PageRouteBuilder(
-        pageBuilder: (_, a, __) => page,
-        transitionsBuilder: (_, a, __, child) => FadeTransition(
-          opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
-          child: SlideTransition(
-            position: Tween(begin: const Offset(0.04, 0), end: Offset.zero)
-                .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
-            child: child,
-          ),
-        ),
-        transitionDuration: const Duration(milliseconds: 350),
-      );
+    pageBuilder: (_, a, __) => page,
+    transitionsBuilder: (_, a, __, child) => FadeTransition(
+      opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
+      child: SlideTransition(
+        position: Tween(
+          begin: const Offset(0.04, 0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+        child: child,
+      ),
+    ),
+    transitionDuration: const Duration(milliseconds: 350),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -371,16 +377,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Search settings…',
-                    hintStyle: TextStyle(
+                    hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
                       color: Colors.grey[600],
-                      fontSize: 14,
+                      size: 20,
                     ),
-                    prefixIcon: Icon(Icons.search_rounded,
-                        color: Colors.grey[600], size: 20),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.close_rounded,
-                                color: Colors.grey[600], size: 18),
+                            icon: Icon(
+                              Icons.close_rounded,
+                              color: Colors.grey[600],
+                              size: 18,
+                            ),
                             onPressed: () {
                               _searchController.clear();
                               setState(() => _searchQuery = '');
@@ -389,7 +398,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         : null,
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
               ),
@@ -404,11 +415,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   : ListView(
                       padding: const EdgeInsets.only(bottom: 32),
                       children: grouped.entries
-                          .map((e) => _SectionGroup(
-                                section: e.key,
-                                items: e.value,
-                                onTap: _onItemTap,
-                              ))
+                          .map(
+                            (e) => _SectionGroup(
+                              section: e.key,
+                              items: e.value,
+                              onTap: _onItemTap,
+                            ),
+                          )
                           .toList(),
                     ),
             ),
@@ -419,26 +432,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _emptySearch() => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.search_off_rounded, color: Colors.grey[700], size: 52),
-            const SizedBox(height: 12),
-            Text(
-              'No settings found',
-              style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Try different keywords',
-              style: TextStyle(color: Colors.grey[700], fontSize: 13),
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.search_off_rounded, color: Colors.grey[700], size: 52),
+        const SizedBox(height: 12),
+        Text(
+          'No settings found',
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-      );
+        const SizedBox(height: 6),
+        Text(
+          'Try different keywords',
+          style: TextStyle(color: Colors.grey[700], fontSize: 13),
+        ),
+      ],
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -467,8 +481,11 @@ class _Header extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -476,13 +493,18 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Settings',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700)),
-                Text('Manage your account & preferences',
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                Text(
+                  'Settings',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  'Manage your account & preferences',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -494,19 +516,27 @@ class _Header extends StatelessWidget {
               shape: BoxShape.circle,
               color: AppTheme.cardColor,
               border: Border.all(
-                  color: Colors.white.withOpacity(0.08), width: 1.5),
+                color: Colors.white.withOpacity(0.08),
+                width: 1.5,
+              ),
               image: photo.isNotEmpty
                   ? DecorationImage(
-                      image: NetworkImage(photo), fit: BoxFit.cover)
+                      image: NetworkImage(photo),
+                      fit: BoxFit.cover,
+                    )
                   : null,
             ),
             child: photo.isEmpty
                 ? Center(
-                    child: Text(initials,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14)))
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  )
                 : null,
           ),
         ],
@@ -528,8 +558,11 @@ class _SectionGroup extends StatelessWidget {
   final String section;
   final List<_SettingsItem> items;
   final ValueChanged<_SettingsItem> onTap;
-  const _SectionGroup(
-      {required this.section, required this.items, required this.onTap});
+  const _SectionGroup({
+    required this.section,
+    required this.items,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -554,19 +587,23 @@ class _SectionGroup extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppTheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: Colors.white.withOpacity(0.05), width: 1),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.05),
+                width: 1,
+              ),
             ),
             child: Column(
               children: items
                   .asMap()
                   .entries
-                  .map((e) => _SettingsTile(
-                        item: e.value,
-                        isFirst: e.key == 0,
-                        isLast: e.key == items.length - 1,
-                        onTap: onTap,
-                      ))
+                  .map(
+                    (e) => _SettingsTile(
+                      item: e.value,
+                      isFirst: e.key == 0,
+                      isLast: e.key == items.length - 1,
+                      onTap: onTap,
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -586,11 +623,12 @@ class _SettingsTile extends StatelessWidget {
   final bool isLast;
   final ValueChanged<_SettingsItem> onTap;
 
-  const _SettingsTile(
-      {required this.item,
-      required this.isFirst,
-      required this.isLast,
-      required this.onTap});
+  const _SettingsTile({
+    required this.item,
+    required this.isFirst,
+    required this.isLast,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -646,8 +684,11 @@ class _SettingsTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(Icons.chevron_right_rounded,
-                      color: Colors.grey[700], size: 20),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.grey[700],
+                    size: 20,
+                  ),
                 ],
               ),
             ),
@@ -794,10 +835,13 @@ class _ProfileSettingsScreenState extends State<_ProfileSettingsScreen> {
             ),
             const SizedBox(width: 10),
             Expanded(
-                child: Text(msg, style: const TextStyle(color: Colors.white))),
+              child: Text(msg, style: const TextStyle(color: Colors.white)),
+            ),
           ],
         ),
-        backgroundColor: isSuccess ? AppTheme.successColor : AppTheme.errorColor,
+        backgroundColor: isSuccess
+            ? AppTheme.successColor
+            : AppTheme.errorColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
@@ -832,7 +876,8 @@ class _ProfileSettingsScreenState extends State<_ProfileSettingsScreen> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2.5))
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
                   : _ActionButton(
                       label: 'Update',
                       icon: Icons.save_rounded,
@@ -909,25 +954,21 @@ class _ProfileSettingsScreenState extends State<_ProfileSettingsScreen> {
   }
 
   Widget _buildRow(Widget left, Widget right) {
-    return LayoutBuilder(builder: (ctx, c) {
-      if (c.maxWidth >= 500) {
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: left),
-            const SizedBox(width: 14),
-            Expanded(child: right),
-          ],
-        );
-      }
-      return Column(
-        children: [
-          left,
-          const SizedBox(height: 16),
-          right,
-        ],
-      );
-    });
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        if (c.maxWidth >= 500) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: left),
+              const SizedBox(width: 14),
+              Expanded(child: right),
+            ],
+          );
+        }
+        return Column(children: [left, const SizedBox(height: 16), right]);
+      },
+    );
   }
 }
 
@@ -961,19 +1002,27 @@ class _AvatarCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: AppTheme.cardColor,
                   border: Border.all(
-                      color: Colors.white.withOpacity(0.1), width: 2),
+                    color: Colors.white.withOpacity(0.1),
+                    width: 2,
+                  ),
                   image: photo.isNotEmpty
                       ? DecorationImage(
-                          image: NetworkImage(photo), fit: BoxFit.cover)
+                          image: NetworkImage(photo),
+                          fit: BoxFit.cover,
+                        )
                       : null,
                 ),
                 child: photo.isEmpty
                     ? Center(
-                        child: Text(initials,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 20)))
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                          ),
+                        ),
+                      )
                     : null,
               ),
             ],
@@ -995,15 +1044,18 @@ class _AvatarCard extends StatelessWidget {
                 Text(
                   _titleCase(user?.role ?? 'Employee'),
                   style: TextStyle(
-                      color: Colors.grey[500],
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500),
+                    color: Colors.grey[500],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 if (user?.department != null) ...[
                   const SizedBox(height: 4),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryColor.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(6),
@@ -1036,7 +1088,11 @@ class _AvatarCard extends StatelessWidget {
     if (s.isEmpty) return s;
     return s
         .split(' ')
-        .map((w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+        .map(
+          (w) => w.isEmpty
+              ? ''
+              : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}',
+        )
         .join(' ');
   }
 }
@@ -1057,10 +1113,12 @@ class _InfoGrid extends StatelessWidget {
       MapEntry('Role', _tc(user.role)),
       MapEntry('Status', _tc(user.status)),
       if (user.joinDate != null)
-        MapEntry('Join Date',
-            '${user.joinDate!.day.toString().padLeft(2, '0')} '
-            '${_months[user.joinDate!.month - 1]} '
-            '${user.joinDate!.year}'),
+        MapEntry(
+          'Join Date',
+          '${user.joinDate!.day.toString().padLeft(2, '0')} '
+              '${_months[user.joinDate!.month - 1]} '
+              '${user.joinDate!.year}',
+        ),
     ];
 
     return Container(
@@ -1073,44 +1131,63 @@ class _InfoGrid extends StatelessWidget {
         children: items
             .asMap()
             .entries
-            .map((e) => Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(e.value.key,
-                              style: TextStyle(
-                                  color: Colors.grey[600], fontSize: 13)),
-                          Text(
-                            e.value.value.isEmpty ? '—' : e.value.value,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+            .map(
+              (e) => Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    if (e.key < items.length - 1)
-                      Divider(
-                          height: 1,
-                          indent: 16,
-                          endIndent: 16,
-                          color: Colors.white.withOpacity(0.05)),
-                  ],
-                ))
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          e.value.key,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                        ),
+                        Text(
+                          e.value.value.isEmpty ? '—' : e.value.value,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (e.key < items.length - 1)
+                    Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: Colors.white.withOpacity(0.05),
+                    ),
+                ],
+              ),
+            )
             .toList(),
       ),
     );
   }
 
   static const _months = [
-    'Jan','Feb','Mar','Apr','May','Jun',
-    'Jul','Aug','Sep','Oct','Nov','Dec'
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   String _tc(String s) {
     if (s.isEmpty) return s;
@@ -1186,8 +1263,10 @@ class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
       _confirmCtrl.clear();
       _showSnack('Password changed successfully', isSuccess: true);
     } else {
-      _showSnack(result['message'] ?? 'Failed to change password',
-          isSuccess: false);
+      _showSnack(
+        result['message'] ?? 'Failed to change password',
+        isSuccess: false,
+      );
     }
   }
 
@@ -1203,14 +1282,15 @@ class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
             ),
             const SizedBox(width: 10),
             Expanded(
-                child: Text(msg, style: const TextStyle(color: Colors.white))),
+              child: Text(msg, style: const TextStyle(color: Colors.white)),
+            ),
           ],
         ),
-        backgroundColor:
-            isSuccess ? AppTheme.successColor : AppTheme.errorColor,
+        backgroundColor: isSuccess
+            ? AppTheme.successColor
+            : AppTheme.errorColor,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -1317,7 +1397,8 @@ class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                             elevation: 0,
                           ),
                           child: _loading
@@ -1325,16 +1406,22 @@ class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
                                   width: 22,
                                   height: 22,
                                   child: CircularProgressIndicator(
-                                      color: Colors.white, strokeWidth: 2.5))
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
                               : const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(Icons.lock_reset_rounded, size: 18),
                                     SizedBox(width: 8),
-                                    Text('Update Password',
-                                        style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700)),
+                                    Text(
+                                      'Update Password',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ],
                                 ),
                         ),
@@ -1438,15 +1525,20 @@ class _PasswordHintCard extends StatelessWidget {
         color: AppTheme.primaryColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: AppTheme.primaryColor.withOpacity(0.2), width: 1),
+          color: AppTheme.primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.shield_rounded,
-                  color: AppTheme.primaryColor, size: 18),
+              Icon(
+                Icons.shield_rounded,
+                color: AppTheme.primaryColor,
+                size: 18,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Password Tips',
@@ -1464,11 +1556,16 @@ class _PasswordHintCard extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 5),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle_outline_rounded,
-                      color: Colors.grey[600], size: 14),
+                  Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: Colors.grey[600],
+                    size: 14,
+                  ),
                   const SizedBox(width: 8),
-                  Text(t,
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+                  Text(
+                    t,
+                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  ),
                 ],
               ),
             ),
@@ -1519,11 +1616,13 @@ class _SubScreenHeader extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.cardColor,
                 borderRadius: BorderRadius.circular(10),
-                border:
-                    Border.all(color: Colors.white.withOpacity(0.06)),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white, size: 16),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -1553,17 +1652,13 @@ class _SubScreenHeader extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                      color: Colors.grey[500], fontSize: 12),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
                   maxLines: 2,
                 ),
               ],
             ),
           ),
-          if (trailing != null) ...[
-            const SizedBox(width: 12),
-            trailing!,
-          ],
+          if (trailing != null) ...[const SizedBox(width: 12), trailing!],
         ],
       ),
     );
@@ -1579,11 +1674,12 @@ class _ActionButton extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _ActionButton(
-      {required this.label,
-      required this.icon,
-      required this.color,
-      required this.onTap});
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1600,11 +1696,14 @@ class _ActionButton extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: Colors.white),
             const SizedBox(width: 6),
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
           ],
         ),
       ),
@@ -1660,15 +1759,16 @@ class _PasswordField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              BorderSide(color: AppTheme.primaryColor, width: 1.5),
+          borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: AppTheme.errorColor),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }
@@ -1718,9 +1818,7 @@ class _FormField extends StatelessWidget {
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
             filled: true,
-            fillColor: readOnly
-                ? AppTheme.background
-                : AppTheme.surfaceVariant,
+            fillColor: readOnly ? AppTheme.background : AppTheme.surfaceVariant,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
@@ -1731,15 +1829,16 @@ class _FormField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide:
-                  BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: AppTheme.errorColor),
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
       ],
@@ -1803,8 +1902,7 @@ class _AdminDashboardScreenState extends State<_AdminDashboardScreen> {
       _loadingActivity = false;
       if (dash['success'] == true) {
         _stats = (dash['data']?['stats'] ?? {}) as Map<String, dynamic>;
-        _health =
-            (dash['data']?['systemHealth'] ?? {}) as Map<String, dynamic>;
+        _health = (dash['data']?['systemHealth'] ?? {}) as Map<String, dynamic>;
       } else {
         _error = dash['message'] ?? 'Failed to load dashboard';
       }
@@ -1827,8 +1925,11 @@ class _AdminDashboardScreenState extends State<_AdminDashboardScreen> {
               icon: Icons.dashboard_rounded,
               iconColor: AppTheme.primaryColor,
               trailing: IconButton(
-                icon: const Icon(Icons.refresh_rounded,
-                    color: Colors.white, size: 20),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 onPressed: _load,
               ),
             ),
@@ -1836,51 +1937,54 @@ class _AdminDashboardScreenState extends State<_AdminDashboardScreen> {
               child: _loadingStats
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? _AdminErrorWidget(message: _error!, onRetry: _load)
-                      : RefreshIndicator(
-                          onRefresh: _load,
-                          color: AppTheme.primaryColor,
-                          child: ListView(
-                            padding: const EdgeInsets.all(20),
+                  ? _AdminErrorWidget(message: _error!, onRetry: _load)
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      color: AppTheme.primaryColor,
+                      child: ListView(
+                        padding: const EdgeInsets.all(20),
+                        children: [
+                          // ── Stats grid ───────────────────────────────
+                          _SectionLabel('Overview'),
+                          const SizedBox(height: 12),
+                          _AdminStatsGrid(stats: _stats),
+                          const SizedBox(height: 24),
+
+                          // ── System Health ────────────────────────────
+                          _SectionLabel('System Health'),
+                          const SizedBox(height: 12),
+                          _SystemHealthCard(health: _health),
+                          const SizedBox(height: 24),
+
+                          // ── Activity feed ────────────────────────────
+                          Row(
                             children: [
-                              // ── Stats grid ───────────────────────────────
-                              _SectionLabel('Overview'),
-                              const SizedBox(height: 12),
-                              _AdminStatsGrid(stats: _stats),
-                              const SizedBox(height: 24),
-
-                              // ── System Health ────────────────────────────
-                              _SectionLabel('System Health'),
-                              const SizedBox(height: 12),
-                              _SystemHealthCard(health: _health),
-                              const SizedBox(height: 24),
-
-                              // ── Activity feed ────────────────────────────
-                              Row(
-                                children: [
-                                  const Expanded(
-                                      child: _SectionLabel('Recent Activity')),
-                                  if (_loadingActivity)
-                                    const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    ),
-                                ],
+                              const Expanded(
+                                child: _SectionLabel('Recent Activity'),
                               ),
-                              const SizedBox(height: 12),
-                              if (_activity.isEmpty && !_loadingActivity)
-                                _AdminEmptyState(
-                                    icon: Icons.history_rounded,
-                                    message: 'No recent activity')
-                              else
-                                ..._activity
-                                    .map((a) => _ActivityTile(item: a))
-                                    .toList(),
+                              if (_loadingActivity)
+                                const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
                             ],
                           ),
-                        ),
+                          const SizedBox(height: 12),
+                          if (_activity.isEmpty && !_loadingActivity)
+                            _AdminEmptyState(
+                              icon: Icons.history_rounded,
+                              message: 'No recent activity',
+                            )
+                          else
+                            ..._activity
+                                .map((a) => _ActivityTile(item: a))
+                                .toList(),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -1897,18 +2001,42 @@ class _AdminStatsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _StatTileData('Companies', '${stats['totalCompanies'] ?? 0}',
-          Icons.business_rounded, const Color(0xFF3B82F6)),
-      _StatTileData('HR Staff', '${stats['totalHR'] ?? 0}',
-          Icons.manage_accounts_rounded, const Color(0xFF10B981)),
-      _StatTileData('Employees', '${stats['totalEmployees'] ?? 0}',
-          Icons.people_alt_rounded, const Color(0xFF8B5CF6)),
-      _StatTileData('Active Today', '${stats['activeToday'] ?? 0}',
-          Icons.check_circle_rounded, AppTheme.successColor),
-      _StatTileData('Pending Leaves', '${stats['pendingLeaves'] ?? 0}',
-          Icons.event_busy_rounded, const Color(0xFFF59E0B)),
-      _StatTileData('Active Tasks', '${stats['activeTasks'] ?? 0}',
-          Icons.task_alt_rounded, const Color(0xFF06B6D4)),
+      _StatTileData(
+        'Companies',
+        '${stats['totalCompanies'] ?? 0}',
+        Icons.business_rounded,
+        const Color(0xFF3B82F6),
+      ),
+      _StatTileData(
+        'HR Staff',
+        '${stats['totalHR'] ?? 0}',
+        Icons.manage_accounts_rounded,
+        const Color(0xFF10B981),
+      ),
+      _StatTileData(
+        'Employees',
+        '${stats['totalEmployees'] ?? 0}',
+        Icons.people_alt_rounded,
+        const Color(0xFF8B5CF6),
+      ),
+      _StatTileData(
+        'Active Today',
+        '${stats['activeToday'] ?? 0}',
+        Icons.check_circle_rounded,
+        AppTheme.successColor,
+      ),
+      _StatTileData(
+        'Pending Leaves',
+        '${stats['pendingLeaves'] ?? 0}',
+        Icons.event_busy_rounded,
+        const Color(0xFFF59E0B),
+      ),
+      _StatTileData(
+        'Active Tasks',
+        '${stats['activeTasks'] ?? 0}',
+        Icons.task_alt_rounded,
+        const Color(0xFF06B6D4),
+      ),
     ];
     return GridView.count(
       crossAxisCount: 2,
@@ -2026,11 +2154,12 @@ class _HealthRow extends StatelessWidget {
   final double value;
   final IconData icon;
   final Color color;
-  const _HealthRow(
-      {required this.label,
-      required this.value,
-      required this.icon,
-      required this.color});
+  const _HealthRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2042,14 +2171,19 @@ class _HealthRow extends StatelessWidget {
             Icon(icon, color: color, size: 16),
             const SizedBox(width: 8),
             Expanded(
-                child: Text(label,
-                    style:
-                        const TextStyle(color: Colors.white, fontSize: 13))),
-            Text('${value.toStringAsFixed(0)}%',
-                style: TextStyle(
-                    color: color,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700)),
+              child: Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ),
+            Text(
+              '${value.toStringAsFixed(0)}%',
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -2147,15 +2281,19 @@ class _ActivityTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(action,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  action,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(user,
-                    style:
-                        TextStyle(color: Colors.grey[500], fontSize: 12)),
+                Text(
+                  user,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -2164,8 +2302,10 @@ class _ActivityTile extends StatelessWidget {
             children: [
               _StatusBadge(status: status),
               const SizedBox(height: 4),
-              Text(_formatTime(item['time']),
-                  style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+              Text(
+                _formatTime(item['time']),
+                style: TextStyle(color: Colors.grey[600], fontSize: 11),
+              ),
             ],
           ),
         ],
@@ -2210,8 +2350,7 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         status,
-        style: TextStyle(
-            color: c, fontSize: 10, fontWeight: FontWeight.w700),
+        style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -2295,8 +2434,11 @@ class _AdminCompaniesScreenState extends State<_AdminCompaniesScreen> {
               icon: Icons.business_rounded,
               iconColor: const Color(0xFF3B82F6),
               trailing: IconButton(
-                icon: const Icon(Icons.refresh_rounded,
-                    color: Colors.white, size: 20),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 onPressed: _load,
               ),
             ),
@@ -2318,22 +2460,22 @@ class _AdminCompaniesScreenState extends State<_AdminCompaniesScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? _AdminErrorWidget(message: _error!, onRetry: _load)
-                      : _filtered.isEmpty
-                          ? _AdminEmptyState(
-                              icon: Icons.business_rounded,
-                              message: 'No companies found')
-                          : RefreshIndicator(
-                              onRefresh: _load,
-                              color: AppTheme.primaryColor,
-                              child: ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(
-                                    20, 12, 20, 32),
-                                itemCount: _filtered.length,
-                                itemBuilder: (_, i) =>
-                                    _CompanyCard(company: _filtered[i]),
-                              ),
-                            ),
+                  ? _AdminErrorWidget(message: _error!, onRetry: _load)
+                  : _filtered.isEmpty
+                  ? _AdminEmptyState(
+                      icon: Icons.business_rounded,
+                      message: 'No companies found',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      color: AppTheme.primaryColor,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                        itemCount: _filtered.length,
+                        itemBuilder: (_, i) =>
+                            _CompanyCard(company: _filtered[i]),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -2379,7 +2521,9 @@ class _CompanyCard extends StatelessWidget {
                   color: AppTheme.cardColor,
                   image: (logo as String).isNotEmpty
                       ? DecorationImage(
-                          image: NetworkImage(logo), fit: BoxFit.cover)
+                          image: NetworkImage(logo),
+                          fit: BoxFit.cover,
+                        )
                       : null,
                 ),
                 child: logo.isEmpty
@@ -2387,9 +2531,10 @@ class _CompanyCard extends StatelessWidget {
                         child: Text(
                           name.isNotEmpty ? name[0].toUpperCase() : 'C',
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18),
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                          ),
                         ),
                       )
                     : null,
@@ -2399,18 +2544,22 @@ class _CompanyCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700)),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                      [industry, city, country]
-                          .where((s) => s.isNotEmpty)
-                          .join(' · '),
-                      style: TextStyle(
-                          color: Colors.grey[500], fontSize: 12),
+                      [
+                        industry,
+                        city,
+                        country,
+                      ].where((s) => s.isNotEmpty).join(' · '),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
                     ),
                   ],
                 ),
@@ -2438,12 +2587,16 @@ class _CompanyCard extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.person_pin_rounded,
-                        color: Colors.grey[600], size: 14),
+                    Icon(
+                      Icons.person_pin_rounded,
+                      color: Colors.grey[600],
+                      size: 14,
+                    ),
                     const SizedBox(width: 4),
-                    Text(hr['name'] ?? '',
-                        style: TextStyle(
-                            color: Colors.grey[500], fontSize: 12)),
+                    Text(
+                      hr['name'] ?? '',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
                   ],
                 ),
               ],
@@ -2459,8 +2612,11 @@ class _CompanyStatChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  const _CompanyStatChip(
-      {required this.icon, required this.label, required this.color});
+  const _CompanyStatChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2475,11 +2631,14 @@ class _CompanyStatChip extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 14),
           const SizedBox(width: 5),
-          Text(label,
-              style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -2574,8 +2733,11 @@ class _AdminEmployeesScreenState extends State<_AdminEmployeesScreen> {
               icon: Icons.people_alt_rounded,
               iconColor: const Color(0xFF8B5CF6),
               trailing: IconButton(
-                icon: const Icon(Icons.refresh_rounded,
-                    color: Colors.white, size: 20),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 onPressed: _load,
               ),
             ),
@@ -2610,7 +2772,9 @@ class _AdminEmployeesScreenState extends State<_AdminEmployeesScreen> {
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 7),
+                                horizontal: 14,
+                                vertical: 7,
+                              ),
                               decoration: BoxDecoration(
                                 color: selected
                                     ? const Color(0xFF8B5CF6)
@@ -2647,23 +2811,22 @@ class _AdminEmployeesScreenState extends State<_AdminEmployeesScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? _AdminErrorWidget(message: _error!, onRetry: _load)
-                      : _filtered.isEmpty
-                          ? _AdminEmptyState(
-                              icon: Icons.people_alt_rounded,
-                              message: 'No employees found')
-                          : RefreshIndicator(
-                              onRefresh: _load,
-                              color: AppTheme.primaryColor,
-                              child: ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(
-                                    20, 4, 20, 32),
-                                itemCount: _filtered.length,
-                                itemBuilder: (_, i) =>
-                                    _EmployeeListTile(
-                                        employee: _filtered[i]),
-                              ),
-                            ),
+                  ? _AdminErrorWidget(message: _error!, onRetry: _load)
+                  : _filtered.isEmpty
+                  ? _AdminEmptyState(
+                      icon: Icons.people_alt_rounded,
+                      message: 'No employees found',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      color: AppTheme.primaryColor,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                        itemCount: _filtered.length,
+                        itemBuilder: (_, i) =>
+                            _EmployeeListTile(employee: _filtered[i]),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -2671,9 +2834,8 @@ class _AdminEmployeesScreenState extends State<_AdminEmployeesScreen> {
     );
   }
 
-  String _tc(String s) => s.isEmpty
-      ? s
-      : s[0].toUpperCase() + s.substring(1).toLowerCase();
+  String _tc(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
 }
 
 class _EmployeeListTile extends StatelessWidget {
@@ -2690,7 +2852,12 @@ class _EmployeeListTile extends StatelessWidget {
     final company = (employee['company']?['name'] ?? '') as String;
     final photo = employee['profileImage'] ?? employee['profilePhoto'] ?? '';
     final photoUrl = photo is Map ? (photo['url'] ?? '') : photo.toString();
-    final initials = name.split(' ').take(2).map((p) => p[0]).join().toUpperCase();
+    final initials = name
+        .split(' ')
+        .take(2)
+        .map((p) => p[0])
+        .join()
+        .toUpperCase();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -2710,15 +2877,20 @@ class _EmployeeListTile extends StatelessWidget {
               color: AppTheme.cardColor,
               image: (photoUrl as String).isNotEmpty
                   ? DecorationImage(
-                      image: NetworkImage(photoUrl), fit: BoxFit.cover)
+                      image: NetworkImage(photoUrl),
+                      fit: BoxFit.cover,
+                    )
                   : null,
             ),
             child: (photoUrl).isEmpty
                 ? Center(
-                    child: Text(initials,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700)),
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   )
                 : null,
           ),
@@ -2727,11 +2899,14 @@ class _EmployeeListTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700)),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(
                   [dept, company].where((s) => s.isNotEmpty).join(' · '),
@@ -2751,11 +2926,14 @@ class _EmployeeListTile extends StatelessWidget {
             children: [
               _StatusBadge(status: status),
               const SizedBox(height: 4),
-              Text(empId,
-                  style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 11,
-                      fontFamily: 'monospace')),
+              Text(
+                empId,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                ),
+              ),
             ],
           ),
         ],
@@ -2788,7 +2966,7 @@ class _AdminLeavesScreenState extends State<_AdminLeavesScreen> {
     'pending',
     'approved',
     'rejected',
-    'cancelled'
+    'cancelled',
   ];
 
   @override
@@ -2853,8 +3031,11 @@ class _AdminLeavesScreenState extends State<_AdminLeavesScreen> {
               icon: Icons.event_busy_rounded,
               iconColor: const Color(0xFFF59E0B),
               trailing: IconButton(
-                icon: const Icon(Icons.refresh_rounded,
-                    color: Colors.white, size: 20),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 onPressed: _load,
               ),
             ),
@@ -2890,7 +3071,9 @@ class _AdminLeavesScreenState extends State<_AdminLeavesScreen> {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 7),
+                                  horizontal: 14,
+                                  vertical: 7,
+                                ),
                                 decoration: BoxDecoration(
                                   color: selected
                                       ? const Color(0xFFF59E0B)
@@ -2928,22 +3111,21 @@ class _AdminLeavesScreenState extends State<_AdminLeavesScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? _AdminErrorWidget(message: _error!, onRetry: _load)
-                      : _filtered.isEmpty
-                          ? _AdminEmptyState(
-                              icon: Icons.event_busy_rounded,
-                              message: 'No leave requests found')
-                          : RefreshIndicator(
-                              onRefresh: _load,
-                              color: AppTheme.primaryColor,
-                              child: ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(
-                                    20, 4, 20, 32),
-                                itemCount: _filtered.length,
-                                itemBuilder: (_, i) =>
-                                    _LeaveCard(leave: _filtered[i]),
-                              ),
-                            ),
+                  ? _AdminErrorWidget(message: _error!, onRetry: _load)
+                  : _filtered.isEmpty
+                  ? _AdminEmptyState(
+                      icon: Icons.event_busy_rounded,
+                      message: 'No leave requests found',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      color: AppTheme.primaryColor,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                        itemCount: _filtered.length,
+                        itemBuilder: (_, i) => _LeaveCard(leave: _filtered[i]),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -2951,9 +3133,8 @@ class _AdminLeavesScreenState extends State<_AdminLeavesScreen> {
     );
   }
 
-  String _tc(String s) => s.isEmpty
-      ? s
-      : s[0].toUpperCase() + s.substring(1).toLowerCase();
+  String _tc(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
 }
 
 class _LeaveCard extends StatelessWidget {
@@ -2965,8 +3146,18 @@ class _LeaveCard extends StatelessWidget {
     try {
       final dt = DateTime.parse(raw.toString()).toLocal();
       const months = [
-        'Jan','Feb','Mar','Apr','May','Jun',
-        'Jul','Aug','Sep','Oct','Nov','Dec'
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
     } catch (_) {
@@ -3004,18 +3195,18 @@ class _LeaveCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700)),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
-                      [empId, company]
-                          .where((s) => s.isNotEmpty)
-                          .join(' · '),
-                      style:
-                          TextStyle(color: Colors.grey[500], fontSize: 12),
+                      [empId, company].where((s) => s.isNotEmpty).join(' · '),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
                     ),
                   ],
                 ),
@@ -3028,15 +3219,19 @@ class _LeaveCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Icon(Icons.event_rounded,
-                  color: const Color(0xFFF59E0B), size: 14),
+              Icon(
+                Icons.event_rounded,
+                color: const Color(0xFFF59E0B),
+                size: 14,
+              ),
               const SizedBox(width: 6),
-              Text('$start → $end',
-                  style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+              Text(
+                '$start → $end',
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF59E0B).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
@@ -3044,9 +3239,10 @@ class _LeaveCard extends StatelessWidget {
                 child: Text(
                   '$days day${days == 1 ? '' : 's'} · ${_tc(type)}',
                   style: const TextStyle(
-                      color: Color(0xFFF59E0B),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600),
+                    color: Color(0xFFF59E0B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -3065,9 +3261,8 @@ class _LeaveCard extends StatelessWidget {
     );
   }
 
-  String _tc(String s) => s.isEmpty
-      ? s
-      : s[0].toUpperCase() + s.substring(1).toLowerCase();
+  String _tc(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -3094,7 +3289,7 @@ class _AdminTasksScreenState extends State<_AdminTasksScreen> {
     'todo',
     'in-progress',
     'completed',
-    'cancelled'
+    'cancelled',
   ];
 
   @override
@@ -3142,11 +3337,10 @@ class _AdminTasksScreenState extends State<_AdminTasksScreen> {
     return _tasks.where((t) {
       final title = (t['title'] ?? '').toString().toLowerCase();
       final desc = (t['description'] ?? '').toString().toLowerCase();
-      final assignee =
-          (t['assignedTo']?['name'] ?? '').toString().toLowerCase();
-      return title.contains(q) ||
-          desc.contains(q) ||
-          assignee.contains(q);
+      final assignee = (t['assignedTo']?['name'] ?? '')
+          .toString()
+          .toLowerCase();
+      return title.contains(q) || desc.contains(q) || assignee.contains(q);
     }).toList();
   }
 
@@ -3163,8 +3357,11 @@ class _AdminTasksScreenState extends State<_AdminTasksScreen> {
               icon: Icons.task_alt_rounded,
               iconColor: const Color(0xFF06B6D4),
               trailing: IconButton(
-                icon: const Icon(Icons.refresh_rounded,
-                    color: Colors.white, size: 20),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 onPressed: _load,
               ),
             ),
@@ -3200,7 +3397,9 @@ class _AdminTasksScreenState extends State<_AdminTasksScreen> {
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 7),
+                                  horizontal: 14,
+                                  vertical: 7,
+                                ),
                                 decoration: BoxDecoration(
                                   color: selected
                                       ? const Color(0xFF06B6D4)
@@ -3238,22 +3437,21 @@ class _AdminTasksScreenState extends State<_AdminTasksScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? _AdminErrorWidget(message: _error!, onRetry: _load)
-                      : _filtered.isEmpty
-                          ? _AdminEmptyState(
-                              icon: Icons.task_alt_rounded,
-                              message: 'No tasks found')
-                          : RefreshIndicator(
-                              onRefresh: _load,
-                              color: AppTheme.primaryColor,
-                              child: ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(
-                                    20, 4, 20, 32),
-                                itemCount: _filtered.length,
-                                itemBuilder: (_, i) =>
-                                    _TaskCard(task: _filtered[i]),
-                              ),
-                            ),
+                  ? _AdminErrorWidget(message: _error!, onRetry: _load)
+                  : _filtered.isEmpty
+                  ? _AdminEmptyState(
+                      icon: Icons.task_alt_rounded,
+                      message: 'No tasks found',
+                    )
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      color: AppTheme.primaryColor,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+                        itemCount: _filtered.length,
+                        itemBuilder: (_, i) => _TaskCard(task: _filtered[i]),
+                      ),
+                    ),
             ),
           ],
         ),
@@ -3263,10 +3461,13 @@ class _AdminTasksScreenState extends State<_AdminTasksScreen> {
 
   String _tc(String s) {
     if (s.isEmpty) return s;
-    return s.split('-').map((w) {
-      if (w.isEmpty) return w;
-      return w[0].toUpperCase() + w.substring(1).toLowerCase();
-    }).join(' ');
+    return s
+        .split('-')
+        .map((w) {
+          if (w.isEmpty) return w;
+          return w[0].toUpperCase() + w.substring(1).toLowerCase();
+        })
+        .join(' ');
   }
 }
 
@@ -3292,8 +3493,18 @@ class _TaskCard extends StatelessWidget {
     try {
       final dt = DateTime.parse(raw.toString()).toLocal();
       const months = [
-        'Jan','Feb','Mar','Apr','May','Jun',
-        'Jul','Aug','Sep','Oct','Nov','Dec'
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       return '${dt.day} ${months[dt.month - 1]}';
     } catch (_) {
@@ -3326,13 +3537,16 @@ class _TaskCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(title,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 8),
               _StatusBadge(status: status),
@@ -3340,19 +3554,22 @@ class _TaskCard extends StatelessWidget {
           ),
           if (desc.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(desc,
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
+            Text(
+              desc,
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
           const SizedBox(height: 10),
           // Progress bar
           if (progress > 0) ...[
             Row(
               children: [
-                Text('$progress%',
-                    style: TextStyle(
-                        color: Colors.grey[500], fontSize: 11)),
+                Text(
+                  '$progress%',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: ClipRRect(
@@ -3361,7 +3578,8 @@ class _TaskCard extends StatelessWidget {
                       value: progress / 100,
                       backgroundColor: AppTheme.surfaceVariant,
                       valueColor: const AlwaysStoppedAnimation(
-                          Color(0xFF06B6D4)),
+                        Color(0xFF06B6D4),
+                      ),
                       minHeight: 4,
                     ),
                   ),
@@ -3375,41 +3593,51 @@ class _TaskCard extends StatelessWidget {
               if (priority.isNotEmpty) ...[
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 7, vertical: 3),
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: _priorityColor(priority).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(_tc(priority),
-                      style: TextStyle(
-                          color: _priorityColor(priority),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700)),
+                  child: Text(
+                    _tc(priority),
+                    style: TextStyle(
+                      color: _priorityColor(priority),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
               ],
               if (assignee.isNotEmpty) ...[
-                Icon(Icons.person_outlined,
-                    color: Colors.grey[600], size: 13),
+                Icon(Icons.person_outlined, color: Colors.grey[600], size: 13),
                 const SizedBox(width: 4),
-                Text(assignee,
-                    style:
-                        TextStyle(color: Colors.grey[500], fontSize: 12)),
+                Text(
+                  assignee,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                ),
                 const SizedBox(width: 8),
               ],
               const Spacer(),
               if (company.isNotEmpty)
-                Text(company,
-                    style: TextStyle(
-                        color: Colors.grey[600], fontSize: 11)),
+                Text(
+                  company,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                ),
               if (dueDate != '—') ...[
                 const SizedBox(width: 8),
-                Icon(Icons.calendar_today_rounded,
-                    color: Colors.grey[600], size: 12),
+                Icon(
+                  Icons.calendar_today_rounded,
+                  color: Colors.grey[600],
+                  size: 12,
+                ),
                 const SizedBox(width: 3),
-                Text(dueDate,
-                    style: TextStyle(
-                        color: Colors.grey[500], fontSize: 11)),
+                Text(
+                  dueDate,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                ),
               ],
             ],
           ),
@@ -3418,9 +3646,8 @@ class _TaskCard extends StatelessWidget {
     );
   }
 
-  String _tc(String s) => s.isEmpty
-      ? s
-      : s[0].toUpperCase() + s.substring(1).toLowerCase();
+  String _tc(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1).toLowerCase();
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -3458,18 +3685,26 @@ class _AdminSearchBar extends StatelessWidget {
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
-          prefixIcon: Icon(Icons.search_rounded,
-              color: Colors.grey[600], size: 18),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: Colors.grey[600],
+            size: 18,
+          ),
           suffixIcon: query.isNotEmpty
               ? IconButton(
-                  icon: Icon(Icons.close_rounded,
-                      color: Colors.grey[600], size: 16),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: Colors.grey[600],
+                    size: 16,
+                  ),
                   onPressed: onClear,
                 )
               : null,
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
       ),
     );
@@ -3496,15 +3731,21 @@ class _AdminErrorWidget extends StatelessWidget {
                 color: AppTheme.errorColor.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.error_outline_rounded,
-                  color: AppTheme.errorColor, size: 32),
+              child: Icon(
+                Icons.error_outline_rounded,
+                color: AppTheme.errorColor,
+                size: 32,
+              ),
             ),
             const SizedBox(height: 16),
-            Text('Something went wrong',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700)),
+            Text(
+              'Something went wrong',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               message,
@@ -3516,7 +3757,9 @@ class _AdminErrorWidget extends StatelessWidget {
               onTap: onRetry,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 11),
+                  horizontal: 20,
+                  vertical: 11,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.primaryColor,
                   borderRadius: BorderRadius.circular(10),
@@ -3524,13 +3767,15 @@ class _AdminErrorWidget extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.refresh_rounded,
-                        color: Colors.white, size: 16),
+                    Icon(Icons.refresh_rounded, color: Colors.white, size: 16),
                     SizedBox(width: 8),
-                    Text('Try Again',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700)),
+                    Text(
+                      'Try Again',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -3556,11 +3801,14 @@ class _AdminEmptyState extends StatelessWidget {
         children: [
           Icon(icon, color: Colors.grey[700], size: 48),
           const SizedBox(height: 12),
-          Text(message,
-              style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600)),
+          Text(
+            message,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -3586,5 +3834,3 @@ class _SectionLabel extends StatelessWidget {
     );
   }
 }
-
-

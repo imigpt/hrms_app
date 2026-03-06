@@ -33,8 +33,7 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res =
-          await SettingsService.getEmployeeIDConfig(widget.token ?? '');
+      final res = await SettingsService.getEmployeeIDConfig(widget.token ?? '');
       final d = res['data'];
       if (d != null) {
         setState(() {
@@ -44,7 +43,6 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
           _includeYear = d['includeYear'] ?? false;
           _formatRule = d['formatRule'] ?? 'auto';
           _manualOverride = d['manualOverrideAllowed'] ?? true;
-
         });
       }
     } catch (_) {}
@@ -55,8 +53,7 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
     final prefix = _prefixCtrl.text;
     final sep = _separatorCtrl.text;
     final num = '1'.padLeft(_padding, '0');
-    final year =
-        _includeYear ? '${sep}${DateTime.now().year}' : '';
+    final year = _includeYear ? '${sep}${DateTime.now().year}' : '';
     return '$prefix$sep$num$year';
   }
 
@@ -125,8 +122,10 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const AdminSectionLabel('Number Padding (digits)',
-                                    topPad: false),
+                                const AdminSectionLabel(
+                                  'Number Padding (digits)',
+                                  topPad: false,
+                                ),
                                 const SizedBox(height: 6),
                                 Row(
                                   children: [
@@ -139,7 +138,8 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
                                         activeColor: AppTheme.primaryColor,
                                         inactiveColor: AppTheme.cardColor,
                                         onChanged: (v) => setState(
-                                            () => _padding = v.toInt()),
+                                          () => _padding = v.toInt(),
+                                        ),
                                       ),
                                     ),
                                     SizedBox(
@@ -147,9 +147,10 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
                                       child: Text(
                                         '$_padding',
                                         style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700),
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                         textAlign: TextAlign.center,
                                       ),
                                     ),
@@ -164,11 +165,17 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
                                 value: _formatRule,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'auto', child: Text('Auto')),
+                                    value: 'auto',
+                                    child: Text('Auto'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'manual', child: Text('Manual')),
+                                    value: 'manual',
+                                    child: Text('Manual'),
+                                  ),
                                   DropdownMenuItem(
-                                      value: 'custom', child: Text('Custom')),
+                                    value: 'custom',
+                                    child: Text('Custom'),
+                                  ),
                                 ],
                                 onChanged: (v) =>
                                     setState(() => _formatRule = v!),
@@ -176,20 +183,28 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
                               right: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const AdminSectionLabel('Include Year',
-                                      topPad: false),
+                                  const AdminSectionLabel(
+                                    'Include Year',
+                                    topPad: false,
+                                  ),
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      _SmallBtn('Yes', _includeYear,
-                                          () => setState(() {
-                                                _includeYear = true;
-                                              })),
+                                      _SmallBtn(
+                                        'Yes',
+                                        _includeYear,
+                                        () => setState(() {
+                                          _includeYear = true;
+                                        }),
+                                      ),
                                       const SizedBox(width: 8),
-                                      _SmallBtn('No', !_includeYear,
-                                          () => setState(() {
-                                                _includeYear = false;
-                                              })),
+                                      _SmallBtn(
+                                        'No',
+                                        !_includeYear,
+                                        () => setState(() {
+                                          _includeYear = false;
+                                        }),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -198,8 +213,7 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
                             const SizedBox(height: 14),
                             AdminToggleRow(
                               label: 'Allow Manual Override',
-                              subtitle:
-                                  'Admins can manually set employee IDs',
+                              subtitle: 'Admins can manually set employee IDs',
                               value: _manualOverride,
                               onChanged: (v) =>
                                   setState(() => _manualOverride = v),
@@ -212,16 +226,23 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withOpacity(0.08),
+                                color: const Color(
+                                  0xFF10B981,
+                                ).withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                    color: const Color(0xFF10B981)
-                                        .withOpacity(0.2)),
+                                  color: const Color(
+                                    0xFF10B981,
+                                  ).withOpacity(0.2),
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.badge_rounded,
-                                      color: Color(0xFF10B981), size: 20),
+                                  const Icon(
+                                    Icons.badge_rounded,
+                                    color: Color(0xFF10B981),
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 12),
                                   Column(
                                     crossAxisAlignment:
@@ -230,16 +251,18 @@ class _AdminEmployeeIDScreenState extends State<AdminEmployeeIDScreen> {
                                       Text(
                                         _computePreview(),
                                         style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 2),
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 2,
+                                        ),
                                       ),
                                       Text(
                                         'Example employee ID',
                                         style: TextStyle(
-                                            color: Colors.grey[500],
-                                            fontSize: 11),
+                                          color: Colors.grey[500],
+                                          fontSize: 11,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -272,20 +295,22 @@ class _SmallBtn extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         decoration: BoxDecoration(
-          color: active
-              ? const Color(0xFF10B981)
-              : AppTheme.cardColor,
+          color: active ? const Color(0xFF10B981) : AppTheme.cardColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-              color: active
-                  ? const Color(0xFF10B981)
-                  : Colors.white.withOpacity(0.1)),
+            color: active
+                ? const Color(0xFF10B981)
+                : Colors.white.withOpacity(0.1),
+          ),
         ),
-        child: Text(label,
-            style: TextStyle(
-                color: active ? Colors.white : Colors.grey[500],
-                fontSize: 12,
-                fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? Colors.white : Colors.grey[500],
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

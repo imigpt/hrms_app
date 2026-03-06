@@ -223,7 +223,10 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
               runSpacing: 8,
               children: salary.allowances.map((a) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -300,7 +303,9 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          ...salary.allowances.map((a) => _buildComponentCard(a.name, a.amount, Colors.blue)),
+          ...salary.allowances.map(
+            (a) => _buildComponentCard(a.name, a.amount, Colors.blue),
+          ),
         ],
         if (salary.deductions.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -313,13 +318,25 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          ...salary.deductions.map((d) => _buildComponentCard(d.name, d.amount, Colors.red, isDeduction: true)),
+          ...salary.deductions.map(
+            (d) => _buildComponentCard(
+              d.name,
+              d.amount,
+              Colors.red,
+              isDeduction: true,
+            ),
+          ),
         ],
       ],
     );
   }
 
-  Widget _buildComponentCard(String name, double amount, Color color, {bool isDeduction = false}) {
+  Widget _buildComponentCard(
+    String name,
+    double amount,
+    Color color, {
+    bool isDeduction = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
@@ -369,5 +386,6 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
     );
   }
 
-  String _currency(double amount) => '\u{20B9}${NumberFormat('#,##,###.##').format(amount)}';
+  String _currency(double amount) =>
+      '\u{20B9}${NumberFormat('#,##,###.##').format(amount)}';
 }

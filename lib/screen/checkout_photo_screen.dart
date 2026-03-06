@@ -45,9 +45,9 @@ class CheckoutPhotoScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // Title
               const Text(
                 'Not Checked In',
@@ -57,22 +57,18 @@ class CheckoutPhotoScreen extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Subtitle
               const Text(
                 'Take a selfie photo to mark\nattendance',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                  height: 1.5,
-                ),
+                style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.5),
               ),
-              
+
               const SizedBox(height: 80),
-              
+
               // Take Photo Button
               SizedBox(
                 width: double.infinity,
@@ -80,7 +76,10 @@ class CheckoutPhotoScreen extends StatelessWidget {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     // TODO: Implement camera functionality
-                    Navigator.pop(context, true); // Return true to indicate photo was taken
+                    Navigator.pop(
+                      context,
+                      true,
+                    ); // Return true to indicate photo was taken
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Photo captured! Checking in...'),
@@ -110,9 +109,9 @@ class CheckoutPhotoScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Apply Leave Button
               SizedBox(
                 width: double.infinity,

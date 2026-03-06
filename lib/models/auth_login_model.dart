@@ -25,16 +25,17 @@ class AuthLoginResponse {
         user: AuthUser.fromJson(json["user"] as Map<String, dynamic>),
         loginLocation: json["loginLocation"] != null
             ? LoginLocation.fromJson(
-                json["loginLocation"] as Map<String, dynamic>)
+                json["loginLocation"] as Map<String, dynamic>,
+              )
             : null,
       );
 
   Map<String, dynamic> toJson() => {
-        "success": success,
-        "token": token,
-        "user": user.toJson(),
-        "loginLocation": loginLocation?.toJson(),
-      };
+    "success": success,
+    "token": token,
+    "user": user.toJson(),
+    "loginLocation": loginLocation?.toJson(),
+  };
 }
 
 class LoginLocation {
@@ -55,22 +56,22 @@ class LoginLocation {
   });
 
   factory LoginLocation.fromJson(Map<String, dynamic> json) => LoginLocation(
-        ipAddress: json["ipAddress"] as String?,
-        address: json["address"] as String?,
-        city: json["city"] as String?,
-        country: json["country"] as String?,
-        latitude: (json["latitude"] as num?)?.toDouble(),
-        longitude: (json["longitude"] as num?)?.toDouble(),
-      );
+    ipAddress: json["ipAddress"] as String?,
+    address: json["address"] as String?,
+    city: json["city"] as String?,
+    country: json["country"] as String?,
+    latitude: (json["latitude"] as num?)?.toDouble(),
+    longitude: (json["longitude"] as num?)?.toDouble(),
+  );
 
   Map<String, dynamic> toJson() => {
-        "ipAddress": ipAddress,
-        "address": address,
-        "city": city,
-        "country": country,
-        "latitude": latitude,
-        "longitude": longitude,
-      };
+    "ipAddress": ipAddress,
+    "address": address,
+    "city": city,
+    "country": country,
+    "latitude": latitude,
+    "longitude": longitude,
+  };
 }
 
 class AuthUser {
@@ -108,33 +109,34 @@ class AuthUser {
   }
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
-        id: json["id"] as String? ?? json["_id"] as String? ?? "",
-        employeeId: json["employeeId"] as String? ?? "",
-        name: json["name"] as String? ?? "",
-        email: json["email"] as String? ?? "",
-        role: json["role"] as String? ?? "",
-        department: json["department"] as String?,
-        position: json["position"] as String?,
-        profilePhoto: json["profilePhoto"],
-        company: json["company"],
-        currentLocation: json["currentLocation"] != null
-            ? AuthCurrentLocation.fromJson(
-                json["currentLocation"] as Map<String, dynamic>)
-            : null,
-      );
+    id: json["id"] as String? ?? json["_id"] as String? ?? "",
+    employeeId: json["employeeId"] as String? ?? "",
+    name: json["name"] as String? ?? "",
+    email: json["email"] as String? ?? "",
+    role: json["role"] as String? ?? "",
+    department: json["department"] as String?,
+    position: json["position"] as String?,
+    profilePhoto: json["profilePhoto"],
+    company: json["company"],
+    currentLocation: json["currentLocation"] != null
+        ? AuthCurrentLocation.fromJson(
+            json["currentLocation"] as Map<String, dynamic>,
+          )
+        : null,
+  );
 
   Map<String, dynamic> toJson() => {
-        "id": id,
-        "employeeId": employeeId,
-        "name": name,
-        "email": email,
-        "role": role,
-        "department": department,
-        "position": position,
-        "profilePhoto": profilePhoto,
-        "company": company,
-        "currentLocation": currentLocation?.toJson(),
-      };
+    "id": id,
+    "employeeId": employeeId,
+    "name": name,
+    "email": email,
+    "role": role,
+    "department": department,
+    "position": position,
+    "profilePhoto": profilePhoto,
+    "company": company,
+    "currentLocation": currentLocation?.toJson(),
+  };
 }
 
 class AuthCurrentLocation {
@@ -161,9 +163,9 @@ class AuthCurrentLocation {
       );
 
   Map<String, dynamic> toJson() => {
-        "latitude": latitude,
-        "longitude": longitude,
-        "address": address,
-        "lastUpdated": lastUpdated?.toIso8601String(),
-      };
+    "latitude": latitude,
+    "longitude": longitude,
+    "address": address,
+    "lastUpdated": lastUpdated?.toIso8601String(),
+  };
 }

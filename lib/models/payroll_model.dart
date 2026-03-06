@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'profile_model.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Response wrappers
@@ -28,7 +29,11 @@ class PayrollListResponse {
   final int count;
   final List<Payroll> data;
 
-  PayrollListResponse({required this.success, required this.count, required this.data});
+  PayrollListResponse({
+    required this.success,
+    required this.count,
+    required this.data,
+  });
 
   factory PayrollListResponse.fromJson(Map<String, dynamic> json) =>
       PayrollListResponse(
@@ -91,24 +96,45 @@ class Payroll {
       year: json['year'] ?? 2025,
       basicSalary: (json['basicSalary'] ?? 0).toDouble(),
       allowances: json['allowances'] != null
-          ? List<PayrollItem>.from(json['allowances'].map((x) => PayrollItem.fromJson(x)))
+          ? List<PayrollItem>.from(
+              json['allowances'].map((x) => PayrollItem.fromJson(x)),
+            )
           : [],
       deductions: json['deductions'] != null
-          ? List<PayrollItem>.from(json['deductions'].map((x) => PayrollItem.fromJson(x)))
+          ? List<PayrollItem>.from(
+              json['deductions'].map((x) => PayrollItem.fromJson(x)),
+            )
           : [],
       prePaymentDeductions: (json['prePaymentDeductions'] ?? 0).toDouble(),
       grossSalary: (json['grossSalary'] ?? 0).toDouble(),
       totalDeductions: (json['totalDeductions'] ?? 0).toDouble(),
       netSalary: (json['netSalary'] ?? 0).toDouble(),
-      paymentDate: json['paymentDate'] != null ? DateTime.tryParse(json['paymentDate']) : null,
+      paymentDate: json['paymentDate'] != null
+          ? DateTime.tryParse(json['paymentDate'])
+          : null,
       status: json['status'] ?? 'generated',
       notes: json['notes'],
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'])
+          : null,
     );
   }
 
   String get monthName {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return months[(month - 1).clamp(0, 11)];
   }
 }
@@ -120,9 +146,9 @@ class PayrollItem {
   PayrollItem({required this.name, required this.amount});
 
   factory PayrollItem.fromJson(Map<String, dynamic> json) => PayrollItem(
-        name: json['name'] ?? '',
-        amount: (json['amount'] ?? 0).toDouble(),
-      );
+    name: json['name'] ?? '',
+    amount: (json['amount'] ?? 0).toDouble(),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,9 +162,9 @@ class SalaryResponse {
   SalaryResponse({required this.success, this.data});
 
   factory SalaryResponse.fromJson(Map<String, dynamic> json) => SalaryResponse(
-        success: json['success'] ?? false,
-        data: json['data'] != null ? EmployeeSalary.fromJson(json['data']) : null,
-      );
+    success: json['success'] ?? false,
+    data: json['data'] != null ? EmployeeSalary.fromJson(json['data']) : null,
+  );
 }
 
 class SalaryListResponse {
@@ -146,13 +172,20 @@ class SalaryListResponse {
   final int count;
   final List<EmployeeSalary> data;
 
-  SalaryListResponse({required this.success, required this.count, required this.data});
+  SalaryListResponse({
+    required this.success,
+    required this.count,
+    required this.data,
+  });
 
-  factory SalaryListResponse.fromJson(Map<String, dynamic> json) => SalaryListResponse(
+  factory SalaryListResponse.fromJson(Map<String, dynamic> json) =>
+      SalaryListResponse(
         success: json['success'] ?? false,
         count: json['count'] ?? 0,
         data: json['data'] != null
-            ? List<EmployeeSalary>.from(json['data'].map((x) => EmployeeSalary.fromJson(x)))
+            ? List<EmployeeSalary>.from(
+                json['data'].map((x) => EmployeeSalary.fromJson(x)),
+              )
             : [],
       );
 }
@@ -185,22 +218,28 @@ class EmployeeSalary {
   });
 
   factory EmployeeSalary.fromJson(Map<String, dynamic> json) => EmployeeSalary(
-        id: json['_id'] ?? '',
-        basicSalary: (json['basicSalary'] ?? 0).toDouble(),
-        allowances: json['allowances'] != null
-            ? List<SalaryComponent>.from(json['allowances'].map((x) => SalaryComponent.fromJson(x)))
-            : [],
-        deductions: json['deductions'] != null
-            ? List<SalaryComponent>.from(json['deductions'].map((x) => SalaryComponent.fromJson(x)))
-            : [],
-        status: json['status'] ?? 'active',
-        effectiveFrom: json['effectiveFrom'] != null ? DateTime.tryParse(json['effectiveFrom']) : null,
-        salaryGroup: json['salaryGroup'],
-        notes: json['notes'],
-        totalAllowances: (json['totalAllowances'] ?? 0).toDouble(),
-        totalDeductions: (json['totalDeductions'] ?? 0).toDouble(),
-        netSalary: (json['netSalary'] ?? 0).toDouble(),
-      );
+    id: json['_id'] ?? '',
+    basicSalary: (json['basicSalary'] ?? 0).toDouble(),
+    allowances: json['allowances'] != null
+        ? List<SalaryComponent>.from(
+            json['allowances'].map((x) => SalaryComponent.fromJson(x)),
+          )
+        : [],
+    deductions: json['deductions'] != null
+        ? List<SalaryComponent>.from(
+            json['deductions'].map((x) => SalaryComponent.fromJson(x)),
+          )
+        : [],
+    status: json['status'] ?? 'active',
+    effectiveFrom: json['effectiveFrom'] != null
+        ? DateTime.tryParse(json['effectiveFrom'])
+        : null,
+    salaryGroup: json['salaryGroup'],
+    notes: json['notes'],
+    totalAllowances: (json['totalAllowances'] ?? 0).toDouble(),
+    totalDeductions: (json['totalDeductions'] ?? 0).toDouble(),
+    netSalary: (json['netSalary'] ?? 0).toDouble(),
+  );
 }
 
 class SalaryComponent {
@@ -208,9 +247,14 @@ class SalaryComponent {
   final double amount;
   final String type; // fixed, percentage
 
-  SalaryComponent({required this.name, required this.amount, this.type = 'fixed'});
+  SalaryComponent({
+    required this.name,
+    required this.amount,
+    this.type = 'fixed',
+  });
 
-  factory SalaryComponent.fromJson(Map<String, dynamic> json) => SalaryComponent(
+  factory SalaryComponent.fromJson(Map<String, dynamic> json) =>
+      SalaryComponent(
         name: json['name'] ?? '',
         amount: (json['amount'] ?? 0).toDouble(),
         type: json['type'] ?? 'fixed',
@@ -226,13 +270,20 @@ class PrePaymentListResponse {
   final int count;
   final List<PrePayment> data;
 
-  PrePaymentListResponse({required this.success, required this.count, required this.data});
+  PrePaymentListResponse({
+    required this.success,
+    required this.count,
+    required this.data,
+  });
 
-  factory PrePaymentListResponse.fromJson(Map<String, dynamic> json) => PrePaymentListResponse(
+  factory PrePaymentListResponse.fromJson(Map<String, dynamic> json) =>
+      PrePaymentListResponse(
         success: json['success'] ?? false,
         count: json['count'] ?? 0,
         data: json['data'] != null
-            ? List<PrePayment>.from(json['data'].map((x) => PrePayment.fromJson(x)))
+            ? List<PrePayment>.from(
+                json['data'].map((x) => PrePayment.fromJson(x)),
+              )
             : [],
       );
 }
@@ -245,6 +296,7 @@ class PrePayment {
   final String status; // pending, deducted, cancelled
   final BankDetails? bankDetails;
   final DateTime? createdAt;
+  final ProfileUser? user;
 
   PrePayment({
     required this.id,
@@ -254,17 +306,23 @@ class PrePayment {
     this.status = 'pending',
     this.bankDetails,
     this.createdAt,
+    this.user,
   });
 
   factory PrePayment.fromJson(Map<String, dynamic> json) => PrePayment(
-        id: json['_id'] ?? '',
-        amount: (json['amount'] ?? 0).toDouble(),
-        deductMonth: json['deductMonth'],
-        description: json['description'],
-        status: json['status'] ?? 'pending',
-        bankDetails: json['bankDetails'] != null ? BankDetails.fromJson(json['bankDetails']) : null,
-        createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
-      );
+    id: json['_id'] ?? '',
+    amount: (json['amount'] ?? 0).toDouble(),
+    deductMonth: json['deductMonth'],
+    description: json['description'],
+    status: json['status'] ?? 'pending',
+    bankDetails: json['bankDetails'] != null
+        ? BankDetails.fromJson(json['bankDetails'])
+        : null,
+    createdAt: json['createdAt'] != null
+        ? DateTime.tryParse(json['createdAt'])
+        : null,
+    user: json['user'] != null ? ProfileUser.fromJson(json['user']) : null,
+  );
 }
 
 class BankDetails {
@@ -274,9 +332,9 @@ class BankDetails {
   BankDetails({this.accountNumber, this.bankName});
 
   factory BankDetails.fromJson(Map<String, dynamic> json) => BankDetails(
-        accountNumber: json['accountNumber'],
-        bankName: json['bankName'],
-      );
+    accountNumber: json['accountNumber'],
+    bankName: json['bankName'],
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -288,20 +346,63 @@ class IncrementListResponse {
   final int count;
   final List<IncrementPromotion> data;
 
-  IncrementListResponse({required this.success, required this.count, required this.data});
+  IncrementListResponse({
+    required this.success,
+    required this.count,
+    required this.data,
+  });
 
-  factory IncrementListResponse.fromJson(Map<String, dynamic> json) => IncrementListResponse(
+  factory IncrementListResponse.fromJson(Map<String, dynamic> json) =>
+      IncrementListResponse(
         success: json['success'] ?? false,
         count: json['count'] ?? 0,
         data: json['data'] != null
-            ? List<IncrementPromotion>.from(json['data'].map((x) => IncrementPromotion.fromJson(x)))
+            ? List<IncrementPromotion>.from(
+                json['data'].map((x) => IncrementPromotion.fromJson(x)),
+              )
             : [],
       );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Increment User (nested user info in increment/promotion records)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class IncrementUser {
+  final String id;
+  final String? name;
+  final String? email;
+  final String? employeeId;
+  final String? position;
+  final String? department;
+  final String? profilePhoto;
+
+  IncrementUser({
+    required this.id,
+    this.name,
+    this.email,
+    this.employeeId,
+    this.position,
+    this.department,
+    this.profilePhoto,
+  });
+
+  factory IncrementUser.fromJson(Map<String, dynamic> json) => IncrementUser(
+    id: json['_id'] ?? '',
+    name: json['name'],
+    email: json['email'],
+    employeeId: json['employeeId'],
+    position: json['position'],
+    department: json['department'],
+    profilePhoto: json['profilePhoto'],
+  );
+}
+
 class IncrementPromotion {
   final String id;
-  final String type; // increment, promotion, increment-promotion, decrement, decrement-demotion
+  final IncrementUser? user;
+  final String
+  type; // increment, promotion, increment-promotion, decrement, decrement-demotion
   final String currentDesignation;
   final String? newDesignation;
   final double? previousCTC;
@@ -313,6 +414,7 @@ class IncrementPromotion {
 
   IncrementPromotion({
     required this.id,
+    this.user,
     required this.type,
     required this.currentDesignation,
     this.newDesignation,
@@ -324,17 +426,25 @@ class IncrementPromotion {
     this.createdAt,
   });
 
-  factory IncrementPromotion.fromJson(Map<String, dynamic> json) => IncrementPromotion(
+  factory IncrementPromotion.fromJson(Map<String, dynamic> json) =>
+      IncrementPromotion(
         id: json['_id'] ?? '',
+        user: json['user'] != null
+            ? IncrementUser.fromJson(json['user'])
+            : null,
         type: json['type'] ?? 'increment',
         currentDesignation: json['currentDesignation'] ?? '',
         newDesignation: json['newDesignation'],
         previousCTC: json['previousCTC']?.toDouble(),
         newCTC: json['newCTC']?.toDouble(),
-        effectiveDate: json['effectiveDate'] != null ? DateTime.tryParse(json['effectiveDate']) : null,
+        effectiveDate: json['effectiveDate'] != null
+            ? DateTime.tryParse(json['effectiveDate'])
+            : null,
         reason: json['reason'],
         description: json['description'],
-        createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+        createdAt: json['createdAt'] != null
+            ? DateTime.tryParse(json['createdAt'])
+            : null,
       );
 
   String get typeLabel {

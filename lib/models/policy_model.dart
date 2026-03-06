@@ -19,13 +19,20 @@ class PolicyListResponse {
   final int count;
   final List<CompanyPolicy> data;
 
-  PolicyListResponse({required this.success, required this.count, required this.data});
+  PolicyListResponse({
+    required this.success,
+    required this.count,
+    required this.data,
+  });
 
-  factory PolicyListResponse.fromJson(Map<String, dynamic> json) => PolicyListResponse(
+  factory PolicyListResponse.fromJson(Map<String, dynamic> json) =>
+      PolicyListResponse(
         success: json['success'] ?? false,
         count: json['count'] ?? 0,
         data: json['data'] != null
-            ? List<CompanyPolicy>.from(json['data'].map((x) => CompanyPolicy.fromJson(x)))
+            ? List<CompanyPolicy>.from(
+                json['data'].map((x) => CompanyPolicy.fromJson(x)),
+              )
             : [],
       );
 }
@@ -40,9 +47,12 @@ class PolicyDetailResponse {
 
   PolicyDetailResponse({required this.success, this.data});
 
-  factory PolicyDetailResponse.fromJson(Map<String, dynamic> json) => PolicyDetailResponse(
+  factory PolicyDetailResponse.fromJson(Map<String, dynamic> json) =>
+      PolicyDetailResponse(
         success: json['success'] ?? false,
-        data: json['data'] != null ? CompanyPolicy.fromJson(json['data']) : null,
+        data: json['data'] != null
+            ? CompanyPolicy.fromJson(json['data'])
+            : null,
       );
 }
 
@@ -74,22 +84,27 @@ class CompanyPolicy {
   });
 
   factory CompanyPolicy.fromJson(Map<String, dynamic> json) => CompanyPolicy(
-        id: json['_id'] ?? '',
-        title: json['title'] ?? '',
-        description: json['description'] ?? '',
-        location: json['location'] ?? 'Head Office',
-        file: json['file'] != null ? PolicyFile.fromJson(json['file']) : null,
-        createdBy: json['createdBy'] != null
-            ? (json['createdBy'] is Map
-                ? PolicyCreator.fromJson(json['createdBy'])
-                : PolicyCreator(id: json['createdBy'], name: null))
-            : null,
-        isActive: json['isActive'] ?? true,
-        createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
-        updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
-      );
+    id: json['_id'] ?? '',
+    title: json['title'] ?? '',
+    description: json['description'] ?? '',
+    location: json['location'] ?? 'Head Office',
+    file: json['file'] != null ? PolicyFile.fromJson(json['file']) : null,
+    createdBy: json['createdBy'] != null
+        ? (json['createdBy'] is Map
+              ? PolicyCreator.fromJson(json['createdBy'])
+              : PolicyCreator(id: json['createdBy'], name: null))
+        : null,
+    isActive: json['isActive'] ?? true,
+    createdAt: json['createdAt'] != null
+        ? DateTime.tryParse(json['createdAt'])
+        : null,
+    updatedAt: json['updatedAt'] != null
+        ? DateTime.tryParse(json['updatedAt'])
+        : null,
+  );
 
-  bool get hasFile => file != null && file!.url != null && file!.url!.isNotEmpty;
+  bool get hasFile =>
+      file != null && file!.url != null && file!.url!.isNotEmpty;
 }
 
 class PolicyFile {
@@ -101,11 +116,11 @@ class PolicyFile {
   PolicyFile({this.url, this.publicId, this.originalName, this.mimeType});
 
   factory PolicyFile.fromJson(Map<String, dynamic> json) => PolicyFile(
-        url: json['url'],
-        publicId: json['publicId'],
-        originalName: json['originalName'],
-        mimeType: json['mimeType'],
-      );
+    url: json['url'],
+    publicId: json['publicId'],
+    originalName: json['originalName'],
+    mimeType: json['mimeType'],
+  );
 
   String get displayName => originalName ?? 'Document';
 
@@ -115,8 +130,10 @@ class PolicyFile {
     }
     if (mimeType != null) {
       if (mimeType!.contains('pdf')) return 'PDF';
-      if (mimeType!.contains('word') || mimeType!.contains('docx')) return 'DOCX';
-      if (mimeType!.contains('excel') || mimeType!.contains('xlsx')) return 'XLSX';
+      if (mimeType!.contains('word') || mimeType!.contains('docx'))
+        return 'DOCX';
+      if (mimeType!.contains('excel') || mimeType!.contains('xlsx'))
+        return 'XLSX';
     }
     return 'FILE';
   }
@@ -129,9 +146,6 @@ class PolicyCreator {
 
   PolicyCreator({this.id, this.name, this.email});
 
-  factory PolicyCreator.fromJson(Map<String, dynamic> json) => PolicyCreator(
-        id: json['_id'],
-        name: json['name'],
-        email: json['email'],
-      );
+  factory PolicyCreator.fromJson(Map<String, dynamic> json) =>
+      PolicyCreator(id: json['_id'], name: json['name'], email: json['email']);
 }
