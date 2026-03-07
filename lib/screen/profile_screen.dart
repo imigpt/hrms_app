@@ -120,8 +120,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Only include fields that are non-empty to avoid validation errors
     final Map<String, dynamic> payload = {};
 
+    final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
     final address = _addressController.text.trim();
+    if (name.isNotEmpty) payload['name'] = name;
     if (phone.isNotEmpty) payload['phone'] = phone;
     if (address.isNotEmpty) payload['address'] = address;
 

@@ -370,7 +370,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Leave Management',
+                  'Leaves',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

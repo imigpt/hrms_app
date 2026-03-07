@@ -75,49 +75,22 @@ Future<void> main() async {
   runApp(HrmsApp(cameras: cameras));
 }
 
+/// Retrieve and log the FCM token for diagnostic purposes.
+/// NOTE: Permission is NOT requested here — that is done inside
+/// NotificationService.registerFcmToken() after login, so we avoid
+/// a duplicate permission dialog and a race that clears the token.
 Future<void> _retrieveFCMToken() async {
   try {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-    // Request notification permission (Android 13+ and iOS)
-    NotificationSettings settings = await messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      debugPrint('✅ Notification permission granted');
-    } else if (settings.authorizationStatus ==
-        AuthorizationStatus.provisional) {
-      debugPrint('⚠️ Notification permission provisional');
+    // Get FCM token (Firebase.initializeApp must have completed already)
+    String? token = await FirebaseMessaging.instance.getToken();
+    if (token != null && token.isNotEmpty) {
+      debugPrint('🔥 FCM token retrieved at startup (${token.length} chars): ${token.substring(0, token.length.clamp(0, 20))}...');
+      debugPrint('💡 Token will be saved to backend after user login via registerFcmToken()');
     } else {
-      debugPrint('❌ Notification permission denied');
+      debugPrint('⚠️ FCM token is null at startup — will retry after login via registerFcmToken()');
     }
-
-    // Get FCM token
-    String? token = await messaging.getToken();
-    if (token != null) {
-      debugPrint('🔥 FCM TOKEN: $token');
-      debugPrint('💡 This token will be saved to backend after user login');
-      // Token will be saved to backend in auth flow after login
-      // See: Token saving happens in auth_check_screen or login flow
-    } else {
-      debugPrint('❌ Failed to retrieve FCM token');
-    }
-
-    // Listen for token refresh and log it
-    messaging.onTokenRefresh.listen((String newToken) {
-      debugPrint('🔄 FCM Token Refreshed: $newToken');
-      debugPrint('💡 Updated token will sync to backend on next login');
-      // Token refresh will be handled by NotificationService
-    });
   } catch (e) {
-    debugPrint('❌ Error retrieving FCM token: $e');
+    debugPrint('❌ Error retrieving FCM token at startup: $e');
   }
 }
 

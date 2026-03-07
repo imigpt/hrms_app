@@ -219,25 +219,6 @@ class _LeaveStatisticsSectionState extends State<LeaveStatisticsSection> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Summary highlight row
-                Row(
-                  children: [
-                    _buildHighlight(
-                      icon: Icons.summarize_outlined,
-                      label: 'Total Requests',
-                      value: '$_total',
-                      color: Colors.blue,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildHighlight(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Days Taken',
-                      value: '$_daysTaken',
-                      color: AppTheme.primaryColor,
-                      suffix: 'd',
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 20),
 
                 // Status breakdown
@@ -278,15 +259,21 @@ class _LeaveStatisticsSectionState extends State<LeaveStatisticsSection> {
                       Colors.red,
                     ),
                     const SizedBox(width: 10),
-                    _buildStatusTile(
-                      Icons.block_outlined,
-                      'Cancelled',
-                      _cancelled,
-                      Colors.grey,
+                    // _buildStatusTile(
+                    //   Icons.block_outlined,
+                    //   'Cancelled',
+                    //   _cancelled,
+                    //   Colors.grey,
+                    // ),
+                    _buildHighlight(
+                      icon: Icons.summarize_outlined,
+                      label: 'Total Leaves',
+                      value: '$_total',
+                      color: Colors.blue,
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
 
                 // Apply leave button
                 SizedBox(

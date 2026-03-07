@@ -332,9 +332,21 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   }
 
   Widget _buildAttendanceCard(AttendanceRecord record, int index) {
-    final status =
-        record.status.substring(0, 1).toUpperCase() +
-        record.status.substring(1);
+    final rawStatus = record.status.toLowerCase();
+
+    // Normalize status for display label
+    String status;
+    switch (rawStatus) {
+      case 'halfday':
+      case 'half_day':
+      case 'half day':
+        status = 'Half Day';
+        break;
+      default:
+        status =
+            record.status.substring(0, 1).toUpperCase() +
+            record.status.substring(1);
+    }
 
     // Format times
     final checkInTime = DateFormat(
@@ -380,6 +392,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         break;
       case 'halfday':
       case 'half_day':
+      case 'half day':
         statusColor = Colors.amber;
         statusBgColor = Colors.amber.withOpacity(0.15);
         break;

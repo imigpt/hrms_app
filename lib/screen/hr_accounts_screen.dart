@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../services/hr_accounts_service.dart';
 import '../utils/responsive_utils.dart';
@@ -31,8 +33,10 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   String? _error;
   List<dynamic> _hrAccounts = [];
   List<dynamic> _filteredAccounts = [];
+  List<dynamic> _companies = [];
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
   String? _token;
 
   @override
@@ -43,6 +47,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
       () => _onSearchChanged(_searchController.text),
     );
     _loadHRAccounts();
+    _loadCompanies();
   }
 
   @override
@@ -95,6 +100,37 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
           _error = e.toString().replaceAll('Exception: ', '');
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _loadCompanies() async {
+    if (_token == null || _token!.isEmpty) return;
+    try {
+      final list = await HRAccountsService.getCompanies(_token!);
+      if (mounted) setState(() => _companies = list);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleStatus(Map<String, dynamic> account) async {
+    if (_token == null) return;
+    final current = (account['status'] ?? 'active').toString().toLowerCase();
+    final newStatus = current == 'active' ? 'inactive' : 'active';
+    try {
+      await HRAccountsService.updateHRStatus(_token!, account['_id'], newStatus);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Status updated to $newStatus'),
+          backgroundColor: newStatus == 'active' ? _secondaryAccent : _textGrey,
+        ));
+        _loadHRAccounts();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: _red,
+        ));
       }
     }
   }
@@ -442,13 +478,16 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     final _joinDateController = TextEditingController(
       text: isoToField(manager['joinedDate'] ?? manager['joinDate']),
     );
+    File? photoFile;
+    String selectedCompany = manager['company']?['_id'] ?? '';
 
     showDialog(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
         child: StatefulBuilder(
-          builder: (context, setState) => Container(
+          builder: (context, setDialogState) => Container(
             decoration: BoxDecoration(
               color: _section,
               borderRadius: BorderRadius.circular(20),
@@ -465,6 +504,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Header
                     Row(
                       children: [
                         Container(
@@ -499,10 +539,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                               const SizedBox(height: 2),
                               Text(
                                 'Update manager information',
-                                style: TextStyle(
-                                  color: _textGrey,
-                                  fontSize: 12,
-                                ),
+                                style: TextStyle(color: _textGrey, fontSize: 12),
                               ),
                             ],
                           ),
@@ -515,11 +552,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                               color: _border.withOpacity(0.6),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              color: _textGrey,
-                              size: 18,
-                            ),
+                            child: const Icon(Icons.close_rounded, color: _textGrey, size: 18),
                           ),
                         ),
                       ],
@@ -527,6 +560,95 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                     const SizedBox(height: 18),
                     Divider(color: _border.withOpacity(0.4), height: 1),
                     const SizedBox(height: 18),
+                    // ── Profile Photo ─────────────────────────────────────
+                    Text('Profile Photo',
+                        style: TextStyle(
+                            color: _textGrey,
+                            fontSize: _labelFontSize,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        // Avatar preview
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: _primaryAccent.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(
+                              color: _primaryAccent.withOpacity(0.35),
+                              width: 1.5,
+                            ),
+                            image: photoFile != null
+                                ? DecorationImage(
+                                    image: FileImage(photoFile!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : (manager['profilePhoto'] != null &&
+                                        manager['profilePhoto'].toString().isNotEmpty)
+                                    ? DecorationImage(
+                                        image: NetworkImage(
+                                          manager['profilePhoto']?.toString().startsWith('http') == true
+                                              ? manager['profilePhoto']
+                                              : manager['profilePhoto']?['url'] ?? '',
+                                        ),
+                                        fit: BoxFit.cover,
+                                        onError: (_, __) {},
+                                      )
+                                    : null,
+                          ),
+                          child: photoFile == null &&
+                                  (manager['profilePhoto'] == null ||
+                                      manager['profilePhoto'].toString().isEmpty)
+                              ? Icon(Icons.person_rounded, color: _primaryAccent, size: 28)
+                              : null,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              final picked = await _imagePicker.pickImage(
+                                source: ImageSource.gallery,
+                                imageQuality: 80,
+                                maxWidth: 800,
+                              );
+                              if (picked != null) {
+                                setDialogState(() {
+                                  photoFile = File(picked.path);
+                                });
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                              decoration: BoxDecoration(
+                                color: _input,
+                                borderRadius: BorderRadius.circular(11),
+                                border: Border.all(color: _border.withOpacity(0.5)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.upload_rounded, color: _textGrey, size: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      photoFile != null
+                                          ? 'New photo selected'
+                                          : 'Click to change photo',
+                                      style: TextStyle(
+                                        color: photoFile != null ? _secondaryAccent : _textGrey,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                     _buildEditField('Full Name *', _nameController),
                     const SizedBox(height: 14),
                     _buildEditField(
@@ -539,20 +661,21 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                     const SizedBox(height: 14),
                     _buildEditField('Phone *', _phoneController),
                     const SizedBox(height: 14),
+                    if (_companies.isNotEmpty) ...[
+                      _buildCompanyDropdown(
+                        selectedCompany,
+                        (v) => setDialogState(() => selectedCompany = v),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
                     Row(
                       children: [
                         Expanded(
-                          child: _buildEditField(
-                            'Department',
-                            _departmentController,
-                          ),
+                          child: _buildEditField('Department', _departmentController),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildEditField(
-                            'Position',
-                            _positionController,
-                          ),
+                          child: _buildEditField('Position', _positionController),
                         ),
                       ],
                     ),
@@ -564,7 +687,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                             'Date of Birth',
                             _dobController,
                             context,
-                            onDateChanged: () => setState(() {}),
+                            onDateChanged: () => setDialogState(() {}),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -573,7 +696,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                             'Join Date',
                             _joinDateController,
                             context,
-                            onDateChanged: () => setState(() {}),
+                            onDateChanged: () => setDialogState(() {}),
                           ),
                         ),
                       ],
@@ -588,10 +711,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                             onPressed: () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _textLight,
-                              side: BorderSide(
-                                color: _border.withOpacity(0.8),
-                                width: 1.5,
-                              ),
+                              side: BorderSide(color: _border.withOpacity(0.8), width: 1.5),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(11),
@@ -606,10 +726,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                           child: Container(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [
-                                  _primaryAccent,
-                                  _primaryAccent.withOpacity(0.85),
-                                ],
+                                colors: [_primaryAccent, _primaryAccent.withOpacity(0.85)],
                               ),
                               borderRadius: BorderRadius.circular(11),
                             ),
@@ -621,22 +738,16 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                       _employeeIdController.text.isEmpty ||
                                       _emailController.text.isEmpty ||
                                       _phoneController.text.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: const Text(
-                                          'Please fill in all required fields',
-                                        ),
-                                        backgroundColor: _red,
-                                      ),
-                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: const Text('Please fill in all required fields'),
+                                      backgroundColor: _red,
+                                    ));
                                     return;
                                   }
                                   String? toISO(String s) {
                                     if (s.isEmpty) return null;
                                     try {
-                                      return DateFormat(
-                                        'dd-MM-yyyy',
-                                      ).parse(s).toIso8601String();
+                                      return DateFormat('dd-MM-yyyy').parse(s).toIso8601String();
                                     } catch (_) {
                                       return null;
                                     }
@@ -647,6 +758,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                     'email': _emailController.text,
                                     'phone': _phoneController.text,
                                     'employeeId': _employeeIdController.text,
+                                    if (selectedCompany.isNotEmpty) 'company': selectedCompany,
                                     if (_departmentController.text.isNotEmpty)
                                       'department': _departmentController.text,
                                     if (_positionController.text.isNotEmpty)
@@ -656,45 +768,30 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                     if (toISO(_dobController.text) != null)
                                       'dateOfBirth': toISO(_dobController.text),
                                     if (toISO(_joinDateController.text) != null)
-                                      'joinDate': toISO(
-                                        _joinDateController.text,
-                                      ),
+                                      'joinDate': toISO(_joinDateController.text),
                                   };
                                   try {
-                                    await HRAccountsService.updateHRAccount(
+                                    await HRAccountsService.updateHRAccountWithPhoto(
                                       _token!,
                                       manager['_id'],
                                       data,
+                                      photoFile,
                                     );
                                     if (mounted) {
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: const Text(
-                                            'Manager updated successfully',
-                                          ),
-                                          backgroundColor: _secondaryAccent,
-                                        ),
-                                      );
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                        content: const Text('Manager updated successfully'),
+                                        backgroundColor: _secondaryAccent,
+                                      ));
                                       _loadHRAccounts();
                                     }
                                   } catch (e) {
                                     if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            e.toString().replaceAll(
-                                              'Exception: ',
-                                              '',
-                                            ),
-                                          ),
-                                          backgroundColor: _red,
-                                        ),
-                                      );
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                        content: Text(
+                                            e.toString().replaceAll('Exception: ', '')),
+                                        backgroundColor: _red,
+                                      ));
                                     }
                                   }
                                 },
@@ -744,6 +841,8 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     final _departmentController = TextEditingController();
     final _positionController = TextEditingController();
     final _jobDateController = TextEditingController();
+    File? photoFile;
+    String selectedCompany = '';
 
     showDialog(
       context: context,
@@ -751,7 +850,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(16),
         child: StatefulBuilder(
-          builder: (context, setState) => Container(
+          builder: (context, setDialogState) => Container(
             decoration: BoxDecoration(
               color: _section,
               borderRadius: BorderRadius.circular(20),
@@ -825,10 +924,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 'Create a new HR manager account',
-                                style: TextStyle(
-                                  color: _textGrey,
-                                  fontSize: 12,
-                                ),
+                                style: TextStyle(color: _textGrey, fontSize: 12),
                               ),
                             ],
                           ),
@@ -841,11 +937,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                               color: _border.withOpacity(0.4),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(
-                              Icons.close_rounded,
-                              color: _textGrey,
-                              size: 20,
-                            ),
+                            child: Icon(Icons.close_rounded, color: _textGrey, size: 20),
                           ),
                         ),
                       ],
@@ -858,6 +950,92 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // ─── Profile Photo ──────────────────────────────
+                        _buildDialogSection(
+                          'Profile Photo',
+                          Icons.photo_camera_rounded,
+                          [
+                            Row(
+                              children: [
+                                // Avatar preview
+                                Container(
+                                  width: 72,
+                                  height: 72,
+                                  decoration: BoxDecoration(
+                                    color: _primaryAccent.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: _primaryAccent.withOpacity(0.35),
+                                      width: 1.5,
+                                    ),
+                                    image: photoFile != null
+                                        ? DecorationImage(
+                                            image: FileImage(photoFile!),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
+                                  ),
+                                  child: photoFile == null
+                                      ? Icon(Icons.person_rounded,
+                                          color: _primaryAccent, size: 32)
+                                      : null,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      final picked = await _imagePicker.pickImage(
+                                        source: ImageSource.gallery,
+                                        imageQuality: 80,
+                                        maxWidth: 800,
+                                      );
+                                      if (picked != null) {
+                                        setDialogState(() {
+                                          photoFile = File(picked.path);
+                                        });
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: _input,
+                                        borderRadius: BorderRadius.circular(11),
+                                        border: Border.all(
+                                          color: _border.withOpacity(0.5),
+                                          width: 1.5,
+                                          style: BorderStyle.solid,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Icon(Icons.upload_rounded,
+                                              color: _textGrey, size: 22),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            photoFile != null
+                                                ? 'Photo selected'
+                                                : 'Click to upload photo',
+                                            style: TextStyle(
+                                                color: photoFile != null
+                                                    ? _secondaryAccent
+                                                    : _textGrey,
+                                                fontSize: 12),
+                                          ),
+                                          if (photoFile == null)
+                                            Text('PNG, JPG up to 5MB',
+                                                style: TextStyle(
+                                                    color: _textGrey,
+                                                    fontSize: 10)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
                         // ─────── Section: Authentication ─────────────────
                         _buildDialogSection(
                           'Authentication',
@@ -886,7 +1064,6 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        const SizedBox(height: 24),
                         // ─────── Section: Contact Information ──────────────
                         _buildDialogSection(
                           'Contact Information',
@@ -907,12 +1084,18 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        const SizedBox(height: 24),
                         // ─────── Section: Employment Details ──────────────
                         _buildDialogSection(
                           'Employment Details',
                           Icons.work_rounded,
                           [
+                            if (_companies.isNotEmpty) ...[
+                              _buildCompanyDropdown(
+                                selectedCompany,
+                                (v) => setDialogState(() => selectedCompany = v),
+                              ),
+                              SizedBox(height: _fieldSpacing),
+                            ],
                             Row(
                               children: [
                                 Expanded(
@@ -938,6 +1121,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                     'Date of Birth',
                                     _dobController,
                                     context,
+                                    onDateChanged: () => setDialogState(() {}),
                                   ),
                                 ),
                                 SizedBox(width: _fieldSpacing),
@@ -946,6 +1130,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                     'Join Date',
                                     _jobDateController,
                                     context,
+                                    onDateChanged: () => setDialogState(() {}),
                                   ),
                                 ),
                               ],
@@ -1019,6 +1204,8 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                     'email': _emailController.text,
                                     'password': _passwordController.text,
                                     'phone': _phoneController.text,
+                                    if (selectedCompany.isNotEmpty)
+                                      'company': selectedCompany,
                                     if (_departmentController.text.isNotEmpty)
                                       'department': _departmentController.text,
                                     if (_positionController.text.isNotEmpty)
@@ -1028,30 +1215,24 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                     if (toISO(_dobController.text) != null)
                                       'dateOfBirth': toISO(_dobController.text),
                                     if (toISO(_jobDateController.text) != null)
-                                      'joinedDate': toISO(
-                                        _jobDateController.text,
-                                      ),
+                                      'joinedDate': toISO(_jobDateController.text),
                                   };
 
                                   Navigator.pop(context);
-                                  await _showLoadingDialog(
-                                    'Creating HR Manager...',
-                                  );
+                                  await _showLoadingDialog('Creating HR Manager...');
 
                                   try {
-                                    await HRAccountsService.createHRAccount(
+                                    await HRAccountsService.createHRAccountWithPhoto(
                                       _token!,
                                       data,
+                                      photoFile,
                                     );
                                     if (mounted) {
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text(
-                                            'HR Manager created successfully',
-                                          ),
+                                          content: Text('HR Manager created successfully'),
+                                          backgroundColor: _secondaryAccent,
                                         ),
                                       );
                                       _loadHRAccounts();
@@ -1059,16 +1240,12 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                   } catch (e) {
                                     if (mounted) {
                                       Navigator.pop(context);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                            e.toString().replaceAll(
-                                              'Exception: ',
-                                              '',
-                                            ),
+                                            e.toString().replaceAll('Exception: ', ''),
                                           ),
+                                          backgroundColor: _red,
                                         ),
                                       );
                                     }
@@ -1354,6 +1531,56 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                 color: AppTheme.primaryColor,
                 width: 1.8,
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompanyDropdown(String value, Function(String) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Company',
+          style: TextStyle(
+            color: _textLight,
+            fontSize: _labelFontSize,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: _input,
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: _border.withOpacity(0.6), width: 1),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value.isNotEmpty &&
+                      _companies.any((c) =>
+                          (c['_id'] ?? c['id']).toString() == value)
+                  ? value
+                  : null,
+              hint: Text('Select company',
+                  style: TextStyle(color: _textGrey, fontSize: 13)),
+              isExpanded: true,
+              dropdownColor: _section,
+              iconEnabledColor: _textGrey,
+              style: const TextStyle(color: _textLight, fontSize: 14),
+              items: _companies.map<DropdownMenuItem<String>>((c) {
+                final id = (c['_id'] ?? c['id']).toString();
+                final name = c['name']?.toString() ?? id;
+                return DropdownMenuItem<String>(
+                  value: id,
+                  child: Text(name,
+                      style: const TextStyle(color: _textLight, fontSize: 14)),
+                );
+              }).toList(),
+              onChanged: (v) => onChanged(v ?? ''),
             ),
           ),
         ),
@@ -2086,26 +2313,39 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Status pill
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: statusColor.withOpacity(0.35),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    status == 'active' ? 'Active' : 'Inactive',
-                    style: TextStyle(
-                      color: statusColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                // Status pill (tappable to toggle)
+                Tooltip(
+                  message: 'Tap to toggle status',
+                  child: GestureDetector(
+                    onTap: () => _toggleStatus(account),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: statusColor.withOpacity(0.35),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            status == 'active' ? 'Active' : 'Inactive',
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 3),
+                          Icon(Icons.swap_horiz_rounded, color: statusColor, size: 12),
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -10,6 +10,18 @@ import '../models/attendance_records_model.dart';
 import '../models/attendance_edit_request_model.dart';
 import '../models/dashboard_stats_model.dart';
 
+/// Thrown when the backend rejects check-in due to face mismatch.
+/// Carries the server [message] and the [similarityScore] (0–100).
+class FaceVerificationFailedException implements Exception {
+  final String message;
+  final int similarityScore;
+
+  const FaceVerificationFailedException(this.message, this.similarityScore);
+
+  @override
+  String toString() => message;
+}
+
 class AttendanceService {
   // Replace with your actual API base URL
   // static const String baseUrl = 'https://hrms-backend-807r.onrender.com/api';
@@ -73,14 +85,22 @@ class AttendanceService {
 
         try {
           final errorData = json.decode(errorBody);
-          throw Exception(errorData['message'] ?? 'Failed to check in');
+          final message = errorData['message'] as String? ?? 'Failed to check in';
+          // Include similarity score in the message when face verification failed
+          final score = errorData['similarityScore'];
+          if (score != null) {
+            throw FaceVerificationFailedException(message, (score as num).toInt());
+          }
+          throw Exception(message);
         } catch (e) {
+          if (e is FaceVerificationFailedException) rethrow;
           throw Exception(
             'Failed to check in: ${response.statusCode} - ${errorBody.substring(0, errorBody.length > 100 ? 100 : errorBody.length)}',
           );
         }
       }
     } catch (e) {
+      if (e is FaceVerificationFailedException) rethrow;
       throw Exception('Check-in error: $e');
     }
   }
@@ -255,6 +275,7 @@ class AttendanceService {
               late: 0,
               halfDay: 0,
               wfh: 0,
+              leaves: 0,
               totalWorkHours: 0.0,
               averageWorkHours: '0h 0m',
               totalDays: 0,

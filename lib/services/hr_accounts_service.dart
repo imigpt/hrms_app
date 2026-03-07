@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class HRAccountsService {
@@ -195,6 +196,124 @@ class HRAccountsService {
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Error deleting HR account: $e');
+    }
+  }
+
+  /// Fetch all companies — GET /admin/companies
+  static Future<List<dynamic>> getCompanies(String token) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/admin/companies'),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        return (body['data'] ?? body['companies'] ?? []) as List<dynamic>;
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Update HR status — PATCH /users/:id with status field
+  static Future<void> updateHRStatus(
+    String token,
+    String id,
+    String status,
+  ) async {
+    await updateHRAccount(token, id, {'status': status});
+  }
+
+  /// Create HR account with optional profile photo (multipart)
+  static Future<Map<String, dynamic>> createHRAccountWithPhoto(
+    String token,
+    Map<String, dynamic> data,
+    File? photo,
+  ) async {
+    if (photo == null) {
+      return createHRAccount(token, data);
+    }
+    try {
+      final body = <String, dynamic>{...data, 'role': 'hr'};
+      body.removeWhere((k, v) => v == null || v.toString().isEmpty);
+      body.remove('reportingTo');
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/auth/register'),
+      )
+        ..headers.addAll({
+          'Authorization': 'Bearer $token',
+        });
+      body.forEach((k, v) => request.fields[k] = v.toString());
+      request.files.add(
+        await http.MultipartFile.fromPath('profilePhoto', photo.path),
+      );
+
+      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final response = await http.Response.fromStream(streamed);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(
+          error['message'] ?? 'Failed to create HR account: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error creating HR account: $e');
+    }
+  }
+
+  /// Update HR account with optional profile photo (multipart)
+  static Future<Map<String, dynamic>> updateHRAccountWithPhoto(
+    String token,
+    String id,
+    Map<String, dynamic> data,
+    File? photo,
+  ) async {
+    if (photo == null) {
+      return updateHRAccount(token, id, data);
+    }
+    try {
+      final body = Map<String, dynamic>.from(data)
+        ..removeWhere((k, v) => v == null || v.toString().isEmpty);
+
+      final request = http.MultipartRequest(
+        'PUT',
+        Uri.parse('$baseUrl/users/$id'),
+      )
+        ..headers.addAll({
+          'Authorization': 'Bearer $token',
+        });
+      body.forEach((k, v) => request.fields[k] = v.toString());
+      request.files.add(
+        await http.MultipartFile.fromPath('profilePhoto', photo.path),
+      );
+
+      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final response = await http.Response.fromStream(streamed);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(
+          error['message'] ?? 'Failed to update HR account: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error updating HR account: $e');
     }
   }
 }

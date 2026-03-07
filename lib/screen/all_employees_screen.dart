@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../services/admin_employees_service.dart';
 import '../services/chat_service.dart';
+import '../services/token_storage_service.dart';
+import '../models/chat_room_model.dart';
 import '../utils/responsive_utils.dart';
 import 'package:hrms_app/theme/app_theme.dart';
 import 'chat_screen.dart';
@@ -801,7 +803,7 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
             flex: 5,
             child: Row(
               children: [
-                _avatar(name, radius: 18),
+                _avatar(name, radius: 18, photoUrl: _empPhotoUrl(emp)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -971,7 +973,7 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
               // Top
               Row(
                 children: [
-                  _avatar(name, radius: 22),
+                  _avatar(name, radius: 22, photoUrl: _empPhotoUrl(emp)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -1052,8 +1054,26 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
     );
   }
 
+  // Profile photo URL extractor
+  String _empPhotoUrl(Map<String, dynamic> emp) {
+    final raw = emp['profilePhoto'];
+    if (raw is String && (raw as String).isNotEmpty) return raw;
+    if (raw is Map<String, dynamic>) {
+      return (raw as Map<String, dynamic>)['url']?.toString() ?? '';
+    }
+    return '';
+  }
+
   // Avatar
-  Widget _avatar(String name, {double radius = 20}) {
+  Widget _avatar(String name, {double radius = 20, String photoUrl = ''}) {
+    if (photoUrl.isNotEmpty) {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: _avatarColor(name),
+        backgroundImage: NetworkImage(photoUrl),
+        onBackgroundImageError: (_, __) {},
+      );
+    }
     return CircleAvatar(
       radius: radius,
       backgroundColor: _avatarColor(name),
@@ -2125,11 +2145,12 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
   bool _tasksLoaded = false;
   List<dynamic> _tasks = [];
   String? _tasksError;
+  Map<String, dynamic>? _selectedTask;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
   }
 
@@ -2292,6 +2313,7 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
     final companyName = (widget.employee['company'] is Map)
         ? (widget.employee['company']['name']?.toString() ?? 'N/A')
         : 'N/A';
+    final photoUrl = _empPhotoUrl(widget.employee);
 
     final responsive = ResponsiveUtils(context);
     final isMobile = responsive.isMobile;
@@ -2349,14 +2371,23 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
                           CircleAvatar(
                             radius: isMobile ? 25 : 30,
                             backgroundColor: _avatarColor(name),
-                            child: Text(
-                              _initials(name),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isMobile ? 16 : 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            backgroundImage: photoUrl.isNotEmpty
+                                ? NetworkImage(photoUrl)
+                                : null,
+                            onBackgroundImageError:
+                                photoUrl.isNotEmpty
+                                ? (_, __) {}
+                                : null,
+                            child: photoUrl.isEmpty
+                                ? Text(
+                                    _initials(name),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: isMobile ? 16 : 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : null,
                           ),
                           SizedBox(width: isMobile ? 12 : 16),
                           Expanded(
@@ -2465,6 +2496,10 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
                   icon: Icon(Icons.task_alt_rounded, size: isMobile ? 16 : 18),
                   text: 'Tasks',
                 ),
+                Tab(
+                  icon: Icon(Icons.chat_rounded, size: isMobile ? 16 : 18),
+                  text: 'Chat',
+                ),
               ],
             ),
           ),
@@ -2475,6 +2510,7 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
             _buildOverviewTab(),
             _buildAttendanceTab(),
             _buildTasksTab(),
+            _buildChatTab(),
           ],
         ),
       ),
@@ -2966,61 +3002,270 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
       return Center(
         child: ElevatedButton.icon(
           onPressed: _loadTasks,
-          icon: const Icon(
-            Icons.download_rounded,
-            size: 16,
-            color: Colors.black,
-          ),
-          label: const Text(
-            'Load Tasks',
-            style: TextStyle(color: Colors.black),
-          ),
+          icon: const Icon(Icons.download_rounded, size: 16, color: Colors.black),
+          label: const Text('Load Tasks', style: TextStyle(color: Colors.black)),
           style: ElevatedButton.styleFrom(
             backgroundColor: _pink,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         ),
       );
     }
-    if (_tasks.isEmpty) {
-      return _emptyView('No tasks assigned', Icons.task_alt_rounded, _blue);
-    }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _tasks.length,
-      itemBuilder: (_, i) => _taskCard(_tasks[i]),
+    final employeeName =
+        widget.employee['name']?.toString() ?? 'Employee';
+    final total = _tasks.length;
+    final assigned = _tasks
+        .where((t) => (t as Map)['createdBy'] != 'employee')
+        .length;
+    final inProgress = _tasks
+        .where((t) => (t as Map)['status'] == 'in-progress')
+        .length;
+    final completed = _tasks
+        .where((t) => (t as Map)['status'] == 'completed')
+        .length;
+    final overdue = _tasks.where((t) {
+      final due = (t as Map)['dueDate'];
+      if (due == null) return false;
+      try {
+        return DateTime.parse(due.toString()).isBefore(DateTime.now()) &&
+            t['status'] != 'completed';
+      } catch (_) {
+        return false;
+      }
+    }).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Header bar ──
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  "$employeeName's Tasks",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _tasksLoaded = false;
+                  });
+                  _loadTasks();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _pink,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.refresh_rounded, size: 13, color: Colors.black),
+                      SizedBox(width: 5),
+                      Text(
+                        'Refresh',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // ── Stat cards ──
+        SizedBox(
+          height: 72,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _taskStatCard('Total', total, Icons.assignment_rounded,
+                  const Color(0xFF9E9E9E)),
+              const SizedBox(width: 8),
+              _taskStatCard('Assigned', assigned,
+                  Icons.person_add_alt_1_rounded, const Color(0xFF448AFF)),
+              const SizedBox(width: 8),
+              _taskStatCard('In Progress', inProgress,
+                  Icons.timelapse_rounded, const Color(0xFFFF9500)),
+              const SizedBox(width: 8),
+              _taskStatCard('Completed', completed,
+                  Icons.check_circle_rounded, AppTheme.successColor),
+              const SizedBox(width: 8),
+              _taskStatCard(
+                  'Overdue', overdue, Icons.warning_rounded, AppTheme.errorColor),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // ── Task count chip ──
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A2A),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF3A3A3A)),
+                ),
+                child: Text(
+                  '$total task${total == 1 ? '' : 's'}',
+                  style: const TextStyle(
+                    color: Color(0xFF9E9E9E),
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        // ── Table header ──
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A1A),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(10),
+              topRight: Radius.circular(10),
+            ),
+            border: Border.all(color: const Color(0xFF2A2A2A)),
+          ),
+          child: const Row(
+            children: [
+              Expanded(
+                flex: 4,
+                child: Text(
+                  'Task',
+                  style: TextStyle(
+                    color: Color(0xFF9E9E9E),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 70,
+                child: Text(
+                  'Priority',
+                  style: TextStyle(
+                    color: Color(0xFF9E9E9E),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 90,
+                child: Text(
+                  'Progress',
+                  style: TextStyle(
+                    color: Color(0xFF9E9E9E),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 60,
+                child: Text(
+                  'Status',
+                  style: TextStyle(
+                    color: Color(0xFF9E9E9E),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // ── Task rows ──
+        if (_tasks.isEmpty)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: const Color(0xFF141414),
+              border: Border.all(color: const Color(0xFF2A2A2A)),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(10),
+                bottomRight: Radius.circular(10),
+              ),
+            ),
+            child: const Center(
+              child: Text(
+                'No tasks assigned',
+                style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 13),
+              ),
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _tasks.length,
+            itemBuilder: (_, i) => _taskRow(_tasks[i], i == _tasks.length - 1),
+          ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
-  Widget _taskCard(dynamic task) {
+  // Table row (tappable)
+  Widget _taskRow(dynamic task, bool isLast) {
     final title = task['title']?.toString() ?? 'Untitled';
     final description = task['description']?.toString() ?? '';
     final status = task['status']?.toString() ?? 'todo';
     final priority = task['priority']?.toString() ?? 'medium';
     final dueDate = _formatDate(task['dueDate']);
+    final startDate = _formatDate(task['startDate'] ?? task['createdAt']);
     final progress = (task['progress'] as num?)?.toInt() ?? 0;
 
     Color statusColor;
-    IconData statusIcon;
+    String statusLabel;
     switch (status.toLowerCase()) {
       case 'completed':
         statusColor = _green;
-        statusIcon = Icons.check_circle_rounded;
+        statusLabel = 'Completed';
         break;
       case 'in-progress':
-        statusColor = _blue;
-        statusIcon = Icons.pending_rounded;
+        statusColor = const Color(0xFF448AFF);
+        statusLabel = 'In Progress';
         break;
       case 'cancelled':
         statusColor = _red;
-        statusIcon = Icons.cancel_rounded;
+        statusLabel = 'Cancelled';
+        break;
+      case 'todo':
+        statusColor = _textGrey;
+        statusLabel = 'Draft';
         break;
       default:
         statusColor = _yellow;
-        statusIcon = Icons.radio_button_unchecked_rounded;
+        statusLabel = _capitalizeFirst(status);
     }
 
     Color priorityColor;
@@ -3035,38 +3280,70 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
         priorityColor = _green;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(statusIcon, color: statusColor, size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+    final borderRadius = isLast
+        ? const BorderRadius.only(
+            bottomLeft: Radius.circular(10),
+            bottomRight: Radius.circular(10),
+          )
+        : BorderRadius.zero;
+
+    return GestureDetector(
+      onTap: () => _showTaskDetailSheet(task as Map<String, dynamic>),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF141414),
+          border: Border(
+            left: BorderSide(color: const Color(0xFF2A2A2A)),
+            right: BorderSide(color: const Color(0xFF2A2A2A)),
+            bottom: BorderSide(color: const Color(0xFF2A2A2A)),
+          ),
+          borderRadius: borderRadius,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Task name + description
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                  if (description.isNotEmpty)
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        color: Color(0xFF9E9E9E),
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            ),
+            // Priority badge
+            SizedBox(
+              width: 70,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: priorityColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   _capitalizeFirst(priority),
@@ -3075,73 +3352,188 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ),
-            ],
-          ),
-          if (description.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              description,
-              style: const TextStyle(color: _textGrey, fontSize: 12),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
-          ],
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(
-                Icons.calendar_today_rounded,
-                color: _textGrey,
-                size: 12,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Due: $dueDate',
-                style: const TextStyle(color: _textGrey, fontSize: 11),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  _capitalizeFirst(status.replaceAll('-', ' ')),
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (progress > 0) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+            // Progress bar + %
+            SizedBox(
+              width: 90,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
                     child: LinearProgressIndicator(
                       value: progress / 100,
-                      backgroundColor: _input,
+                      backgroundColor: const Color(0xFF2A2A2A),
                       color: statusColor,
-                      minHeight: 4,
+                      minHeight: 5,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
+                  const SizedBox(height: 3),
+                  Text(
+                    '$progress%',
+                    style: const TextStyle(
+                      color: Color(0xFF9E9E9E),
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Status + due date
+            SizedBox(
+              width: 60,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (dueDate != '-') ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today_rounded,
+                          color: Color(0xFF9E9E9E),
+                          size: 9,
+                        ),
+                        const SizedBox(width: 2),
+                        Flexible(
+                          child: Text(
+                            dueDate,
+                            style: const TextStyle(
+                              color: Color(0xFF9E9E9E),
+                              fontSize: 9,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (startDate != '-')
+                      Text(
+                        'Started $startDate',
+                        style: const TextStyle(
+                          color: Color(0xFF666666),
+                          fontSize: 9,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTaskDetailSheet(Map<String, dynamic> task) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TaskDetailSheet(task: task),
+    );
+  }
+
+  // Keep old _taskCard for potential use (unused, but no error)
+  Widget _taskCard(dynamic task) => _taskRow(task, false);
+
+  Widget _taskBadge(String label, Color color, {IconData? icon}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: color, size: 10),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _taskStatCard(String label, int count, IconData icon, Color color) {
+    return Container(
+      width: 110,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF181818),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 15),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                 Text(
-                  '$progress%',
-                  style: const TextStyle(color: _textGrey, fontSize: 11),
+                  count.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFF9E9E9E),
+                    fontSize: 10,
+                  ),
                 ),
               ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -3209,6 +3601,1199 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
   String _capitalizeFirst(String s) {
     if (s.isEmpty) return s;
     return '${s[0].toUpperCase()}${s.substring(1)}';
+  }
+
+  static String _empPhotoUrl(Map<String, dynamic> emp) {
+    final raw = emp['profilePhoto'];
+    if (raw is String && (raw as String).isNotEmpty) return raw;
+    if (raw is Map<String, dynamic>) {
+      return (raw as Map<String, dynamic>)['url']?.toString() ?? '';
+    }
+    return '';
+  }
+
+  Widget _buildChatTab() {
+    return _EmployeeChatTab(
+      employeeId: _userId,
+      employeeName: widget.employee['name']?.toString() ?? 'Employee',
+      token: widget.token,
+    );
+  }
+}
+
+// ─── Task Detail Sheet ────────────────────────────────────────────────────────
+
+class _TaskDetailSheet extends StatefulWidget {
+  final Map<String, dynamic> task;
+  const _TaskDetailSheet({required this.task});
+  @override
+  State<_TaskDetailSheet> createState() => _TaskDetailSheetState();
+}
+
+class _TaskDetailSheetState extends State<_TaskDetailSheet>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late double _progress;
+  late TextEditingController _progressController;
+  final TextEditingController _reviewController = TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
+  int _selectedRating = 0;
+
+  static const _bg = Color(0xFF0D0D0D);
+  static const _card = Color(0xFF181818);
+  static const _border = Color(0xFF2A2A2A);
+  static const _textGrey = Color(0xFF9E9E9E);
+  static const _pink = Color(0xFFFF8FA3);
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _progress = ((widget.task['progress'] as num?)?.toDouble() ?? 0).clamp(0, 100);
+    _progressController = TextEditingController(text: _progress.toInt().toString());
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _progressController.dispose();
+    _reviewController.dispose();
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  String _formatDate(dynamic raw) {
+    if (raw == null) return '—';
+    try {
+      final d = DateTime.parse(raw.toString()).toLocal();
+      return '${d.day}/${d.month}/${d.year}';
+    } catch (_) {
+      return raw.toString();
+    }
+  }
+
+  Color _priorityColor(String p) {
+    switch (p.toLowerCase()) {
+      case 'high': return const Color(0xFFFF5252);
+      case 'low': return const Color(0xFF69F0AE);
+      default: return const Color(0xFFFFD740);
+    }
+  }
+
+  Color _statusColor(String s) {
+    switch (s.toLowerCase()) {
+      case 'completed': return const Color(0xFF69F0AE);
+      case 'in-progress': return const Color(0xFFFF9500);
+      case 'overdue': return const Color(0xFFFF5252);
+      default: return const Color(0xFF448AFF);
+    }
+  }
+
+  String _statusLabel(String s) {
+    switch (s.toLowerCase()) {
+      case 'completed': return 'Completed';
+      case 'in-progress': return 'In Progress';
+      case 'overdue': return 'Overdue';
+      case 'todo': return 'To Do';
+      default: return s;
+    }
+  }
+
+  Widget _badge(String label, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withOpacity(0.15),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withOpacity(0.4)),
+    ),
+    child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+  );
+
+  Widget _statBox(String value, String label, Color color) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(value, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(color: _textGrey, fontSize: 10), textAlign: TextAlign.center),
+        ],
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final task = widget.task;
+    final title = task['title']?.toString() ?? 'Untitled';
+    final description = task['description']?.toString() ?? '';
+    final status = task['status']?.toString() ?? 'todo';
+    final priority = task['priority']?.toString() ?? 'medium';
+    final dueDate = _formatDate(task['dueDate']);
+    final startDate = _formatDate(task['startDate'] ?? task['createdAt']);
+    final subtaskCount = (task['subtasks'] as List?)?.length ?? 0;
+    final commentCount = (task['comments'] as List?)?.length ?? 0;
+    final fileCount = (task['files'] as List?)?.length ?? 0;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.93,
+      minChildSize: 0.5,
+      maxChildSize: 0.97,
+      builder: (_, scrollController) => Container(
+        decoration: const BoxDecoration(
+          color: _bg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: scrollController,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Header ──────────────────────────────────────────────
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(title,
+                                style: const TextStyle(
+                                  color: Colors.white, fontSize: 18,
+                                  fontWeight: FontWeight.bold)),
+                              if (description.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(description,
+                                  style: const TextStyle(color: _textGrey, fontSize: 13),
+                                  maxLines: 2, overflow: TextOverflow.ellipsis),
+                              ],
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                children: [
+                                  _badge(_statusLabel(status), _statusColor(status)),
+                                  _badge(
+                                    '${priority[0].toUpperCase()}${priority.substring(1)} Priority',
+                                    _priorityColor(priority)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: _textGrey),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Workflow Action ──────────────────────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: _card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Workflow Actions',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _commentController,
+                            maxLines: 2,
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            decoration: InputDecoration(
+                              hintText: 'Optional comment for transition...',
+                              hintStyle: const TextStyle(color: _textGrey, fontSize: 13),
+                              filled: true,
+                              fillColor: const Color(0xFF111111),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: _border),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: _border),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: _pink.withOpacity(0.6)),
+                              ),
+                              contentPadding: const EdgeInsets.all(10),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.arrow_forward, size: 16),
+                              label: const Text('Submit for Approval'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _pink,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              onPressed: () {},
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // ── Stat Boxes ───────────────────────────────────────────
+                    Row(
+                      children: [
+                        _statBox('${_progress.toInt()}%', 'Progress', _pink),
+                        const SizedBox(width: 6),
+                        _statBox('$subtaskCount', 'Subtasks', const Color(0xFF448AFF)),
+                        const SizedBox(width: 6),
+                        _statBox('$commentCount', 'Comments', const Color(0xFFFF9500)),
+                        const SizedBox(width: 6),
+                        _statBox('$fileCount', 'Files', const Color(0xFF69F0AE)),
+                        const SizedBox(width: 6),
+                        _statBox('0m', 'Time Logged', const Color(0xFFAA80FF)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // ── Overall Progress ─────────────────────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: _card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text('Overall Progress',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                              const Spacer(),
+                              Text('${_progress.toInt()}%',
+                                style: TextStyle(color: _pink, fontWeight: FontWeight.bold, fontSize: 16)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor: _pink,
+                              inactiveTrackColor: _border,
+                              thumbColor: _pink,
+                              overlayColor: _pink.withOpacity(0.15),
+                              trackHeight: 5,
+                            ),
+                            child: Slider(
+                              value: _progress,
+                              min: 0, max: 100,
+                              onChanged: (v) => setState(() {
+                                _progress = v;
+                                _progressController.text = v.toInt().toString();
+                              }),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 64,
+                                child: TextField(
+                                  controller: _progressController,
+                                  keyboardType: TextInputType.number,
+                                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    filled: true,
+                                    fillColor: const Color(0xFF111111),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                      borderSide: const BorderSide(color: _border),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                      borderSide: const BorderSide(color: _border),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                      borderSide: BorderSide(color: _pink.withOpacity(0.6)),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  ),
+                                  onSubmitted: (v) {
+                                    final parsed = double.tryParse(v);
+                                    if (parsed != null) {
+                                      setState(() { _progress = parsed.clamp(0, 100); });
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () {},
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _pink,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                  textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                                child: const Text('Save'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // ── Tab Bar ──────────────────────────────────────────────
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _border),
+                      ),
+                      child: Column(
+                        children: [
+                          TabBar(
+                            controller: _tabController,
+                            isScrollable: true,
+                            tabAlignment: TabAlignment.start,
+                            labelColor: _pink,
+                            unselectedLabelColor: _textGrey,
+                            indicatorColor: _pink,
+                            dividerColor: _border,
+                            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            tabs: const [
+                              Tab(text: 'Details'),
+                              Tab(text: 'Subtasks'),
+                              Tab(text: 'Files'),
+                              Tab(text: 'History'),
+                            ],
+                          ),
+                          SizedBox(
+                            height: 220,
+                            child: TabBarView(
+                              controller: _tabController,
+                              children: [
+                                // Details
+                                Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _detailRow(Icons.flag_rounded, 'Priority',
+                                        _badge(
+                                          '${priority[0].toUpperCase()}${priority.substring(1)}',
+                                          _priorityColor(priority))),
+                                      const SizedBox(height: 10),
+                                      _detailRow(Icons.calendar_today_rounded, 'Due Date',
+                                        Text(dueDate,
+                                          style: const TextStyle(color: Colors.white, fontSize: 13))),
+                                      const SizedBox(height: 10),
+                                      _detailRow(Icons.play_circle_outline_rounded, 'Start Date',
+                                        Text(startDate,
+                                          style: const TextStyle(color: Colors.white, fontSize: 13))),
+                                    ],
+                                  ),
+                                ),
+                                // Subtasks
+                                const Center(
+                                  child: Text('No subtasks yet',
+                                    style: TextStyle(color: _textGrey, fontSize: 13))),
+                                // Files
+                                const Center(
+                                  child: Text('No files attached',
+                                    style: TextStyle(color: _textGrey, fontSize: 13))),
+                                // History
+                                const Center(
+                                  child: Text('No history available',
+                                    style: TextStyle(color: _textGrey, fontSize: 13))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // ── Add Review ───────────────────────────────────────────
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: _card,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Add Review',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                          const SizedBox(height: 10),
+                          // Star rating
+                          Row(
+                            children: List.generate(5, (i) => GestureDetector(
+                              onTap: () => setState(() => _selectedRating = i + 1),
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Icon(
+                                  i < _selectedRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                  color: i < _selectedRating ? const Color(0xFFFFD740) : _textGrey,
+                                  size: 28,
+                                ),
+                              ),
+                            )),
+                          ),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _reviewController,
+                            maxLines: 3,
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                            decoration: InputDecoration(
+                              hintText: 'Write your review...',
+                              hintStyle: const TextStyle(color: _textGrey, fontSize: 13),
+                              filled: true,
+                              fillColor: const Color(0xFF111111),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: _border),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: _border),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide(color: _pink.withOpacity(0.6)),
+                              ),
+                              contentPadding: const EdgeInsets.all(10),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {},
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _pink,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const Text('Submit Review',
+                                style: TextStyle(fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, Widget valueWidget) => Row(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      Icon(icon, color: _textGrey, size: 16),
+      const SizedBox(width: 8),
+      SizedBox(
+        width: 80,
+        child: Text(label,
+          style: const TextStyle(color: _textGrey, fontSize: 13)),
+      ),
+      valueWidget,
+    ],
+  );
+}
+
+// ─── Embedded Chat Tab ───────────────────────────────────────────────────────
+
+class _EmployeeChatTab extends StatefulWidget {
+  final String employeeId;
+  final String employeeName;
+  final String? token;
+
+  const _EmployeeChatTab({
+    required this.employeeId,
+    required this.employeeName,
+    required this.token,
+  });
+
+  @override
+  State<_EmployeeChatTab> createState() => _EmployeeChatTabState();
+}
+
+class _EmployeeChatTabState extends State<_EmployeeChatTab> {
+  static const Color _card = AppTheme.cardColor;
+  static const Color _input = AppTheme.surface;
+  static const Color _border = AppTheme.outline;
+  static const Color _pink = AppTheme.primaryColor;
+  static const Color _textGrey = Color(0xFF9E9E9E);
+
+  List<ChatRoom> _rooms = [];
+  List<ChatRoom> _filteredRooms = [];
+  ChatRoom? _selectedRoom;
+  List<ChatMessage> _messages = [];
+  bool _loading = true;
+  bool _loadingMessages = false;
+  String? _error;
+  final _searchCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRooms();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchRooms() async {
+    if (widget.token == null || widget.token!.isEmpty) {
+      setState(() {
+        _error = 'No authentication token';
+        _loading = false;
+      });
+      return;
+    }
+    try {
+      final resp = await ChatService.getChatRooms(token: widget.token!);
+      if (mounted) {
+        setState(() {
+          _rooms = resp.data;
+          _filteredRooms = List.from(resp.data);
+          _loading = false;
+          if (_rooms.isNotEmpty && _selectedRoom == null) {
+            _selectedRoom = _rooms.first;
+          }
+        });
+        if (_rooms.isNotEmpty) {
+          _fetchMessages(_rooms.first.id);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('Exception: ', '');
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _fetchMessages(String roomId) async {
+    if (widget.token == null) return;
+    setState(() => _loadingMessages = true);
+    try {
+      final resp = await ChatService.getRoomMessages(
+        token: widget.token!,
+        roomId: roomId,
+        limit: 50,
+      );
+      if (mounted) {
+        setState(() {
+          _messages = List.from(resp.data);
+          _loadingMessages = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingMessages = false);
+    }
+  }
+
+  void _onSearch(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredRooms = List.from(_rooms);
+      } else {
+        final lower = query.toLowerCase();
+        _filteredRooms = _rooms
+            .where((r) => _getRoomName(r).toLowerCase().contains(lower))
+            .toList();
+      }
+    });
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  String _getRoomName(ChatRoom room) {
+    if (room.type == 'personal' && room.otherUser != null) {
+      return room.otherUser!.name.isNotEmpty
+          ? room.otherUser!.name
+          : 'Unknown User';
+    }
+    return room.name.isNotEmpty ? room.name : 'Group';
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  String _formatTime(DateTime dt) =>
+      DateFormat('h:mm a').format(dt.toLocal());
+
+  String _formatDateLabel(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final d = DateTime(dt.year, dt.month, dt.day);
+    if (d == today) return 'Today';
+    if (d == yesterday) return 'Yesterday';
+    return DateFormat('d MMM yyyy').format(dt);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: _pink, strokeWidth: 2),
+      );
+    }
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: _pink, size: 36),
+              const SizedBox(height: 12),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: _textGrey, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _loading = true;
+                    _error = null;
+                  });
+                  _fetchRooms();
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: _pink),
+                child: const Text(
+                  'Retry',
+                  style: TextStyle(color: Colors.black),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        final isNarrow = constraints.maxWidth < 520;
+        // On narrow screens: show rooms list first, then messages when selected
+        if (isNarrow && _selectedRoom != null) {
+          return _buildMessagesPanel(showBack: true);
+        }
+        if (isNarrow) {
+          return _buildRoomsList();
+        }
+        // Wide: side-by-side
+        return Row(
+          children: [
+            SizedBox(width: 220, child: _buildRoomsList()),
+            Expanded(
+              child: _selectedRoom == null
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(
+                            Icons.message_rounded,
+                            color: _textGrey,
+                            size: 40,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'Select a conversation to view',
+                            style: TextStyle(color: _textGrey, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _buildMessagesPanel(showBack: false),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRoomsList() {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(color: Color(0xFF2A2A2A)),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "${widget.employeeName}'s Messages",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: _input,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _border),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: _onSearch,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'Search conversations...',
+                      hintStyle: TextStyle(color: _textGrey, fontSize: 12),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: _textGrey,
+                        size: 16,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.only(right: 8),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Rooms
+          Expanded(
+            child: _filteredRooms.isEmpty
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(
+                        Icons.message_rounded,
+                        color: _textGrey,
+                        size: 32,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'No conversations found',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: _textGrey, fontSize: 12),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    itemCount: _filteredRooms.length,
+                    itemBuilder: (_, i) => _buildRoomTile(_filteredRooms[i]),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoomTile(ChatRoom room) {
+    final name = _getRoomName(room);
+    final lastMsg = room.lastMessage?.content ?? 'No messages yet';
+    final isSelected = _selectedRoom?.id == room.id;
+    final timeStr = room.lastMessage != null
+        ? _formatTime(room.lastMessage!.createdAt)
+        : '';
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedRoom = room);
+        _fetchMessages(room.id);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? _pink.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: isSelected
+              ? Border.all(color: _pink.withOpacity(0.2))
+              : null,
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: _pink.withOpacity(0.2),
+              child: room.isGroup
+                  ? const Icon(
+                      Icons.group_rounded,
+                      color: _pink,
+                      size: 16,
+                    )
+                  : Text(
+                      _initials(name),
+                      style: const TextStyle(
+                        color: _pink,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        timeStr,
+                        style: const TextStyle(
+                          color: _textGrey,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    lastMsg,
+                    style: const TextStyle(color: _textGrey, fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (room.unreadCount > 0) ...[
+              const SizedBox(width: 4),
+              Container(
+                constraints:
+                    const BoxConstraints(minWidth: 18, minHeight: 18),
+                decoration: const BoxDecoration(
+                  color: _pink,
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(2),
+                child: Center(
+                  child: Text(
+                    room.unreadCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessagesPanel({required bool showBack}) {
+    final room = _selectedRoom!;
+    final name = _getRoomName(room);
+    final participantCount = room.participants.length;
+
+    return Column(
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: Color(0xFF2A2A2A)),
+            ),
+          ),
+          child: Row(
+            children: [
+              if (showBack)
+                GestureDetector(
+                  onTap: () => setState(() => _selectedRoom = null),
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 10),
+                    child: Icon(
+                      Icons.arrow_back_ios_rounded,
+                      color: _pink,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: _pink.withOpacity(0.2),
+                child: room.isGroup
+                    ? const Icon(
+                        Icons.group_rounded,
+                        color: _pink,
+                        size: 14,
+                      )
+                    : Text(
+                        _initials(name),
+                        style: const TextStyle(
+                          color: _pink,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      room.isGroup
+                          ? '$participantCount members'
+                          : 'Personal chat',
+                      style: const TextStyle(
+                        color: _textGrey,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Messages
+        Expanded(
+          child: _loadingMessages
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    color: _pink,
+                    strokeWidth: 2,
+                  ),
+                )
+              : _messages.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No messages in this conversation',
+                        style: TextStyle(color: _textGrey, fontSize: 13),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scrollCtrl,
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _messages.length,
+                      itemBuilder: (_, i) {
+                        final msg = _messages[i];
+                        final showDate = i == 0 ||
+                            _formatDateLabel(msg.createdAt) !=
+                                _formatDateLabel(_messages[i - 1].createdAt);
+                        return Column(
+                          children: [
+                            if (showDate)
+                              Container(
+                                margin: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _input,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      _formatDateLabel(msg.createdAt),
+                                      style: const TextStyle(
+                                        color: _textGrey,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            _buildBubble(msg),
+                          ],
+                        );
+                      },
+                    ),
+        ),
+        // Read-only notice
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: const BoxDecoration(
+            color: Color(0xFF141414),
+            border: Border(
+              top: BorderSide(color: Color(0xFF2A2A2A)),
+            ),
+          ),
+          child: const Center(
+            child: Text(
+              '📋 Read-only monitoring view',
+              style: TextStyle(color: _textGrey, fontSize: 11),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBubble(ChatMessage msg) {
+    // Messages from the employee being viewed → right; others → left
+    final isFromEmployee = msg.sender?.id == widget.employeeId;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Align(
+        alignment:
+            isFromEmployee ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.62,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: isFromEmployee
+                ? _pink.withOpacity(0.85)
+                : const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(14),
+              topRight: const Radius.circular(14),
+              bottomLeft: Radius.circular(isFromEmployee ? 14 : 4),
+              bottomRight: Radius.circular(isFromEmployee ? 4 : 14),
+            ),
+            border: isFromEmployee ? null : Border.all(color: _border),
+          ),
+          child: Column(
+            crossAxisAlignment: isFromEmployee
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!isFromEmployee && (msg.sender?.name.isNotEmpty ?? false))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    msg.sender!.name,
+                    style: const TextStyle(
+                      color: _pink,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              Text(
+                msg.isDeleted
+                    ? '(This message was deleted)'
+                    : msg.content,
+                style: TextStyle(
+                  color: isFromEmployee ? Colors.black : Colors.white,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                _formatTime(msg.createdAt),
+                style: TextStyle(
+                  color: isFromEmployee ? Colors.black54 : _textGrey,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

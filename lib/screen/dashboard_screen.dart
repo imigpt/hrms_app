@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
+import '../services/profile_service.dart';
 
 // Import our custom widgets
 import '../widgets/sidebar_menu.dart';
@@ -80,6 +81,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       AnnouncementWebSocketService();
   StreamSubscription<List<Announcement>>? _announcementsSubscription;
 
+  // Full profile (fetched fresh on load to get phone/address/dob etc.)
+  ProfileUser? _dashboardUser;
+
   // ── ADMIN DASHBOARD STATE ───────────────────────────────────────────────────
   Map<String, dynamic> _adminDashboard = {};
   List<dynamic> _recentActivity = [];
@@ -94,6 +98,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _userRole = (widget.user?.role.toLowerCase() == 'admin')
         ? 'admin'
         : 'employee';
+
+    // Fetch full profile data (includes phone, address, dob etc.)
+    _fetchDashboardProfile();
 
     // Load unread chat count for both admin and employee
     _loadUnreadChatCount();
@@ -124,6 +131,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Start the timer to simulate working hours increasing
       _startTimer();
     }
+  }
+
+  Future<void> _fetchDashboardProfile() async {
+    if (widget.token == null || widget.token!.isEmpty) return;
+    try {
+      final fresh = await ProfileService().fetchProfile(widget.token!);
+      if (fresh != null && mounted) {
+        setState(() => _dashboardUser = fresh);
+      }
+    } catch (_) {}
   }
 
   // Save attendance state to local storage
@@ -1692,8 +1709,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           SizedBox(height: verticalSpacing),
 
                           // ── Quick Actions ──
-                          _buildQuickActionsSection(isMobile),
-                          SizedBox(height: verticalSpacing),
+                          // _buildQuickActionsSection(isMobile),
+                          // SizedBox(height: verticalSpacing),
                         ],
                       ),
                     ),
@@ -2262,7 +2279,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
+  
   // Navigate to apply leave screen
   void _onApplyLeave() {
     Navigator.push(
@@ -2422,16 +2439,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                       // Profile Card
                       ProfileCardWidget(
-                        name: widget.user?.name,
-                        role: widget.user?.role,
-                        department: widget.user?.department,
-                        phone: widget.user?.phone,
-                        email: widget.user?.email,
-                        address: widget.user?.address,
-                        dateOfBirth: widget.user?.dateOfBirth
-                            ?.toIso8601String(),
+                        name: (_dashboardUser ?? widget.user)?.name,
+                        role: (_dashboardUser ?? widget.user)?.role,
+                        department: (_dashboardUser ?? widget.user)?.department,
+                        phone: (_dashboardUser ?? widget.user)?.phone,
+                        email: (_dashboardUser ?? widget.user)?.email,
+                        address: (_dashboardUser ?? widget.user)?.address,
+                        dateOfBirth: (_dashboardUser ?? widget.user)?.dateOfBirth?.toIso8601String(),
                         isActive:
-                            (widget.user?.status ?? '').toLowerCase() ==
+                            ((_dashboardUser ?? widget.user)?.status ?? '').toLowerCase() ==
                             'active',
                       ),
                       SizedBox(height: verticalSpacing),

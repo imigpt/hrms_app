@@ -251,7 +251,7 @@ class AdminEmployeesService {
     }
   }
 
-  /// GET /api/admin/tasks?assignedTo=:userId
+  /// GET /api/tasks/all?assignedTo=:userId
   /// Fetch tasks assigned to a specific employee (admin view)
   static Future<List<dynamic>> getEmployeeTasks(
     String token,
@@ -259,7 +259,7 @@ class AdminEmployeesService {
   ) async {
     try {
       final uri = Uri.parse(
-        '$_baseUrl/admin/tasks',
+        '$_baseUrl/tasks/all',
       ).replace(queryParameters: {'assignedTo': userId});
       final response = await http
           .get(uri, headers: _headers(token))

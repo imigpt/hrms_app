@@ -57,46 +57,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
       color: Color(0xFFEC4899),
       route: 'password',
     ),
-    _SettingsItem(
-      section: 'Preferences',
-      title: 'Notifications',
-      subtitle: 'Manage alerts and push notification settings',
-      icon: Icons.notifications_rounded,
-      color: Color(0xFFF59E0B),
-      route: 'notifications',
-    ),
-    _SettingsItem(
-      section: 'Preferences',
-      title: 'Appearance',
-      subtitle: 'Theme, font size and display preferences',
-      icon: Icons.palette_rounded,
-      color: Color(0xFF8B5CF6),
-      route: 'appearance',
-    ),
-    _SettingsItem(
-      section: 'Support',
-      title: 'Help & Support',
-      subtitle: 'FAQs, contact support and documentation',
-      icon: Icons.help_rounded,
-      color: Color(0xFF10B981),
-      route: 'help',
-    ),
-    _SettingsItem(
-      section: 'Support',
-      title: 'Privacy Policy',
-      subtitle: 'View how we handle your data',
-      icon: Icons.policy_rounded,
-      color: Color(0xFF06B6D4),
-      route: 'privacy',
-    ),
-    _SettingsItem(
-      section: 'About',
-      title: 'About App',
-      subtitle: 'Version info, changelog and credits',
-      icon: Icons.info_rounded,
-      color: Color(0xFF64748B),
-      route: 'about',
-    ),
+    // _SettingsItem(
+    //   section: 'Preferences',
+    //   title: 'Notifications',
+    //   subtitle: 'Manage alerts and push notification settings',
+    //   icon: Icons.notifications_rounded,
+    //   color: Color(0xFFF59E0B),
+    //   route: 'notifications',
+    // ),
+    // _SettingsItem(
+    //   section: 'Preferences',
+    //   title: 'Appearance',
+    //   subtitle: 'Theme, font size and display preferences',
+    //   icon: Icons.palette_rounded,
+    //   color: Color(0xFF8B5CF6),
+    //   route: 'appearance',
+    // ),
+    // _SettingsItem(
+    //   section: 'Support',
+    //   title: 'Help & Support',
+    //   subtitle: 'FAQs, contact support and documentation',
+    //   icon: Icons.help_rounded,
+    //   color: Color(0xFF10B981),
+    //   route: 'help',
+    // ),
+    // _SettingsItem(
+    //   section: 'Support',
+    //   title: 'Privacy Policy',
+    //   subtitle: 'View how we handle your data',
+    //   icon: Icons.policy_rounded,
+    //   color: Color(0xFF06B6D4),
+    //   route: 'privacy',
+    // ),
+    // _SettingsItem(
+    //   section: 'About',
+    //   title: 'About App',
+    //   subtitle: 'Version info, changelog and credits',
+    //   icon: Icons.info_rounded,
+    //   color: Color(0xFF64748B),
+    //   route: 'about',
+    // ),
   ];
 
   static const List<_SettingsItem> _adminItems = [
@@ -1321,7 +1321,7 @@ class _ChangePasswordScreenState extends State<_ChangePasswordScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Password strength hint card
-                      _PasswordHintCard(),
+                      // _PasswordHintCard(),
                       const SizedBox(height: 24),
 
                       // Current Password
@@ -1509,72 +1509,72 @@ class _StrengthBarState extends State<_StrengthBar> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Password hint card
 // ─────────────────────────────────────────────────────────────────────────────
-class _PasswordHintCard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final tips = [
-      'Use at least 8 characters',
-      'Mix uppercase & lowercase letters',
-      'Include numbers and special characters',
-      'Avoid common words or patterns',
-    ];
+// class _PasswordHintCard extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     final tips = [
+//       'Use at least 8 characters',
+//       'Mix uppercase & lowercase letters',
+//       'Include numbers and special characters',
+//       'Avoid common words or patterns',
+//     ];
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.shield_rounded,
-                color: AppTheme.primaryColor,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Password Tips',
-                style: TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ...tips.map(
-            (t) => Padding(
-              padding: const EdgeInsets.only(bottom: 5),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.check_circle_outline_rounded,
-                    color: Colors.grey[600],
-                    size: 14,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    t,
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+//     return Container(
+//       padding: const EdgeInsets.all(16),
+//       decoration: BoxDecoration(
+//         color: AppTheme.primaryColor.withOpacity(0.08),
+//         borderRadius: BorderRadius.circular(14),
+//         border: Border.all(
+//           color: AppTheme.primaryColor.withOpacity(0.2),
+//           width: 1,
+//         ),
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Row(
+//             children: [
+//               Icon(
+//                 Icons.shield_rounded,
+//                 color: AppTheme.primaryColor,
+//                 size: 18,
+//               ),
+//               const SizedBox(width: 8),
+//               Text(
+//                 'Password Tips',
+//                 style: TextStyle(
+//                   color: AppTheme.primaryColor,
+//                   fontWeight: FontWeight.w700,
+//                   fontSize: 13,
+//                 ),
+//               ),
+//             ],
+//           ),
+//           const SizedBox(height: 10),
+//           ...tips.map(
+//             (t) => Padding(
+//               padding: const EdgeInsets.only(bottom: 5),
+//               child: Row(
+//                 children: [
+//                   Icon(
+//                     Icons.check_circle_outline_rounded,
+//                     color: Colors.grey[600],
+//                     size: 14,
+//                   ),
+//                   const SizedBox(width: 8),
+//                   Text(
+//                     t,
+//                     style: TextStyle(color: Colors.grey[500], fontSize: 12),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reusable sub-screen header

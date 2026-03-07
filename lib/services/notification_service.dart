@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'dart:io';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +12,6 @@ import 'api_notification_service.dart';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // IMPORTANT: Use print() not debugPrint() — debugPrint won't show in background!
-  // FCM-ONLY MODE: No local notifications, just process FCM payload
   print('═══════════════════════════════════════════════════════════');
   print('🔥 FCM BACKGROUND/TERMINATED MESSAGE RECEIVED 🔥');
   print('═══════════════════════════════════════════════════════════');
@@ -27,18 +26,70 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('[DATA] Type: $type');
   print('[DATA] ReferenceId: $referenceId');
 
-  // Handle different notification types
-  if (type == 'chat' || type.toString().contains('chat')) {
+  // Handle different notification types matching backend notificationTriggers.js
+  if (type == 'chat') {
+    final action = message.data['action'] ?? '';
+    final senderName = message.data['senderName'] ?? 'Unknown';
+    final groupName = message.data['groupName'] ?? '';
+    final isGroup = message.data['isGroup'] == 'true';
+    final mediaType = message.data['mediaType'] ?? '';
     print('💬 CHAT NOTIFICATION DETECTED');
-    print('   From: ${message.data['senderName'] ?? 'Unknown'}');
-    print('   Room: ${message.data['roomName'] ?? 'Unknown'}');
-    print('   The system will display this in the notification tray');
+    print('   From: $senderName');
+    if (isGroup) print('   Group: $groupName');
+    if (action.isNotEmpty) print('   Action: $action');
+    if (mediaType.isNotEmpty) print('   Media: $mediaType');
   } else if (type == 'announcement') {
     print('📢 ANNOUNCEMENT NOTIFICATION DETECTED');
-  } else if (type.toString().contains('leave')) {
+  } else if (type == 'task_assigned') {
+    print('✅ TASK ASSIGNED NOTIFICATION');
+    print('   Task: ${message.data['taskTitle'] ?? ''}');
+    print('   By: ${message.data['assignedBy'] ?? 'Unknown'}');
+  } else if (type == 'task_updated') {
+    print('✏️  TASK UPDATED NOTIFICATION');
+    print('   Task: ${message.data['taskTitle'] ?? ''}');
+    print('   Change: ${message.data['change'] ?? ''}');
+  } else if (type == 'task_comment') {
+    print('💬 TASK COMMENT NOTIFICATION');
+    print('   Task: ${message.data['taskTitle'] ?? ''}');
+    print('   By: ${message.data['commentBy'] ?? 'Unknown'}');
+  } else if (type == 'leave') {
+    final leaveStatus = message.data['leaveStatus'] ?? '';
+    final leaveType = message.data['leaveType'] ?? '';
+    final action = message.data['action'] ?? '';
     print('📋 LEAVE NOTIFICATION DETECTED');
-  } else if (type.toString().contains('task')) {
-    print('✓ TASK NOTIFICATION DETECTED');
+    if (leaveType.isNotEmpty) print('   Type: $leaveType');
+    if (leaveStatus.isNotEmpty) print('   Status: $leaveStatus');
+    if (action.isNotEmpty) print('   Action: $action');
+  } else if (type == 'approval') {
+    final itemType = message.data['itemType'] ?? '';
+    final itemTitle = message.data['itemTitle'] ?? '';
+    final requestedBy = message.data['requestedBy'] ?? 'Unknown';
+    print('🔔 APPROVAL REQUIRED NOTIFICATION');
+    if (itemType.isNotEmpty) print('   For: $itemType - $itemTitle');
+    print('   By: $requestedBy');
+  } else if (type == 'expense') {
+    final expenseStatus = message.data['expenseStatus'] ?? '';
+    final amount = message.data['amount'] ?? '';
+    final action = message.data['action'] ?? '';
+    print('💰 EXPENSE NOTIFICATION DETECTED');
+    if (amount.isNotEmpty) print('   Amount: $amount');
+    if (expenseStatus.isNotEmpty) print('   Status: $expenseStatus');
+    if (action.isNotEmpty) print('   Action: $action');
+  } else if (type == 'attendance') {
+    final action = message.data['action'] ?? '';
+    final requestedBy = message.data['requestedBy'] ?? '';
+    print('🕐 ATTENDANCE NOTIFICATION DETECTED');
+    if (action.isNotEmpty) print('   Action: $action');
+    if (requestedBy.isNotEmpty) print('   By: $requestedBy');
+  } else if (type == 'payroll') {
+    final action = message.data['action'] ?? '';
+    final month = message.data['month'] ?? '';
+    final year = message.data['year'] ?? '';
+    final amount = message.data['amount'] ?? '';
+    print('💵 PAYROLL NOTIFICATION DETECTED');
+    if (month.isNotEmpty && year.isNotEmpty) print('   Period: $month/$year');
+    if (amount.isNotEmpty) print('   Amount: $amount');
+    if (action.isNotEmpty) print('   Action: $action');
   } else if (type == 'general' || type == 'hrms') {
     print('📱 GENERAL NOTIFICATION DETECTED');
   } else {
@@ -46,12 +97,12 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 
   print('═══════════════════════════════════════════════════════════');
-  print('✅ Android system will show notification automatically');
+  print('✅ Notification will be displayed in notification tray');
   print('═══════════════════════════════════════════════════════════');
 
-  // In FCM-only mode, we don't show a local notification here
-  // The system will automatically display the FCM notification
-  // based on the notification payload from the backend
+  // Firebase automatically shows notification in tray when app is closed.
+  // Android system will use the default_notification_channel_id & icon from AndroidManifest.xml
+  // No additional code needed here — FCM handles it natively.
 }
 
 class NotificationService {
@@ -62,6 +113,18 @@ class NotificationService {
 
   bool _isInitialized = false;
   bool _isInitializing = false; // Prevent concurrent initialization
+  
+  // Notification deduplication: track recently displayed notifications
+  final Set<String> _recentNotificationIds = {};
+  static const int _dedupeWindowMs = 5000; // 5 second window
+  
+  // FCM token registration retry config
+  static const int _maxTokenRetries = 3;
+  static const Duration _tokenRetryDelay = Duration(seconds: 2);
+
+  // Active onTokenRefresh subscription — cancelled before each re-subscribe
+  // to prevent duplicate listeners when registerFcmToken() is called more than once.
+  StreamSubscription<String>? _tokenRefreshSub;
 
   /// Global navigator key — assign this to [MaterialApp.navigatorKey] so
   /// NotificationService can push routes without a BuildContext.
@@ -89,11 +152,14 @@ class NotificationService {
     // If currently initializing, wait for it to complete
     if (_isInitializing) {
       debugPrint('⏳ Initialization already in progress, waiting...');
-      // Wait up to 10 seconds for init to complete
+      // Wait up to 30 seconds for init to complete (increased timeout)
       int waited = 0;
-      while (_isInitializing && waited < 100) {
+      while (_isInitializing && waited < 300) {
         await Future.delayed(const Duration(milliseconds: 100));
         waited++;
+      }
+      if (_isInitializing) {
+        debugPrint('⚠️ Initialization timeout after 30 seconds');
       }
       return;
     }
@@ -208,6 +274,46 @@ class NotificationService {
             'hrms_notifications',
             'HRMS Notifications',
             description: 'HRMS app notifications',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'approval_channel',
+            'Approval Notifications',
+            description: 'Notifications for approval requests',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'expense_channel',
+            'Expense Notifications',
+            description: 'Notifications for expense claims',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'payroll_channel',
+            'Payroll Notifications',
+            description: 'Notifications for payroll and salary updates',
+            importance: Importance.max,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'attendance_channel',
+            'Attendance Notifications',
+            description: 'Notifications for attendance updates',
             importance: Importance.max,
             playSound: true,
             enableVibration: true,
@@ -378,50 +484,116 @@ class NotificationService {
   // ── FCM Token Management ────────────────────────────────────────────────
 
   /// Register FCM token with the backend and listen for token refresh.
+  /// Includes retry logic and permission verification.
   Future<void> registerFcmToken(String authToken) async {
+    // Guard: can't register without a valid JWT.
+    if (authToken.isEmpty) {
+      debugPrint('❌ registerFcmToken: authToken is empty, aborting.');
+      return;
+    }
     try {
-      // Request permission (iOS prompt, Android 13+)
-      await _fcm.requestPermission(alert: true, badge: true, sound: true);
+      // Request permission (iOS prompt, Android 13+) and verify it was granted
+      debugPrint('📲 Requesting notification permissions...');
+      final settings = await _fcm.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      
+      final permissionGranted = settings.authorizationStatus == AuthorizationStatus.authorized;
+      debugPrint('📲 Permission status: ${settings.authorizationStatus} (granted: $permissionGranted)');
 
       final token = await _fcm.getToken();
-      if (token != null) {
+      debugPrint('🔑 FCM getToken() result: ${token == null ? 'NULL' : '${token.substring(0, token.length.clamp(0, 20))}...'}');
+      if (token != null && token.isNotEmpty) {
         final device = Platform.isIOS ? 'ios' : 'android';
-        final saved = await ApiNotificationService.saveToken(
-          authToken: authToken,
-          fcmToken: token,
-          device: device,
-        );
-        debugPrint('FCM token ${saved ? 'saved ✅' : 'failed to save ❌'}');
+        debugPrint('🔑 Got FCM token (${token.length} chars) for device: $device');
+        
+        // Register token with retry logic
+        bool saved = false;
+        for (int attempt = 1; attempt <= _maxTokenRetries; attempt++) {
+          try {
+            debugPrint('📤 Saving token (attempt $attempt/$_maxTokenRetries)...');
+            saved = await ApiNotificationService.saveToken(
+              authToken: authToken,
+              fcmToken: token,
+              device: device,
+            );
+            if (saved) {
+              debugPrint('✅ FCM token registered successfully (attempt $attempt)');
+              break;
+            }
+          } catch (e) {
+            debugPrint('❌ Token registration failed on attempt $attempt: $e');
+            if (attempt < _maxTokenRetries) {
+              await Future.delayed(_tokenRetryDelay);
+            }
+          }
+        }
+        
+        if (!saved) {
+          debugPrint('❌ Failed to register FCM token after $_maxTokenRetries attempts');
+        }
+      } else {
+        debugPrint('⚠️ Could not retrieve FCM token');
       }
 
-      // Re-register whenever the token rotates
-      _fcm.onTokenRefresh.listen((newToken) async {
+      // Re-register whenever the token rotates.
+      // Cancel any previous subscription first to avoid stacking listeners
+      // when registerFcmToken() is called on both login and auth-check screens.
+      await _tokenRefreshSub?.cancel();
+      _tokenRefreshSub = _fcm.onTokenRefresh.listen((newToken) async {
+        if (newToken.isEmpty) return;
         final device = Platform.isIOS ? 'ios' : 'android';
-        await ApiNotificationService.saveToken(
-          authToken: authToken,
-          fcmToken: newToken,
-          device: device,
-        );
-        debugPrint('FCM token refreshed and saved ✅');
+        debugPrint('🔄 FCM token refreshed: ${newToken.substring(0, newToken.length.clamp(0, 20))}...');
+
+        for (int attempt = 1; attempt <= _maxTokenRetries; attempt++) {
+          try {
+            final saved = await ApiNotificationService.saveToken(
+              authToken: authToken,
+              fcmToken: newToken,
+              device: device,
+            );
+            if (saved) {
+              debugPrint('✅ Token refresh registered successfully');
+              break;
+            }
+          } catch (e) {
+            debugPrint('❌ Token refresh registration failed (attempt $attempt): $e');
+            if (attempt < _maxTokenRetries) {
+              await Future.delayed(_tokenRetryDelay);
+            }
+          }
+        }
       });
     } catch (e) {
-      debugPrint('Error registering FCM token: $e');
+      debugPrint('❌ Critical error registering FCM token: $e');
     }
   }
 
   /// Remove FCM token from the backend (call on logout).
   Future<void> removeFcmToken(String authToken) async {
+    if (authToken.isEmpty) {
+      debugPrint('⚠️ removeFcmToken: authToken is empty, skipping.');
+      return;
+    }
     try {
+      // Cancel token-refresh listener so it doesn't fire after logout.
+      await _tokenRefreshSub?.cancel();
+      _tokenRefreshSub = null;
+
       final token = await _fcm.getToken();
-      if (token != null) {
+      if (token != null && token.isNotEmpty) {
         await ApiNotificationService.removeToken(
           authToken: authToken,
           fcmToken: token,
         );
-        debugPrint('FCM token removed ✅');
+        debugPrint('✅ FCM token removed from backend');
+      } else {
+        debugPrint('⚠️ removeFcmToken: no token on device, nothing to remove');
       }
     } catch (e) {
-      debugPrint('Error removing FCM token: $e');
+      debugPrint('❌ Error removing FCM token: $e');
     }
   }
 
@@ -501,123 +673,202 @@ class NotificationService {
     // trigger is still FCM. This mirrors the system notification you'd see
     // when the app is closed.
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      print('═════════════════════════════════════════════════════════════════');
-      print('🔔 FCM FOREGROUND MESSAGE (App is OPEN)');
-      print('═════════════════════════════════════════════════════════════════');
-      print('[NOTIFICATION]');
-      print('  Title: ${message.notification?.title}');
-      print('  Body: ${message.notification?.body}');
-      print('[DATA]');
-      print('  Complete data map: ${message.data}');
-
-      final title =
-          message.notification?.title ??
-          message.data['title']?.toString() ??
-          '';
-      final body =
-          message.notification?.body ??
-          message.data['message']?.toString() ??
-          message.data['body']?.toString() ??
-          '';
-      final type = message.data['type']?.toString() ?? 'general';
-      final referenceId = message.data['referenceId']?.toString() ?? '';
-
-      print('[EXTRACTED]');
-      print('  Title: $title');
-      print('  Body: $body');
-      print('  Type: $type');
-      print('  ReferenceId: $referenceId');
-
-      if (title.isEmpty && body.isEmpty) {
-        print('⚠️ Empty notification, skipping display');
-        return;
-      }
-
-      // Identify notification type
-      if (type == 'chat' || type.toString().contains('chat')) {
-        print('[💬 CHAT NOTIFICATION DETECTED]');
-        print('  Sender: ${message.data['senderName'] ?? 'Unknown'}');
-        print('  Room: ${message.data['roomName'] ?? 'Unknown'}');
-        print('  Using chat_channel for display');
-      } else if (type == 'announcement') {
-        print('[📢 ANNOUNCEMENT NOTIFICATION DETECTED]');
-      } else if (type.toString().contains('leave')) {
-        print('[📋 LEAVE NOTIFICATION DETECTED]');
-      } else if (type.toString().contains('task')) {
-        print('[✓ TASK NOTIFICATION DETECTED]');
-      } else {
-        print('[📱 GENERAL/EXTERNAL NOTIFICATION: $type]');
-      }
-
-      print('📱 Displaying FCM notification in foreground');
-
-      // Ensure service is initialized
-      if (!_isInitialized) {
-        try {
-          await initialize();
-          await requestNotificationPermissions();
-        } catch (e) {
-          print('❌ Init error in foreground handler: $e');
-        }
-      }
-
-      // Pick channel based on notification type
-      String channelId = 'hrms_notifications';
-      String channelName = 'HRMS Notifications';
-      if (type == 'chat') {
-        channelId = 'chat_channel';
-        channelName = 'Chat Messages';
-      } else if (type == 'announcement') {
-        channelId = 'announcements_channel';
-        channelName = 'Announcements';
-      } else if (type.startsWith('leave')) {
-        channelId = 'leave_channel';
-        channelName = 'Leave Notifications';
-      } else if (type.startsWith('task')) {
-        channelId = 'task_channel';
-        channelName = 'Task Notifications';
-      }
-
-      final androidDetails = AndroidNotificationDetails(
-        channelId,
-        channelName,
-        channelDescription: 'HRMS $channelName',
-        importance: Importance.max,
-        priority: Priority.high,
-        enableVibration: true,
-        playSound: true,
-        icon: '@mipmap/launcher_icon',
-        styleInformation: BigTextStyleInformation(body),
-      );
-
-      const iosDetails = DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      );
-
       try {
-        final notifId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-        final payload = '$type|$referenceId';
-        
-        print('[DISPLAY] Showing notification:');
-        print('  ID: $notifId');
-        print('  Channel: $channelId ($channelName)');
-        print('  Title: $title');
-        print('  Payload: $payload');
-        
-        await _notificationsPlugin.show(
-          notifId,
-          title,
-          body,
-          NotificationDetails(android: androidDetails, iOS: iosDetails),
-          payload: payload,
-        );
-        
-        print('[✅] FCM foreground notification displayed successfully');
         print('═════════════════════════════════════════════════════════════════');
+        print('🔔 FCM FOREGROUND MESSAGE (App is OPEN)');
+        print('═════════════════════════════════════════════════════════════════');
+        print('[NOTIFICATION]');
+        print('  Title: ${message.notification?.title}');
+        print('  Body: ${message.notification?.body}');
+        print('[DATA]');
+        print('  Complete data map: ${message.data}');
+
+        final title =
+            message.notification?.title ??
+            message.data['title']?.toString() ??
+            '';
+        final body =
+            message.notification?.body ??
+            message.data['message']?.toString() ??
+            message.data['body']?.toString() ??
+            '';
+        final type = message.data['type']?.toString() ?? 'general';
+        final referenceId = message.data['referenceId']?.toString() ?? '';
+        // Use backend-assigned notificationId for dedup when available
+        final notificationId = (message.data['notificationId']?.toString().isNotEmpty == true)
+            ? message.data['notificationId']!
+            : message.messageId ?? '${message.sentTime}';
+
+        print('[EXTRACTED]');
+        print('  Title: $title');
+        print('  Body: $body');
+        print('  Type: $type');
+        print('  ReferenceId: $referenceId');
+        print('  NotifId: $notificationId');
+
+        if (title.isEmpty && body.isEmpty) {
+          print('⚠️ Empty notification, skipping display');
+          return;
+        }
+
+        // DEDUPLICATION CHECK: Skip if we just showed this notification
+        if (_recentNotificationIds.contains(notificationId)) {
+          print('⚠️ Notification already shown recently (dedup), skipping duplicate');
+          return;
+        }
+        _recentNotificationIds.add(notificationId);
+        // Clear dedup cache after window expires
+        Future.delayed(Duration(milliseconds: _dedupeWindowMs), () {
+          _recentNotificationIds.remove(notificationId);
+        });
+
+        // Identify notification type and log extra fields from backend
+        if (type == 'chat') {
+          final action = message.data['action'] ?? '';
+          final isGroup = message.data['isGroup'] == 'true';
+          final groupName = message.data['groupName'] ?? '';
+          final mediaType = message.data['mediaType'] ?? '';
+          print('[💬 CHAT NOTIFICATION DETECTED]');
+          print('  Sender: ${message.data['senderName'] ?? 'Unknown'}');
+          if (isGroup) print('  Group: $groupName');
+          if (action.isNotEmpty) print('  Action: $action');
+          if (mediaType.isNotEmpty) print('  Media: $mediaType');
+          print('  Using chat_channel for display');
+        } else if (type == 'announcement') {
+          print('[📢 ANNOUNCEMENT NOTIFICATION DETECTED]');
+        } else if (type == 'task_assigned') {
+          print('[✅ TASK ASSIGNED]');
+          print('  Task: ${message.data['taskTitle'] ?? ''}');
+          print('  By: ${message.data['assignedBy'] ?? 'Unknown'}');
+        } else if (type == 'task_updated') {
+          print('[✏️  TASK UPDATED]');
+          print('  Task: ${message.data['taskTitle'] ?? ''}');
+          print('  Change: ${message.data['change'] ?? ''}');
+        } else if (type == 'task_comment') {
+          print('[💬 TASK COMMENT]');
+          print('  Task: ${message.data['taskTitle'] ?? ''}');
+          print('  By: ${message.data['commentBy'] ?? 'Unknown'}');
+        } else if (type == 'leave') {
+          final leaveStatus = message.data['leaveStatus'] ?? '';
+          final leaveType = message.data['leaveType'] ?? '';
+          final action = message.data['action'] ?? '';
+          print('[📋 LEAVE NOTIFICATION DETECTED]');
+          if (leaveType.isNotEmpty) print('  Type: $leaveType');
+          if (leaveStatus.isNotEmpty) print('  Status: $leaveStatus');
+          if (action.isNotEmpty) print('  Action: $action');
+        } else if (type == 'approval') {
+          print('[🔔 APPROVAL REQUIRED]');
+          print('  For: ${message.data['itemType'] ?? ''} - ${message.data['itemTitle'] ?? ''}');
+          print('  By: ${message.data['requestedBy'] ?? 'Unknown'}');
+        } else if (type == 'expense') {
+          final expenseStatus = message.data['expenseStatus'] ?? '';
+          final action = message.data['action'] ?? '';
+          print('[💰 EXPENSE NOTIFICATION]');
+          print('  Amount: ${message.data['amount'] ?? ''}');
+          if (expenseStatus.isNotEmpty) print('  Status: $expenseStatus');
+          if (action.isNotEmpty) print('  Action: $action');
+        } else if (type == 'attendance') {
+          print('[🕐 ATTENDANCE NOTIFICATION]');
+          print('  Action: ${message.data['action'] ?? ''}');
+          print('  By: ${message.data['requestedBy'] ?? ''}');
+        } else if (type == 'payroll') {
+          final action = message.data['action'] ?? '';
+          print('[💵 PAYROLL NOTIFICATION]');
+          print('  Period: ${message.data['month'] ?? ''}/${message.data['year'] ?? ''}');
+          if (message.data['amount'] != null) print('  Amount: ${message.data['amount']}');
+          if (action.isNotEmpty) print('  Action: $action');
+        } else {
+          print('[📱 GENERAL/EXTERNAL NOTIFICATION: $type]');
+        }
+
+        print('📱 Displaying FCM notification in foreground');
+
+        // Ensure service is initialized
+        if (!_isInitialized) {
+          try {
+            await initialize();
+            await requestNotificationPermissions();
+          } catch (e) {
+            print('❌ Init error in foreground handler: $e');
+          }
+        }
+
+        // Pick channel based on notification type (matches backend notificationTriggers.js)
+        String channelId = 'hrms_notifications';
+        String channelName = 'HRMS Notifications';
+        if (type == 'chat') {
+          channelId = 'chat_channel';
+          channelName = 'Chat Messages';
+        } else if (type == 'announcement') {
+          channelId = 'announcements_channel';
+          channelName = 'Announcements';
+        } else if (type == 'leave') {
+          channelId = 'leave_channel';
+          channelName = 'Leave Notifications';
+        } else if (type == 'task_assigned' || type == 'task_updated' || type == 'task_comment') {
+          channelId = 'task_channel';
+          channelName = 'Task Notifications';
+        } else if (type == 'approval') {
+          channelId = 'approval_channel';
+          channelName = 'Approval Notifications';
+        } else if (type == 'expense') {
+          channelId = 'expense_channel';
+          channelName = 'Expense Notifications';
+        } else if (type == 'payroll') {
+          channelId = 'payroll_channel';
+          channelName = 'Payroll Notifications';
+        } else if (type == 'attendance') {
+          channelId = 'attendance_channel';
+          channelName = 'Attendance Notifications';
+        }
+
+        final androidDetails = AndroidNotificationDetails(
+          channelId,
+          channelName,
+          channelDescription: 'HRMS $channelName',
+          importance: Importance.max,
+          priority: Priority.high,
+          enableVibration: true,
+          playSound: true,
+          icon: '@mipmap/launcher_icon',
+          styleInformation: BigTextStyleInformation(body),
+        );
+
+        const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        );
+
+        try {
+          final notifId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+          final payload = '$type|$referenceId';
+          
+          print('[DISPLAY] Showing notification:');
+          print('  ID: $notifId');
+          print('  Channel: $channelId ($channelName)');
+          print('  Title: $title');
+          print('  Payload: $payload');
+          
+          await _notificationsPlugin.show(
+            notifId,
+            title,
+            body,
+            NotificationDetails(android: androidDetails, iOS: iosDetails),
+            payload: payload,
+          );
+          
+          print('[✅] FCM foreground notification displayed successfully');
+          print('═════════════════════════════════════════════════════════════════');
+        } catch (e, stackTrace) {
+          print('[❌] Error displaying foreground notification: $e');
+          print('Stack trace: $stackTrace');
+          print('═════════════════════════════════════════════════════════════════');
+          // Still trigger the tap handler even if display fails
+          debugPrint('⚠️ Notification display failed, but processing tap anyway...');
+        }
       } catch (e) {
-        print('[❌] Error showing foreground notification: $e');
+        print('[❌] CRITICAL ERROR in foreground message handler: $e');
         print('═════════════════════════════════════════════════════════════════');
       }
     });

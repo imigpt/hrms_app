@@ -32,6 +32,7 @@ class AttendanceSummaryData {
   int halfDay;
   int absent;
   int wfh;
+  int leaves;
   double totalWorkHours;
   String averageWorkHours;
 
@@ -42,6 +43,7 @@ class AttendanceSummaryData {
     required this.halfDay,
     required this.absent,
     required this.wfh,
+    required this.leaves,
     required this.totalWorkHours,
     required this.averageWorkHours,
   });
@@ -54,6 +56,7 @@ class AttendanceSummaryData {
         halfDay: ((json["halfDay"] ?? 0) as num).toInt(),
         absent: ((json["absent"] ?? 0) as num).toInt(),
         wfh: ((json["wfh"] ?? 0) as num).toInt(),
+        leaves: ((json["leaves"] ?? 0) as num).toInt(),
         totalWorkHours: ((json["totalWorkHours"] ?? 0) as num).toDouble(),
         averageWorkHours: _parseAverageWorkHours(json["averageWorkHours"]),
       );
@@ -82,6 +85,7 @@ class AttendanceSummaryData {
     "halfDay": halfDay,
     "absent": absent,
     "wfh": wfh,
+    "leaves": leaves,
     "totalWorkHours": totalWorkHours,
     "averageWorkHours": averageWorkHours,
   };

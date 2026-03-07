@@ -361,25 +361,25 @@ class _TasksScreenState extends State<TasksScreen>
                             size: 20,
                           ),
                         ),
-                        if (canDelete)
-                          IconButton(
-                            tooltip: 'Delete task',
-                            onPressed: () =>
-                                Navigator.pop(sheetContext, 'delete'),
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.redAccent,
-                              size: 20,
-                            ),
-                          ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(sheetContext),
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.white38,
-                            size: 20,
-                          ),
-                        ),
+                        // if (canDelete)
+                        //   IconButton(
+                        //     tooltip: 'Delete task',
+                        //     onPressed: () =>
+                        //         Navigator.pop(sheetContext, 'delete'),
+                        //     icon: const Icon(
+                        //       Icons.delete_outline,
+                        //       color: Colors.redAccent,
+                        //       size: 20,
+                        //     ),
+                        //   ),
+                        // IconButton(
+                        //   onPressed: () => Navigator.pop(sheetContext),
+                        //   icon: const Icon(
+                        //     Icons.close,
+                        //     color: Colors.white38,
+                        //     size: 20,
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
@@ -3526,10 +3526,10 @@ class _TasksScreenState extends State<TasksScreen>
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(
-                        DateFormat('MMM dd').format(DateTime.now()),
-                        style: TextStyle(color: _textGrey, fontSize: 12),
-                      ),
+                      // Text(
+                      //   DateFormat('MMM dd').format(DateTime.now()),
+                      //   style: TextStyle(color: _textGrey, fontSize: 12),
+                      // ),
                     ],
                   ),
                 ),

@@ -10,6 +10,8 @@ import 'camera_screen.dart';
 import 'attendance_history_screen.dart';
 import '../services/attendance_service.dart';
 import '../services/token_storage_service.dart';
+import '../services/profile_service.dart';
+import '../models/profile_model.dart';
 import '../models/attendance_summary_model.dart';
 import '../models/today_attendance_model.dart' as today;
 import '../models/attendance_checkin_model.dart';
@@ -50,6 +52,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Duration _workedDuration = const Duration(hours: 0, minutes: 0);
   today.AttendanceData? _todayAttendanceData;
   String? _token;
+  ProfileUser? _user;
 
   // --- Location State ---
   bool _isLoadingLocation = false;
@@ -91,6 +94,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _fetchAttendanceHistory();
     _fetchLatestRecords();
     _fetchEditRequestsPreview();
+    _fetchUserProfile();
 
     // Handle location permission check in background after UI is rendered
     if (widget.initialAction != null) {
@@ -197,6 +201,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     } catch (e) {
       print('Error fetching today attendance: $e');
       // Don't show error to user, just use default values
+    }
+  }
+
+  // Fetch User Profile
+  Future<void> _fetchUserProfile() async {
+    try {
+      if (_token == null) {
+        final token = await TokenStorageService().getToken();
+        if (token != null) {
+          setState(() => _token = token);
+        }
+      }
+      
+      if (_token != null) {
+        final profileService = ProfileService();
+        final userProfile = await profileService.fetchProfile(_token!);
+        if (userProfile != null && mounted) {
+          setState(() => _user = userProfile);
+        }
+      }
+    } catch (e) {
+      print('Error fetching user profile: $e');
+      // Silently continue - user object is optional for display
     }
   }
 
@@ -438,11 +465,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   // Handle check-in result from camera
   void _handleCheckInResult(dynamic result) async {
     String? checkInAddress;
+    FaceVerification? faceVerification;
 
-    // Extract address if result is a Map with both data and address
-    if (result is Map<String, dynamic> &&
-        result.containsKey('checkInAddress')) {
-      checkInAddress = result['checkInAddress'];
+    // Extract address and faceVerification if result is a Map
+    if (result is Map<String, dynamic>) {
+      checkInAddress = result['checkInAddress'] as String?;
+      faceVerification = result['faceVerification'] as FaceVerification?;
       result = result['attendanceData'];
     }
 
@@ -456,7 +484,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _checkOutDateTime = null;
         _showPhotoUI = false;
 
-        // Use human-readable address if provided, otherwise fall back to coordinates
+        // Use human-readable address if provided
         if (checkInAddress != null && checkInAddress.isNotEmpty) {
           _checkInLocation = checkInAddress;
         } else if (result.checkIn.location != null) {
@@ -472,13 +500,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _workedDuration = DateTime.now().difference(result.checkIn.time);
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Checked In Successfully!"),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      // Build success message with face score when available
+      final scoreLabel = faceVerification != null
+          ? ' · Face match ${faceVerification.similarityScore}%'
+          : '';
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Checked In Successfully!$scoreLabel',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } else if (result == 'refresh') {
       // User was already checked in on backend - reload attendance data
       setState(() {
@@ -1048,6 +1095,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       workHours: workHours,
       onCheckInToggle: _toggleCheckIn,
       onCheckInResult: _handleCheckInResult,
+      user: _user,
     );
   }
 
@@ -1067,14 +1115,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final late = _summaryData?.late.toString() ?? '0';
     final absent = _summaryData?.absent.toString() ?? '0';
     final halfDay = _summaryData?.halfDay.toString() ?? '0';
-    final wfh = _summaryData?.wfh.toString() ?? '0';
-    final totalWorkHours = _summaryData?.totalWorkHours ?? 0.0;
-    final averageWorkHours = _summaryData?.averageWorkHours ?? '0h 0m';
+    // final wfh = _summaryData?.wfh.toString() ?? '0';
+    final leaves = _summaryData?.leaves.toString() ?? '0';
+    // final totalWorkHours = _summaryData?.totalWorkHours ?? 0.0;
+    // final averageWorkHours = _summaryData?.averageWorkHours ?? '0h 0m';
 
     // Format total work hours
-    final hours = totalWorkHours.floor();
-    final minutes = ((totalWorkHours - hours) * 60).round();
-    final totalWorkHoursStr = '${hours}h ${minutes}m';
+    // final hours = totalWorkHours.floor();
+    // final minutes = ((totalWorkHours - hours) * 60).round();
+    // final totalWorkHoursStr = '${hours}h ${minutes}m';
 
     return Column(
       children: [
@@ -1124,123 +1173,123 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        // Third Row: WFH, Total Days
+
         Row(
           children: [
             Expanded(
               child: _buildStatCard(
-                "WFH",
-                wfh,
-                Icons.home,
+                "Leaves",
+                leaves,
+                Icons.event_busy_outlined,
                 Colors.purpleAccent,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                "Total Days",
-                _summaryData?.totalDays.toString() ?? '0',
-                Icons.calendar_today,
-                Colors.blueAccent,
-              ),
-            ),
+        //     const SizedBox(width: 12),
+        //     Expanded(
+        //       child: _buildStatCard(
+        //         "Total Days",
+        //         _summaryData?.totalDays.toString() ?? '0',
+        //         Icons.calendar_today,
+        //         Colors.blueAccent,
+        //       ),
+            // ),
           ],
         ),
-        const SizedBox(height: 16),
+        // const SizedBox(height: 16),
         // Summary Cards
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF141414),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.access_time_filled,
-                          color: Colors.cyanAccent,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Total Work Hours',
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 12,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      totalWorkHoursStr,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF141414),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.trending_up,
-                          color: Colors.greenAccent,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Avg. Work Hours',
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 12,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      averageWorkHours,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+      //   Row(
+      //     children: [
+      //       Expanded(
+      //         child: Container(
+      //           padding: const EdgeInsets.all(16),
+      //           decoration: BoxDecoration(
+      //             color: const Color(0xFF141414),
+      //             borderRadius: BorderRadius.circular(16),
+      //             border: Border.all(color: Colors.white.withOpacity(0.05)),
+      //           ),
+      //           child: Column(
+      //             crossAxisAlignment: CrossAxisAlignment.start,
+      //             children: [
+      //               Row(
+      //                 children: [
+      //                   Icon(
+      //                     Icons.access_time_filled,
+      //                     color: Colors.cyanAccent,
+      //                     size: 20,
+      //                   ),
+      //                   const SizedBox(width: 8),
+      //                   Flexible(
+      //                     child: Text(
+      //                       'Total Work Hours',
+      //                       style: TextStyle(
+      //                         color: Colors.grey[500],
+      //                         fontSize: 12,
+      //                       ),
+      //                       overflow: TextOverflow.ellipsis,
+      //                     ),
+      //                   ),
+      //                 ],
+      //               ),
+      //               const SizedBox(height: 8),
+      //               Text(
+      //                 totalWorkHoursStr,
+      //                 style: const TextStyle(
+      //                   fontSize: 20,
+      //                   fontWeight: FontWeight.bold,
+      //                   color: Colors.white,
+      //                 ),
+      //               ),
+      //             ],
+      //           ),
+      //         ),
+      //       ),
+      //       const SizedBox(width: 12),
+      //       Expanded(
+      //         child: Container(
+      //           padding: const EdgeInsets.all(16),
+      //           decoration: BoxDecoration(
+      //             color: const Color(0xFF141414),
+      //             borderRadius: BorderRadius.circular(16),
+      //             border: Border.all(color: Colors.white.withOpacity(0.05)),
+      //           ),
+      //           child: Column(
+      //             crossAxisAlignment: CrossAxisAlignment.start,
+      //             children: [
+      //               Row(
+      //                 children: [
+      //                   Icon(
+      //                     Icons.trending_up,
+      //                     color: Colors.greenAccent,
+      //                     size: 20,
+      //                   ),
+      //                   const SizedBox(width: 8),
+      //                   Flexible(
+      //                     child: Text(
+      //                       'Avg. Work Hours',
+      //                       style: TextStyle(
+      //                         color: Colors.grey[500],
+      //                         fontSize: 12,
+      //                       ),
+      //                       overflow: TextOverflow.ellipsis,
+      //                     ),
+      //                   ),
+      //                 ],
+      //               ),
+      //               const SizedBox(height: 8),
+      //               Text(
+      //                 averageWorkHours,
+      //                 style: const TextStyle(
+      //                   fontSize: 20,
+      //                   fontWeight: FontWeight.bold,
+      //                   color: Colors.white,
+      //                 ),
+      //               ),
+      //             ],
+      //           ),
+      //         ),
+      //       ),
+      //     ],
+      //   ),
       ],
     );
   }
@@ -1472,7 +1521,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             children: [
               _buildLegendItem(
                 Icons.check_circle_outline,
-                const Color(0xFF4CAF50),
+                const Color.fromARGB(255, 233, 241, 233),
                 'Present',
               ),
               _buildLegendItem(Icons.close, const Color(0xFFE57373), 'Absent'),

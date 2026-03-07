@@ -23,6 +23,9 @@ class _CameraScreenState extends State<CameraScreen> {
   String? _capturedAddress;
   Future<void>? _locationFuture;
 
+  // Face verification state
+  bool _faceErrorNoFace = false;
+
   @override
   void initState() {
     super.initState();
@@ -33,7 +36,6 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> _initializeCamera() async {
     try {
-      // Get available cameras
       final cameras = await availableCameras();
 
       if (cameras.isEmpty) {
@@ -44,13 +46,12 @@ class _CameraScreenState extends State<CameraScreen> {
         return;
       }
 
-      // Get the front camera for selfie, or first available camera
+      // Prefer front camera for selfie
       final camera = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
+        (c) => c.lensDirection == CameraLensDirection.front,
         orElse: () => cameras.first,
       );
 
-      // Create and initialize the camera controller
       _controller = CameraController(
         camera,
         ResolutionPreset.medium,
@@ -60,11 +61,7 @@ class _CameraScreenState extends State<CameraScreen> {
       _initializeControllerFuture = _controller!.initialize();
       await _initializeControllerFuture;
 
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       setState(() {
         _error = 'Failed to initialize camera: $e';
@@ -81,93 +78,56 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> _takePicture() async {
     if (_isSubmitting) return;
+    setState(() => _faceErrorNoFace = false);
     try {
-      // Permission already checked in attendance_screen - just take photo
       await _initializeControllerFuture;
-
-      // Take the picture instantly
       final image = await _controller!.takePicture();
-
-      // Show preview immediately
       if (mounted) {
         setState(() {
           _capturedImagePath = image.path;
         });
       }
-
-      // If location not yet available, start fresh fetch
-      if (_capturedLocation == null) {
-        _locationFuture = _fetchLocationAsync();
-      }
+      if (_capturedLocation == null) _locationFuture = _fetchLocationAsync();
     } catch (e) {
       if (mounted) {
-        setState(() => _isSubmitting = false);
-        if (e.toString().toLowerCase().contains('already checked in')) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Already checked in. Refreshing...'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 2),
-            ),
-          );
-          await Future.delayed(const Duration(milliseconds: 300));
-          if (mounted) Navigator.pop(context, 'refresh');
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error: $e'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Camera error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
 
-  // Fetch location FAST in background
   Future<void> _fetchLocationAsync() async {
     try {
-      // Try last known position first (INSTANT)
       Position? position = await Geolocator.getLastKnownPosition();
-
-      if (position != null) {
-        _updateLocationState(position);
-      }
-
-      // Then get fresh position with timeout (don't block)
+      if (position != null) _updateLocationState(position);
       try {
-        final freshPosition = await Geolocator.getCurrentPosition(
+        final fresh = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.low,
           timeLimit: const Duration(seconds: 3),
         );
-        _updateLocationState(freshPosition);
-      } catch (_) {
-        // Timeout or error - use last known if we got it
-        if (position == null) {
-          print('No location available');
-        }
-      }
+        _updateLocationState(fresh);
+      } catch (_) {}
     } catch (e) {
       print('Location error: $e');
     }
   }
 
   void _updateLocationState(Position position) {
-    final double distMeters = Geolocator.distanceBetween(
+    final dist = Geolocator.distanceBetween(
       position.latitude,
       position.longitude,
       26.816224,
       75.845444,
     );
-    final String locationLabel = distMeters <= 100
-        ? 'Main Building'
-        : 'Outside Building';
-
     if (mounted) {
       setState(() {
         _capturedLocation = position;
-        _capturedAddress = locationLabel;
+        _capturedAddress = dist <= 100 ? 'Main Building' : 'Outside Building';
       });
     }
   }
@@ -175,10 +135,13 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _confirmCheckIn() async {
     if (_capturedImagePath == null) return;
 
-    try {
-      setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _faceErrorNoFace = false;
+    });
 
-      // Quick wait for location (max 2 sec), use fallback if not available
+    try {
+      // Wait briefly for location if not yet fetched
       if (_capturedLocation == null && _locationFuture != null) {
         await _locationFuture!.timeout(
           const Duration(seconds: 2),
@@ -186,16 +149,13 @@ class _CameraScreenState extends State<CameraScreen> {
         );
       }
 
-      // Use office location as fallback if no GPS
       final double lat = _capturedLocation?.latitude ?? 26.816224;
       final double lng = _capturedLocation?.longitude ?? 75.845444;
       final String address = _capturedAddress ?? 'Main Building';
 
-      // Get token
       final token = await TokenStorageService().getToken();
       if (token == null) throw Exception('No token found');
 
-      // Call check-in API
       final response = await AttendanceService.checkIn(
         token: token,
         photoFile: File(_capturedImagePath!),
@@ -208,13 +168,31 @@ class _CameraScreenState extends State<CameraScreen> {
         Navigator.pop(context, {
           'attendanceData': response.data,
           'checkInAddress': address,
+          'faceVerification': response.faceVerification,
         });
+      }
+    } on FaceVerificationFailedException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          // Reset so the user retakes the photo
+          _capturedImagePath = null;
+          _capturedLocation = null;
+        });
+        _showFaceError(
+          title: 'Face Not Matched',
+          message: 'Your face could not be verified (match score: ${e.similarityScore}%).\n'
+              'Ensure good lighting and face the camera directly, then try again.',
+          icon: Icons.face_retouching_off,
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
 
-        if (e.toString().toLowerCase().contains('already checked in')) {
+        final errMsg = e.toString().replaceAll('Exception:', '').trim();
+
+        if (errMsg.toLowerCase().contains('already checked in')) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Already checked in!'),
@@ -224,14 +202,34 @@ class _CameraScreenState extends State<CameraScreen> {
           );
           await Future.delayed(const Duration(milliseconds: 300));
           if (mounted) Navigator.pop(context, 'refresh');
+        } else if (errMsg.toLowerCase().contains('no face detected') ||
+            errMsg.toLowerCase().contains('no face')) {
+          setState(() {
+            _capturedImagePath = null;
+            _faceErrorNoFace = true;
+          });
+          _showFaceError(
+            title: 'No Face Detected',
+            message: 'We could not detect a face in your photo.\n'
+                'Please ensure your face is clearly visible and well-lit.',
+            icon: Icons.no_photography,
+          );
+        } else if (errMsg.toLowerCase().contains('profile photo not found')) {
+          _showFaceError(
+            title: 'Profile Photo Missing',
+            message:
+                'You do not have a profile photo on file.\nPlease upload a profile photo from your profile settings before checking in.',
+            icon: Icons.account_circle_outlined,
+          );
+          setState(() => _capturedImagePath = null);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Check-in failed: ${e.toString().replaceAll('Exception:', '').trim()}',
+                'Check-in failed: $errMsg',
               ),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 2),
+              duration: const Duration(seconds: 3),
             ),
           );
         }
@@ -239,10 +237,42 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  void _showFaceError({
+    required String title,
+    required String message,
+    required IconData icon,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: Icon(icon, color: Colors.redAccent, size: 48),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white70, fontSize: 14),
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Retake', style: TextStyle(color: Color(0xFFFF8B94))),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _retakePhoto() {
     setState(() {
       _capturedImagePath = null;
       _capturedLocation = null;
+      _faceErrorNoFace = false;
     });
   }
 
@@ -253,32 +283,7 @@ class _CameraScreenState extends State<CameraScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : _error != null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.red,
-                      size: 64,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Go Back'),
-                    ),
-                  ],
-                ),
-              ),
-            )
+          ? _buildErrorView()
           : SafeArea(
               child: _capturedImagePath != null
                   ? _buildPhotoPreview()
@@ -287,66 +292,143 @@ class _CameraScreenState extends State<CameraScreen> {
     );
   }
 
+  Widget _buildErrorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red, size: 64),
+            const SizedBox(height: 16),
+            Text(
+              _error!,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Go Back'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCameraView() {
     return Column(
       children: [
-        // Close button in top right
-        Align(
-          alignment: Alignment.topRight,
-          child: IconButton(
-            icon: const Icon(Icons.close, color: Colors.white, size: 28),
-            onPressed: () => Navigator.pop(context, false),
+        // Top bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                onPressed: () => Navigator.pop(context, false),
+              ),
+              const Spacer(),
+              const Text(
+                'Face Check-In',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              const SizedBox(width: 48), // balance close button
+            ],
           ),
         ),
-
-        const SizedBox(height: 20),
-
-        // Title
-        const Text(
-          'Capture Check-in Photo',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-
-        const SizedBox(height: 16),
 
         // Instructions
-        const Text(
-          'Position yourself in the frame and click capture',
-          style: TextStyle(color: Colors.white70, fontSize: 14),
-          textAlign: TextAlign.center,
-        ),
-
-        const SizedBox(height: 30),
-
-        // Camera Preview in rounded container
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: Colors.grey[900],
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+          child: Text(
+            _faceErrorNoFace
+                ? 'No face detected — ensure your face is well-lit and centred'
+                : 'Centre your face in the oval and tap Capture',
+            style: TextStyle(
+              color: _faceErrorNoFace ? Colors.orangeAccent : Colors.white70,
+              fontSize: 13,
             ),
-            clipBehavior: Clip.hardEdge,
-            child: _controller != null
-                ? CameraPreview(_controller!)
-                : const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  ),
+            textAlign: TextAlign.center,
           ),
         ),
 
-        const SizedBox(height: 30),
+        const SizedBox(height: 12),
+
+        // Camera preview with face oval guide
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Camera view
+                  if (_controller != null)
+                    CameraPreview(_controller!)
+                  else
+                    Container(
+                      color: Colors.grey[900],
+                      child: const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                    ),
+
+                  // Face oval overlay
+                  CustomPaint(
+                    painter: _FaceOvalPainter(
+                      borderColor: _faceErrorNoFace
+                          ? Colors.orangeAccent
+                          : const Color(0xFFFF8B94),
+                    ),
+                  ),
+
+                  // Corner label
+                  Positioned(
+                    bottom: 12,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          'Live selfie for face verification',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
 
         // Buttons
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
             children: [
-              // Cancel Button
+              // Cancel
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context, false),
@@ -356,7 +438,6 @@ class _CameraScreenState extends State<CameraScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    backgroundColor: Colors.transparent,
                   ),
                   child: const Text(
                     'Cancel',
@@ -371,38 +452,24 @@ class _CameraScreenState extends State<CameraScreen> {
 
               const SizedBox(width: 16),
 
-              // Capture Button
+              // Capture
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: _isSubmitting ? null : _takePicture,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: const Color(0xFFFF8B94),
-                    disabledBackgroundColor: const Color(
-                      0xFFFF8B94,
-                    ).withValues(alpha: 0.5),
+                    disabledBackgroundColor:
+                        const Color(0xFFFF8B94).withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     elevation: 0,
                   ),
-                  icon: _isSubmitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                  label: Text(
-                    _isSubmitting ? 'Submitting...' : 'Capture',
-                    style: const TextStyle(
+                  icon: const Icon(Icons.camera_alt, color: Colors.white, size: 22),
+                  label: const Text(
+                    'Capture',
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -425,20 +492,18 @@ class _CameraScreenState extends State<CameraScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Close button
+          // Top bar
           Align(
             alignment: Alignment.topRight,
             child: IconButton(
               icon: const Icon(Icons.close, color: Colors.white, size: 28),
-              onPressed: _isSubmitting
-                  ? null
-                  : () => Navigator.pop(context, false),
+              onPressed:
+                  _isSubmitting ? null : () => Navigator.pop(context, false),
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
 
-          // Title
           const Text(
             'Photo Captured!',
             style: TextStyle(
@@ -448,27 +513,28 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
 
           const Text(
-            'Click "Confirm Check In" to proceed',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            'Your selfie will be verified against your profile photo.',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
 
-          const SizedBox(height: 30),
+          const SizedBox(height: 24),
 
-          // Photo Preview Card
+          // Photo card
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFF1A1A1A),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Row(
               children: [
-                // Photo thumbnail with delete button
+                // Thumbnail + retake button
                 Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
@@ -480,10 +546,11 @@ class _CameraScreenState extends State<CameraScreen> {
                       ),
                     ),
                     Positioned(
-                      top: -8,
-                      right: -8,
-                      child: IconButton(
-                        icon: Container(
+                      top: -10,
+                      right: -10,
+                      child: GestureDetector(
+                        onTap: _isSubmitting ? null : _retakePhoto,
+                        child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
                             color: Colors.red,
@@ -492,10 +559,9 @@ class _CameraScreenState extends State<CameraScreen> {
                           child: const Icon(
                             Icons.close,
                             color: Colors.white,
-                            size: 16,
+                            size: 14,
                           ),
                         ),
-                        onPressed: _isSubmitting ? null : _retakePhoto,
                       ),
                     ),
                   ],
@@ -503,22 +569,63 @@ class _CameraScreenState extends State<CameraScreen> {
 
                 const SizedBox(width: 16),
 
-                // Photo ready text
-                const Text(
-                  'Photo ready',
-                  style: TextStyle(
-                    color: Colors.greenAccent,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                // Face verification hint
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: const [
+                          Icon(Icons.face, color: Colors.white54, size: 18),
+                          SizedBox(width: 6),
+                          Text(
+                            'Selfie ready',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Face recognition will run on the server',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 30),
+          const SizedBox(height: 24),
 
-          // Confirm Check In Button
+          // Submitting progress indicator
+          if (_isSubmitting)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Row(
+                children: const [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFFF8B94),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Verifying your face…',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+
+          // Confirm button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -526,9 +633,8 @@ class _CameraScreenState extends State<CameraScreen> {
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: const Color(0xFFFF8B94),
-                disabledBackgroundColor: const Color(
-                  0xFFFF8B94,
-                ).withValues(alpha: 0.5),
+                disabledBackgroundColor:
+                    const Color(0xFFFF8B94).withValues(alpha: 0.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -543,9 +649,9 @@ class _CameraScreenState extends State<CameraScreen> {
                         strokeWidth: 2.5,
                       ),
                     )
-                  : const Icon(Icons.login, color: Colors.white, size: 22),
+                  : const Icon(Icons.verified_user, color: Colors.white, size: 22),
               label: Text(
-                _isSubmitting ? 'Checking in...' : 'Confirm Check In',
+                _isSubmitting ? 'Verifying…' : 'Confirm Check-In',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -560,4 +666,44 @@ class _CameraScreenState extends State<CameraScreen> {
       ),
     );
   }
+}
+
+/// Draws a semi-transparent dark overlay with an oval cutout for face framing.
+class _FaceOvalPainter extends CustomPainter {
+  final Color borderColor;
+  const _FaceOvalPainter({required this.borderColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final ovalRect = Rect.fromCenter(
+      center: Offset(size.width / 2, size.height * 0.46),
+      width: size.width * 0.62,
+      height: size.height * 0.58,
+    );
+
+    // Dark overlay
+    final overlayPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..addOval(ovalRect)
+      ..fillType = PathFillType.evenOdd;
+
+    canvas.drawPath(
+      overlayPath,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.45)
+        ..style = PaintingStyle.fill,
+    );
+
+    // Oval border
+    canvas.drawOval(
+      ovalRect,
+      Paint()
+        ..color = borderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_FaceOvalPainter old) => old.borderColor != borderColor;
 }

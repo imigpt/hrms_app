@@ -100,19 +100,43 @@ class ApiNotificationService {
     required String fcmToken,
     String device = 'android',
   }) async {
+    // Guard: never send a request with a blank token — backend returns 400.
+    if (fcmToken.isEmpty) {
+      print('❌ saveToken: fcmToken is empty, aborting. Backend would return 400.');
+      return false;
+    }
+    if (authToken.isEmpty) {
+      print('❌ saveToken: authToken is empty, aborting. Request would fail auth.');
+      return false;
+    }
     try {
-      print('💾 Saving FCM token (device: $device)...');
+      print('💾 Saving FCM token to backend...');
+      print('   device  : $device');
+      print('   token   : ${fcmToken.substring(0, fcmToken.length.clamp(0, 20))}...');
+      print('   endpoint: $_base/notifications/save-token');
       final res = await http.post(
         Uri.parse('$_base/notifications/save-token'),
         headers: _headers(authToken),
         body: jsonEncode({'token': fcmToken, 'device': device}),
       );
+      print('   status  : ${res.statusCode}');
+      print('   body    : ${res.body}');
       
       if (res.statusCode == 200) {
         print('✅ FCM token saved successfully');
         return true;
+      } else if (res.statusCode == 400) {
+        // 400 means body was received but validation failed.
+        // Parse and surface the exact backend message for debugging.
+        try {
+          final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+          print('❌ Backend rejected token (400): ${decoded['message']}');
+        } catch (_) {
+          print('❌ Backend rejected token (400): ${res.body}');
+        }
+        return false;
       } else {
-        print('⚠️ Failed to save FCM token: ${res.statusCode} - ${res.body}');
+        print('⚠️ Unexpected status saving FCM token: ${res.statusCode} - ${res.body}');
         return false;
       }
     } catch (e) {
@@ -126,15 +150,30 @@ class ApiNotificationService {
     required String authToken,
     required String fcmToken,
   }) async {
+    if (fcmToken.isEmpty) {
+      print('❌ removeToken: fcmToken is empty, aborting.');
+      return false;
+    }
+    if (authToken.isEmpty) {
+      print('❌ removeToken: authToken is empty, aborting.');
+      return false;
+    }
     try {
+      print('🗑️ Removing FCM token from backend...');
       final res = await http.delete(
         Uri.parse('$_base/notifications/remove-token'),
         headers: _headers(authToken),
         body: jsonEncode({'token': fcmToken}),
       );
-      return res.statusCode == 200;
+      if (res.statusCode == 200) {
+        print('✅ FCM token removed successfully');
+        return true;
+      } else {
+        print('⚠️ Failed to remove FCM token: ${res.statusCode} - ${res.body}');
+        return false;
+      }
     } catch (e) {
-      print('ApiNotificationService.removeToken error: $e');
+      print('❌ ApiNotificationService.removeToken error: $e');
       return false;
     }
   }
