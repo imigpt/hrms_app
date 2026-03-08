@@ -39,6 +39,9 @@ class _EditRequestsScreenState extends State<EditRequestsScreen>
   late AnimationController _animationController;
   late List<AnimationController> _cardAnimations = [];
 
+  bool get _isEmployeeView =>
+      _allRequests.isEmpty || _allRequests.every((r) => r.employee == null);
+
   int get _pendingCount =>
       _allRequests.where((r) => r.status == 'pending').length;
   int get _approvedCount =>
@@ -417,9 +420,11 @@ class _EditRequestsScreenState extends State<EditRequestsScreen>
                       ],
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Review and manage employee attendance correction requests',
-                      style: TextStyle(color: Colors.white38, fontSize: 10.5),
+                    Text(
+                      _isEmployeeView
+                          ? 'Your attendance correction requests'
+                          : 'Review and manage employee attendance correction requests',
+                      style: const TextStyle(color: Colors.white38, fontSize: 10.5),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -785,6 +790,7 @@ class _EditRequestsScreenState extends State<EditRequestsScreen>
   //  Request card
 
   Widget _buildRequestCard(AdminEditRequestData req, bool isMobile) {
+    if (req.employee == null) return _buildEmployeeCard(req, isMobile);
     final isPending = req.status == 'pending';
     final isProcessing = _processingIds.contains(req.id);
     final isExpanded = _expandedCards[req.id] ?? false;
@@ -1190,6 +1196,286 @@ class _EditRequestsScreenState extends State<EditRequestsScreen>
       ),
     );
   }
+
+  // ─── Employee-facing card ──────────────────────────────────────────────────
+
+  Widget _buildEmployeeCard(AdminEditRequestData req, bool isMobile) {
+    final statusColor = _statusColor(req.status);
+    final fmt = DateFormat('hh:mm a');
+    final fullDateStr =
+        DateFormat('EEE, MMM d, yyyy').format(req.date.toLocal());
+    final submittedStr =
+        DateFormat('M/d/yyyy').format(req.createdAt.toLocal());
+    final statusLabel =
+        req.status[0].toUpperCase() + req.status.substring(1);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: statusColor.withOpacity(0.35)),
+      ),
+      padding: EdgeInsets.all(isMobile ? 12 : 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header: date | status badge ──────────────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    size: 14,
+                    color: Colors.white60,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    fullDateStr,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: isMobile ? 13 : 14,
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Submitted $submittedStr',
+                    style: const TextStyle(
+                      color: Colors.white38,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          SizedBox(height: isMobile ? 10 : 12),
+
+          // ── Original Times | Requested Changes ───────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Original Times
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A1A),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Original Times',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _empTimeRow(
+                        'In:',
+                        req.originalCheckIn != null
+                            ? fmt.format(req.originalCheckIn!.toLocal())
+                            : '--:--',
+                        false,
+                      ),
+                      const SizedBox(height: 3),
+                      _empTimeRow(
+                        'Out:',
+                        req.originalCheckOut != null
+                            ? fmt.format(req.originalCheckOut!.toLocal())
+                            : '--:--',
+                        false,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Requested Changes
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 11,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: _primary.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Requested Changes',
+                        style: TextStyle(
+                          color: _primary,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _empTimeRow(
+                        'In:',
+                        fmt.format(req.requestedCheckIn.toLocal()),
+                        true,
+                      ),
+                      const SizedBox(height: 3),
+                      _empTimeRow(
+                        'Out:',
+                        fmt.format(req.requestedCheckOut.toLocal()),
+                        true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          // ── Reason ───────────────────────────────────────────────────
+          RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 12),
+              children: [
+                const TextSpan(
+                  text: 'Reason: ',
+                  style: TextStyle(color: Colors.white54),
+                ),
+                TextSpan(
+                  text: req.reason,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // ── Status message ───────────────────────────────────────────
+          _buildEmployeeStatusMessage(req),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmployeeStatusMessage(AdminEditRequestData req) {
+    if (req.status == 'approved') {
+      return Row(
+        children: [
+          Icon(
+            Icons.check_circle_outline_rounded,
+            size: 14,
+            color: _green,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Approved by HR or Admin',
+            style: TextStyle(color: _green, fontSize: 11.5),
+          ),
+        ],
+      );
+    } else if (req.status == 'rejected') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.cancel_outlined, size: 14, color: _red),
+              const SizedBox(width: 6),
+              Text(
+                'Request was rejected',
+                style: TextStyle(color: _red, fontSize: 11.5),
+              ),
+            ],
+          ),
+          if (req.reviewNote != null && req.reviewNote!.isNotEmpty) ...[  
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 20),
+              child: Text(
+                req.reviewNote!,
+                style: TextStyle(
+                  color: _red.withOpacity(0.8),
+                  fontSize: 10.5,
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+    // pending
+    return Row(
+      children: [
+        Icon(Icons.info_outline_rounded, size: 14, color: _orange),
+        const SizedBox(width: 6),
+        const Text(
+          'Awaiting review by HR or Admin',
+          style: TextStyle(color: _orange, fontSize: 11.5),
+        ),
+      ],
+    );
+  }
+
+  Widget _empTimeRow(String label, String time, bool highlight) => Row(
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          color: highlight ? _primary.withOpacity(0.75) : Colors.white38,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(width: 4),
+      Text(
+        time,
+        style: TextStyle(
+          color: highlight ? Colors.white : Colors.white70,
+          fontSize: 11.5,
+          fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
+    ],
+  );
 
   void _showQuickActions(BuildContext context, AdminEditRequestData req) {
     showModalBottomSheet(

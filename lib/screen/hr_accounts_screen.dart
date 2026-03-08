@@ -59,7 +59,6 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   // Responsive helpers
   bool get _isTablet => MediaQuery.of(context).size.width >= 600;
   double get _dialogMaxWidth => _isTablet ? 700 : 600;
-  double get _headerFontSize => _isTablet ? 20 : 19;
   double get _titleFontSize => _isTablet ? 18 : 17;
   double get _labelFontSize => _isTablet ? 14 : 13;
   double get _bodyFontSize => _isTablet ? 15 : 14;
@@ -157,160 +156,10 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   }
 
   Future<void> _showDetailsDialog(Map<String, dynamic> account) async {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          decoration: BoxDecoration(
-            color: _section,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _border.withOpacity(0.5), width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: _primaryAccent.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: _primaryAccent.withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.info_rounded,
-                          color: AppTheme.primaryColor,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              account['name'] ?? 'Manager Details',
-                              style: const TextStyle(
-                                color: _textLight,
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Complete information',
-                              style: TextStyle(color: _textGrey, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: _border.withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.close_rounded,
-                            color: _textGrey,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Divider(color: _border.withOpacity(0.4), height: 1),
-                  const SizedBox(height: 18),
-                  // Details
-                  _buildDetailRow('Name', account['name'] ?? '-'),
-                  _buildDetailRow('Employee ID', account['employeeId'] ?? '-'),
-                  _buildDetailRow('Email', account['email'] ?? '-'),
-                  _buildDetailRow('Phone', account['phone'] ?? '-'),
-                  _buildDetailRow('Position', account['position'] ?? '-'),
-                  _buildDetailRow('Department', account['department'] ?? '-'),
-                  _buildDetailRow(
-                    'Company',
-                    account['company']?['name'] ?? '-',
-                  ),
-                  _buildDetailRow('Status', account['status'] ?? '-'),
-                  _buildDetailRow(
-                    'Date of Birth',
-                    _formatDate(account['dateOfBirth']),
-                  ),
-                  _buildDetailRow('Address', account['address'] ?? '-'),
-                  _buildDetailRow(
-                    'Join Date',
-                    _formatDate(account['joinDate'] ?? account['joinedDate']),
-                  ),
-                  const SizedBox(height: 20),
-                  // Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close_rounded),
-                          label: const Text('Close'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: _textLight,
-                            side: BorderSide(
-                              color: _border.withOpacity(0.8),
-                              width: 1.5,
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(11),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _showResetPasswordDialog(account);
-                          },
-                          icon: const Icon(Icons.vpn_key_rounded, size: 17),
-                          label: const Text('Reset Password'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _orange,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(11),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _HRDetailPage(hrAccount: account, token: _token),
       ),
     );
   }
@@ -460,8 +309,12 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     final _emailController = TextEditingController(
       text: manager['email'] ?? '',
     );
+    final _passwordController = TextEditingController();
     final _phoneController = TextEditingController(
       text: manager['phone'] ?? '',
+    );
+    final _reportingToController = TextEditingController(
+      text: manager['reportingTo'] ?? '',
     );
     final _departmentController = TextEditingController(
       text: manager['department'] ?? '',
@@ -659,6 +512,13 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                     const SizedBox(height: 14),
                     _buildEditField('Email *', _emailController),
                     const SizedBox(height: 14),
+                    _buildEditField(
+                      'Password',
+                      _passwordController,
+                      obscure: true,
+                      helperText: 'Leave empty to keep current password',
+                    ),
+                    const SizedBox(height: 14),
                     _buildEditField('Phone *', _phoneController),
                     const SizedBox(height: 14),
                     if (_companies.isNotEmpty) ...[
@@ -703,6 +563,12 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                     ),
                     const SizedBox(height: 14),
                     _buildEditField('Address', _addressController, maxLines: 3),
+                    const SizedBox(height: 14),
+                    _buildEditField(
+                      'Reporting To (Optional)',
+                      _reportingToController,
+                      helperText: 'Manager or supervisor name',
+                    ),
                     const SizedBox(height: 28),
                     Row(
                       children: [
@@ -836,6 +702,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     final _passwordController = TextEditingController();
     final _emailController = TextEditingController();
     final _phoneController = TextEditingController();
+    final _reportingToController = TextEditingController();
     final _dobController = TextEditingController();
     final _addressController = TextEditingController();
     final _departmentController = TextEditingController();
@@ -1069,6 +936,12 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                           'Contact Information',
                           Icons.phone_rounded,
                           [
+                            // _buildEditField(
+                            //   'Reporting To (Optional)',
+                            //   _reportingToController,
+                            //   helperText: 'Manager or supervisor name',
+                            // ),
+                            SizedBox(height: _fieldSpacing),
                             _buildEditField(
                               'Phone *',
                               _phoneController,
@@ -1089,13 +962,11 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                           'Employment Details',
                           Icons.work_rounded,
                           [
-                            if (_companies.isNotEmpty) ...[
-                              _buildCompanyDropdown(
-                                selectedCompany,
-                                (v) => setDialogState(() => selectedCompany = v),
-                              ),
-                              SizedBox(height: _fieldSpacing),
-                            ],
+                            _buildCompanyDropdown(
+                              selectedCompany,
+                              (v) => setDialogState(() => selectedCompany = v),
+                            ),
+                            SizedBox(height: _fieldSpacing),
                             Row(
                               children: [
                                 Expanded(
@@ -1219,33 +1090,32 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                   };
 
                                   Navigator.pop(context);
-                                  await _showLoadingDialog('Creating HR Manager...');
 
+                                  // Create in background without loading dialog
                                   try {
                                     await HRAccountsService.createHRAccountWithPhoto(
                                       _token!,
                                       data,
                                       photoFile,
                                     );
+                                    
                                     if (mounted) {
-                                      Navigator.pop(context);
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
-                                          content: Text('HR Manager created successfully'),
+                                          content: Text('✅ HR Manager created successfully'),
                                           backgroundColor: _secondaryAccent,
+                                          duration: Duration(seconds: 2),
                                         ),
                                       );
                                       _loadHRAccounts();
                                     }
                                   } catch (e) {
                                     if (mounted) {
-                                      Navigator.pop(context);
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                          content: Text(
-                                            e.toString().replaceAll('Exception: ', ''),
-                                          ),
+                                          content: Text('❌ Error: ${e.toString().replaceAll('Exception: ', '')}'),
                                           backgroundColor: _red,
+                                          duration: const Duration(seconds: 3),
                                         ),
                                       );
                                     }
@@ -1309,108 +1179,108 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     );
   }
 
-  Future<void> _showDeleteConfirmDialog(Map<String, dynamic> account) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          decoration: BoxDecoration(
-            color: _section,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _border.withOpacity(0.5), width: 1),
-          ),
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: _red.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.delete_rounded,
-                    color: _red,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Delete Manager?',
-                  style: TextStyle(
-                    color: _textLight,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: TextStyle(color: _textGrey, fontSize: 13),
-                    children: [
-                      const TextSpan(text: 'Are you sure you want to delete '),
-                      TextSpan(
-                        text: account['name'] ?? 'this manager',
-                        style: const TextStyle(
-                          color: _textLight,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const TextSpan(text: '? This action cannot be undone.'),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: _border.withOpacity(0.8),
-                            width: 1.5,
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(11),
-                          ),
-                        ),
-                        child: const Text('Cancel'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _red,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(11),
-                          ),
-                        ),
-                        child: const Text('Delete'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  // Future<void> _showDeleteConfirmDialog(Map<String, dynamic> account) async {
+  //   final confirmed = await showDialog<bool>(
+  //     context: context,
+  //     builder: (context) => Dialog(
+  //       backgroundColor: Colors.transparent,
+  //       child: Container(
+  //         decoration: BoxDecoration(
+  //           color: _section,
+  //           borderRadius: BorderRadius.circular(16),
+  //           border: Border.all(color: _border.withOpacity(0.5), width: 1),
+  //         ),
+  //         constraints: const BoxConstraints(maxWidth: 420),
+  //         child: Padding(
+  //           padding: const EdgeInsets.all(24),
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             // children: [
+                // Container(
+                //   padding: const EdgeInsets.all(12),
+                //   decoration: BoxDecoration(
+                //     color: _red.withOpacity(0.15),
+                //     borderRadius: BorderRadius.circular(12),
+                //   ),
+                //   child: const Icon(
+                //     Icons.delete_rounded,
+                //     color: _red,
+                //     size: 24,
+                //   ),
+                // ),
+                // const SizedBox(height: 16),
+                // const Text(
+                //   'Delete Manager?',
+                //   style: TextStyle(
+                //     color: _textLight,
+                //     fontSize: 17,
+                //     fontWeight: FontWeight.bold,
+                //   ),
+                // ),
+                // const SizedBox(height: 10),
+                // RichText(
+                //   textAlign: TextAlign.center,
+                //   text: TextSpan(
+                //     style: TextStyle(color: _textGrey, fontSize: 13),
+                //     children: [
+                //       const TextSpan(text: 'Are you sure you want to delete '),
+                //       TextSpan(
+                //         text: account['name'] ?? 'this manager',
+                //         style: const TextStyle(
+                //           color: _textLight,
+                //           fontWeight: FontWeight.w600,
+                //         ),
+                //       ),
+                //       const TextSpan(text: '? This action cannot be undone.'),
+                //     ],
+                //   ),
+                // ),
+                // const SizedBox(height: 24),
+                // Row(
+                //   children: [
+                //     Expanded(
+                //       child: OutlinedButton(
+                //         onPressed: () => Navigator.pop(context, false),
+                //         style: OutlinedButton.styleFrom(
+                //           side: BorderSide(
+                //             color: _border.withOpacity(0.8),
+                //             width: 1.5,
+                //           ),
+                //           padding: const EdgeInsets.symmetric(vertical: 12),
+                //           shape: RoundedRectangleBorder(
+                //             borderRadius: BorderRadius.circular(11),
+                //           ),
+                //         ),
+                //         child: const Text('Cancel'),
+                //       ),
+                //     ),
+                //     const SizedBox(width: 12),
+                //     Expanded(
+                //       child: ElevatedButton(
+                //         onPressed: () => Navigator.pop(context, true),
+                //         style: ElevatedButton.styleFrom(
+                //           backgroundColor: _red,
+                //           foregroundColor: Colors.white,
+                //           padding: const EdgeInsets.symmetric(vertical: 12),
+                //           shape: RoundedRectangleBorder(
+                //             borderRadius: BorderRadius.circular(11),
+                //           ),
+                //         ),
+                //         child: const Text('Delete'),
+                //       ),
+                //     ),
+                //   ],
+                // ),
+              // ],
+            // ),
+          // ),
+        // ),
+      // ),
+    // );
 
-    if (confirmed != true) return;
-    _deleteManager(account['_id'], account['name']);
-  }
+  //   if (confirmed != true) return;
+  //   _deleteManager(account['_id'], account['name']);
+  // }
 
   Future<void> _deleteManager(String managerId, String managerName) async {
     if (_token == null) return;
@@ -1539,51 +1409,172 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   }
 
   Widget _buildCompanyDropdown(String value, Function(String) onChanged) {
+    final selectedCompany = _companies.firstWhere(
+      (c) => c['_id']?.toString() == value,
+      orElse: () => {},
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Company',
-          style: TextStyle(
-            color: _textLight,
-            fontSize: _labelFontSize,
-            fontWeight: FontWeight.w600,
-          ),
+      children: [ 
+        Row(
+          children: [
+            Icon(Icons.apartment_rounded, size: 18, color: _primaryAccent),
+            const SizedBox(width: 6),
+            Text(
+              'Company',
+              style: TextStyle(
+                color: _textLight,
+                fontSize: _labelFontSize,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: _input,
-            borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: _border.withOpacity(0.6), width: 1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _border.withOpacity(0.5),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value.isNotEmpty &&
-                      _companies.any((c) =>
-                          (c['_id'] ?? c['id']).toString() == value)
+                      _companies.any((c) => c['_id']?.toString() == value)
                   ? value
                   : null,
-              hint: Text('Select company',
-                  style: TextStyle(color: _textGrey, fontSize: 13)),
+              hint: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.business_rounded,
+                        size: 16, color: _textGrey.withOpacity(0.6)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Select Company',
+                      style: TextStyle(
+                        color: _textGrey.withOpacity(0.7),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               isExpanded: true,
               dropdownColor: _section,
-              iconEnabledColor: _textGrey,
-              style: const TextStyle(color: _textLight, fontSize: 14),
-              items: _companies.map<DropdownMenuItem<String>>((c) {
-                final id = (c['_id'] ?? c['id']).toString();
-                final name = c['name']?.toString() ?? id;
-                return DropdownMenuItem<String>(
-                  value: id,
-                  child: Text(name,
-                      style: const TextStyle(color: _textLight, fontSize: 14)),
-                );
-              }).toList(),
-              onChanged: (v) => onChanged(v ?? ''),
+              icon: Icon(Icons.keyboard_arrow_down_rounded,
+                  color: _primaryAccent.withOpacity(0.7)),
+              iconSize: 22,
+              underline: const SizedBox.shrink(),
+              style: TextStyle(
+                color: _textLight,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              items: _companies.isEmpty
+                  ? [
+                      DropdownMenuItem<String>(
+                        enabled: false,
+                        value: '',
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            'No companies available',
+                            style: TextStyle(color: _textGrey, fontSize: 13),
+                          ),
+                        ),
+                      ),
+                    ]
+                  : _companies.map<DropdownMenuItem<String>>((c) {
+                      final id = c['_id']?.toString() ?? '';
+                      final name = c['name']?.toString() ?? 'Unknown';
+                      final isSelected = value == id;
+
+                      return DropdownMenuItem<String>(
+                        value: id,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          color: isSelected
+                              ? _primaryAccent.withOpacity(0.1)
+                              : Colors.transparent,
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: _primaryAccent.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.apartment_rounded,
+                                  size: 14,
+                                  color: _primaryAccent,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: TextStyle(
+                                        color: _textLight,
+                                        fontSize: 14,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isSelected)
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 16,
+                                  color: _primaryAccent,
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+              onChanged: _companies.isEmpty ? null : (v) => onChanged(v ?? ''),
             ),
           ),
         ),
+        if (selectedCompany.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle_rounded,
+                    size: 14, color: _secondaryAccent),
+                const SizedBox(width: 6),
+                Text(
+                  '${selectedCompany['name']} selected',
+                  style: TextStyle(
+                    color: _secondaryAccent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -2364,13 +2355,13 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                   () => _showEditManagerDialog(account),
                   'Edit',
                 ),
-                const SizedBox(width: 4),
-                _buildActionBtn(
-                  Icons.delete_rounded,
-                  _red,
-                  () => _showDeleteConfirmDialog(account),
-                  'Delete',
-                ),
+                // const SizedBox(width: 4),
+                // _buildActionBtn(
+                //   Icons.delete_rounded,
+                //   _red,
+                //   () => _showDeleteConfirmDialog(account),
+                //   'Delete',
+                // ),
               ],
             ),
           ),
@@ -2550,6 +2541,838 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── HR Detail Page ─────────────────────────────────────────────────────
+
+class _HRDetailPage extends StatefulWidget {
+  final Map<String, dynamic> hrAccount;
+  final String? token;
+
+  const _HRDetailPage({required this.hrAccount, required this.token});
+
+  @override
+  State<_HRDetailPage> createState() => _HRDetailPageState();
+}
+
+class _HRDetailPageState extends State<_HRDetailPage>
+    with SingleTickerProviderStateMixin {
+  // Use AppTheme for consistency
+  static const Color _bg = AppTheme.background;
+  static const Color _card = AppTheme.cardColor;
+  static const Color _input = AppTheme.surface;
+  static const Color _border = AppTheme.outline;
+  static const Color _pink = AppTheme.primaryColor;
+  static const Color _green = AppTheme.successColor;
+  static const Color _yellow = AppTheme.warningColor;
+  static const Color _red = AppTheme.errorColor;
+  static const Color _blue = AppTheme.primaryColor;
+  static const Color _textGrey = Color(0xFF9E9E9E);
+  static const Color _textLight = AppTheme.onSurface;
+
+  late final TabController _tabController;
+
+  bool _loadingEmployees = false;
+  bool _employeesLoaded = false;
+  List<dynamic> _employees = [];
+  String? _employeesError;
+
+  bool _loadingTasks = false;
+  bool _tasksLoaded = false;
+  List<dynamic> _tasks = [];
+  String? _tasksError;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) return;
+    if (_tabController.index == 1 && !_employeesLoaded) _loadEmployees();
+    if (_tabController.index == 2 && !_tasksLoaded) _loadTasks();
+  }
+
+  String get _hrId =>
+      widget.hrAccount['_id']?.toString() ??
+      widget.hrAccount['id']?.toString() ??
+      '';
+
+  Future<void> _loadEmployees() async {
+    if (widget.token == null || _hrId.isEmpty) return;
+    setState(() {
+      _loadingEmployees = true;
+      _employeesError = null;
+    });
+    try {
+      // Simulated employee loading - in real app, fetch from service
+      setState(() {
+        _employees = [];
+        _loadingEmployees = false;
+        _employeesLoaded = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _employeesError = e.toString().replaceAll('Exception: ', '');
+          _loadingEmployees = false;
+          _employeesLoaded = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadTasks() async {
+    if (widget.token == null || _hrId.isEmpty) return;
+    setState(() {
+      _loadingTasks = true;
+      _tasksError = null;
+    });
+    try {
+      // Simulated task loading - in real app, fetch from service
+      setState(() {
+        _tasks = [];
+        _loadingTasks = false;
+        _tasksLoaded = true;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _tasksError = e.toString().replaceAll('Exception: ', '');
+          _loadingTasks = false;
+          _tasksLoaded = true;
+        });
+      }
+    }
+  }
+
+  String _formatDate(dynamic d) {
+    if (d == null) return '-';
+    try {
+      return DateFormat('d MMM yyyy').format(DateTime.parse(d.toString()));
+    } catch (_) {
+      return '-';
+    }
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts[0].substring(0, 1).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  Color _avatarColor(String name) {
+    const colors = [
+      Color(0xFFAF52DE),
+      Color(0xFF007AFF),
+      Color(0xFF34C759),
+      Color(0xFFFF9500),
+      Color(0xFFFF3B30),
+      Color(0xFF5AC8FA),
+    ];
+    if (name.isEmpty) return colors[0];
+    return colors[name.codeUnitAt(0) % colors.length];
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return _green;
+      case 'inactive':
+        return _red;
+      default:
+        return _textGrey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = widget.hrAccount['name']?.toString() ?? 'Unknown';
+    final empId = widget.hrAccount['employeeId']?.toString() ?? '';
+    final status = widget.hrAccount['status']?.toString() ?? 'active';
+    final position = widget.hrAccount['position']?.toString() ?? 'HR Manager';
+    final dept = widget.hrAccount['department']?.toString() ?? '-';
+    final companyName = (widget.hrAccount['company'] is Map)
+        ? (widget.hrAccount['company']['name']?.toString() ?? 'N/A')
+        : 'N/A';
+
+    final responsive = ResponsiveUtils(context);
+    final isMobile = responsive.isMobile;
+
+    return Scaffold(
+      backgroundColor: _bg,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverAppBar(
+            backgroundColor: _card,
+            expandedHeight: isMobile ? 180 : 220,
+            pinned: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(color: _card),
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    isMobile ? 16 : 24,
+                    isMobile ? 70 : 80,
+                    isMobile ? 16 : 24,
+                    0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: isMobile ? 25 : 30,
+                            backgroundColor: _avatarColor(name),
+                            child: Text(
+                              _initials(name),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: isMobile ? 16 : 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: isMobile ? 12 : 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  name,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isMobile ? 16 : 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (empId.isNotEmpty) ...[
+                                  SizedBox(height: isMobile ? 2 : 4),
+                                  Text(
+                                    empId,
+                                    style: TextStyle(
+                                      color: _textGrey,
+                                      fontSize: isMobile ? 11 : 13,
+                                    ),
+                                  ),
+                                ],
+                                SizedBox(height: isMobile ? 4 : 6),
+                                Row(
+                                  children: [
+                                    _infoChip(
+                                      Icons.work_outline_rounded,
+                                      position,
+                                    ),
+                                    SizedBox(width: isMobile ? 6 : 8),
+                                    _statusChip(status),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: isMobile ? 8 : 12),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.business_rounded,
+                            color: _textGrey,
+                            size: 13,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            companyName,
+                            style: const TextStyle(
+                              color: _textGrey,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (dept != '-') ...[
+                            SizedBox(width: isMobile ? 8 : 12),
+                            const Icon(
+                              Icons.workspaces_rounded,
+                              color: _textGrey,
+                              size: 13,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              dept,
+                              style: const TextStyle(
+                                color: _textGrey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: _pink,
+              indicatorWeight: 3,
+              labelColor: _pink,
+              unselectedLabelColor: _textGrey,
+              labelStyle: TextStyle(
+                fontSize: isMobile ? 11 : 12,
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: [
+                Tab(
+                  icon: Icon(
+                    Icons.person_outline_rounded,
+                    size: isMobile ? 16 : 18,
+                  ),
+                  text: 'Overview',
+                ),
+                Tab(
+                  icon: Icon(
+                    Icons.people_outline_rounded,
+                    size: isMobile ? 16 : 18,
+                  ),
+                  text: 'Employees',
+                ),
+                Tab(
+                  icon: Icon(Icons.task_alt_rounded, size: isMobile ? 16 : 18),
+                  text: 'Tasks',
+                ),
+                Tab(
+                  icon: Icon(Icons.chat_rounded, size: isMobile ? 16 : 18),
+                  text: 'Chat',
+                ),
+              ],
+            ),
+          ),
+        ],
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildOverviewTab(),
+            _buildEmployeesTab(),
+            _buildTasksTab(),
+            _buildChatTab(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: _input,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _textGrey, size: 11),
+          const SizedBox(width: 4),
+          Text(label, style: const TextStyle(color: _textLight, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(String status) {
+    final c = _statusColor(status);
+    String label;
+    switch (status.toLowerCase()) {
+      case 'active':
+        label = 'Active';
+        break;
+      case 'inactive':
+        label = 'Inactive';
+        break;
+      default:
+        label = status;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: c,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewTab() {
+    final e = widget.hrAccount;
+    final email = e['email']?.toString() ?? '-';
+    final phone = e['phone']?.toString() ?? '-';
+    final address = e['address']?.toString() ?? '-';
+    final joinDate = _formatDate(e['joinDate'] ?? e['joinedDate']);
+    final dob = _formatDate(e['dateOfBirth'] ?? e['dob']);
+    final companyName = (e['company'] is Map)
+        ? (e['company']['name']?.toString() ?? 'N/A')
+        : 'N/A';
+    final dept = e['department']?.toString() ?? '-';
+    final position = e['position']?.toString() ?? '-';
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _sectionCard(
+          icon: Icons.person_rounded,
+          title: 'Personal Information',
+          color: _pink,
+          children: [
+            _infoRow(Icons.email_outlined, 'Email', email),
+            _infoRow(Icons.phone_outlined, 'Phone', phone),
+            _infoRow(Icons.cake_outlined, 'Date of Birth', dob),
+            _infoRow(Icons.location_on_outlined, 'Address', address),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _sectionCard(
+          icon: Icons.work_rounded,
+          title: 'Work Details',
+          color: _blue,
+          children: [
+            _infoRow(Icons.business_rounded, 'Company', companyName),
+            _infoRow(Icons.workspaces_rounded, 'Department', dept),
+            _infoRow(Icons.work_outline_rounded, 'Position', position),
+            _infoRow(Icons.badge_outlined, 'Role', 'HR MANAGER'),
+            _infoRow(Icons.calendar_today_rounded, 'Join Date', joinDate),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _sectionCard(
+          icon: Icons.lock_rounded,
+          title: 'Login Credentials',
+          color: _yellow,
+          children: [
+            _infoRow(Icons.email_outlined, 'Login Email', email),
+            _credentialRow(
+              icon: Icons.badge_outlined,
+              label: 'Employee ID',
+              value: e['employeeId']?.toString() ?? '-',
+            ),
+            const Divider(color: Color(0xFF2A2A2A), height: 20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _yellow.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _yellow.withOpacity(0.2)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: _yellow, size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Password is hidden for security. Use reset password to change it.',
+                      style: TextStyle(color: _yellow, fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildEmployeesTab() {
+    if (_loadingEmployees) {
+      return const Center(
+        child: CircularProgressIndicator(color: _pink, strokeWidth: 2),
+      );
+    }
+    if (_employeesError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded, color: _red, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              'Error loading employees',
+              style: const TextStyle(
+                color: _textLight,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _employeesError ?? '',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _textGrey, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_employees.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline_rounded, color: _textGrey, size: 48),
+            const SizedBox(height: 12),
+            const Text(
+              'No Employees Assigned',
+              style: TextStyle(
+                color: _textLight,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'This HR manager has no assigned employees yet.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _textGrey, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _employees.length,
+      itemBuilder: (context, index) {
+        final emp = _employees[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _border),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: _avatarColor(emp['name'] ?? ''),
+                child: Text(
+                  _initials(emp['name'] ?? ''),
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      emp['name'] ?? 'Unknown',
+                      style: const TextStyle(
+                        color: _textLight,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      emp['position'] ?? '-',
+                      style: const TextStyle(color: _textGrey, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTasksTab() {
+    if (_loadingTasks) {
+      return const Center(
+        child: CircularProgressIndicator(color: _pink, strokeWidth: 2),
+      );
+    }
+    if (_tasksError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded, color: _red, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              'Error loading tasks',
+              style: const TextStyle(
+                color: _textLight,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _tasksError ?? '',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _textGrey, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_tasks.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.task_outlined, color: _textGrey, size: 48),
+            const SizedBox(height: 12),
+            const Text(
+              'No Tasks',
+              style: TextStyle(
+                color: _textLight,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'This HR manager has no assigned tasks.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _textGrey, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _tasks.length,
+      itemBuilder: (context, index) {
+        final task = _tasks[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                task['title'] ?? 'Untitled',
+                style: const TextStyle(
+                  color: _textLight,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              if (task['description'] != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  task['description'],
+                  style: const TextStyle(color: _textGrey, fontSize: 12),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildChatTab() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.chat_outlined, color: _textGrey, size: 48),
+          const SizedBox(height: 12),
+          const Text(
+            'Chat Feature',
+            style: TextStyle(
+              color: _textLight,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Chat functionality coming soon',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _textGrey, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionCard({
+    required IconData icon,
+    required String title,
+    required Color color,
+    required List<Widget> children,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.08),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              border: Border(bottom: BorderSide(color: _border)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 16),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: children),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: _textGrey, size: 15),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _textGrey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _credentialRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Icon(icon, color: _textGrey, size: 15),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _textGrey,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _input,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _border),
+              ),
+              child: Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

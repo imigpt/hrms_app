@@ -33,6 +33,7 @@ dependencies:
   open_file: ^3.3.2
   fl_chart: ^0.69.0
   dio: ^5.4.0
+  excel: ^2.1.0
 
 dev_dependencies:
   flutter_test:

@@ -1574,17 +1574,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             SizedBox(height: verticalSpacing),
                           ] else ...[
                             // Mobile welcome
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                "Welcome back, ${widget.user?.name ?? 'Admin'}",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[500],
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: verticalSpacing),
+                            // Padding(
+                              // padding: const EdgeInsets.only(bottom: 4),
+                              // child: Text(
+                              //   "Welcome back, ${widget.user?.name ?? 'Admin'}",
+                              //   style: TextStyle(
+                              //     fontSize: 14,
+                              //     color: Colors.grey[500],
+                              //   ),
+                              // ),
+                            // ),
+                            // SizedBox(height: verticalSpacing),
                           ],
 
                           // ── System Overview ──

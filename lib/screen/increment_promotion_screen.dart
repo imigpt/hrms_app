@@ -39,6 +39,8 @@ class _IncrementPromotionScreenState extends State<IncrementPromotionScreen> {
   final _effectiveDateCtrl = TextEditingController();
   final _reasonCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _IncrementPromotionScreenState extends State<IncrementPromotionScreen> {
     _effectiveDateCtrl.dispose();
     _reasonCtrl.dispose();
     _descriptionCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -124,10 +127,30 @@ class _IncrementPromotionScreenState extends State<IncrementPromotionScreen> {
   }
 
   List<IncrementPromotion> _getFilteredIncrements() {
-    if (_selectedFilter == 'all') return _increments;
-    return _increments
-        .where((ip) => ip.type.toLowerCase() == _selectedFilter.toLowerCase())
-        .toList();
+    var filtered = _increments;
+    
+    if (_selectedFilter != 'all') {
+      filtered = filtered
+          .where((ip) => ip.type.toLowerCase() == _selectedFilter.toLowerCase())
+          .toList();
+    }
+    
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((ip) {
+        final employeeName = ip.user?.name?.toLowerCase() ?? '';
+        final currentDesignation = ip.currentDesignation.toLowerCase();
+        final newDesignation = ip.newDesignation?.toLowerCase() ?? '';
+        final typeFormatted = _formatType(ip.type).toLowerCase();
+        
+        return employeeName.contains(query) ||
+            currentDesignation.contains(query) ||
+            newDesignation.contains(query) ||
+            typeFormatted.contains(query);
+      }).toList();
+    }
+    
+    return filtered;
   }
 
   String _formatType(String type) {
@@ -384,6 +407,60 @@ class _IncrementPromotionScreenState extends State<IncrementPromotionScreen> {
                                   ),
                                 ),
                             ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Search Bar
+                          TextField(
+                            controller: _searchCtrl,
+                            onChanged: (value) {
+                              setState(() => _searchQuery = value);
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Search by employee, designation, type...',
+                              hintStyle: TextStyle(color: Colors.grey[600]),
+                              prefixIcon: const Icon(
+                                Icons.search_rounded,
+                                color: Color(0xFFFF8FA3),
+                              ),
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear_rounded),
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        setState(() => _searchQuery = '');
+                                      },
+                                    )
+                                  : null,
+                              filled: true,
+                              fillColor: const Color(0xFF1A1A1A),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey[800]!,
+                                  width: 1,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey[800]!,
+                                  width: 1,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFFFF8FA3),
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            style: const TextStyle(color: Colors.white),
                           ),
                           const SizedBox(height: 20),
 
@@ -861,243 +938,448 @@ class _IncrementPromotionScreenState extends State<IncrementPromotionScreen> {
   }
 
   void _showFormDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (_) => Dialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _isEditMode ? 'Edit Record' : 'Add Increment / Promotion',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (context) {
+        final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.96,
+          expand: false,
+          builder: (_, scrollController) => Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF0A0A0A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // Drag handle
+                Padding(
+                  padding: const EdgeInsets.only(top: 12, bottom: 4),
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(height: 20),
-
-                  // Employee dropdown
-                  DropdownButtonFormField<String>(
-                    value: _selectedUserId,
-                    onChanged: (value) =>
-                        setState(() => _selectedUserId = value),
-                    decoration: InputDecoration(
-                      labelText: 'Employee *',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                ),
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF8FA3).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          _isEditMode
+                              ? Icons.edit_rounded
+                              : Icons.trending_up_rounded,
+                          color: const Color(0xFFFF8FA3),
+                          size: 20,
+                        ),
                       ),
-                      filled: true,
-                      fillColor: const Color(0xFF0A0A0A),
-                    ),
-                    items: _employees
-                        .map(
-                          (e) => DropdownMenuItem(
-                            value: e.id,
-                            child: Text(e.name),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Type dropdown
-                  DropdownButtonFormField<String>(
-                    value: _selectedType,
-                    onChanged: (value) => setState(() => _selectedType = value),
-                    decoration: InputDecoration(
-                      labelText: 'Type *',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isEditMode
+                                  ? 'Edit Record'
+                                  : 'Add Increment / Promotion',
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _isEditMode
+                                  ? 'Update the record details below'
+                                  : 'Fill in the details to create a new record',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      filled: true,
-                      fillColor: const Color(0xFF0A0A0A),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'increment',
-                        child: Text('Increment'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'promotion',
-                        child: Text('Promotion'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'increment-promotion',
-                        child: Text('Increment/Promotion'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'decrement',
-                        child: Text('Decrement'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'decrement-demotion',
-                        child: Text('Decrement/Demotion'),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _resetForm();
+                        },
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-
-                  // Current Designation
-                  TextFormField(
-                    controller: _currentDesignationCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Current Designation *',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                ),
+                Divider(color: Colors.grey[900], height: 24),
+                // Form content
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + bottomInset),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Section: Employee & Type
+                          _sectionLabel('Basic Info'),
+                          _buildFormField(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedUserId,
+                              dropdownColor: const Color(0xFF1A1A1A),
+                              onChanged: (value) =>
+                                  setState(() => _selectedUserId = value),
+                              decoration: _inputDecoration(
+                                'Employee *',
+                                prefixIcon: Icons.person_rounded,
+                              ),
+                              items: _employees
+                                  .map(
+                                    (e) => DropdownMenuItem(
+                                      value: e.id,
+                                      child: Text(e.name),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ),
+                          _buildFormField(
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedType,
+                              dropdownColor: const Color(0xFF1A1A1A),
+                              onChanged: (value) =>
+                                  setState(() => _selectedType = value),
+                              decoration: _inputDecoration(
+                                'Type *',
+                                prefixIcon: Icons.category_rounded,
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'increment',
+                                  child: Text('Increment'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'promotion',
+                                  child: Text('Promotion'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'increment-promotion',
+                                  child: Text('Increment / Promotion'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'decrement',
+                                  child: Text('Decrement'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'decrement-demotion',
+                                  child: Text('Decrement / Demotion'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Section: Designation
+                          _sectionLabel('Designation'),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildFormField(
+                                  child: TextFormField(
+                                    controller: _currentDesignationCtrl,
+                                    decoration: _inputDecoration(
+                                      'Current *',
+                                      prefixIcon: Icons.work_rounded,
+                                    ),
+                                    validator: (v) =>
+                                        v?.isEmpty ?? true ? 'Required' : null,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildFormField(
+                                  child: TextFormField(
+                                    controller: _newDesignationCtrl,
+                                    decoration: _inputDecoration(
+                                      'New',
+                                      prefixIcon: Icons.work_outline_rounded,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Section: Salary
+                          _sectionLabel('Salary (Annual CTC)'),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildFormField(
+                                  child: TextFormField(
+                                    controller: _prevCTCCtrl,
+                                    keyboardType: TextInputType.number,
+                                    decoration: _inputDecoration(
+                                      'Previous ₹',
+                                      prefixIcon: Icons.currency_rupee_rounded,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildFormField(
+                                  child: TextFormField(
+                                    controller: _newCTCCtrl,
+                                    keyboardType: TextInputType.number,
+                                    decoration: _inputDecoration(
+                                      'New ₹',
+                                      prefixIcon: Icons.trending_up_rounded,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Section: Date
+                          _sectionLabel('Schedule'),
+                          _buildFormField(
+                            child: TextFormField(
+                              controller: _effectiveDateCtrl,
+                              readOnly: true,
+                              onTap: () async {
+                                final date = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now(),
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime.now()
+                                      .add(const Duration(days: 365)),
+                                );
+                                if (date != null) {
+                                  _effectiveDateCtrl.text =
+                                      DateFormat('yyyy-MM-dd').format(date);
+                                }
+                              },
+                              decoration: _inputDecoration(
+                                'Effective Date *',
+                                prefixIcon: Icons.calendar_month_rounded,
+                              ),
+                              validator: (v) =>
+                                  v?.isEmpty ?? true ? 'Required' : null,
+                            ),
+                          ),
+                          // Section: Notes
+                          _sectionLabel('Notes'),
+                          _buildFormField(
+                            child: TextFormField(
+                              controller: _reasonCtrl,
+                              maxLines: 2,
+                              decoration: _inputDecoration(
+                                'Reason',
+                                prefixIcon: Icons.description_rounded,
+                              ),
+                            ),
+                          ),
+                          _buildFormField(
+                            child: TextFormField(
+                              controller: _descriptionCtrl,
+                              maxLines: 2,
+                              decoration: _inputDecoration(
+                                'Description',
+                                prefixIcon: Icons.note_rounded,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      filled: true,
-                      fillColor: const Color(0xFF0A0A0A),
-                    ),
-                    validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // New Designation
-                  TextFormField(
-                    controller: _newDesignationCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'New Designation',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF0A0A0A),
                     ),
                   ),
-                  const SizedBox(height: 12),
-
-                  // Previous CTC
-                  TextFormField(
-                    controller: _prevCTCCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Previous Annual CTC (₹)',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF0A0A0A),
+                ),
+                // Footer actions
+                Container(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    12,
+                    20,
+                    12 + MediaQuery.of(context).padding.bottom,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0D0D0D),
+                    border: Border(
+                      top: BorderSide(color: Colors.grey[900]!, width: 1),
                     ),
                   ),
-                  const SizedBox(height: 12),
-
-                  // New CTC
-                  TextFormField(
-                    controller: _newCTCCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'New Annual CTC (₹)',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF0A0A0A),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Effective Date
-                  TextFormField(
-                    controller: _effectiveDateCtrl,
-                    readOnly: true,
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-                      if (date != null) {
-                        _effectiveDateCtrl.text = DateFormat(
-                          'yyyy-MM-dd',
-                        ).format(date);
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'Effective Date *',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF0A0A0A),
-                      suffixIcon: const Icon(Icons.calendar_today),
-                    ),
-                    validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Reason
-                  TextFormField(
-                    controller: _reasonCtrl,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Reason',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF0A0A0A),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Description
-                  TextFormField(
-                    controller: _descriptionCtrl,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Description',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF0A0A0A),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Submit button
-                  Row(
+                  child: Row(
                     children: [
                       Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _resetForm();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey[400],
+                            side: BorderSide(color: Colors.grey[800]!),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton(
+                        flex: 2,
+                        child: ElevatedButton.icon(
                           onPressed: _isSubmitting ? null : _handleSubmit,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF8FA3),
                             foregroundColor: Colors.black,
+                            disabledBackgroundColor:
+                                const Color(0xFFFF8FA3).withOpacity(0.5),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
                           ),
-                          child: _isSubmitting
+                          icon: _isSubmitting
                               ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
+                                  width: 16,
+                                  height: 16,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.black,
+                                    ),
                                   ),
                                 )
-                              : Text(_isEditMode ? 'Update' : 'Create'),
+                              : Icon(
+                                  _isEditMode
+                                      ? Icons.check_rounded
+                                      : Icons.add_rounded,
+                                  size: 18,
+                                ),
+                          label: Text(
+                            _isEditMode ? 'Update Record' : 'Create Record',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _sectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Divider(color: Colors.grey[900], height: 1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormField({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: child,
+    );
+  }
+
+  InputDecoration _inputDecoration(
+    String label, {
+    String? hint,
+    IconData? prefixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+      labelStyle: TextStyle(
+        color: Colors.grey[500],
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      prefixIcon: prefixIcon != null
+          ? Icon(
+              prefixIcon,
+              color: Colors.grey[700],
+              size: 20,
+            )
+          : null,
+      filled: true,
+      fillColor: const Color(0xFF1A1A1A),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(
+          color: Colors.grey[800]!,
+          width: 1,
         ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(
+          color: Colors.grey[800]!,
+          width: 1,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(
+          color: Color(0xFFFF8FA3),
+          width: 2,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
       ),
     );
   }

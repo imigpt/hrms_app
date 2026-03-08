@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'dart:io';
 import '../models/attendance_records_model.dart';
 import '../services/attendance_service.dart';
 import '../theme/app_theme.dart';
@@ -36,7 +40,6 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   // Filters
   String _searchQuery = '';
   String _statusFilter = 'all';
-  String _userFilter = 'all'; // future: per-user filtering
 
   // Stats
   int _presentCount = 0;
@@ -190,6 +193,205 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     );
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _exportToExcel() async {
+    try {
+      // Show loading dialog
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: _primary),
+              const SizedBox(height: 16),
+              const Text(
+                'Generating Excel file...',
+                style: TextStyle(color: _textLight, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      print('📊 Starting Excel export with ${_filteredRecords.length} records...');
+
+      // Create Excel workbook
+      var excel = Excel.createExcel();
+      excel.delete('Sheet1'); // Remove default sheet
+      var sheet = excel['Attendance Records'];
+
+      // Add header row
+      List<String> headers = [
+        'Employee ID',
+        'Employee Name',
+        'Department',
+        'Date',
+        'Check In Time',
+        'Check Out Time',
+        'Work Hours',
+        'Status',
+      ];
+
+      for (int i = 0; i < headers.length; i++) {
+        sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+          ..value = headers[i]
+          ..cellStyle = CellStyle(
+            backgroundColorHex: '#FF8FA3',
+            fontColorHex: '#FFFFFF',
+            bold: true,
+            horizontalAlign: HorizontalAlign.Center,
+          );
+      }
+
+      print('✓ Headers added');
+
+      // Add data rows
+      for (int i = 0; i < _filteredRecords.length; i++) {
+        final record = _filteredRecords[i];
+        final rowData = [
+          record.user.employeeId.toString(),
+          record.user.name,
+          record.user.department,
+          _formatDate(record.date),
+          _formatTime(record.checkIn.time),
+          _formatTime(record.checkOut?.time),
+          _formatWorkHours(record.workHours),
+          _statusLabel(record.status),
+        ];
+
+        for (int j = 0; j < rowData.length; j++) {
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i + 1))
+            ..value = rowData[j]
+            ..cellStyle = CellStyle(
+              horizontalAlign: HorizontalAlign.Center,
+              verticalAlign: VerticalAlign.Center,
+            );
+        }
+      }
+
+      print('✓ ${_filteredRecords.length} data rows added');
+
+      // Set column widths
+      sheet.setColWidth(0, 15);
+      sheet.setColWidth(1, 20);
+      sheet.setColWidth(2, 18);
+      sheet.setColWidth(3, 16);
+      sheet.setColWidth(4, 16);
+      sheet.setColWidth(5, 16);
+      sheet.setColWidth(6, 14);
+      sheet.setColWidth(7, 14);
+
+      // Get save directory with proper fallbacks for mobile
+      Directory? saveDir;
+      
+      if (Platform.isAndroid) {
+        print('📱 Platform: Android');
+        // Try Downloads first, fallback to Documents
+        saveDir = await getDownloadsDirectory();
+        if (saveDir == null) {
+          saveDir = await getApplicationDocumentsDirectory();
+          print('⚠️ Using Documents folder instead of Downloads');
+        }
+      } else if (Platform.isIOS) {
+        print('📱 Platform: iOS');
+        // iOS: Use Documents directory
+        saveDir = await getApplicationDocumentsDirectory();
+      } else {
+        print('🖥️ Platform: Desktop/Web');
+        // Web/Desktop: Use Downloads
+        saveDir = await getDownloadsDirectory();
+      }
+
+      if (saveDir == null) {
+        throw Exception('Could not access storage directory');
+      }
+
+      print('📁 Save directory: ${saveDir.path}');
+
+      // Create Attendance folder
+      final attendanceDir = Directory('${saveDir.path}/HRMS/Attendance');
+      try {
+        if (!await attendanceDir.exists()) {
+          await attendanceDir.create(recursive: true);
+          print('✓ Directory created: ${attendanceDir.path}');
+        }
+      } catch (e) {
+        print('❌ Error creating directory: $e');
+        throw Exception('Failed to create directory: $e');
+      }
+
+      final fileName =
+          'Attendance_${DateFormat('yyyy_MM_dd_HHmmss').format(DateTime.now())}.xlsx';
+      final filePath = '${attendanceDir.path}/$fileName';
+
+      print('💾 Encoding Excel file...');
+
+      // Encode and save
+      List<int>? fileBytes = excel.encode();
+      if (fileBytes != null) {
+        print('✓ File encoded, size: ${fileBytes.length} bytes');
+        
+        try {
+          final file = File(filePath);
+          await file.writeAsBytes(fileBytes);
+          
+          print('✓ File saved successfully!');
+          print('📄 File path: $filePath');
+          print('✓ Records exported: ${_filteredRecords.length}');
+
+          if (!mounted) return;
+          Navigator.of(context).pop(); // Close loading dialog
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '✓ File Downloaded!\n$fileName\n${_filteredRecords.length} records',
+              ),
+              backgroundColor: _green,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Open',
+                textColor: Colors.white,
+                onPressed: () {
+                  print('Opening file: $filePath');
+                  OpenFile.open(filePath);
+                },
+              ),
+            ),
+          );
+
+          // Auto-open the file after a short delay
+          Future.delayed(const Duration(milliseconds: 500), () {
+            print('Auto-opening file...');
+            OpenFile.open(filePath);
+          });
+        } catch (writeError) {
+          print('❌ Error writing file: $writeError');
+          throw Exception('Failed to write file: $writeError');
+        }
+      } else {
+        throw Exception('Failed to generate Excel file');
+      }
+    } catch (e) {
+      print('❌ Export error: $e');
+      if (!mounted) return;
+      try {
+        Navigator.of(context).pop(); // Close loading dialog
+      } catch (_) {}
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error: ${e.toString()}'),
+          backgroundColor: _red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
@@ -554,12 +756,14 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   // ── Export Button ─────────────────────────────────────────────────────────────
   Widget _buildExportButton() {
     return GestureDetector(
-      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Export feature coming soon'),
-          duration: Duration(seconds: 2),
-        ),
-      ),
+      onTap: _filteredRecords.isEmpty
+          ? () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No records to export'),
+                  duration: Duration(seconds: 2),
+                ),
+              )
+          : _exportToExcel,
       child: Container(
         height: 42,
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -719,8 +923,8 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
               width: 100,
               child: Text(
                 _formatTime(r.checkIn.time),
-                style: TextStyle(
-                  color: r.checkIn.time != null ? _textLight : _textGrey,
+                style: const TextStyle(
+                  color: _textLight,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -797,9 +1001,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             // Check In Location
             SizedBox(
               width: 150,
-              child: checkInLat != null
+              child: checkInLat != null && checkInLng != null
                   ? GestureDetector(
-                      onTap: () => _openMaps(checkInLat, checkInLng!),
+                      onTap: () => _openMaps(checkInLat, checkInLng),
                       child: Row(
                         children: [
                           Icon(
@@ -809,7 +1013,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${checkInLat.toStringAsFixed(4)},\n${checkInLng!.toStringAsFixed(4)}',
+                            '${checkInLat.toStringAsFixed(4)},\n${checkInLng.toStringAsFixed(4)}',
                             style: TextStyle(
                               color: _primary,
                               fontSize: 11,
@@ -838,9 +1042,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             // Check Out Location
             SizedBox(
               width: 150,
-              child: checkOutLat != null
+              child: checkOutLat != null && checkOutLng != null
                   ? GestureDetector(
-                      onTap: () => _openMaps(checkOutLat, checkOutLng!),
+                      onTap: () => _openMaps(checkOutLat, checkOutLng),
                       child: Row(
                         children: [
                           Icon(
@@ -850,7 +1054,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${checkOutLat.toStringAsFixed(4)},\n${checkOutLng!.toStringAsFixed(4)}',
+                            '${checkOutLat.toStringAsFixed(4)},\n${checkOutLng.toStringAsFixed(4)}',
                             style: TextStyle(
                               color: _primary,
                               fontSize: 11,

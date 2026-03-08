@@ -1513,34 +1513,34 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 ),
 
           // Legend
-          const SizedBox(height: 16),
-          const Divider(color: Colors.white10, height: 1),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildLegendItem(
-                Icons.check_circle_outline,
-                const Color.fromARGB(255, 233, 241, 233),
-                'Present',
-              ),
-              _buildLegendItem(Icons.close, const Color(0xFFE57373), 'Absent'),
-              _buildLegendItem(Icons.access_time, Colors.orangeAccent, 'Late'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildLegendItem(Icons.timelapse, Colors.amberAccent, 'Half Day'),
-              _buildLegendItem(
-                Icons.event_busy_outlined,
-                const Color(0xFFCE93D8),
-                'Leave',
-              ),
-              const SizedBox(width: 60), // spacer for alignment
-            ],
-          ),
+          // const SizedBox(height: 16),
+          // const Divider(color: Colors.white10, height: 1),
+          // const SizedBox(height: 12),
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.spaceAround,
+          //   children: [
+          //     _buildLegendItem(
+          //       Icons.check_circle_outline,
+          //       const Color.fromARGB(255, 233, 241, 233),
+          //       'Present',
+          //     ),
+          //     _buildLegendItem(Icons.close, const Color(0xFFE57373), 'Absent'),
+          //     _buildLegendItem(Icons.access_time, Colors.orangeAccent, 'Late'),
+          //   ],
+          // ),
+          // const SizedBox(height: 8),
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.spaceAround,
+          //   children: [
+          //     _buildLegendItem(Icons.timelapse, Colors.amberAccent, 'Half Day'),
+          //     _buildLegendItem(
+          //       Icons.event_busy_outlined,
+          //       const Color(0xFFCE93D8),
+          //       'Leave',
+          //     ),
+          //     const SizedBox(width: 60), // spacer for alignment
+          //   ],
+          // ),
         ],
       ),
     );

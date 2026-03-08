@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hrms_app/screen/announcements_screen.dart';
+import 'package:hrms_app/screen/attendance_screen.dart';
 import 'package:hrms_app/screen/auth_check_screen.dart';
 import 'package:hrms_app/screen/chat_screen.dart';
 import 'package:hrms_app/screen/expenses_screen.dart';
@@ -182,6 +183,17 @@ class _HrmsAppState extends State<HrmsApp> {
                 MaterialPageRoute(builder: (_) => PayrollScreen(role: role)),
               );
               break;
+            case 'attendance':
+            case 'attendance_checkin':
+            case 'attendance_checkout':
+            case 'attendance_correction':
+              debugPrint('→ Navigating to Attendance');
+              nav.push(
+                MaterialPageRoute(
+                  builder: (_) => const AttendanceScreen(),
+                ),
+              );
+              break;
             case 'approval':
             case 'approval_required':
             default:
@@ -193,6 +205,20 @@ class _HrmsAppState extends State<HrmsApp> {
               break;
           }
         };
+
+    // Consume any pending terminated-state notification that the retry loop
+    // could not deliver yet (navigator was not ready during app start).
+    final pendingType = NotificationService.pendingNotificationType;
+    final pendingRef  = NotificationService.pendingNotificationReferenceId;
+    if (pendingType != null) {
+      debugPrint('📲 Consuming pending terminated-state notification: type=$pendingType');
+      NotificationService.pendingNotificationType        = null;
+      NotificationService.pendingNotificationReferenceId = null;
+      // Small delay so the navigator has finished building the initial route.
+      Future.delayed(const Duration(milliseconds: 300), () {
+        NotificationService.onNotificationTap?.call(pendingType, pendingRef ?? '');
+      });
+    }
   }
 
   @override

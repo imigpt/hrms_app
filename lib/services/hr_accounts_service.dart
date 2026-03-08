@@ -257,7 +257,7 @@ class HRAccountsService {
         await http.MultipartFile.fromPath('profilePhoto', photo.path),
       );
 
-      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final streamed = await request.send().timeout(const Duration(seconds: 45));
       final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -300,7 +300,7 @@ class HRAccountsService {
         await http.MultipartFile.fromPath('profilePhoto', photo.path),
       );
 
-      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final streamed = await request.send().timeout(const Duration(seconds: 45));
       final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 200) {

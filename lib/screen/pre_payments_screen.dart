@@ -37,6 +37,8 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
   final _bankNameCtrl = TextEditingController();
   final _deductMonthCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
+  final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
     _bankNameCtrl.dispose();
     _deductMonthCtrl.dispose();
     _descriptionCtrl.dispose();
+    _searchCtrl.dispose();
     super.dispose();
   }
 
@@ -125,6 +128,22 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
       if (_endDate != null &&
           p.createdAt!.isAfter(_endDate!.add(const Duration(days: 1)))) {
         return false;
+      }
+
+      // Filter by search query
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final employeeName = p.user?.name.toLowerCase() ?? '';
+        final amount = p.amount.toString();
+        final month = p.deductMonth?.toLowerCase() ?? '';
+        final bankName = p.bankDetails?.bankName?.toLowerCase() ?? '';
+        
+        if (!employeeName.contains(query) &&
+            !amount.contains(query) &&
+            !month.contains(query) &&
+            !bankName.contains(query)) {
+          return false;
+        }
       }
       return true;
     }).toList();
@@ -338,6 +357,60 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
                                   ),
                                 ),
                             ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Search Bar
+                          TextField(
+                            controller: _searchCtrl,
+                            onChanged: (value) {
+                              setState(() => _searchQuery = value);
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Search by employee, amount, month, bank...',
+                              hintStyle: TextStyle(color: Colors.grey[600]),
+                              prefixIcon: const Icon(
+                                Icons.search_rounded,
+                                color: Color(0xFFFF8FA3),
+                              ),
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear_rounded),
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        setState(() => _searchQuery = '');
+                                      },
+                                    )
+                                  : null,
+                              filled: true,
+                              fillColor: const Color(0xFF1A1A1A),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey[800]!,
+                                  width: 1,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey[800]!,
+                                  width: 1,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Color(0xFFFF8FA3),
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            style: const TextStyle(color: Colors.white),
                           ),
                           const SizedBox(height: 20),
 
@@ -812,155 +885,301 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
   void _showFormDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF0A0A0A),
-        title: Text(
-          _isEditMode ? 'Edit Pre-Payment' : 'Add Pre-Payment',
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        content: SingleChildScrollView(
+      barrierColor: Colors.black.withOpacity(0.7),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A0A0A),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.grey[900]!,
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Employee Dropdown (Admin only)
-              if (_userRole?.toLowerCase() == 'admin')
-                DropdownButtonFormField<String>(
-                  value: _selectedUserId,
-                  onChanged: (value) => setState(() => _selectedUserId = value),
-                  decoration: InputDecoration(
-                    labelText: 'Select Employee',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+              // Header
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.grey[900]!,
+                      width: 1,
                     ),
-                    filled: true,
-                    fillColor: const Color(0xFF1A1A1A),
                   ),
-                  items: _employees
-                      .map(
-                        (e) =>
-                            DropdownMenuItem(value: e.id, child: Text(e.name)),
-                      )
-                      .toList(),
-                )
-              else
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: TextFormField(
-                    readOnly: true,
-                    initialValue:
-                        (_employees
-                                .where((e) => e.id == _selectedUserId)
-                                .firstOrNull)
-                            ?.name ??
-                        'Unknown',
-                    decoration: InputDecoration(
-                      labelText: 'Employee',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isEditMode ? 'Edit Pre-Payment' : 'Add Pre-Payment',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _isEditMode
+                              ? 'Update payment details'
+                              : 'Create a new pre-payment record',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.grey,
                       ),
-                      filled: true,
-                      fillColor: const Color(0xFF1A1A1A),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _resetForm();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              // Content
+              SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Employee Dropdown (Admin only)
+                      if (_userRole?.toLowerCase() == 'admin')
+                        _buildFormField(
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedUserId,
+                            onChanged: (value) =>
+                                setState(() => _selectedUserId = value),
+                            decoration: _inputDecoration('Select Employee *'),
+                            items: _employees
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e.id,
+                                    child: Text(e.name),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        )
+                      else
+                        _buildFormField(
+                          child: TextFormField(
+                            readOnly: true,
+                            initialValue: (_employees
+                                    .where((e) => e.id == _selectedUserId)
+                                    .firstOrNull)
+                                ?.name ??
+                                'Unknown',
+                            decoration: _inputDecoration('Employee'),
+                          ),
+                        ),
+                      _buildFormField(
+                        child: TextFormField(
+                          controller: _amountCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: _inputDecoration(
+                            'Amount *',
+                            hint: 'Enter amount',
+                            prefixIcon: Icons.currency_rupee_rounded,
+                          ),
+                        ),
+                      ),
+                      _buildFormField(
+                        child: TextFormField(
+                          controller: _deductMonthCtrl,
+                          decoration: _inputDecoration(
+                            'Deduct Month *',
+                            hint: 'YYYY-MM',
+                            prefixIcon: Icons.calendar_month_rounded,
+                          ),
+                        ),
+                      ),
+                      _buildFormField(
+                        child: TextFormField(
+                          controller: _bankNameCtrl,
+                          decoration: _inputDecoration(
+                            'Bank Name',
+                            hint: 'Optional',
+                            prefixIcon: Icons.account_balance_rounded,
+                          ),
+                        ),
+                      ),
+                      _buildFormField(
+                        child: TextFormField(
+                          controller: _accountNumberCtrl,
+                          decoration: _inputDecoration(
+                            'Account Number',
+                            hint: 'Optional',
+                            prefixIcon: Icons.numbers_rounded,
+                          ),
+                        ),
+                      ),
+                      _buildFormField(
+                        child: TextFormField(
+                          controller: _descriptionCtrl,
+                          maxLines: 3,
+                          decoration: _inputDecoration(
+                            'Description',
+                            hint: 'Optional',
+                            prefixIcon: Icons.description_rounded,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Actions
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.grey[900]!,
+                      width: 1,
                     ),
                   ),
                 ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _amountCtrl,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Amount *',
-                  hintText: 'Enter amount',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF1A1A1A),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _deductMonthCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Deduct Month *',
-                  hintText: 'YYYY-MM',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF1A1A1A),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _bankNameCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Bank Name',
-                  hintText: 'Optional',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF1A1A1A),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _accountNumberCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Account Number',
-                  hintText: 'Optional',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF1A1A1A),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _descriptionCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'Optional',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF1A1A1A),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _resetForm();
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey[600],
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _isSubmitting
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              _handleSubmit();
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF8FA3),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      icon: _isSubmitting
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.black,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              _isEditMode
+                                  ? Icons.edit_rounded
+                                  : Icons.add_rounded,
+                            ),
+                      label: Text(
+                        _isEditMode ? 'Update' : 'Create',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _resetForm();
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: _isSubmitting
-                ? null
-                : () {
-                    Navigator.pop(context);
-                    _handleSubmit();
-                  },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF8FA3),
-              foregroundColor: Colors.black,
-            ),
-            child: _isSubmitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(_isEditMode ? 'Update' : 'Create'),
-          ),
-        ],
+      ),
+    );
+  }
+
+  Widget _buildFormField({required Widget child}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: child,
+    );
+  }
+
+  InputDecoration _inputDecoration(
+    String label, {
+    String? hint,
+    IconData? prefixIcon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+      labelStyle: TextStyle(
+        color: Colors.grey[500],
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+      prefixIcon: prefixIcon != null
+          ? Icon(
+              prefixIcon,
+              color: Colors.grey[700],
+              size: 20,
+            )
+          : null,
+      filled: true,
+      fillColor: const Color(0xFF1A1A1A),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(
+          color: Colors.grey[800]!,
+          width: 1,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(
+          color: Colors.grey[800]!,
+          width: 1,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(
+          color: Color(0xFFFF8FA3),
+          width: 2,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 14,
       ),
     );
   }

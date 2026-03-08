@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'api_notification_service.dart';
 
 // ─── Background message handler (must be top-level) ──────────────────────────
@@ -136,6 +137,11 @@ class NotificationService {
   /// Signature: (type, referenceId) where type matches the backend types
   /// (chat, leave, task_assigned, etc.) and referenceId is the entity ID.
   static void Function(String type, String referenceId)? onNotificationTap;
+
+  /// Holds the notification type/referenceId from a terminated-state tap.
+  /// Consumed by the app once the navigator and auth state are ready.
+  static String? pendingNotificationType;
+  static String? pendingNotificationReferenceId;
 
   factory NotificationService() {
     return _instance;
@@ -508,7 +514,14 @@ class NotificationService {
       if (token != null && token.isNotEmpty) {
         final device = Platform.isIOS ? 'ios' : 'android';
         debugPrint('🔑 Got FCM token (${token.length} chars) for device: $device');
-        
+
+        // Deduplication guard: only send to backend if token changed
+        final prefs = await SharedPreferences.getInstance();
+        final lastSentToken = prefs.getString('last_sent_fcm_token');
+        if (lastSentToken == token) {
+          debugPrint('⏭️ FCM token unchanged, skipping backend registration');
+          // Still set up onTokenRefresh listener below
+        } else {
         // Register token with retry logic
         bool saved = false;
         for (int attempt = 1; attempt <= _maxTokenRetries; attempt++) {
@@ -521,6 +534,7 @@ class NotificationService {
             );
             if (saved) {
               debugPrint('✅ FCM token registered successfully (attempt $attempt)');
+              await prefs.setString('last_sent_fcm_token', token);
               break;
             }
           } catch (e) {
@@ -534,6 +548,7 @@ class NotificationService {
         if (!saved) {
           debugPrint('❌ Failed to register FCM token after $_maxTokenRetries attempts');
         }
+        } // end deduplication check
       } else {
         debugPrint('⚠️ Could not retrieve FCM token');
       }
@@ -556,6 +571,8 @@ class NotificationService {
             );
             if (saved) {
               debugPrint('✅ Token refresh registered successfully');
+              final p = await SharedPreferences.getInstance();
+              await p.setString('last_sent_fcm_token', newToken);
               break;
             }
           } catch (e) {
@@ -582,6 +599,10 @@ class NotificationService {
       await _tokenRefreshSub?.cancel();
       _tokenRefreshSub = null;
 
+      // Clear stored token so the next login always re-registers
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('last_sent_fcm_token');
+
       final token = await _fcm.getToken();
       if (token != null && token.isNotEmpty) {
         await ApiNotificationService.removeToken(
@@ -598,6 +619,29 @@ class NotificationService {
   }
 
   // ── Deep-link navigation ─────────────────────────────────────────────────
+
+  /// Retry navigation for up to [maxAttempts] × 500 ms, waiting for the
+  /// navigator key to have a live state (i.e. the widget tree is built).
+  void _navigateWithRetry(String type, String ref, {int maxAttempts = 10}) {
+    int attempt = 0;
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(milliseconds: 500));
+      attempt++;
+      final nav = navigatorKey.currentState;
+      if (nav != null && onNotificationTap != null) {
+        print('   → [attempt $attempt] Navigator ready, routing: type=$type, ref=$ref');
+        pendingNotificationType        = null;
+        pendingNotificationReferenceId = null;
+        _handleNotificationTap(type, ref);
+        return false; // stop loop
+      }
+      if (attempt >= maxAttempts) {
+        print('   ⚠️ Navigator not ready after $maxAttempts attempts. Notification remains pending.');
+        return false; // stop loop — app will consume pendingNotification later
+      }
+      return true; // keep retrying
+    });
+  }
 
   /// Invoke [onNotificationTap] callback registered by the app.
   void _handleNotificationTap(String type, String referenceId) {
@@ -627,9 +671,17 @@ class NotificationService {
     // Background handler is registered in main.dart via:
     // FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
+    // ── iOS: show foreground notifications as banners ──────────────────────
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+
     // ── Terminated-state tap ────────────────────────────────────────────────
     // The app was fully closed when the user tapped the notification.
-    // We delay slightly to let the navigator settle after hot-start.
+    // We store the payload and retry navigation until the navigator is ready
+    // (up to 6 × 500 ms = 3 s) so app-startup async work doesn't lose the tap.
     try {
       final initial = await FirebaseMessaging.instance.getInitialMessage();
       if (initial != null) {
@@ -637,14 +689,19 @@ class NotificationService {
         print('   Notification: ${initial.notification?.body}');
         print('   Type: ${initial.data['type']}');
         print('   ReferenceId: ${initial.data['referenceId']}');
-        
-        // Delay to allow navigator to settle after app launch
-        Future.delayed(const Duration(milliseconds: 1000), () {
-          final type = initial.data['type']?.toString() ?? 'general';
-          final ref = initial.data['referenceId']?.toString() ?? '';
-          print('   → Routing to: type=$type, ref=$ref');
-          _handleNotificationTap(type, ref);
-        });
+
+        final type = initial.data['type']?.toString() ?? 'general';
+        final ref  = initial.data['referenceId']?.toString() ?? '';
+
+        // Store for later consumption by the app once auth is resolved.
+        pendingNotificationType     = type;
+        pendingNotificationReferenceId = ref;
+
+        print('   → Stored pending notification: type=$type, ref=$ref');
+        print('   → Will navigate once navigator + auth are ready.');
+
+        // Also attempt immediate navigation with retries.
+        _navigateWithRetry(type, ref);
       }
     } catch (e) {
       print('❌ Error reading initial FCM message: $e');

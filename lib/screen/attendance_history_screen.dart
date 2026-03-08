@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'dart:io';
 import '../services/attendance_service.dart';
 import '../services/token_storage_service.dart';
 import '../models/attendance_records_model.dart';
@@ -26,25 +30,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     'Half Day',
     'Leave',
   ];
-  final List<String> _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   // API state
   bool _isLoading = true;
   List<AttendanceRecord> _records = [];
-  String? _token;
 
   @override
   void initState() {
@@ -63,10 +51,6 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       if (token == null) {
         throw Exception('No token found');
       }
-
-      setState(() {
-        _token = token;
-      });
 
       // Calculate start and end dates for the selected month
       final startDate = DateTime(_selectedYear, _selectedMonth, 1);
@@ -128,7 +112,8 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       if (filterLower == 'half day') {
         return recordStatus == 'halfday' ||
             recordStatus == 'half_day' ||
-            recordStatus == 'half day';
+            recordStatus == 'half day' ||
+            recordStatus == 'half-day';
       }
 
       return recordStatus == filterLower;
@@ -154,19 +139,13 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.download_outlined, color: Colors.white),
-        //     onPressed: () {
-        //       ScaffoldMessenger.of(context).showSnackBar(
-        //         const SnackBar(
-        //           content: Text('Downloading attendance report...'),
-        //           backgroundColor: Colors.green,
-        //         ),
-        //       );
-        //     },
-        //   ),
-        // ],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_outlined, color: Colors.white),
+            onPressed: _exportToExcel,
+            tooltip: 'Export to Excel',
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -340,6 +319,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       case 'halfday':
       case 'half_day':
       case 'half day':
+      case 'half-day':
         status = 'Half Day';
         break;
       default:
@@ -364,7 +344,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       duration = '${hours}h ${minutes}m';
     }
 
-    // Check if has photo
+    // Check if has photo (check-in photo)
     final hasPhoto = record.checkIn.photo.url.isNotEmpty;
 
     // Format date
@@ -393,6 +373,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       case 'halfday':
       case 'half_day':
       case 'half day':
+      case 'half-day':
         statusColor = Colors.amber;
         statusBgColor = Colors.amber.withOpacity(0.15);
         break;
@@ -496,11 +477,11 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 children: [
                   Expanded(
                     child: InkWell(
-                      onTap: record.checkIn.location != null
-                          ? () => _openGoogleMaps(
-                              record.checkIn.location!.latitude,
-                              record.checkIn.location!.longitude,
-                            )
+                      onTap: (record.checkIn.location != null || record.checkOut?.location != null)
+                          ? () {
+                              final loc = record.checkIn.location ?? record.checkOut!.location!;
+                              _openGoogleMaps(loc.latitude, loc.longitude);
+                            }
                           : null,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -777,5 +758,240 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         ),
       ),
     );
+  }
+
+  // Export to Excel
+  Future<void> _exportToExcel() async {
+    if (_records.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No records available to export'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.white),
+            const SizedBox(height: 16),
+            const Text(
+              'Generating Excel file...',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Create Excel workbook
+      var excel = Excel.createExcel();
+      excel.delete('Sheet1'); // Delete default sheet
+      var sheet = excel['Attendance Records'];
+
+      // Define headers
+      final headers = [
+        'Date',
+        'Status',
+        'Check In',
+        'Check Out',
+        'Duration',
+        'Location',
+      ];
+
+      print('📊 Starting Excel export with ${_records.length} records...');
+
+      // Add header row
+      for (int i = 0; i < headers.length; i++) {
+        var cell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0),
+        );
+        cell.value = headers[i];
+        cell.cellStyle = CellStyle(
+          backgroundColorHex: '#FF8FA3',
+          fontColorHex: '#FFFFFF',
+          bold: true,
+          horizontalAlign: HorizontalAlign.Center,
+          verticalAlign: VerticalAlign.Center,
+        );
+      }
+
+      print('✓ Headers added');
+
+      // Add data rows
+      for (int i = 0; i < _records.length; i++) {
+        final record = _records[i];
+
+        // Format status
+        String status = record.status;
+        if (status.toLowerCase() == 'halfday' ||
+            status.toLowerCase() == 'half_day') {
+          status = 'Half Day';
+        } else {
+          status = status[0].toUpperCase() + status.substring(1);
+        }
+
+        // Format times
+        final checkInTime =
+            DateFormat('hh:mm a').format(record.checkIn.time.toLocal());
+        final checkOutTime = record.checkOut != null
+            ? DateFormat('hh:mm a').format(record.checkOut!.time.toLocal())
+            : '-';
+
+        // Calculate duration
+        String duration = '-';
+        if (record.checkOut != null) {
+          final hours = record.workHours.floor();
+          final minutes = ((record.workHours - hours) * 60).round();
+          duration = '${hours}h ${minutes}m';
+        }
+
+        // Format date
+        final dateStr = DateFormat('MMM d, yyyy').format(record.date);
+
+        // Get location (Latitude, Longitude) - read from checkIn or checkOut (null-safe)
+        String location = '-';
+        try {
+          final loc = record.checkIn.location ?? record.checkOut?.location;
+          if (loc != null) {
+            final lat = loc.latitude;
+            final lon = loc.longitude;
+            final latitude = lat.toStringAsFixed(6);
+            final longitude = lon.toStringAsFixed(6);
+            location = 'Lat: $latitude, Lon: $longitude';
+          }
+        } catch (_) {
+          location = '-';
+        }
+
+        final rowData = [
+          dateStr,
+          status,
+          checkInTime,
+          checkOutTime,
+          duration,
+          location,
+        ];
+
+        // Add row data
+        for (int j = 0; j < rowData.length; j++) {
+          var cell = sheet.cell(
+            CellIndex.indexByColumnRow(columnIndex: j, rowIndex: i + 1),
+          );
+          cell.value = rowData[j];
+          cell.cellStyle = CellStyle(
+            horizontalAlign: HorizontalAlign.Center,
+            verticalAlign: VerticalAlign.Center,
+          );
+        }
+      }
+
+      print('✓ ${_records.length} data rows added');
+
+      // Set column widths (use double values to match excel API)
+      final List<double> columnWidths = [18.0, 14.0, 14.0, 14.0, 14.0, 40.0];
+      for (int col = 0; col < columnWidths.length; col++) {
+        sheet.setColWidth(col, columnWidths[col]);
+      }
+
+      // Get downloads directory
+      print('📱 Platform: ${Platform.isAndroid ? 'Android' : Platform.isIOS ? 'iOS' : 'Desktop/Web'}');
+
+      Directory? downloadsDir;
+      if (Platform.isAndroid) {
+        try {
+          downloadsDir = await getDownloadsDirectory();
+        } catch (e) {
+          print('Downloads dir not available, using Documents');
+          downloadsDir = await getApplicationDocumentsDirectory();
+        }
+      } else if (Platform.isIOS) {
+        downloadsDir = await getApplicationDocumentsDirectory();
+      } else {
+        downloadsDir = await getDownloadsDirectory();
+      }
+
+      // Create directory structure
+      final attendanceDir =
+          Directory('${downloadsDir!.path}/HRMS/Attendance');
+      print('📁 Save directory: ${downloadsDir.path}');
+
+      if (!await attendanceDir.exists()) {
+        await attendanceDir.create(recursive: true);
+        print('✓ Directory created: ${attendanceDir.path}');
+      }
+
+      // Generate filename with timestamp
+      final now = DateTime.now();
+      final timestamp = DateFormat('yyyy_MM_dd_HHmmss').format(now);
+      final fileName = 'Attendance_$timestamp.xlsx';
+      final filePath = '${attendanceDir.path}/$fileName';
+
+      // Encode and save file
+      print('💾 Encoding Excel file...');
+      List<int>? fileBytes = excel.encode();
+
+      if (fileBytes != null) {
+        final file = File(filePath);
+        await file.writeAsBytes(fileBytes);
+        print('✓ File encoded, size: ${fileBytes.length} bytes');
+        print('✓ File saved successfully!');
+        print('📄 File path: $filePath');
+        print('✓ Records exported: ${_records.length}');
+
+        // Close loading dialog
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {}
+
+        // Auto-open file after 500ms
+        Future.delayed(const Duration(milliseconds: 500), () {
+          OpenFile.open(filePath);
+        });
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✓ File Downloaded!\n$fileName\n${_records.length} records',
+            ),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Open',
+              onPressed: () => OpenFile.open(filePath),
+            ),
+          ),
+        );
+      } else {
+        throw Exception('Failed to encode Excel file');
+      }
+    } catch (e) {
+      print('❌ Error exporting records: $e');
+
+      // Close loading dialog
+      try {
+        Navigator.of(context).pop();
+      } catch (_) {}
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to export records: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 }

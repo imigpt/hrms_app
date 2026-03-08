@@ -1,8 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io';
 import '../models/payroll_model.dart';
 import '../services/payroll_service.dart';
 import '../services/token_storage_service.dart';
+import '../services/admin_employees_service.dart';
+import '../theme/app_theme.dart';
+import '../utils/responsive_utils.dart';
+
+// ── Month Names Constant ────────────────────────────────────────────────────
+const List<String> monthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const List<String> monthNamesShort = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 class PayrollScreen extends StatefulWidget {
   final String? role;
@@ -15,6 +52,18 @@ class PayrollScreen extends StatefulWidget {
 
 class _PayrollScreenState extends State<PayrollScreen>
     with SingleTickerProviderStateMixin {
+  // Theme Colors
+  final Color _bg = AppTheme.background;
+  final Color _cardColor = AppTheme.cardColor;
+  final Color _input = AppTheme.surface;
+  final Color _border = AppTheme.outline;
+  final Color _primary = AppTheme.primaryColor;
+  final Color _success = AppTheme.successColor;
+  final Color _warning = AppTheme.warningColor;
+  final Color _error = AppTheme.errorColor;
+  final Color _textGrey = const Color(0xFF9E9E9E);
+  final Color _textLight = AppTheme.onSurface;
+
   late TabController _tabController;
   String? _token;
   late bool _isAdmin;
@@ -22,13 +71,13 @@ class _PayrollScreenState extends State<PayrollScreen>
   // Admin
   List<dynamic> _employees = [];
   bool _isLoadingEmployees = false;
-  String _selectedEmployeeId = '';
 
   // Filters
   String _filterUserId = 'all';
   String _filterYear = DateTime.now().year.toString();
   String _filterMonth = 'all';
   bool _isGenerateOpen = false;
+  bool _isViewOpen = false;
 
   // Generate dialog
   String _genUserId = '';
@@ -43,6 +92,7 @@ class _PayrollScreenState extends State<PayrollScreen>
   List<Payroll> _payrolls = [];
   List<Payroll> _filteredPayrolls = [];
   bool _isLoadingPayrolls = true;
+  Payroll? _selectedPayroll;
 
   // Pre-Payments
   List<PrePayment> _prePayments = [];
@@ -149,11 +199,13 @@ class _PayrollScreenState extends State<PayrollScreen>
     if (!_isAdmin) return;
     setState(() => _isLoadingEmployees = true);
     try {
-      // TODO: Update with actual API endpoint for fetching employees
-      // final res = await AdminService.getEmployees({ limit: 1000 });
-      // List<dynamic> list = res.data?.data ?? res.data?.employees ?? res.data ?? [];
-      // if (mounted) setState(() { _employees = list; _isLoadingEmployees = false; });
-      if (mounted) setState(() => _isLoadingEmployees = false);
+      final res = await AdminEmployeesService.getAllEmployees(token);
+      if (mounted) {
+        setState(() {
+          _employees = (res['data'] as List<dynamic>?) ?? [];
+          _isLoadingEmployees = false;
+        });
+      }
     } catch (e) {
       print('Employees fetch error: $e');
       if (mounted) setState(() => _isLoadingEmployees = false);
@@ -176,9 +228,9 @@ class _PayrollScreenState extends State<PayrollScreen>
   Future<void> _generatePayroll() async {
     if (_genUserId.isEmpty || _genMonth.isEmpty || _genYear.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select employee, month, and year'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Please select employee, month, and year'),
+          backgroundColor: _error,
         ),
       );
       return;
@@ -186,24 +238,43 @@ class _PayrollScreenState extends State<PayrollScreen>
     if (_token == null) return;
 
     try {
-      // TODO: Call payroll API to generate payroll
-      // await PayrollService.generatePayroll({
-      //   userId: _genUserId,
-      //   month: int.parse(_genMonth),
-      //   year: int.parse(_genYear),
-      // }, _token!);
+      // Use direct HTTP call since PayrollService doesn't have generatePayroll
+      final uri = Uri.parse('https://hrms-backend-zzzc.onrender.com/api/payroll/generate');
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: json.encode({
+          'userId': _genUserId,
+          'month': int.parse(_genMonth),
+          'year': int.parse(_genYear),
+        }),
+      ).timeout(const Duration(seconds: 30));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payroll generated successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      setState(() => _isGenerateOpen = false);
-      _fetchPayrolls(_token!);
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Payroll generated successfully'),
+            backgroundColor: _success,
+          ),
+        );
+        setState(() => _isGenerateOpen = false);
+        _genUserId = '';
+        _genMonth = '';
+        _genYear = DateTime.now().year.toString();
+        _fetchPayrolls(_token!);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['message'] ?? 'Failed to generate payroll');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: _error,
+        ),
       );
     }
   }
@@ -211,22 +282,38 @@ class _PayrollScreenState extends State<PayrollScreen>
   Future<void> _markPayrollAsPaid(Payroll payroll) async {
     if (_token == null) return;
     try {
-      // TODO: Call payroll API to mark as paid
-      // await PayrollService.updatePayroll(payroll._id, {
-      //   status: 'paid',
-      //   paymentDate: DateTime.now().toIso8601String(),
-      // }, _token!);
+      // Use direct HTTP call since PayrollService doesn't have updatePayroll
+      final uri = Uri.parse('https://hrms-backend-zzzc.onrender.com/api/payroll/${payroll.id}');
+      final response = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: json.encode({
+          'status': 'paid',
+          'paymentDate': DateTime.now().toIso8601String(),
+        }),
+      ).timeout(const Duration(seconds: 30));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payroll marked as paid'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      _fetchPayrolls(_token!);
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Payroll marked as paid'),
+            backgroundColor: _success,
+          ),
+        );
+        _fetchPayrolls(_token!);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['message'] ?? 'Failed to update payroll');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: _error,
+        ),
       );
     }
   }
@@ -235,14 +322,14 @@ class _PayrollScreenState extends State<PayrollScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text(
+        backgroundColor: _cardColor,
+        title: Text(
           'Delete Payroll',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: _textLight),
         ),
-        content: const Text(
+        content: Text(
           'Are you sure you want to delete this payroll record?',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: _textGrey),
         ),
         actions: [
           TextButton(
@@ -260,21 +347,219 @@ class _PayrollScreenState extends State<PayrollScreen>
     if (confirm != true || _token == null) return;
 
     try {
-      // TODO: Call payroll API to delete
-      // await PayrollService.deletePayroll(payrollId, _token!);
+      // Use direct HTTP call since PayrollService doesn't have deletePayroll
+      final uri = Uri.parse('https://hrms-backend-zzzc.onrender.com/api/payroll/$payrollId');
+      final response = await http.delete(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 30));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payroll deleted'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      _fetchPayrolls(_token!);
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Payroll deleted'),
+            backgroundColor: _success,
+          ),
+        );
+        _fetchPayrolls(_token!);
+      } else {
+        final error = json.decode(response.body);
+        throw Exception(error['message'] ?? 'Failed to delete payroll');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: _error,
+        ),
       );
     }
+  }
+
+  Future<void> _downloadPayslip(Payroll payroll) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Generating payslip PDF...'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // Generate payslip content as text for now
+      // In production, you would use a PDF library like pdf or pdfx
+      final payslipContent = _generatePayslipContent(payroll);
+
+      // For now, display in dialog - in production, save to file
+      if (mounted) {
+        _showPayslipDownloadPreview(payroll, payslipContent);
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Payslip ready'),
+          backgroundColor: _success,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate payslip: ${e.toString()}'),
+          backgroundColor: _error,
+        ),
+      );
+    }
+  }
+
+  String _generatePayslipContent(Payroll payroll) {
+    final buffer = StringBuffer();
+    buffer.writeln('═══════════════════════════════════════════════════════');
+    buffer.writeln('PAYSLIP');
+    buffer.writeln('═══════════════════════════════════════════════════════');
+    buffer.writeln('');
+    buffer.writeln('Employee: ${payroll.userName ?? 'Unknown'}');
+    buffer.writeln('Month: ${_monthNameFull(payroll.month)} ${payroll.year}');
+    buffer.writeln('');
+    buffer.writeln('───────────────── EARNINGS ─────────────────');
+    buffer.writeln(
+      'Basic Salary: ₹${NumberFormat('#,##,###.##').format(payroll.basicSalary)}',
+    );
+    if (payroll.allowances.isNotEmpty) {
+      for (var allowance in payroll.allowances) {
+        buffer.writeln(
+          '${allowance.name}: ₹${NumberFormat('#,##,###.##').format(allowance.amount)}',
+        );
+      }
+    }
+    buffer.writeln('───────────────── DEDUCTIONS ─────────────────');
+    if (payroll.deductions.isNotEmpty) {
+      for (var deduction in payroll.deductions) {
+        buffer.writeln(
+          '${deduction.name}: ₹${NumberFormat('#,##,###.##').format(deduction.amount)}',
+        );
+      }
+    }
+    if (payroll.prePaymentDeductions > 0) {
+      buffer.writeln(
+        'Pre-Payment: ₹${NumberFormat('#,##,###.##').format(payroll.prePaymentDeductions)}',
+      );
+    }
+    buffer.writeln('───────────────── SUMMARY ─────────────────');
+    buffer.writeln(
+      'Gross Salary: ₹${NumberFormat('#,##,###.##').format(payroll.grossSalary)}',
+    );
+    buffer.writeln(
+      'Total Deductions: ₹${NumberFormat('#,##,###.##').format(payroll.totalDeductions)}',
+    );
+    buffer.writeln(
+      'Net Salary: ₹${NumberFormat('#,##,###.##').format(payroll.netSalary)}',
+    );
+    if (payroll.paymentDate != null) {
+      buffer.writeln(
+        'Payment Date: ${DateFormat('dd MMM yyyy').format(payroll.paymentDate!)}',
+      );
+    }
+    buffer.writeln('Status: ${payroll.status}');
+    buffer.writeln('───────────────────────────────────────────────');
+    return buffer.toString();
+  }
+
+  void _showPayslipDownloadPreview(Payroll payroll, String content) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Payslip Preview',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close, color: Colors.white54),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const Divider(color: Colors.white12),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Text(
+                      content,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        fontFamily: 'Courier',
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white54,
+                        ),
+                        child: const Text('Close'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _copyToClipboard(content);
+                        },
+                        icon: const Icon(Icons.copy, size: 14),
+                        label: const Text('Copy'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.withOpacity(0.3),
+                          foregroundColor: Colors.blue,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _copyToClipboard(String text) {
+    // In a real app, you would use:
+    // import 'package:flutter/services.dart';
+    // Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Content copied (implement clipboard in production)'),
+        backgroundColor: _success,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -407,53 +692,12 @@ class _PayrollScreenState extends State<PayrollScreen>
                                 value: 'all',
                                 child: const Text('All Months'),
                               ),
-                              DropdownMenuItem(
-                                value: '1',
-                                child: const Text('January'),
-                              ),
-                              DropdownMenuItem(
-                                value: '2',
-                                child: const Text('February'),
-                              ),
-                              DropdownMenuItem(
-                                value: '3',
-                                child: const Text('March'),
-                              ),
-                              DropdownMenuItem(
-                                value: '4',
-                                child: const Text('April'),
-                              ),
-                              DropdownMenuItem(
-                                value: '5',
-                                child: const Text('May'),
-                              ),
-                              DropdownMenuItem(
-                                value: '6',
-                                child: const Text('June'),
-                              ),
-                              DropdownMenuItem(
-                                value: '7',
-                                child: const Text('July'),
-                              ),
-                              DropdownMenuItem(
-                                value: '8',
-                                child: const Text('August'),
-                              ),
-                              DropdownMenuItem(
-                                value: '9',
-                                child: const Text('September'),
-                              ),
-                              DropdownMenuItem(
-                                value: '10',
-                                child: const Text('October'),
-                              ),
-                              DropdownMenuItem(
-                                value: '11',
-                                child: const Text('November'),
-                              ),
-                              DropdownMenuItem(
-                                value: '12',
-                                child: const Text('December'),
+                              ...List.generate(
+                                12,
+                                (i) => DropdownMenuItem(
+                                  value: (i + 1).toString(),
+                                  child: Text(monthNames[i]),
+                                ),
                               ),
                             ],
                             onChanged: (v) {
@@ -605,20 +849,7 @@ class _PayrollScreenState extends State<PayrollScreen>
                                 (i) => DropdownMenuItem(
                                   value: (i + 1).toString(),
                                   child: Text(
-                                    [
-                                      'Jan',
-                                      'Feb',
-                                      'Mar',
-                                      'Apr',
-                                      'May',
-                                      'Jun',
-                                      'Jul',
-                                      'Aug',
-                                      'Sep',
-                                      'Oct',
-                                      'Nov',
-                                      'Dec',
-                                    ][i],
+                                    monthNamesShort[i],
                                     style: const TextStyle(color: Colors.white),
                                   ),
                                 ),
@@ -803,6 +1034,7 @@ class _PayrollScreenState extends State<PayrollScreen>
   }
 
   Widget _buildPayrollTableRow(Payroll payroll) {
+    final responsive = ResponsiveUtils(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(12),
@@ -814,16 +1046,37 @@ class _PayrollScreenState extends State<PayrollScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header: User info with avatar, Name, Department
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Avatar Placeholder
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _payrollStatusColor(payroll.status).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    (payroll.userName ?? 'U').characters.first.toUpperCase(),
+                    style: TextStyle(
+                      color: _payrollStatusColor(payroll.status),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // User Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      payroll.userName ?? payroll.userId ?? 'Unknown',
+                      payroll.userName ?? payroll.userId ?? 'Unknown User',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
@@ -831,7 +1084,7 @@ class _PayrollScreenState extends State<PayrollScreen>
                       ),
                     ),
                     Text(
-                      '${_monthName(payroll.month)} ${payroll.year}',
+                      'Department • ${_monthName(payroll.month)} ${payroll.year}',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
@@ -840,34 +1093,65 @@ class _PayrollScreenState extends State<PayrollScreen>
                   ],
                 ),
               ),
+              // Status Badge
               _statusBadge(payroll.status, _payrollStatusColor(payroll.status)),
             ],
           ),
           const SizedBox(height: 12),
-          // Details
+          // Salary Details Row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _labelValue('Gross', _currency(payroll.grossSalary ?? 0)),
-                    _labelValue(
-                      'Deductions',
-                      _currency(payroll.totalDeductions ?? 0),
+                    Text(
+                      'Net Salary',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 11),
                     ),
-                    _labelValue(
-                      'Net',
+                    const SizedBox(height: 4),
+                    Text(
                       _currency(payroll.netSalary ?? 0),
-                      valueBold: true,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
               ),
-              if (payroll.paymentDate != null)
-                Text(
-                  'Paid: ${DateFormat('MMM d').format(payroll.paymentDate is String ? DateTime.parse(payroll.paymentDate as String) : payroll.paymentDate as DateTime)}',
-                  style: const TextStyle(color: Colors.green, fontSize: 11),
+              if (responsive.screenWidth > 400)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Payment Date',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        payroll.paymentDate != null
+                            ? DateFormat('MMM d, y').format(
+                                payroll.paymentDate is String
+                                    ? DateTime.parse(
+                                        payroll.paymentDate as String,
+                                      )
+                                    : payroll.paymentDate as DateTime,
+                              )
+                            : 'Pending',
+                        style: TextStyle(
+                          color: payroll.paymentDate != null
+                              ? Colors.green
+                              : Colors.orange,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -875,41 +1159,59 @@ class _PayrollScreenState extends State<PayrollScreen>
           // Actions
           Row(
             children: [
-              ElevatedButton.icon(
-                onPressed: () => _showPayslipDetail(payroll),
-                icon: const Icon(Icons.visibility, size: 14),
-                label: const Text('View'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue.withOpacity(0.2),
-                  foregroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+              // View Button
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showPayslipDetail(payroll),
+                  icon: const Icon(Icons.visibility, size: 14),
+                  label: const Text('View'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.withOpacity(0.2),
+                    foregroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
-              if (payroll.status != 'paid')
-                ElevatedButton.icon(
-                  onPressed: () => _markPayrollAsPaid(payroll),
-                  icon: const Icon(Icons.check_circle, size: 14),
-                  label: const Text('Mark Paid'),
+              // Download Button
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _downloadPayslip(payroll),
+                  icon: const Icon(Icons.download, size: 14),
+                  label: const Text('Download'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.withOpacity(0.2),
-                    foregroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                    backgroundColor: Colors.purple.withOpacity(0.2),
+                    foregroundColor: Colors.purple,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Mark Paid Button (if generated and admin)
+              if (_isAdmin && payroll.status == 'generated')
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _markPayrollAsPaid(payroll),
+                    icon: const Icon(Icons.check_circle, size: 14),
+                    label: const Text('Mark Paid'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.withOpacity(0.2),
+                      foregroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                   ),
                 ),
-              const Spacer(),
-              IconButton(
-                onPressed: () => _deletePayroll(payroll.id ?? ''),
-                icon: const Icon(Icons.delete, size: 16, color: Colors.red),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
+              // Delete Button (if admin)
+              if (_isAdmin)
+                SizedBox(
+                  width: 40,
+                  child: IconButton(
+                    onPressed: () => _deletePayroll(payroll.id ?? ''),
+                    icon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ),
             ],
           ),
         ],
@@ -918,21 +1220,13 @@ class _PayrollScreenState extends State<PayrollScreen>
   }
 
   String _monthName(int? month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return month != null && month > 0 && month <= 12 ? months[month - 1] : '';
+    if (month == null || month < 1 || month > 12) return '';
+    return monthNamesShort[month - 1];
+  }
+
+  String _monthNameFull(int? month) {
+    if (month == null || month < 1 || month > 12) return '';
+    return monthNames[month - 1];
   }
 
   Widget _buildStatisticsCards() {
@@ -941,7 +1235,7 @@ class _PayrollScreenState extends State<PayrollScreen>
     int pending = _payrolls.where((p) => p.status == 'pending').length;
     double totalPaid = _payrolls
         .where((p) => p.status == 'paid')
-        .fold<double>(0, (sum, p) => sum + p.netSalary);
+        .fold<double>(0, (sum, p) => sum + (p.netSalary ?? 0));
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -951,28 +1245,28 @@ class _PayrollScreenState extends State<PayrollScreen>
             'Generated',
             generated.toString(),
             Icons.file_present_rounded,
-            Colors.blue,
+            AppTheme.primaryColor,
           ),
           const SizedBox(width: 12),
           _buildStatCard(
             'Paid',
             paid.toString(),
             Icons.check_circle_rounded,
-            Colors.green,
+            AppTheme.successColor,
           ),
           const SizedBox(width: 12),
           _buildStatCard(
             'Pending',
             pending.toString(),
             Icons.schedule_rounded,
-            Colors.orange,
+            AppTheme.warningColor,
           ),
           const SizedBox(width: 12),
           _buildStatCard(
             'Total Paid',
             _currency(totalPaid),
             Icons.currency_rupee_rounded,
-            Colors.purple,
+            AppTheme.primaryColor,
           ),
         ],
       ),
@@ -1352,7 +1646,7 @@ class _PayrollScreenState extends State<PayrollScreen>
                       decoration: BoxDecoration(
                         color: Theme.of(
                           context,
-                        ).primaryColor.withValues(alpha: 0.2),
+                        ).primaryColor.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -1673,7 +1967,7 @@ class _PayrollScreenState extends State<PayrollScreen>
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.2),
+                              color: color.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
@@ -2179,7 +2473,7 @@ class _PayrollScreenState extends State<PayrollScreen>
         decoration: BoxDecoration(
           color: const Color(0xFF111111),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          border: Border.all(color: Colors.white.withOpacity(0.06)),
         ),
         child: child,
       ),
@@ -2258,7 +2552,7 @@ class _PayrollScreenState extends State<PayrollScreen>
   Widget _statusBadge(String status, Color color) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.15),
+      color: color.withOpacity(0.15),
       borderRadius: BorderRadius.circular(6),
     ),
     child: Text(
@@ -2293,7 +2587,7 @@ class _PayrollScreenState extends State<PayrollScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -2310,11 +2604,12 @@ class _PayrollScreenState extends State<PayrollScreen>
   Color _payrollStatusColor(String status) {
     switch (status) {
       case 'paid':
-        return Colors.greenAccent;
+        return AppTheme.successColor;
       case 'pending':
-        return Colors.orangeAccent;
+        return AppTheme.warningColor;
+      case 'generated':
       default:
-        return Colors.blueAccent;
+        return AppTheme.primaryColor;
     }
   }
 

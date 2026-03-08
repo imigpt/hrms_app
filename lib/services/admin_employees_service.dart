@@ -226,8 +226,13 @@ class AdminEmployeesService {
   }) async {
     try {
       final uri = Uri.parse(
-        '$_baseUrl/attendance/records',
-      ).replace(queryParameters: {'userId': userId, 'limit': limit.toString()});
+        '$_baseUrl/attendance',
+      ).replace(queryParameters: {
+        'userId': userId, 
+        'limit': limit.toString(),
+        'sortBy': 'date',
+        'order': 'desc'
+      });
       final response = await http
           .get(uri, headers: _headers(token))
           .timeout(const Duration(seconds: 30));
@@ -240,10 +245,22 @@ class AdminEmployeesService {
         if (data is List) return data;
         return [];
       } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized');
+        throw Exception('Unauthorized - Token expired or invalid');
+      } else if (response.statusCode == 403) {
+        throw Exception('Forbidden - You don\'t have permission to view this data');
+      } else if (response.statusCode == 404) {
+        throw Exception('Employee not found');
       } else {
-        final body = jsonDecode(response.body);
-        throw Exception(body['message'] ?? 'Failed to fetch attendance');
+        // Better error handling for HTML responses
+        if (response.body.contains('<!DOCTYPE') || response.body.contains('<html')) {
+          throw Exception('Server error - Please contact support');
+        }
+        try {
+          final body = jsonDecode(response.body);
+          throw Exception(body['message'] ?? 'Failed to fetch attendance (HTTP ${response.statusCode})');
+        } catch (e) {
+          throw Exception('Failed to fetch attendance (HTTP ${response.statusCode})');
+        }
       }
     } catch (e) {
       if (e is Exception) rethrow;
