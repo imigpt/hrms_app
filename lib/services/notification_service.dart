@@ -261,6 +261,10 @@ class NotificationService {
   static String? pendingNotificationType;
   static String? pendingNotificationReferenceId;
 
+  /// Set to the currently open chat room ID so FCM-triggered notifications
+  /// are suppressed when the user is already viewing that conversation.
+  static String? activeChatRoomId;
+
   factory NotificationService() {
     return _instance;
   }
@@ -1126,6 +1130,12 @@ class NotificationService {
     bool isGroupAction = false,
     String action = '',
   }) async {
+    // Suppress if the user is currently viewing this chat room
+    if (activeChatRoomId != null && activeChatRoomId == roomId) {
+      print('🔕 Chat notification suppressed — user is viewing room $roomId');
+      return;
+    }
+
     if (!_isInitialized) {
       await initialize();
       await requestNotificationPermissions();

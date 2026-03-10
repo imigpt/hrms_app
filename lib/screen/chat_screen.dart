@@ -692,8 +692,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     super.initState();
     _scrollController.addListener(_onScroll);
     _msgController.addListener(_onTextChanged);
-    ChatDetailScreen.visibleRoomId =
-        widget.room.id; // suppress notifications while open
+    ChatDetailScreen.visibleRoomId = widget.room.id;
+    NotificationService.activeChatRoomId = widget.room.id; // suppress FCM while open
     _init();
   }
 
@@ -701,6 +701,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   void dispose() {
     if (ChatDetailScreen.visibleRoomId == widget.room.id) {
       ChatDetailScreen.visibleRoomId = null;
+      NotificationService.activeChatRoomId = null;
     }
     _typingDebounce?.cancel();
     _typingHideTimer?.cancel();
@@ -759,6 +760,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         _messages = res.data.reversed.toList();
         _hasMore = res.hasMore;
       });
+      
+      // DEBUG: Log loaded messages
+      if (initial) {
+        print('═══════════════════════════════════════════════════════════');
+        print('📥 INITIAL MESSAGES LOADED: ${_messages.length} messages');
+        if (_messages.isNotEmpty) {
+          for (int i = 0; i < (_messages.length > 5 ? 5 : _messages.length); i++) {
+            final m = _messages[i];
+            print('   [$i] ID: ${m.id} | ${m.sender?.name ?? "Unknown"}: ${m.content?.substring(0, 40) ?? "[media]"}...');
+          }
+          if (_messages.length > 5) print('   ... and ${_messages.length - 5} more');
+        }
+        print('═══════════════════════════════════════════════════════════');
+      }
+      
       _scrollToBottom(jump: true);
       _socket.markRead(widget.room.id);
     } catch (e) {
@@ -863,9 +879,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         if (!mounted) return;
         if (msg.chatRoom != widget.room.id) return;
         if (msg.sender?.id == _currentUserId) return;
-        if (_messages.any((m) => m.id == msg.id)) return;
+        
+        // DEDUPLICATION: Check by message ID
+        final isDuplicate = _messages.any((m) => m.id == msg.id);
+        if (isDuplicate) {
+          print('⚠️ DUPLICATE CHAT MESSAGE BLOCKED - ID: ${msg.id}');
+          print('   Message: ${msg.content}');
+          print('   Sender: ${msg.sender?.name}');
+          return;
+        }
 
         // FIX: Naye message ko list ke top (index 0) par daalein taki bottom me dikhe
+        print('✅ NEW SOCKET MESSAGE ADDED - ID: ${msg.id}');
+        print('   Message: ${msg.content}');
+        print('   Total messages: ${_messages.length + 1}');
         setState(() => _messages.insert(0, msg));
         _scrollToBottom();
         _socket.markRead(widget.room.id);

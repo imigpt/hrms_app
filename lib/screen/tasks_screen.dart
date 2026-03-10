@@ -6,11 +6,12 @@ import '../services/task_service.dart';
 import '../services/token_storage_service.dart';
 import '../services/admin_employees_service.dart';
 import '../services/notification_service.dart';
+import '../services/workflow_service.dart';
 import '../theme/app_theme.dart';
 
 class TasksScreen extends StatefulWidget {
   final String? token;
-  final String? role;
+  final String? role; 
   const TasksScreen({super.key, this.token, this.role});
 
   @override
@@ -82,6 +83,11 @@ class _TasksScreenState extends State<TasksScreen> {
   List<dynamic> _analyticsWorkload = [];
   bool _analyticsLoading = false;
 
+  // ── Workflow state ─────────────────────────────────────────────────────────
+  List<dynamic> _workflows = [];
+  Map<String, dynamic>? _selectedWorkflow;
+  bool _workflowsLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -108,6 +114,7 @@ class _TasksScreenState extends State<TasksScreen> {
       _userId = _decodeUserIdFromJwt(_token!);
     }
     _isAdmin = (widget.role?.toLowerCase() == 'admin');
+    await _loadWorkflows();
     if (_isAdmin) {
       await Future.wait([_loadData(), _loadEmployees(), _loadProjects()]);
     } else {
@@ -473,6 +480,437 @@ class _TasksScreenState extends State<TasksScreen> {
       }
     } catch (_) {
       if (mounted) setState(() => _analyticsLoading = false);
+    }
+  }
+
+  // ── Workflow Loading (Enhanced) ────────────────────────────────────────────
+
+  Future<void> _loadWorkflows() async {
+    if (_token == null) {
+      print('[Workflows] No token available');
+      return;
+    }
+    
+    if (mounted) {
+      setState(() => _workflowsLoading = true);
+    }
+    
+    try {
+      print('[Workflows] Fetching workflow templates...');
+      final response = await WorkflowService.getTemplates(_token!);
+      
+      print('[Workflows] API Response type: ${response.runtimeType}');
+      print('[Workflows] API Response: $response');
+      
+      if (!mounted) return;
+      
+      setState(() {
+        _workflows = [];
+        
+        // Try multiple response format interpretations
+        if (response is Map<String, dynamic>) {
+          // Format 1: { success: true, data: [...] }
+          if (response['success'] == true && response['data'] != null) {
+            _workflows = (response['data'] as List<dynamic>?)?.cast<dynamic>() ?? [];
+            print('[Workflows] Parsed success response with ${_workflows.length} templates');
+          } 
+          // Format 2: { data: [...] } or wrapped response
+          else if (response['data'] != null) {
+            _workflows = (response['data'] as List<dynamic>?)?.cast<dynamic>() ?? [];
+            print('[Workflows] Parsed data field with ${_workflows.length} templates');
+          }
+          // Format 3: Response is directly the wrapper (check for expected fields)
+          else if (response.containsKey('_id') || response.containsKey('name') || response.containsKey('steps')) {
+            // Looks like a single workflow object, not a list
+            _workflows = [response];
+            print('[Workflows] Single workflow object detected');
+          }
+        } 
+        // Format 4: Response is directly a list
+        else if (response is List<dynamic>) {
+          _workflows = response.cast<dynamic>();
+          print('[Workflows] Parsed direct list with ${_workflows.length} templates');
+        }
+        
+        _workflowsLoading = false;
+        
+        if (_workflows.isEmpty) {
+          print('[Workflows] WARNING: No workflows loaded after parsing');
+        } else {
+          print('[Workflows] Successfully loaded ${_workflows.length} workflows');
+          // Debug first workflow structure
+          if (_workflows.isNotEmpty) {
+            print('[Workflows] First workflow keys: ${(_workflows[0] as Map?)?.keys.toList()}');
+          }
+        }
+      });
+    } catch (e) {
+      print('[Workflows] ERROR loading workflows: $e');
+      if (mounted) {
+        setState(() => _workflowsLoading = false);
+      }
+    }
+  }
+
+  /// Display all available workflow templates in a modal dialog (web-like design)
+  void _showWorkflowTemplatesDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _bgDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.85,
+          maxChildSize: 0.95,
+          minChildSize: 0.6,
+          builder: (context, scrollController) {
+            return Column(
+              children: [
+                // ─── Header ───────────────────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.07),
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Workflow Templates',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Select a template to apply to the task',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _textGrey.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Icon(
+                          Icons.close,
+                          color: _textGrey,
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // ─── Content ──────────────────────────────────────────────
+                Expanded(
+                  child: _workflows.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.layers_clear_outlined,
+                                size: 48,
+                                color: _textGrey.withValues(alpha: 0.4),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No workflow templates yet',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: _textGrey.withValues(alpha: 0.7),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Create your first workflow to standardize task processes',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: _textGrey.withValues(alpha: 0.5),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          itemCount: _workflows.length,
+                          itemBuilder: (context, index) {
+                            final workflow = _workflows[index] as Map<String, dynamic>?;
+                            if (workflow == null) return const SizedBox.shrink();
+
+                            final workflowId = workflow['_id'] ?? '';
+                            final workflowName = workflow['name'] ?? 'Unnamed Template';
+                            final description = workflow['description'] ?? '';
+                            final steps = (workflow['steps'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+                            final createdBy = workflow['createdBy'] ?? 'Unknown';
+                            final isShared = workflow['isShared'] ?? false;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: _inputDark.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.06),
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedWorkflow = workflow;
+                                    });
+                                    Navigator.pop(context);
+                                  },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // ─ Title Row ─────────────────────────
+                                        Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          workflowName,
+                                                          style: const TextStyle(
+                                                            fontSize: 14,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: Colors.white,
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      if (isShared) ...[
+                                                        const SizedBox(width: 6),
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 6,
+                                                            vertical: 2,
+                                                          ),
+                                                          decoration: BoxDecoration(
+                                                            color: _accentGreen.withValues(alpha: 0.15),
+                                                            borderRadius: BorderRadius.circular(4),
+                                                            border: Border.all(
+                                                              color: _accentGreen.withValues(alpha: 0.3),
+                                                            ),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              Icon(
+                                                                Icons.people_outline,
+                                                                size: 10,
+                                                                color: _accentGreen,
+                                                              ),
+                                                              const SizedBox(width: 3),
+                                                              Text(
+                                                                'Shared',
+                                                                style: TextStyle(
+                                                                  fontSize: 8,
+                                                                  fontWeight: FontWeight.w500,
+                                                                  color: _accentGreen,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  if (description.isNotEmpty)
+                                                    Text(
+                                                      description,
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        color: _textGrey.withValues(alpha: 0.7),
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  Text(
+                                                    'By $createdBy · ${steps.length} step${steps.length != 1 ? 's' : ''}',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      color: _textGrey.withValues(alpha: 0.5),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: _accentPink.withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                '${steps.length} steps',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: _accentPink,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        // ─ Steps Preview (horizontal pills) ─
+                                        if (steps.isNotEmpty) ...[
+                                          const SizedBox(height: 10),
+                                          Divider(
+                                            color: Colors.white.withValues(alpha: 0.05),
+                                            height: 1,
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Wrap(
+                                            spacing: 6,
+                                            runSpacing: 6,
+                                            children: [
+                                              ...steps.take(6).toList().asMap().entries.map((entry) {
+                                                final stepIndex = entry.key + 1;
+                                                final step = entry.value;
+                                                final stepTitle = step['title'] ?? 'Untitled Step';
+                                                final role = step['responsibleRole'] ?? 'any';
+
+                                                return Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: _cardDark.withValues(alpha: 0.8),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                    border: Border.all(
+                                                      color: Colors.white.withValues(alpha: 0.08),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        '$stepIndex.',
+                                                        style: TextStyle(
+                                                          fontSize: 9,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: _accentPink,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        stepTitle,
+                                                        style: const TextStyle(
+                                                          fontSize: 9,
+                                                          fontWeight: FontWeight.w500,
+                                                          color: Colors.white,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                      if (role != 'any') ...[
+                                                        const SizedBox(width: 6),
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 4,
+                                                            vertical: 1,
+                                                          ),
+                                                          decoration: BoxDecoration(
+                                                            color: _roleColor(role).withValues(alpha: 0.2),
+                                                            borderRadius: BorderRadius.circular(3),
+                                                          ),
+                                                          child: Text(
+                                                            role,
+                                                            style: TextStyle(
+                                                              fontSize: 7,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: _roleColor(role),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                );
+                                              }).toList(),
+                                              if (steps.length > 6)
+                                                Padding(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 4,
+                                                  ),
+                                                  child: Text(
+                                                    '+${steps.length - 6} more',
+                                                    style: TextStyle(
+                                                      fontSize: 9,
+                                                      color: _textGrey.withValues(alpha: 0.5),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Get color for role badge
+  Color _roleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return const Color(0xFFEF5350);
+      case 'hr':
+        return const Color(0xFF9C27B0);
+      case 'employee':
+        return _accentGreen;
+      default:
+        return _textGrey;
     }
   }
 
@@ -1413,7 +1851,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                   children: [
                                     _EstPreset('Custom Hours', null),
                                     _EstPreset('Before Lunch(4h)', '240'),
-                                    _EstPreset('8h End of the Day(8h)', '480'),
+                                    _EstPreset('End of the Day(8h)', '480'),
                                   ].map((ep) {
                                     final sel = estimatedPreset == ep.value;
                                     return GestureDetector(
@@ -1781,6 +2219,7 @@ class _TasksScreenState extends State<TasksScreen> {
     DateTime? selectedStartDate;
     DateTime? selectedDueDate;
     List<String> tags = [];
+    String? selectedWorkflow;
     bool submitting = false;
 
     Future<DateTime?> _pickDateTime(
@@ -1965,9 +2404,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                   spacing: 6,
                                   runSpacing: 6,
                                   children: [
-                                    _EstPreset('Custom', null),
-                                    _EstPreset('4h Lunch', '240'),
-                                    _EstPreset('8h Day', '480'),
+                                    _EstPreset('Custom Hours', null),
+                                    _EstPreset('Before Lunch(4h)', '240'),
+                                    _EstPreset('End of the Day(8h)', '480'),
                                   ].map((ep) {
                                     final sel = estimatedPreset == ep.value;
                                     return GestureDetector(
@@ -2174,6 +2613,327 @@ class _TasksScreenState extends State<TasksScreen> {
                       ],
                       const SizedBox(height: 28),
 
+                      // ── Workflow Template (optional) ────────────────
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: _inputLabel('Workflow Template (optional)'),
+                          ),
+                          GestureDetector(
+                            onTap: () => _showWorkflowTemplatesDialog(),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _accentPink.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.add_circle_outline,
+                                    size: 14,
+                                    color: _accentPink,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Manage',
+                                    style: TextStyle(
+                                      color: _accentPink,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _inputDark,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.07),
+                          ),
+                        ),
+                        child: _workflowsLoading
+                            ? const SizedBox(
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFFFF8FA3),
+                                  ),
+                                ),
+                              )
+                            : _workflows.isEmpty
+                                ? Text(
+                                    'No workflows available',
+                                    style: TextStyle(
+                                      color: _textGrey.withOpacity(0.6),
+                                      fontSize: 14,
+                                    ),
+                                  )
+                                : Row(
+                                    children: [
+                                      Expanded(
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String?>(
+                                            isExpanded: true,
+                                            value: selectedWorkflow,
+                                            hint: Text(
+                                              'Select workflow...',
+                                              style: TextStyle(
+                                                color: _textGrey.withOpacity(0.6),
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            dropdownColor: _cardDark,
+                                            items: [
+                                              DropdownMenuItem<String?>(
+                                                value: null,
+                                                child: Text(
+                                                  '— No workflow —',
+                                                  style: TextStyle(
+                                                    color: _textGrey,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ),
+                                              ..._workflows.map((wf) {
+                                                final workflowId = wf['_id'] ?? '';
+                                                final workflowName = wf['name'] ?? 'Unnamed';
+                                                final stepCount = (wf['steps'] as List<dynamic>?)?.length ?? 0;
+                                                return DropdownMenuItem<String?>(
+                                                  value: workflowId,
+                                                  child: Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          workflowName,
+                                                          style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 13,
+                                                          ),
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
+                                                        decoration: BoxDecoration(
+                                                          color: _accentPink.withOpacity(0.2),
+                                                          borderRadius: BorderRadius.circular(4),
+                                                        ),
+                                                        child: Text(
+                                                          '$stepCount steps',
+                                                          style: TextStyle(
+                                                            color: _accentPink,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            ],
+                                            onChanged: (value) =>
+                                                ss(() => selectedWorkflow = value),
+                                          ),
+                                        ),
+                                      ),
+                                      if (selectedWorkflow != null) ...[
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () =>
+                                              ss(() => selectedWorkflow = null),
+                                          child: Icon(
+                                            Icons.close,
+                                            color: _accentPink,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                      ),
+                      // ── Workflow Preview ────────────────────────────
+                      if (selectedWorkflow != null &&
+                          _workflows.isNotEmpty)
+                        Builder(
+                          builder: (context) {
+                            final selectedWfData = _workflows.firstWhere(
+                              (w) => (w['_id'] ?? w['id']) == selectedWorkflow,
+                              orElse: () => null,
+                            );
+                            if (selectedWfData == null) {
+                              return const SizedBox.shrink();
+                            }
+                            final steps = selectedWfData['steps'] as List<dynamic>? ?? [];
+                            return Column(
+                              children: [
+                                const SizedBox(height: 12),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: _cardDark.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _accentPink.withOpacity(0.2),
+                                    ),
+                                  ),
+                                  child: steps.isEmpty
+                                      ? Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Text(
+                                            'No workflow steps defined',
+                                            style: TextStyle(
+                                              color: _textGrey.withOpacity(0.6),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        )
+                                      : Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Padding(
+                                              padding: const EdgeInsets.all(12),
+                                              child: Text(
+                                                '${steps.length} workflow steps',
+                                                style: TextStyle(
+                                                  color: _accentPink,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            ...steps.asMap().entries.map((entry) {
+                                              final idx = entry.key;
+                                              final step = entry.value as Map<String, dynamic>;
+                                              final title = step['title'] ?? 'Step ${idx + 1}';
+                                              final role = step['responsibleRole'] ?? 'any';
+                                              
+                                              Color roleColor;
+                                              switch (role.toLowerCase()) {
+                                                case 'admin':
+                                                  roleColor = Colors.red;
+                                                  break;
+                                                case 'hr':
+                                                  roleColor = _accentPurple;
+                                                  break;
+                                                case 'employee':
+                                                  roleColor = _accentGreen;
+                                                  break;
+                                                default:
+                                                  roleColor = Colors.blue;
+                                              }
+                                              
+                                              return Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 8,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    top: BorderSide(
+                                                      color: _textGrey.withOpacity(0.1),
+                                                    ),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      width: 28,
+                                                      height: 28,
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color:
+                                                            _accentPink.withOpacity(0.15),
+                                                        border: Border.all(
+                                                          color: _accentPink.withOpacity(
+                                                            0.3,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      child: Center(
+                                                        child: Text(
+                                                          '${idx + 1}',
+                                                          style: TextStyle(
+                                                            color: _accentPink,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: Text(
+                                                        title,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    if (role != null && role != 'any')
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 4,
+                                                        ),
+                                                        decoration: BoxDecoration(
+                                                          color:
+                                                              roleColor.withOpacity(0.15),
+                                                          borderRadius:
+                                                              BorderRadius.circular(4),
+                                                          border: Border.all(
+                                                            color: roleColor.withOpacity(
+                                                              0.3,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        child: Text(
+                                                          role,
+                                                          style: TextStyle(
+                                                            color: roleColor,
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ],
+                                        ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      const SizedBox(height: 28),
+
                       // ── Submit Button ────────────────────────────────
                       SizedBox(
                         width: double.infinity,
@@ -2223,7 +2983,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                       estMinutes = (h * 60).round();
                                   }
                                   try {
-                                    await _createTask(
+                                    final taskId = await _createTask(
                                       title: titleCtrl.text.trim(),
                                       description: descCtrl.text.trim(),
                                       priority: selectedPriority,
@@ -2232,6 +2992,26 @@ class _TasksScreenState extends State<TasksScreen> {
                                       estimatedTime: estMinutes,
                                       tags: tags,
                                     );
+                                    // Assign workflow if selected
+                                    if (selectedWorkflow != null && _token != null && taskId != null) {
+                                      try {
+                                        final workflowTemplate = _workflows.firstWhere(
+                                          (w) => (w['_id'] ?? w['id']) == selectedWorkflow,
+                                          orElse: () => null,
+                                        );
+                                        if (workflowTemplate != null) {
+                                          await WorkflowService.assignToTask(
+                                            _token!,
+                                            taskId,
+                                            templateId: selectedWorkflow!,
+                                            workflowName: workflowTemplate['name'],
+                                          );
+                                        }
+                                      } catch (e) {
+                                        print('Error assigning workflow: $e');
+                                        // Workflow assignment failure is non-critical
+                                      }
+                                    }
                                     if (sheetContext.mounted)
                                       Navigator.pop(sheetContext, true);
                                   } catch (e) {
@@ -2304,7 +3084,7 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   /// Pure API call – no UI side-effects.
-  Future<void> _createTask({
+  Future<String?> _createTask({
     required String title,
     required String description,
     required String priority,
@@ -2316,7 +3096,7 @@ class _TasksScreenState extends State<TasksScreen> {
     if (_token == null) throw Exception('Not authenticated');
     final assignTo = _userId ?? '';
     if (assignTo.isEmpty) throw Exception('User ID not found');
-    await TaskService.createTask(
+    final response = await TaskService.createTask(
       _token!,
       title: title,
       description: description.isEmpty ? title : description,
@@ -2334,6 +3114,15 @@ class _TasksScreenState extends State<TasksScreen> {
       assignedTo: 'You',
       priority: priority,
     );
+    // Extract task ID from response for workflow assignment
+    if (response is Map<String, dynamic>) {
+      if (response['success'] == true && response['data'] != null) {
+        return response['data']['_id'] ?? response['data']['id'];
+      } else if (response['data'] != null && response['data'] is Map) {
+        return response['data']['_id'] ?? response['data']['id'];
+      }
+    }
+    return null;
   }
 
   // ── Input helpers ──────────────────────────────────────────────────────────
@@ -3973,6 +4762,7 @@ class _TasksScreenState extends State<TasksScreen> {
     String selectedPriority = 'medium';
     DateTime? selectedDueDate;
     String? selectedEmployeeId;
+    String? selectedAdminWorkflow;
     bool submitting = false;
 
     try {
@@ -4234,6 +5024,328 @@ class _TasksScreenState extends State<TasksScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: _inputLabel('Workflow Template (optional)'),
+                        ),
+                        GestureDetector(
+                          onTap: () => _showWorkflowTemplatesDialog(),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _accentPink.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.add_circle_outline,
+                                  size: 14,
+                                  color: _accentPink,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Manage',
+                                  style: TextStyle(
+                                    color: _accentPink,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _inputDark,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.07),
+                        ),
+                      ),
+                      child: _workflowsLoading
+                          ? const SizedBox(
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFFFF8FA3),
+                                ),
+                              ),
+                            )
+                          : _workflows.isEmpty
+                              ? Text(
+                                  'No workflows available',
+                                  style: TextStyle(
+                                    color: _textGrey.withOpacity(0.6),
+                                    fontSize: 14,
+                                  ),
+                                )
+                              : Row(
+                                  children: [
+                                    Expanded(
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<String?>(
+                                          isExpanded: true,
+                                          value: selectedAdminWorkflow,
+                                          hint: Text(
+                                            'Select workflow...',
+                                            style: TextStyle(
+                                              color: _textGrey.withOpacity(0.6),
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          dropdownColor: _cardDark,
+                                          items: [
+                                            DropdownMenuItem<String?>(
+                                              value: null,
+                                              child: Text(
+                                                '— No workflow —',
+                                                style: TextStyle(
+                                                  color: _textGrey,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ),
+                                            ..._workflows.map((wf) {
+                                              final workflowId = wf['_id'] ?? '';
+                                              final workflowName = wf['name'] ?? 'Unnamed';
+                                              final stepCount = (wf['steps'] as List<dynamic>?)?.length ?? 0;
+                                              return DropdownMenuItem<String?>(
+                                                value: workflowId,
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        workflowName,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 13,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            _accentPink.withOpacity(0.2),
+                                                        borderRadius:
+                                                            BorderRadius.circular(4),
+                                                      ),
+                                                      child: Text(
+                                                        '$stepCount steps',
+                                                        style: TextStyle(
+                                                          color: _accentPink,
+                                                          fontSize: 11,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ],
+                                          onChanged: (value) =>
+                                              ss(() => selectedAdminWorkflow = value),
+                                        ),
+                                      ),
+                                    ),
+                                    if (selectedAdminWorkflow != null) ...[
+                                      const SizedBox(width: 8),
+                                      GestureDetector(
+                                        onTap: () =>
+                                            ss(() => selectedAdminWorkflow = null),
+                                        child: Icon(
+                                          Icons.close,
+                                          color: _accentPink,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                    ),
+                    // ── Workflow Preview ────────────────────────────
+                    if (selectedAdminWorkflow != null &&
+                        _workflows.isNotEmpty)
+                      Builder(
+                        builder: (context) {
+                          final selectedWfData = _workflows.firstWhere(
+                            (w) => (w['_id'] ?? w['id']) == selectedAdminWorkflow,
+                            orElse: () => null,
+                          );
+                          if (selectedWfData == null) {
+                            return const SizedBox.shrink();
+                          }
+                          final steps = selectedWfData['steps'] as List<dynamic>? ?? [];
+                          return Column(
+                            children: [
+                              const SizedBox(height: 12),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: _cardDark.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: _accentPink.withOpacity(0.2),
+                                  ),
+                                ),
+                                child: steps.isEmpty
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Text(
+                                          'No workflow steps defined',
+                                          style: TextStyle(
+                                            color: _textGrey.withOpacity(0.6),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      )
+                                    : Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.all(12),
+                                            child: Text(
+                                              '${steps.length} workflow steps',
+                                              style: TextStyle(
+                                                color: _accentPink,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          ...steps.asMap().entries.map((entry) {
+                                            final idx = entry.key;
+                                            final step = entry.value as Map<String, dynamic>;
+                                            final title = step['title'] ?? 'Step ${idx + 1}';
+                                            final role = step['responsibleRole'] ?? 'any';
+                                            
+                                            Color roleColor;
+                                            switch (role.toLowerCase()) {
+                                              case 'admin':
+                                                roleColor = Colors.red;
+                                                break;
+                                              case 'hr':
+                                                roleColor = _accentPurple;
+                                                break;
+                                              case 'employee':
+                                                roleColor = _accentGreen;
+                                                break;
+                                              default:
+                                                roleColor = Colors.blue;
+                                            }
+                                            
+                                            return Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 8,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                border: Border(
+                                                  top: BorderSide(
+                                                    color: _textGrey.withOpacity(0.1),
+                                                  ),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Container(
+                                                    width: 28,
+                                                    height: 28,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color:
+                                                          _accentPink.withOpacity(0.15),
+                                                      border: Border.all(
+                                                        color: _accentPink.withOpacity(
+                                                          0.3,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        '${idx + 1}',
+                                                        style: TextStyle(
+                                                          color: _accentPink,
+                                                          fontSize: 11,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 10),
+                                                  Expanded(
+                                                    child: Text(
+                                                      title,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  if (role != null && role != 'any')
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color:
+                                                            roleColor.withOpacity(0.15),
+                                                        borderRadius:
+                                                            BorderRadius.circular(4),
+                                                        border: Border.all(
+                                                          color: roleColor.withOpacity(
+                                                            0.3,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      child: Text(
+                                                        role,
+                                                        style: TextStyle(
+                                                          color: roleColor,
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            );
+                                          }).toList(),
+                                        ],
+                                      ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     const SizedBox(height: 28),
                     SizedBox(
                       width: double.infinity,
@@ -4272,7 +5384,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                 }
                                 ss(() => submitting = true);
                                 try {
-                                  await TaskService.createTask(
+                                  final response = await TaskService.createTask(
                                     _token!,
                                     title: titleCtrl.text.trim(),
                                     description: descCtrl.text.trim().isEmpty
@@ -4290,6 +5402,38 @@ class _TasksScreenState extends State<TasksScreen> {
                                           ),
                                     assignedTo: selectedEmployeeId!,
                                   );
+                                  
+                                  // Extract task ID and assign workflow if selected
+                                  String? taskId;
+                                  if (response is Map<String, dynamic>) {
+                                    if (response['success'] == true && response['data'] != null) {
+                                      taskId = response['data']['_id'] ?? response['data']['id'];
+                                    } else if (response['data'] != null && response['data'] is Map) {
+                                      taskId = response['data']['_id'] ?? response['data']['id'];
+                                    }
+                                  }
+                                  
+                                  // Assign workflow if selected
+                                  if (selectedAdminWorkflow != null && _token != null && taskId != null) {
+                                    try {
+                                      final workflowTemplate = _workflows.firstWhere(
+                                        (w) => (w['_id'] ?? w['id']) == selectedAdminWorkflow,
+                                        orElse: () => null,
+                                      );
+                                      if (workflowTemplate != null) {
+                                        await WorkflowService.assignToTask(
+                                          _token!,
+                                          taskId,
+                                          templateId: selectedAdminWorkflow!,
+                                          workflowName: workflowTemplate['name'],
+                                        );
+                                      }
+                                    } catch (e) {
+                                      print('Error assigning workflow: $e');
+                                      // Workflow assignment failure is non-critical
+                                    }
+                                  }
+                                  
                                   if (sheetCtx.mounted)
                                     Navigator.pop(sheetCtx, true);
                                 } catch (e) {
