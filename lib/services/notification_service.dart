@@ -210,15 +210,23 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('[NOTIFICATION] Body: $body');
 
   // ── Display notification in system tray ─────────────────────────────────
-  // We always call _showBgNotification so that:
-  //  • data-only messages (no 'notification' field) are shown in the tray.
-  //  • regular messages are shown on the CORRECT typed channel instead of
-  //    the generic 'hrms_notifications' fallback.
-  try {
-    await _showBgNotification(message);
-    print('✅ Background notification displayed (type=$type, channel=${_channelForType(type)})');
-  } catch (e) {
-    print('⚠️ _showBgNotification error: $e');
+  // Only show manually if this is a data-only message (no 'notification' field).
+  // Messages WITH a 'notification' field are already auto-displayed by the OS
+  // on both Android and iOS, so we skip manual display to avoid duplicates.
+  final hasNotificationField = message.notification != null &&
+      (message.notification!.title?.isNotEmpty == true ||
+          message.notification!.body?.isNotEmpty == true);
+
+  if (!hasNotificationField) {
+    // Data-only message: must display manually
+    try {
+      await _showBgNotification(message);
+      print('✅ Background notification displayed (type=$type, channel=${_channelForType(type)})');
+    } catch (e) {
+      print('⚠️ _showBgNotification error: $e');
+    }
+  } else {
+    print('ℹ️ OS auto-displays this notification (has notification field)');
   }
 
   print('═══════════════════════════════════════════════════════════');
