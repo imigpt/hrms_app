@@ -6,10 +6,17 @@ import '../models/announcement_model.dart';
 import 'announcement_service.dart';
 import 'notification_service.dart';
 import 'token_storage_service.dart';
+import '../config/api_config.dart';
 
 class AnnouncementWebSocketService {
-  // Use wss:// with explicit port 443 so the URI is well-formed for Render.com hosting
-  static const String _wsHost = 'hrms-backend-807r.onrender.com';
+  // WebSocket host based on environment
+  static String get _wsHost {
+    final baseUrl = ApiConfig.baseUrl;
+    if (baseUrl.contains('localhost')) {
+      return 'localhost:5000';
+    }
+    return 'hrms-backend-807r.onrender.com';
+  }
   // Try common WebSocket paths — update if the backend uses a different one
   static const String _wsPath = '/ws';
 

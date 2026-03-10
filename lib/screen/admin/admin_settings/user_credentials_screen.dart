@@ -407,7 +407,6 @@ class _AdminUserCredentialsScreenState
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
                       itemBuilder: (_, i) => _UserTile(
                         user: _users[i],
-                        onReset: () => _openResetDialog(_users[i]),
                       ),
                     ),
             ),
@@ -473,10 +472,16 @@ class _AdminUserCredentialsScreenState
   }
 }
 
-class _UserTile extends StatelessWidget {
+class _UserTile extends StatefulWidget {
   final Map<String, dynamic> user;
-  final VoidCallback onReset;
-  const _UserTile({required this.user, required this.onReset});
+  const _UserTile({required this.user});
+
+  @override
+  State<_UserTile> createState() => _UserTileState();
+}
+
+class _UserTileState extends State<_UserTile> {
+  bool _pwdVisible = false;
 
   Color _roleColor(String role) {
     switch (role.toLowerCase()) {
@@ -489,12 +494,29 @@ class _UserTile extends StatelessWidget {
     }
   }
 
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return const Color(0xFF22C55E);
+      case 'inactive':
+        return const Color(0xFF9E9E9E);
+      case 'on-leave':
+        return const Color(0xFFFFAB00);
+      default:
+        return const Color(0xFF9E9E9E);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = widget.user;
     final name = user['name']?.toString() ?? '—';
     final email = user['email']?.toString() ?? '—';
     final role = user['role']?.toString() ?? 'employee';
     final dept = user['department']?.toString();
+    final empId = user['employeeId']?.toString();
+    final status = user['status']?.toString() ?? 'active';
+    final password = user['password']?.toString();
     final initials = name.isNotEmpty
         ? name.trim().split(' ').take(2).map((w) => w[0]).join().toUpperCase()
         : '?';
@@ -507,6 +529,7 @@ class _UserTile extends StatelessWidget {
         border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
             radius: 22,
@@ -525,13 +548,24 @@ class _UserTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+                // Name + Status badge
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    _StatusBadge(
+                      status: status,
+                      color: _statusColor(status),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -541,27 +575,108 @@ class _UserTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Row(
+                // Role + Department + Employee ID
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     _RoleBadge(role: role, color: _roleColor(role)),
-                    if (dept != null && dept.isNotEmpty) ...[
-                      const SizedBox(width: 6),
+                    if (empId != null && empId.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.07),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'ID: $empId',
+                          style: const TextStyle(
+                            color: Color(0xFFB0B0B0),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    if (dept != null && dept.isNotEmpty)
                       Text(
                         dept,
-                        style: TextStyle(color: Colors.grey[600], fontSize: 10),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 10,
+                        ),
                       ),
-                    ],
                   ],
                 ),
+                // Password row
+                if (password != null && password.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.lock_outline_rounded,
+                        size: 11,
+                        color: Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _pwdVisible ? password : '••••••••',
+                        style: TextStyle(
+                          color: _pwdVisible
+                              ? Colors.white70
+                              : Colors.grey[600],
+                          fontSize: 11,
+                          letterSpacing: _pwdVisible ? 0 : 2,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () =>
+                            setState(() => _pwdVisible = !_pwdVisible),
+                        child: Icon(
+                          _pwdVisible
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded,
+                          size: 13,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
-          IconButton(
-            onPressed: onReset,
-            icon: Icon(Icons.key_rounded, color: Colors.grey[600], size: 18),
-            tooltip: 'Reset password',
-          ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  final Color color;
+  const _StatusBadge({required this.status, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = status[0].toUpperCase() + status.substring(1);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

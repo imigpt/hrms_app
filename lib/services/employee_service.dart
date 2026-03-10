@@ -5,11 +5,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import '../config/api_config.dart';
 import '../models/employee_model.dart';
 import '../models/dashboard_stats_model.dart';
 
 class EmployeeService {
-  static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   // ── Shared header builder ─────────────────────────────────────────────────
   static Map<String, String> _headers(String token) => {

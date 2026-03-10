@@ -524,7 +524,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                     if (_companies.isNotEmpty) ...[
                       _buildCompanyDropdown(
                         selectedCompany,
-                        (v) => setDialogState(() => selectedCompany = v),
+                        (v) => setDialogState(() => selectedCompany = v ?? selectedCompany),
                       ),
                       const SizedBox(height: 14),
                     ],
@@ -964,7 +964,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                           [
                             _buildCompanyDropdown(
                               selectedCompany,
-                              (v) => setDialogState(() => selectedCompany = v),
+                              (v) => setDialogState(() => selectedCompany = v ?? selectedCompany),
                             ),
                             SizedBox(height: _fieldSpacing),
                             Row(
@@ -1408,176 +1408,91 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     );
   }
 
-  Widget _buildCompanyDropdown(String value, Function(String) onChanged) {
-    final selectedCompany = _companies.firstWhere(
-      (c) => c['_id']?.toString() == value,
-      orElse: () => {},
-    );
+  Widget _buildCompanyDropdown(
+    String? value, Function(String?) onChanged) {
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [ 
-        Row(
-          children: [
-            Icon(Icons.apartment_rounded, size: 18, color: _primaryAccent),
-            const SizedBox(width: 6),
-            Text(
-              'Company',
-              style: TextStyle(
-                color: _textLight,
-                fontSize: _labelFontSize,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+  final bool isValidValue =
+      value != null && _companies.any((c) => c['_id']?.toString() == value);
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Company',
+        style: TextStyle(
+          color: _textGrey,
+          fontSize: _labelFontSize,
+          fontWeight: FontWeight.w600,
         ),
-        const SizedBox(height: 10),
-        Container(
-          decoration: BoxDecoration(
-            color: _input,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _border.withOpacity(0.5),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+      ),
+
+      const SizedBox(height: 6),
+
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: _input,
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(
+            color: _border.withOpacity(0.6),
+            width: 1,
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: value.isNotEmpty &&
-                      _companies.any((c) => c['_id']?.toString() == value)
-                  ? value
-                  : null,
-              hint: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(Icons.business_rounded,
-                        size: 16, color: _textGrey.withOpacity(0.6)),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Select Company',
-                      style: TextStyle(
-                        color: _textGrey.withOpacity(0.7),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              isExpanded: true,
-              dropdownColor: _section,
-              icon: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: _primaryAccent.withOpacity(0.7)),
-              iconSize: 22,
-              underline: const SizedBox.shrink(),
+        ),
+
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: isValidValue ? value : null,
+            isExpanded: true,
+
+            hint: Text(
+              _companies.isEmpty
+                  ? "Loading companies..."
+                  : "Select Company",
               style: TextStyle(
-                color: _textLight,
+                color: _textGrey,
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
               ),
-              items: _companies.isEmpty
-                  ? [
-                      DropdownMenuItem<String>(
-                        enabled: false,
-                        value: '',
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Text(
-                            'No companies available',
-                            style: TextStyle(color: _textGrey, fontSize: 13),
-                          ),
-                        ),
-                      ),
-                    ]
-                  : _companies.map<DropdownMenuItem<String>>((c) {
-                      final id = c['_id']?.toString() ?? '';
-                      final name = c['name']?.toString() ?? 'Unknown';
-                      final isSelected = value == id;
-
-                      return DropdownMenuItem<String>(
-                        value: id,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          color: isSelected
-                              ? _primaryAccent.withOpacity(0.1)
-                              : Colors.transparent,
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: _primaryAccent.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Icon(
-                                  Icons.apartment_rounded,
-                                  size: 14,
-                                  color: _primaryAccent,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      name,
-                                      style: TextStyle(
-                                        color: _textLight,
-                                        fontSize: 14,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w700
-                                            : FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (isSelected)
-                                Icon(
-                                  Icons.check_circle_rounded,
-                                  size: 16,
-                                  color: _primaryAccent,
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-              onChanged: _companies.isEmpty ? null : (v) => onChanged(v ?? ''),
             ),
+
+            dropdownColor: _section,
+
+            icon: Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: _textGrey,
+              size: 20,
+            ),
+
+            style: const TextStyle(
+              color: _textLight,
+              fontSize: 14,
+            ),
+
+            items: _companies.map<DropdownMenuItem<String>>((company) {
+
+              final String id =
+                  company['_id']?.toString() ?? '';
+
+              final String name =
+                  company['name']?.toString() ?? 'Unknown';
+
+              return DropdownMenuItem<String>(
+                value: id,
+                child: Text(name),
+              );
+
+            }).toList(),
+
+            onChanged: _companies.isEmpty
+                ? null
+                : (String? newValue) {
+                    onChanged(newValue);
+                  },
           ),
         ),
-        if (selectedCompany.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Row(
-              children: [
-                Icon(Icons.check_circle_rounded,
-                    size: 14, color: _secondaryAccent),
-                const SizedBox(width: 6),
-                Text(
-                  '${selectedCompany['name']} selected',
-                  style: TextStyle(
-                    color: _secondaryAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
   Widget _buildStatusSelector(String value, Function(String) onChanged) {
     return Column(

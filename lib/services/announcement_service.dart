@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../models/announcement_model.dart';
 
 class AnnouncementService {
   // Keep in sync with AttendanceService.baseUrl
-  static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   // ── GET /api/announcements ─────────────────────────────────────────────────
   // Optional filters: priority ('low' | 'medium' | 'high'), department (String)

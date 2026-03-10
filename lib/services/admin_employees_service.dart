@@ -4,9 +4,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class AdminEmployeesService {
-  static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   static Map<String, String> _headers(String token) => {
     'Content-Type': 'application/json',
@@ -222,17 +223,22 @@ class AdminEmployeesService {
   static Future<List<dynamic>> getEmployeeAttendance(
     String token,
     String userId, {
-    int limit = 30,
+    String? startDate,
+    String? endDate,
+    int limit = 100,
   }) async {
     try {
-      final uri = Uri.parse(
-        '$_baseUrl/attendance',
-      ).replace(queryParameters: {
-        'userId': userId, 
+      final params = <String, String>{
+        'userId': userId,
         'limit': limit.toString(),
         'sortBy': 'date',
-        'order': 'desc'
-      });
+        'order': 'desc',
+      };
+      if (startDate != null) params['startDate'] = startDate;
+      if (endDate != null) params['endDate'] = endDate;
+      final uri = Uri.parse(
+        '$_baseUrl/attendance',
+      ).replace(queryParameters: params);
       final response = await http
           .get(uri, headers: _headers(token))
           .timeout(const Duration(seconds: 30));

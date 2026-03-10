@@ -1,7 +1,6 @@
 import 'dart:async'; // Required for the Timer
 import 'package:flutter/material.dart';
 import 'package:hrms_app/models/profile_model.dart';
-import 'package:hrms_app/models/attendance_checkin_model.dart';
 import 'package:hrms_app/models/announcement_model.dart';
 import 'package:hrms_app/models/dashboard_stats_model.dart';
 import 'package:hrms_app/services/attendance_service.dart';
@@ -18,7 +17,6 @@ import '../services/profile_service.dart';
 import '../widgets/sidebar_menu.dart';
 import '../widgets/welcome_card.dart';
 import '../widgets/status_card.dart';
-import '../widgets/stat_card.dart';
 import '../widgets/tasks_section.dart';
 import '../widgets/announcements_section.dart';
 import '../widgets/location_permission_dialog.dart';
@@ -26,13 +24,13 @@ import '../widgets/attendance_statistics_section.dart';
 import '../widgets/leave_statistics_section.dart';
 import '../widgets/dashboard_quick_stats_section.dart';
 import '../widgets/profile_card_widget.dart';
-import 'announcements_screen.dart';
 import 'notifications_screen.dart';
 import 'chat_screen.dart';
 // import 'employee_api_test_screen.dart';
 import 'apply_leave_screen.dart';
 import 'attendance_screen.dart';
 import '../theme/app_theme.dart';
+import '../widgets/bod_eod_dialogs.dart';
 
 class DashboardScreen extends StatefulWidget {
   final ProfileUser? user;
@@ -55,14 +53,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // --- STATE VARIABLES ---
   bool _isCheckedIn = false;
-  bool _showPhotoUI = false;
   DateTime? _checkInTime;
   DateTime? _checkOutTime;
   String? _checkInLocation;
   String? _checkOutLocation;
   Duration _workedDuration = const Duration(hours: 0, minutes: 0);
   Timer? _timer;
-  AttendanceData? _todayAttendance;
   bool _isLoadingAttendance = true;
   List<Announcement> _announcements = [];
   bool _isLoadingAnnouncements = true;
@@ -442,7 +438,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _announcementsSubscription = _wsService.announcementsStream.listen(
         (announcements) {
           dataReceived = true;
-          timeoutTimer?.cancel();
+          timeoutTimer.cancel();
           if (mounted) {
             final previousCount = _unreadAnnouncementsCount;
             setState(() {
@@ -462,7 +458,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         onError: (error) {
           print('WebSocket stream error: $error');
-          timeoutTimer?.cancel();
+          timeoutTimer.cancel();
           if (mounted && _isLoadingAnnouncements) {
             _loadAnnouncementsFallback();
           }
@@ -1081,102 +1077,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Toggle Check-In / Check-Out
   /// For check-in → navigate to AttendanceScreen.
   /// For check-out → call _handleCheckOut directly (inline GPS + API).
-  void _toggleCheckIn() {
+  void _toggleCheckIn() async {
     if (_isCheckedIn) {
-      _handleCheckOut();
+      // Show EOD review before allowing check-out
+      final confirmed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => const EODBottomSheet(),
+      );
+      if (confirmed == true && mounted) {
+        _handleCheckOut();
+      }
     } else {
-      Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) =>
               const AttendanceScreen(initialAction: 'checkIn'),
         ),
-      ).then((_) {
-        _loadTodayAttendance();
-        _loadDashboardStats();
-      });
-    }
-  }
-
-  // Check location services before starting check-in
-  Future<void> _checkLocationAndStartCheckIn() async {
-    try {
-      print('=== Check-In: Checking Location Permission ===');
-
-      // Check if location service is enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      print('Location service enabled: $serviceEnabled');
-
-      if (!serviceEnabled) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Please enable location services to mark attendance',
-              ),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-        return;
-      }
-
-      // Check current location permission
-      LocationPermission permission = await Geolocator.checkPermission();
-      print('Current location permission: $permission');
-
-      // ALWAYS show our custom dialog first (except if already granted)
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        // Show custom dialog to explain why we need location
-        if (mounted) {
-          final shouldRequest = await LocationPermissionDialog.show(
-            context,
-            isPermanentlyDenied: permission == LocationPermission.deniedForever,
-          );
-          print('Dialog result: $shouldRequest');
-
-          if (shouldRequest == null) {
-            print('User cancelled');
-            return;
-          }
-
-          if (permission == LocationPermission.deniedForever) {
-            // User needs to go to settings
-            return;
-          }
-
-          if (shouldRequest == true) {
-            // User clicked "Enable", now request permission from system
-            permission = await Geolocator.requestPermission();
-            print('Permission after request: $permission');
-
-            if (permission == LocationPermission.denied ||
-                permission == LocationPermission.deniedForever) {
-              print('Permission denied by user');
-              return;
-            }
-          } else {
-            return;
-          }
-        }
-      }
-
-      print('Location permission granted, showing photo UI');
-      // Location is enabled and permission granted, show photo UI
-      setState(() {
-        _showPhotoUI = true;
-      });
-    } catch (e) {
-      print('Error in _checkLocationAndStartCheckIn: $e');
+      );
+      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error checking location: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        await _loadTodayAttendance();
+        await _loadDashboardStats();
+        
+        // Show BOD dialog after successful check-in (non-blocking)
+        if (result != null && result != 'cancel') {
+          // Delay slightly so the navigation animation completes
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const BODBottomSheet(),
+              );
+            }
+          });
+        }
       }
     }
   }
@@ -1320,8 +1259,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         setState(() {
           _isCheckedIn = false;
-          _showPhotoUI = false;
-          _todayAttendance = response.data;
 
           // Parse check-in data
           _checkInTime = response.data.checkIn.time;
@@ -1394,59 +1331,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       }
-    }
-  }
-
-  // Called when photo capture returns with result
-  void _handleCheckInResult(dynamic result) async {
-    // Unpack Map format returned by one-tap camera flow
-    String? checkInAddress;
-    if (result is Map<String, dynamic> &&
-        result.containsKey('checkInAddress')) {
-      checkInAddress = result['checkInAddress'] as String?;
-      result = result['attendanceData'];
-    }
-
-    if (result != null && result is AttendanceData) {
-      setState(() {
-        _isCheckedIn = true;
-        _showPhotoUI = false;
-        _checkInTime = result.checkIn.time;
-        // Clear any stale checkout — a new check-in means day is not complete yet
-        _checkOutTime = null;
-        _checkOutLocation = null;
-        _todayAttendance = result;
-        if (checkInAddress != null && checkInAddress.isNotEmpty) {
-          _checkInLocation = checkInAddress;
-        } else if (result.checkIn.location != null) {
-          final double dIn = Geolocator.distanceBetween(
-            result.checkIn.location!.latitude,
-            result.checkIn.location!.longitude,
-            26.816224,
-            75.845444,
-          );
-          _checkInLocation = dIn <= 100 ? 'Main Building' : 'Outside Building';
-        }
-        _workedDuration = DateTime.now().difference(result.checkIn.time);
-      });
-
-      // Save the updated state to local storage
-      await _saveAttendanceState();
-
-      // Reload dashboard stats to update attendance percentage
-      _loadDashboardStats();
-    } else if (result == 'refresh') {
-      // User was already checked in on backend - reload attendance data
-      setState(() {
-        _showPhotoUI = false;
-      });
-      await _loadTodayAttendance();
-      _loadDashboardStats(); // Reload stats as well
-    } else {
-      // User cancelled or error occurred
-      setState(() {
-        _showPhotoUI = false;
-      });
     }
   }
 
@@ -2173,113 +2057,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ── Quick Actions Section ──
-  Widget _buildQuickActionsSection(bool isMobile) {
-    final actions = [
-      {
-        'icon': Icons.person_add,
-        'label': 'Add Employee',
-        'color': _accentGreen,
-      },
-      {'icon': Icons.add_task, 'label': 'Create Task', 'color': _accentBlue},
-      {
-        'icon': Icons.calendar_month,
-        'label': 'Leave Requests',
-        'color': _accentOrange,
-      },
-      {'icon': Icons.receipt_long, 'label': 'Expenses', 'color': _accentPink},
-      {'icon': Icons.campaign, 'label': 'Announcement', 'color': Colors.amber},
-      {'icon': Icons.bar_chart, 'label': 'Reports', 'color': Colors.tealAccent},
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _accentOrange.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.flash_on, color: _accentOrange, size: 18),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Quick Actions',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: isMobile ? 2 : 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: isMobile ? 2.2 : 2.5,
-            children: actions.map((action) {
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {},
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: (action['color'] as Color).withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: (action['color'] as Color).withOpacity(0.15),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          action['icon'] as IconData,
-                          color: action['color'] as Color,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            action['label'] as String,
-                            style: TextStyle(
-                              color: action['color'] as Color,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-  
   // Navigate to apply leave screen
   void _onApplyLeave() {
     Navigator.push(
@@ -2425,14 +2202,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             )
                           : WelcomeCard(
                               isCheckedIn: _isCheckedIn,
-                              showPhotoUI: _showPhotoUI,
                               checkInTime: _checkInTime,
                               checkOutTime: _checkOutTime,
                               checkInLocation: _checkInLocation,
                               checkOutLocation: _checkOutLocation,
                               workHours: workHours,
                               onCheckInToggle: _toggleCheckIn,
-                              onCheckInResult: _handleCheckInResult,
                               user: widget.user,
                             ),
                       SizedBox(height: verticalSpacing),

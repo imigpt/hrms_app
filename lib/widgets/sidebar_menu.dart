@@ -84,17 +84,24 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Settings", "icon": Icons.settings_rounded},
   ];
 
-  late final List<Map<String, dynamic>> _payrollSubItems = [
-    {"title": "Pre Payments", "icon": Icons.payment_rounded},
-    {"title": "Increment/Promotion", "icon": Icons.trending_up_rounded},
-    {"title": "Payroll", "icon": Icons.payments_rounded},
-    {"title": "My Salary", "icon": Icons.money_rounded},
-  ];
-
   late final List<Map<String, dynamic>> _leavesSubItems = [
     {"title": "Leaves", "icon": Icons.calendar_month_rounded},
     {"title": "Leave Management", "icon": Icons.assignment_rounded},
   ];
+
+  /// Get payroll sub items based on user role
+  /// Employee: "My Salary" | Admin: "Employee Salary"
+  List<Map<String, dynamic>> get _payrollSubItems {
+    return [
+      {"title": "Pre Payments", "icon": Icons.payment_rounded},
+      {"title": "Increment/Promotion", "icon": Icons.trending_up_rounded},
+      {"title": "Payroll", "icon": Icons.payments_rounded},
+      {
+        "title": _userRole == 'admin' ? "Employee Salary" : "My Salary",
+        "icon": Icons.money_rounded
+      },
+    ];
+  }
 
   /// Get the appropriate menu items based on user role
   List<Map<String, dynamic>> get _menuItems {
@@ -752,7 +759,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
       ).push(_createSmoothRoute(const IncrementPromotionScreen()));
     } else if (title == "Payroll") {
       Navigator.of(context).push(_createSmoothRoute(const PayrollScreen()));
-    } else if (title == "My Salary") {
+    } else if (title == "My Salary" || title == "Employee Salary") {
       Navigator.of(context).push(_createSmoothRoute(const MySalaryScreen()));
     }
   }

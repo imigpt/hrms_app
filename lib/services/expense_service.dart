@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../models/expense_model.dart';
 
 class ExpenseService {
-  static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   /// Get all expenses for the current user
   /// GET /expenses

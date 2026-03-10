@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import '../config/api_config.dart';
 import '../models/apply_leave_model.dart';
 import '../models/leave_balance_model.dart';
 import '../models/leave_management_model.dart';
 
 class LeaveService {
-  static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   static Map<String, String> _authHeaders(String token) => {
     'Content-Type': 'application/json',

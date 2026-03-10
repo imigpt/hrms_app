@@ -3,19 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'camera_screen.dart';
 import 'attendance_history_screen.dart';
+import '../widgets/bod_eod_dialogs.dart';
 import '../services/attendance_service.dart';
 import '../services/token_storage_service.dart';
 import '../services/profile_service.dart';
 import '../models/profile_model.dart';
 import '../models/attendance_summary_model.dart';
-import '../models/today_attendance_model.dart' as today;
 import '../models/attendance_checkin_model.dart';
-import '../models/attendance_history_model.dart' as history;
 import '../models/attendance_records_model.dart' as records;
 import '../models/attendance_edit_request_model.dart';
 import '../widgets/welcome_card.dart';
@@ -42,20 +39,15 @@ class AttendanceScreen extends StatefulWidget {
 class _AttendanceScreenState extends State<AttendanceScreen> {
   // --- Existing State ---
   bool _isCheckedIn = false;
-  String _checkInTime = "--:--";
-  String _checkOutTime = "--:--";
-  bool _showPhotoUI = false;
 
   // --- DateTime State for Welcome Card ---
   DateTime? _checkInDateTime;
   DateTime? _checkOutDateTime;
   Duration _workedDuration = const Duration(hours: 0, minutes: 0);
-  today.AttendanceData? _todayAttendanceData;
   String? _token;
   ProfileUser? _user;
 
   // --- Location State ---
-  bool _isLoadingLocation = false;
   String? _checkInLocation;
   String? _checkOutLocation;
 
@@ -83,12 +75,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   void initState() {
     super.initState();
 
-    // Handle initial action from dashboard navigation immediately
-    if (widget.initialAction == 'checkIn') {
-      // Directly show photo UI for check-in from dashboard
-      _showPhotoUI = true;
-    }
-
     _fetchTodayAttendance();
     _fetchAttendanceSummary();
     _fetchAttendanceHistory();
@@ -103,7 +89,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         if (widget.initialAction == 'checkIn') {
           await _checkLocationAndStartCheckIn();
         } else if (widget.initialAction == 'checkOut') {
-          await _handleCheckOut();
+          final confirmed = await _showEODBottomSheet();
+          if (confirmed && mounted) {
+            await _handleCheckOut();
+          }
         }
       });
     }
@@ -142,7 +131,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   (DateTime.tryParse(data.checkIn!.time!) ?? DateTime.now())
                       .toLocal();
               _checkInDateTime = checkInTime;
-              _checkInTime = _formatTime(checkInTime);
             }
 
             if (data.checkOut != null && data.checkOut!.time != null) {
@@ -150,7 +138,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   (DateTime.tryParse(data.checkOut!.time!) ?? DateTime.now())
                       .toLocal();
               _checkOutDateTime = checkOutTime;
-              _checkOutTime = _formatTime(checkOutTime);
             }
 
             // Set location labels based on distance from office
@@ -406,64 +393,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  // --- Face Scan Logic (Unchanged) ---
-  Future<void> _triggerFaceScan(bool isCheckingIn) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const FaceScanScreen()),
-    );
-
-    if (result == true) {
-      setState(() {
-        if (isCheckingIn) {
-          _isCheckedIn = true;
-          _checkInTime = _formatTime(DateTime.now());
-          _checkOutTime = "--:--";
-        } else {
-          _isCheckedIn = false;
-          _checkOutTime = _formatTime(DateTime.now());
-        }
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isCheckingIn
-                  ? "Checked In Successfully!"
-                  : "Checked Out Successfully!",
-            ),
-            backgroundColor: isCheckingIn ? Colors.green : Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _startPhotoCheckIn() async {
-    setState(() {
-      _showPhotoUI = true;
-    });
-
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CameraScreen()),
-    );
-
-    if (!mounted) return;
-
-    if (result != null) {
-      _handleCheckInResult(result);
-    } else {
-      setState(() {
-        _showPhotoUI = false;
-      });
-    }
-  }
-
   // Handle check-in result from camera
-  void _handleCheckInResult(dynamic result) async {
+  Future<void> _handleCheckInResult(dynamic result) async {
     String? checkInAddress;
     FaceVerification? faceVerification;
 
@@ -477,12 +408,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (result != null && result is AttendanceData) {
       setState(() {
         _isCheckedIn = true;
-        _todayAttendanceData = result;
         _checkInDateTime = result.checkIn.time;
-        _checkInTime = _formatTime(result.checkIn.time);
-        _checkOutTime = "--:--";
         _checkOutDateTime = null;
-        _showPhotoUI = false;
 
         // Use human-readable address if provided
         if (checkInAddress != null && checkInAddress.isNotEmpty) {
@@ -526,23 +453,56 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         );
       }
+      // Show BOD dialog after successful check-in (non-blocking).
+      // Delay slightly so the camera-screen pop animation fully completes
+      // before the bottom sheet is pushed — avoids silent no-show in Flutter.
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _showBODBottomSheet();
+          // Pop back to dashboard/previous screen after BOD is closed
+          // (BOD is non-blocking, so user can skip and we still pop)
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) {
+              Navigator.pop(context, 'checkedIn');
+            }
+          });
+        }
+      });
     } else if (result == 'refresh') {
       // User was already checked in on backend - reload attendance data
-      setState(() {
-        _showPhotoUI = false;
-      });
       await _fetchTodayAttendance();
-    } else {
-      setState(() {
-        _showPhotoUI = false;
-      });
     }
+    // else: null means user cancelled — do nothing
+  }
+
+  // Show BOD (Beginning of Day) task planning sheet — non-blocking
+  void _showBODBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const BODBottomSheet(),
+    );
+  }
+
+  // Show EOD (End of Day) review sheet — returns true if user confirms checkout
+  Future<bool> _showEODBottomSheet() async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const EODBottomSheet(),
+    );
+    return result == true;
   }
 
   // Toggle check-in/check-out
   void _toggleCheckIn() async {
     if (_isCheckedIn) {
-      _handleCheckOut();
+      final confirmed = await _showEODBottomSheet();
+      if (confirmed && mounted) {
+        _handleCheckOut();
+      }
     } else {
       // Check location before starting check-in
       await _checkLocationAndStartCheckIn();
@@ -559,7 +519,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       if (!serviceEnabled) {
         if (mounted) {
-          setState(() => _showPhotoUI = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Please enable location services'),
@@ -583,7 +542,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
           if (shouldRequest != true) {
             if (mounted) {
-              setState(() => _showPhotoUI = false);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Location permission required'),
@@ -599,7 +557,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         }
       } else if (permission == LocationPermission.deniedForever) {
         if (mounted) {
-          setState(() => _showPhotoUI = false);
           await LocationPermissionDialog.show(
             context,
             isPermanentlyDenied: true,
@@ -608,15 +565,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         return;
       }
 
-      // Allow check-in if permission granted
+      // Allow check-in if permission granted — navigate to CameraScreen
       if (permission == LocationPermission.whileInUse ||
           permission == LocationPermission.always) {
-        if (mounted && !_showPhotoUI) {
-          setState(() => _showPhotoUI = true);
+        if (!mounted) return;
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CameraScreen()),
+        );
+        if (!mounted) return;
+        if (result != null) {
+          await _handleCheckInResult(result);
         }
       } else {
         if (mounted) {
-          setState(() => _showPhotoUI = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Location permission denied'),
@@ -629,7 +591,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     } catch (e) {
       print('❌ [CHECK-IN] Location error: $e');
       if (mounted) {
-        setState(() => _showPhotoUI = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Unable to access location'),
@@ -707,7 +668,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (mounted) {
         setState(() {
           _isCheckedIn = false;
-          _checkOutTime = '--:--';
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -770,7 +730,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (mounted) {
         setState(() {
           _checkOutDateTime = response.data.checkOut!.time;
-          _checkOutTime = _formatTime(response.data.checkOut!.time);
 
           if (response.data.checkOut!.location != null) {
             final double distMeters = Geolocator.distanceBetween(
@@ -792,118 +751,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     } catch (e) {
       print('❌ [CHECK-OUT] Background API error: $e');
     }
-  }
-
-  // --- Location Permission and Fetching ---
-  Future<void> _fetchLocation({required bool isCheckIn}) async {
-    setState(() {
-      _isLoadingLocation = true;
-    });
-
-    try {
-      // Request location permission
-      final status = await Permission.location.request();
-
-      if (status.isGranted) {
-        // Check if location services are enabled
-        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-        if (!serviceEnabled) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Location services are disabled. Please enable them.',
-                ),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-          setState(() {
-            _isLoadingLocation = false;
-          });
-          return;
-        }
-
-        // Fetch current position
-        Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-
-        // Reverse geocode to get address
-        String locationString;
-        try {
-          List<Placemark> placemarks = await placemarkFromCoordinates(
-            position.latitude,
-            position.longitude,
-          );
-
-          if (placemarks.isNotEmpty) {
-            Placemark place = placemarks[0];
-            // Format address: Street, Locality, State
-            List<String> addressParts = [];
-            if (place.street != null && place.street!.isNotEmpty) {
-              addressParts.add(place.street!);
-            }
-            if (place.locality != null && place.locality!.isNotEmpty) {
-              addressParts.add(place.locality!);
-            }
-            if (place.administrativeArea != null &&
-                place.administrativeArea!.isNotEmpty) {
-              addressParts.add(place.administrativeArea!);
-            }
-
-            locationString = addressParts.isNotEmpty
-                ? addressParts.join(', ')
-                : '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
-          } else {
-            locationString =
-                '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
-          }
-        } catch (e) {
-          print('Error reverse geocoding: $e');
-          // Fallback to coordinates if geocoding fails
-          locationString =
-              '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
-        }
-
-        setState(() {
-          if (isCheckIn) {
-            _checkInLocation = locationString;
-          } else {
-            _checkOutLocation = locationString;
-          }
-          _isLoadingLocation = false;
-        });
-      } else if (status.isDenied || status.isPermanentlyDenied) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location permission is required'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        setState(() {
-          _isLoadingLocation = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error fetching location: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      setState(() {
-        _isLoadingLocation = false;
-      });
-    }
-  }
-
-  String _formatTime(DateTime t) {
-    return DateFormat('hh:mm a').format(t.toLocal());
   }
 
   // Helper to find status for a specific day
@@ -973,8 +820,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         // ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final hPad = constraints.maxWidth < 360 ? 14.0 : 20.0;
+            return SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1074,6 +924,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               _buildEditRequestsPreview(),
             ],
           ),
+        );
+          },
         ),
       ),
     );
@@ -1087,14 +939,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     return WelcomeCard(
       isCheckedIn: _isCheckedIn,
-      showPhotoUI: _showPhotoUI,
       checkInTime: _checkInDateTime,
       checkOutTime: _checkOutDateTime,
       checkInLocation: _checkInLocation,
       checkOutLocation: _checkOutLocation,
       workHours: workHours,
       onCheckInToggle: _toggleCheckIn,
-      onCheckInResult: _handleCheckInResult,
       user: _user,
     );
   }
@@ -1541,49 +1391,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           //     const SizedBox(width: 60), // spacer for alignment
           //   ],
           // ),
-        ],
-      ),
-    );
-  }
-
-  // Legend item widget
-  Widget _buildLegendItem(IconData icon, Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 14),
-        const SizedBox(width: 4),
-        Text(label, style: TextStyle(color: Colors.grey[400], fontSize: 11)),
-      ],
-    );
-  }
-
-  // Helper widget for specific calendar status cells
-  Widget _buildCalendarCell(
-    DateTime day,
-    Color bg,
-    Color color,
-    IconData icon,
-  ) {
-    return Container(
-      margin: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '${day.day}',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Icon(icon, size: 10, color: color),
         ],
       ),
     );

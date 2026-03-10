@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../services/token_storage_service.dart';
+import '../config/api_config.dart';
 
 // ── Test result model ─────────────────────────────────────────────────────────
 enum TestStatus { pending, running, passed, failed, skipped }
@@ -43,7 +44,7 @@ class ApiTestScreen extends StatefulWidget {
 
 class _ApiTestScreenState extends State<ApiTestScreen>
     with SingleTickerProviderStateMixin {
-  static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   String? _token;
   bool _isRunningAll = false;

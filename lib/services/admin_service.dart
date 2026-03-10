@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 /// Admin API service — wraps all /api/admin/* endpoints.
 /// All methods require a valid admin JWT token.
 class AdminService {
-  static const String _base = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get _base => ApiConfig.baseUrl;
   static const Duration _timeout = Duration(seconds: 30);
 
   static Map<String, String> _headers(String token) => {

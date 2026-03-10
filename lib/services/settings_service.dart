@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 /// Settings API service — wraps all /api/settings/* and related endpoints.
 /// All methods require a valid admin JWT token.
 class SettingsService {
-  static const String _base = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get _base => ApiConfig.baseUrl;
   static const Duration _timeout = Duration(seconds: 30);
 
   static Map<String, String> _h(String token) => {
@@ -405,6 +406,90 @@ class SettingsService {
     final res = await http
         .post(
           Uri.parse('$_base/settings/employee-id/assign'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
+        .timeout(_timeout);
+    return _decode(res);
+  }
+
+  // ── Roles Seed ─────────────────────────────────────────────────────────────
+
+  /// POST /api/settings/roles/seed
+  static Future<Map<String, dynamic>> seedDefaultRoles(String token) async {
+    final res = await http
+        .post(Uri.parse('$_base/settings/roles/seed'), headers: _h(token))
+        .timeout(_timeout);
+    return _decode(res);
+  }
+
+  // ── Permission Modules ─────────────────────────────────────────────────────
+
+  /// POST /api/settings/modules/seed
+  static Future<Map<String, dynamic>> seedPermissionModules(
+    String token,
+  ) async {
+    final res = await http
+        .post(Uri.parse('$_base/settings/modules/seed'), headers: _h(token))
+        .timeout(_timeout);
+    return _decode(res);
+  }
+
+  /// POST /api/settings/modules
+  static Future<Map<String, dynamic>> createPermissionModule(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final res = await http
+        .post(
+          Uri.parse('$_base/settings/modules'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
+        .timeout(_timeout);
+    return _decode(res);
+  }
+
+  /// PUT /api/settings/modules/:id
+  static Future<Map<String, dynamic>> updatePermissionModule(
+    String token,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    final res = await http
+        .put(
+          Uri.parse('$_base/settings/modules/$id'),
+          headers: _h(token),
+          body: jsonEncode(data),
+        )
+        .timeout(_timeout);
+    return _decode(res);
+  }
+
+  /// DELETE /api/settings/modules/:id
+  static Future<Map<String, dynamic>> deletePermissionModule(
+    String token,
+    String id,
+  ) async {
+    final res = await http
+        .delete(
+          Uri.parse('$_base/settings/modules/$id'),
+          headers: _h(token),
+        )
+        .timeout(_timeout);
+    return _decode(res);
+  }
+
+  // ── Bulk Email ─────────────────────────────────────────────────────────────
+
+  /// POST /api/settings/email/bulk
+  static Future<Map<String, dynamic>> sendBulkEmail(
+    String token,
+    Map<String, dynamic> data,
+  ) async {
+    final res = await http
+        .post(
+          Uri.parse('$_base/settings/email/bulk'),
           headers: _h(token),
           body: jsonEncode(data),
         )

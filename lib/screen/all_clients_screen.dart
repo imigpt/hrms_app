@@ -533,7 +533,6 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                 DropdownMenuItem(value: 'active', child: Text('Active')),
                 DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
               ].map((item) {
-                final isSelected = item.value == _selectedStatus;
                 return DropdownMenuItem<String>(
                   value: item.value,
                   child: Container(

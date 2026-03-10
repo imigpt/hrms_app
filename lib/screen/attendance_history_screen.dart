@@ -97,6 +97,34 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     }
   }
 
+  // Get latest 5 days of attendance records
+  List<AttendanceRecord> get _latestFiveDays {
+    if (_records.isEmpty) return [];
+    
+    // Sort records by date in descending order (latest first)
+    final sorted = List<AttendanceRecord>.from(_records)
+        ..sort((a, b) => b.date.compareTo(a.date));
+    
+    // Get unique dates (last 5 unique days)
+    final uniqueDates = <DateTime>[];
+    for (var record in sorted) {
+      final date = DateTime(record.date.year, record.date.month, record.date.day);
+      if (!uniqueDates.any((d) => d.isAtSameMomentAs(date))) {
+        uniqueDates.add(date);
+        if (uniqueDates.length >= 5) break;
+      }
+    }
+    
+    // Return records for those 5 days, sorted by date descending
+    final fiveDayRecords = _records.where((record) {
+      final date = DateTime(record.date.year, record.date.month, record.date.day);
+      return uniqueDates.any((d) => d.isAtSameMomentAs(date));
+    }).toList();
+    
+    fiveDayRecords.sort((a, b) => b.date.compareTo(a.date));
+    return fiveDayRecords;
+  }
+
   // Filter records based on selected filter
   List<AttendanceRecord> get _filteredRecords {
     if (_selectedFilter == 'All') {
@@ -149,6 +177,106 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       ),
       body: Column(
         children: [
+          // Latest 5 Days Section
+          if (_latestFiveDays.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0A0A0A),
+                border: Border(
+                  bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Latest 5 Days',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _latestFiveDays.map((record) {
+                        final statusLower = record.status.toLowerCase();
+                        Color statusColor;
+                        
+                        switch (statusLower) {
+                          case 'present':
+                            statusColor = Colors.green;
+                            break;
+                          case 'absent':
+                            statusColor = Colors.red;
+                            break;
+                          case 'late':
+                            statusColor = Colors.orange;
+                            break;
+                          case 'leave':
+                            statusColor = Colors.purple;
+                            break;
+                          case 'halfday':
+                          case 'half_day':
+                          case 'half day':
+                          case 'half-day':
+                            statusColor = Colors.amber;
+                            break;
+                          default:
+                            statusColor = Colors.grey;
+                        }
+                        
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF101010),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: statusColor.withOpacity(0.3)),
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  DateFormat('MMM d').format(record.date),
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    statusLower == 'halfday' || statusLower == 'half_day' || statusLower == 'half day' || statusLower == 'half-day'
+                                        ? 'Half Day'
+                                        : record.status[0].toUpperCase() + record.status.substring(1),
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Filters Section
           Container(
             padding: const EdgeInsets.all(16),

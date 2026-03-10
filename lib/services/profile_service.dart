@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import '../config/api_config.dart';
 import '../models/profile_model.dart';
 
 class ProfileService {
-  static const String _baseUrl = "https://hrms-backend-zzzc.onrender.com/api";
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   Future<ProfileUser?> fetchProfile(String token) async {
     final url = Uri.parse('$_baseUrl/employees/profile');

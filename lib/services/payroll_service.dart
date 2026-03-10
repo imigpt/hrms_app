@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../models/payroll_model.dart';
 
 /// Service for all payroll-related API calls (employee read-only).
 class PayrollService {
-  static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   static Map<String, String> _headers(String token) => {
     'Content-Type': 'application/json',
@@ -51,7 +52,73 @@ class PayrollService {
     }
   }
 
-  // ── Pre-Payments ──────────────────────────────────────────────────────────
+  /// POST /api/payroll/salaries — Admin only
+  static Future<EmployeeSalary> createSalary({
+    required String token,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/salaries');
+      final response = await http
+          .post(uri, headers: _headers(token), body: json.encode(data))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return EmployeeSalary.fromJson(decoded['data']);
+      }
+      throw Exception(_extractError(response, 'Failed to create salary'));
+    } catch (e) {
+      print('PayrollService.createSalary error: $e');
+      rethrow;
+    }
+  }
+
+  /// PUT /api/payroll/salaries/:id — Admin only
+  static Future<EmployeeSalary> updateSalary({
+    required String token,
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/salaries/$id');
+      final response = await http
+          .put(uri, headers: _headers(token), body: json.encode(data))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return EmployeeSalary.fromJson(decoded['data']);
+      }
+      throw Exception(_extractError(response, 'Failed to update salary'));
+    } catch (e) {
+      print('PayrollService.updateSalary error: $e');
+      rethrow;
+    }
+  }
+
+  /// DELETE /api/payroll/salaries/:id — Admin only
+  static Future<bool> deleteSalary({
+    required String token,
+    required String id,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/salaries/$id');
+      final response = await http
+          .delete(uri, headers: _headers(token))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      throw Exception(_extractError(response, 'Failed to delete salary'));
+    } catch (e) {
+      print('PayrollService.deleteSalary error: $e');
+      rethrow;
+    }
+  }
+
+
 
   /// GET /api/payroll/pre-payments
   static Future<PrePaymentListResponse> getPrePayments({

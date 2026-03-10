@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class HRAccountsService {
-  static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   /// Fetch all HR accounts
   static Future<Map<String, dynamic>> getHRAccounts(String token) async {

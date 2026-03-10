@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 // ─── Model ─────────────────────────────────────────────────────────────────
 
@@ -86,7 +87,7 @@ typedef NotificationPage = ({
 // ─── Service ───────────────────────────────────────────────────────────────
 
 class ApiNotificationService {
-  static const String _base = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get _base => ApiConfig.baseUrl;
 
   static Map<String, String> _headers(String authToken) => {
     'Authorization': 'Bearer $authToken',

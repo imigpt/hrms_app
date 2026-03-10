@@ -7,6 +7,185 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_notification_service.dart';
 
+/// Standalone plugin instance used ONLY inside the background isolate.
+/// The foreground singleton [NotificationService._notificationsPlugin] is
+/// not accessible from a separate isolate, so we create a fresh one here.
+final FlutterLocalNotificationsPlugin _bgPlugin =
+    FlutterLocalNotificationsPlugin();
+
+/// Whether the background plugin has been initialised in this isolate.
+bool _bgPluginReady = false;
+
+/// Initialise [_bgPlugin] once per background-isolate lifetime.
+Future<void> _initBgPlugin() async {
+  if (_bgPluginReady) return;
+  const AndroidInitializationSettings android =
+      AndroidInitializationSettings('@mipmap/launcher_icon');
+  const DarwinInitializationSettings ios = DarwinInitializationSettings();
+  await _bgPlugin.initialize(
+    const InitializationSettings(android: android, iOS: ios),
+  );
+  _bgPluginReady = true;
+}
+
+/// Map notification [type] to the pre-created Android channel.
+/// Must stay in sync with the channels registered in [requestNotificationPermissions].
+String _channelForType(String type) {
+  switch (type) {
+    case 'chat':          return 'chat_channel';
+    case 'announcement':  return 'announcements_channel';
+    case 'task_assigned':
+    case 'task_updated':
+    case 'task_comment':  return 'task_channel';
+    case 'leave':         return 'leave_channel';
+    case 'approval':      return 'approval_channel';
+    case 'expense':       return 'expense_channel';
+    case 'payroll':       return 'payroll_channel';
+    case 'attendance':    return 'attendance_channel';
+    default:              return 'hrms_notifications';
+  }
+}
+
+/// Build a human-readable notification body that includes type-specific
+/// context extracted from the FCM data payload.
+String _buildBody(RemoteMessage message, String fallbackBody) {
+  final data = message.data;
+  final type = data['type'] ?? 'general';
+
+  switch (type) {
+    case 'chat':
+      final sender  = data['senderName'] ?? 'Someone';
+      final isGroup = data['isGroup'] == 'true';
+      final group   = data['groupName'] ?? '';
+      final media   = data['mediaType'] ?? '';
+      final action  = data['action'] ?? '';
+      if (action == 'group_created')         return '$sender created group "$group"';
+      if (action == 'group_members_added')   return '$sender added you to "$group"';
+      if (action == 'group_member_removed')  return 'You were removed from "$group"';
+      if (media == 'image' || media == 'photo')     return '$sender: 📷 Image';
+      if (media == 'voice' || media == 'audio')     return '$sender: 🎙️ Voice message';
+      if (media == 'document' || media == 'file')   return '$sender: 📄 Document';
+      if (media == 'video')                          return '$sender: 🎬 Video';
+      return isGroup && group.isNotEmpty ? '$sender: $fallbackBody' : fallbackBody;
+
+    case 'task_assigned':
+      final task = data['taskTitle'] ?? '';
+      final by   = data['assignedBy'] ?? 'Someone';
+      return task.isNotEmpty ? '$by assigned you: "$task"' : fallbackBody;
+
+    case 'task_updated':
+      final task   = data['taskTitle'] ?? '';
+      final change = data['change'] ?? fallbackBody;
+      return task.isNotEmpty ? '"$task" — $change' : fallbackBody;
+
+    case 'task_comment':
+      final task = data['taskTitle'] ?? '';
+      final by   = data['commentBy'] ?? 'Someone';
+      return task.isNotEmpty ? '$by commented on "$task"' : fallbackBody;
+
+    case 'leave':
+      final action = data['action'] ?? data['leaveStatus'] ?? '';
+      final lType  = data['leaveType'] ?? '';
+      if (action == 'approved') return '${lType.isNotEmpty ? lType : 'Leave'} approved ✅';
+      if (action == 'rejected') return '${lType.isNotEmpty ? lType : 'Leave'} rejected ❌';
+      if (action == 'cancelled') return '${lType.isNotEmpty ? lType : 'Leave'} request cancelled';
+      if (action == 'half_day') {
+        final emp = data['employeeName'] ?? 'An employee';
+        return '$emp requested a half day';
+      }
+      return fallbackBody;
+
+    case 'expense':
+      final action = data['action'] ?? data['expenseStatus'] ?? '';
+      final amount = data['amount'] ?? '';
+      final suffix = amount.isNotEmpty ? ' (₹$amount)' : '';
+      if (action == 'approved') return 'Expense approved ✅$suffix';
+      if (action == 'rejected') return 'Expense rejected ❌$suffix';
+      if (action == 'paid')     return 'Expense paid 💰$suffix';
+      if (action == 'created') {
+        final emp = data['employeeName'] ?? 'An employee';
+        return '$emp submitted an expense$suffix';
+      }
+      return fallbackBody;
+
+    case 'attendance':
+      final action = data['action'] ?? '';
+      final by     = data['requestedBy'] ?? '';
+      if (action == 'edit_requested') return '${by.isNotEmpty ? by : 'An employee'} requested attendance edit';
+      if (action == 'approved') return 'Attendance edit approved ✅';
+      if (action == 'rejected') return 'Attendance edit rejected ❌';
+      return fallbackBody;
+
+    case 'payroll':
+      final action = data['action'] ?? '';
+      final month  = data['month'] ?? '';
+      final year   = data['year'] ?? '';
+      final amount = data['amount'] ?? '';
+      final period = (month.isNotEmpty && year.isNotEmpty) ? ' for $month/$year' : '';
+      if (action == 'payroll_generated') return 'Payroll generated$period 💵';
+      if (action == 'pre_payment') {
+        return 'Salary advance credited${amount.isNotEmpty ? ': ₹$amount' : ''}  💸';
+      }
+      if (action == 'increment' || action == 'promotion') {
+        return 'Congratulations! ${action == 'promotion' ? 'Promotion 🎉' : 'Increment 🎉'}';
+      }
+      return fallbackBody;
+
+    default:
+      return fallbackBody;
+  }
+}
+
+/// Show a system-tray notification from the background isolate.
+/// Called for BOTH regular fcm+notification messages (to override the channel)
+/// and pure data-only messages where Android won't auto-show anything.
+Future<void> _showBgNotification(RemoteMessage message) async {
+  await _initBgPlugin();
+
+  final type  = message.data['type']?.toString() ?? 'general';
+  final title = message.notification?.title ??
+                message.data['title']?.toString() ?? 'HRMS';
+  final rawBody = message.notification?.body ??
+                  message.data['body']?.toString() ??
+                  message.data['message']?.toString() ?? '';
+  final body  = _buildBody(message, rawBody);
+  final refId = message.data['referenceId']?.toString() ?? '';
+
+  if (title.isEmpty && body.isEmpty) return;
+
+  final channelId = _channelForType(type);
+
+  // Stable notification ID per reference (or random fallback)
+  final notifId = refId.isNotEmpty
+      ? refId.hashCode.abs() % 2147483647
+      : DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+  final androidDetails = AndroidNotificationDetails(
+    channelId,
+    channelId, // channel name equals id — channels are already named in foreground init
+    importance: Importance.max,
+    priority: Priority.high,
+    enableVibration: true,
+    playSound: true,
+    icon: '@mipmap/launcher_icon',
+    styleInformation: BigTextStyleInformation(body),
+  );
+
+  const iosDetails = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+  );
+
+  await _bgPlugin.show(
+    notifId,
+    title,
+    body,
+    NotificationDetails(android: androidDetails, iOS: iosDetails),
+    payload: '$type|$refId',
+  );
+}
+
 // ─── Background message handler (must be top-level) ──────────────────────────
 // This runs in its own isolate when the app is killed / in background.
 // It must be a top-level function (not a class method).
@@ -16,94 +195,33 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('═══════════════════════════════════════════════════════════');
   print('🔥 FCM BACKGROUND/TERMINATED MESSAGE RECEIVED 🔥');
   print('═══════════════════════════════════════════════════════════');
-  
-  final title = message.notification?.title ?? '';
-  final body = message.notification?.body ?? '';
-  final type = message.data['type'] ?? 'general';
-  final referenceId = message.data['referenceId'] ?? '';
-  
+
+  final type  = message.data['type']?.toString() ?? 'general';
+  final title = message.notification?.title ??
+                message.data['title']?.toString() ?? 'HRMS';
+  final body  = message.notification?.body ??
+                message.data['body']?.toString() ??
+                message.data['message']?.toString() ?? '';
+  final refId = message.data['referenceId']?.toString() ?? '';
+
+  print('[DATA] Type: $type');
+  print('[DATA] ReferenceId: $refId');
   print('[NOTIFICATION] Title: $title');
   print('[NOTIFICATION] Body: $body');
-  print('[DATA] Type: $type');
-  print('[DATA] ReferenceId: $referenceId');
 
-  // Handle different notification types matching backend notificationTriggers.js
-  if (type == 'chat') {
-    final action = message.data['action'] ?? '';
-    final senderName = message.data['senderName'] ?? 'Unknown';
-    final groupName = message.data['groupName'] ?? '';
-    final isGroup = message.data['isGroup'] == 'true';
-    final mediaType = message.data['mediaType'] ?? '';
-    print('💬 CHAT NOTIFICATION DETECTED');
-    print('   From: $senderName');
-    if (isGroup) print('   Group: $groupName');
-    if (action.isNotEmpty) print('   Action: $action');
-    if (mediaType.isNotEmpty) print('   Media: $mediaType');
-  } else if (type == 'announcement') {
-    print('📢 ANNOUNCEMENT NOTIFICATION DETECTED');
-  } else if (type == 'task_assigned') {
-    print('✅ TASK ASSIGNED NOTIFICATION');
-    print('   Task: ${message.data['taskTitle'] ?? ''}');
-    print('   By: ${message.data['assignedBy'] ?? 'Unknown'}');
-  } else if (type == 'task_updated') {
-    print('✏️  TASK UPDATED NOTIFICATION');
-    print('   Task: ${message.data['taskTitle'] ?? ''}');
-    print('   Change: ${message.data['change'] ?? ''}');
-  } else if (type == 'task_comment') {
-    print('💬 TASK COMMENT NOTIFICATION');
-    print('   Task: ${message.data['taskTitle'] ?? ''}');
-    print('   By: ${message.data['commentBy'] ?? 'Unknown'}');
-  } else if (type == 'leave') {
-    final leaveStatus = message.data['leaveStatus'] ?? '';
-    final leaveType = message.data['leaveType'] ?? '';
-    final action = message.data['action'] ?? '';
-    print('📋 LEAVE NOTIFICATION DETECTED');
-    if (leaveType.isNotEmpty) print('   Type: $leaveType');
-    if (leaveStatus.isNotEmpty) print('   Status: $leaveStatus');
-    if (action.isNotEmpty) print('   Action: $action');
-  } else if (type == 'approval') {
-    final itemType = message.data['itemType'] ?? '';
-    final itemTitle = message.data['itemTitle'] ?? '';
-    final requestedBy = message.data['requestedBy'] ?? 'Unknown';
-    print('🔔 APPROVAL REQUIRED NOTIFICATION');
-    if (itemType.isNotEmpty) print('   For: $itemType - $itemTitle');
-    print('   By: $requestedBy');
-  } else if (type == 'expense') {
-    final expenseStatus = message.data['expenseStatus'] ?? '';
-    final amount = message.data['amount'] ?? '';
-    final action = message.data['action'] ?? '';
-    print('💰 EXPENSE NOTIFICATION DETECTED');
-    if (amount.isNotEmpty) print('   Amount: $amount');
-    if (expenseStatus.isNotEmpty) print('   Status: $expenseStatus');
-    if (action.isNotEmpty) print('   Action: $action');
-  } else if (type == 'attendance') {
-    final action = message.data['action'] ?? '';
-    final requestedBy = message.data['requestedBy'] ?? '';
-    print('🕐 ATTENDANCE NOTIFICATION DETECTED');
-    if (action.isNotEmpty) print('   Action: $action');
-    if (requestedBy.isNotEmpty) print('   By: $requestedBy');
-  } else if (type == 'payroll') {
-    final action = message.data['action'] ?? '';
-    final month = message.data['month'] ?? '';
-    final year = message.data['year'] ?? '';
-    final amount = message.data['amount'] ?? '';
-    print('💵 PAYROLL NOTIFICATION DETECTED');
-    if (month.isNotEmpty && year.isNotEmpty) print('   Period: $month/$year');
-    if (amount.isNotEmpty) print('   Amount: $amount');
-    if (action.isNotEmpty) print('   Action: $action');
-  } else if (type == 'general' || type == 'hrms') {
-    print('📱 GENERAL NOTIFICATION DETECTED');
-  } else {
-    print('❓ UNKNOWN NOTIFICATION TYPE: $type (from external app?)');
+  // ── Display notification in system tray ─────────────────────────────────
+  // We always call _showBgNotification so that:
+  //  • data-only messages (no 'notification' field) are shown in the tray.
+  //  • regular messages are shown on the CORRECT typed channel instead of
+  //    the generic 'hrms_notifications' fallback.
+  try {
+    await _showBgNotification(message);
+    print('✅ Background notification displayed (type=$type, channel=${_channelForType(type)})');
+  } catch (e) {
+    print('⚠️ _showBgNotification error: $e');
   }
 
   print('═══════════════════════════════════════════════════════════');
-  print('✅ Notification will be displayed in notification tray');
-  print('═══════════════════════════════════════════════════════════');
-
-  // Firebase automatically shows notification in tray when app is closed.
-  // Android system will use the default_notification_channel_id & icon from AndroidManifest.xml
-  // No additional code needed here — FCM handles it natively.
 }
 
 class NotificationService {
@@ -782,15 +900,68 @@ class NotificationService {
         // Identify notification type and log extra fields from backend
         if (type == 'chat') {
           final action = message.data['action'] ?? '';
+          final senderName = message.data['senderName'] ?? 'Unknown';
           final isGroup = message.data['isGroup'] == 'true';
           final groupName = message.data['groupName'] ?? '';
           final mediaType = message.data['mediaType'] ?? '';
+          final roomId = message.data['roomId'] ?? message.data['chatRoomId'] ?? referenceId;
+          
           print('[💬 CHAT NOTIFICATION DETECTED]');
-          print('  Sender: ${message.data['senderName'] ?? 'Unknown'}');
+          print('  Sender: $senderName');
+          print('  RoomId: $roomId');
           if (isGroup) print('  Group: $groupName');
           if (action.isNotEmpty) print('  Action: $action');
           if (mediaType.isNotEmpty) print('  Media: $mediaType');
           print('  Using chat_channel for display');
+          
+          // Show specialized chat notification with media type handling
+          if (!_isInitialized) {
+            await initialize();
+            await requestNotificationPermissions();
+          }
+          
+          // Determine if this is a group action (not a regular message)
+          bool isGroupAction = action == 'group_created' || 
+                               action == 'group_members_added' || 
+                               action == 'group_member_removed';
+          
+          // Build message preview based on media type (for regular messages)
+          String messagePreview = body;
+          if (!isGroupAction && mediaType.isNotEmpty) {
+            if (mediaType == 'image' || mediaType == 'photo') {
+              messagePreview = '📷 Image';
+            } else if (mediaType == 'voice' || mediaType == 'audio') {
+              messagePreview = '🎙️ Voice message';
+            } else if (mediaType == 'document' || mediaType == 'file') {
+              messagePreview = '📄 Document';
+            } else if (mediaType == 'video') {
+              messagePreview = '🎬 Video';
+            }
+          }
+          
+          // Determine room display name
+          final roomDisplayName = isGroup ? groupName : senderName;
+          
+          // Call specialized chat notification method with group action support
+          try {
+            await showChatNotification(
+              senderName: senderName,
+              roomName: roomDisplayName,
+              message: messagePreview,
+              roomId: roomId,
+              isGroupAction: isGroupAction,
+              action: action,
+            );
+            print('✅ Chat notification sent via specialized method');
+          } catch (e) {
+            print('⚠️ Error showing specialized chat notification: $e');
+            print('   Falling back to generic display...');
+            // Fall through to generic display below
+          }
+          
+          // Early return after displaying via specialized method
+          print('═════════════════════════════════════════════════════════════════');
+          return;
         } else if (type == 'announcement') {
           print('[📢 ANNOUNCEMENT NOTIFICATION DETECTED]');
         } else if (type == 'task_assigned') {
@@ -942,18 +1113,39 @@ class NotificationService {
 
   /// Show a chat message notification.
   /// [senderName] – who sent the message
-  /// [roomName]   – display name of the chat room
-  /// [message]    – text preview (or "[image]" etc.)
+  /// [roomName]   – display name of the chat room or group
+  /// [message]    – text preview (or "[image]", "[voice]", etc.)
   /// [roomId]     – used as payload so the app can navigate on tap
+  /// [isGroupAction] – if true, indicates a group event (created/member added/removed)
+  /// [action]     – group action type (group_created, group_members_added, group_member_removed)
   Future<void> showChatNotification({
     required String senderName,
     required String roomName,
     required String message,
     required String roomId,
+    bool isGroupAction = false,
+    String action = '',
   }) async {
     if (!_isInitialized) {
       await initialize();
       await requestNotificationPermissions();
+    }
+
+    // Build display title based on action type
+    String displayTitle = senderName;
+    String displayBody = message;
+    
+    if (isGroupAction && action.isNotEmpty) {
+      if (action == 'group_created') {
+        displayTitle = '✨ New Group';
+        displayBody = '$senderName created group "$roomName"';
+      } else if (action == 'group_members_added') {
+        displayTitle = '👥 Added to Group';
+        displayBody = '$senderName added you to "$roomName"';
+      } else if (action == 'group_member_removed') {
+        displayTitle = '⚠️ Removed from Group';
+        displayBody = 'You were removed from "$roomName"';
+      }
     }
 
     final AndroidNotificationDetails androidDetails =
@@ -968,10 +1160,10 @@ class NotificationService {
           icon: '@mipmap/launcher_icon',
           // Show full message when the notification is expanded
           styleInformation: BigTextStyleInformation(
-            message,
-            contentTitle: roomName.isNotEmpty
+            displayBody,
+            contentTitle: !isGroupAction && roomName.isNotEmpty
                 ? '$senderName • $roomName'
-                : senderName,
+                : displayTitle,
           ),
         );
 
@@ -986,23 +1178,20 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    // Title: sender name; body: message preview
-    final title = senderName;
-    final body = message;
-
     final id = roomId.hashCode.abs() % 100000; // stable per room
 
     try {
       await _notificationsPlugin.show(
         id,
-        title,
-        body,
+        displayTitle,
+        displayBody,
         details,
         // Encode as "chat|roomId" for tap routing
         payload: 'chat|$roomId',
       );
+      print('✅ Chat notification displayed: $displayTitle');
     } catch (e) {
-      print('Error showing chat notification: $e');
+      print('❌ Error showing chat notification: $e');
     }
   }
 

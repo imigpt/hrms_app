@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/attendance_service.dart';
+import '../services/face_verification_service.dart';
+import '../services/profile_service.dart';
 import '../services/token_storage_service.dart';
+import '../models/profile_model.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -23,6 +26,10 @@ class _CameraScreenState extends State<CameraScreen> {
   String? _capturedAddress;
   Future<void>? _locationFuture;
 
+  // Profile (for face verification)
+  Future<void>? _profileFuture;
+  ProfileUser? _userProfile;
+
   // Face verification state
   bool _faceErrorNoFace = false;
 
@@ -30,8 +37,20 @@ class _CameraScreenState extends State<CameraScreen> {
   void initState() {
     super.initState();
     _initializeCamera();
-    // Start fetching location immediately (parallel with camera init)
+    // Start fetching location and profile in parallel with camera init
     _locationFuture = _fetchLocationAsync();
+    _profileFuture = _fetchProfileAsync();
+  }
+
+  Future<void> _fetchProfileAsync() async {
+    try {
+      final token = await TokenStorageService().getToken();
+      if (token == null) return;
+      final profile = await ProfileService().fetchProfile(token);
+      if (mounted) setState(() => _userProfile = profile);
+    } catch (e) {
+      debugPrint('Camera: profile fetch error — $e');
+    }
   }
 
   Future<void> _initializeCamera() async {
@@ -73,6 +92,7 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void dispose() {
     _controller?.dispose();
+    FaceVerificationService.close();
     super.dispose();
   }
 
@@ -149,6 +169,78 @@ class _CameraScreenState extends State<CameraScreen> {
         );
       }
 
+      // Wait briefly for profile if not yet loaded
+      if (_userProfile == null && _profileFuture != null) {
+        await _profileFuture!.timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {},
+        );
+      }
+
+      // ── On-device face verification ─────────────────────────────────────
+      final profilePhotoUrl = _userProfile?.profilePhotoUrl ?? '';
+      if (profilePhotoUrl.isEmpty) {
+        setState(() {
+          _isSubmitting = false;
+          _capturedImagePath = null;
+        });
+        _showFaceError(
+          title: 'Profile Photo Missing',
+          message:
+              'You do not have a profile photo on file.\nPlease upload a profile photo from your profile settings before checking in.',
+          icon: Icons.account_circle_outlined,
+        );
+        return;
+      }
+
+      final faceResult = await FaceVerificationService.verify(
+        selfieFile: File(_capturedImagePath!),
+        profilePhotoUrl: profilePhotoUrl,
+      );
+
+      if (!faceResult.verified) {
+        if (!mounted) return;
+        setState(() {
+          _isSubmitting = false;
+          _capturedImagePath = null;
+          _capturedLocation = null;
+        });
+        switch (faceResult.reason) {
+          case 'no_face_in_selfie':
+            setState(() => _faceErrorNoFace = true);
+            _showFaceError(
+              title: 'No Face Detected',
+              message:
+                  'We could not detect a face in your photo.\nPlease ensure your face is clearly visible and well-lit.',
+              icon: Icons.no_photography,
+            );
+          case 'no_face_in_profile':
+            _showFaceError(
+              title: 'Profile Photo Issue',
+              message:
+                  'No face detected in your profile photo.\nPlease update your profile photo with a clear frontal photo.',
+              icon: Icons.account_circle_outlined,
+            );
+          case 'profile_download_failed':
+            _showFaceError(
+              title: 'Verification Unavailable',
+              message:
+                  'Could not load your profile photo for verification.\nPlease check your internet connection and try again.',
+              icon: Icons.cloud_off_outlined,
+            );
+          default:
+            _showFaceError(
+              title: 'Face Not Matched',
+              message:
+                  'Your face could not be verified (match score: ${faceResult.similarityScore}%).\n'
+                  'Ensure good lighting and face the camera directly, then try again.',
+              icon: Icons.face_retouching_off,
+            );
+        }
+        return;
+      }
+      // ── Face verified — proceed with check-in ───────────────────────────
+
       final double lat = _capturedLocation?.latitude ?? 26.816224;
       final double lng = _capturedLocation?.longitude ?? 75.845444;
       final String address = _capturedAddress ?? 'Main Building';
@@ -184,6 +276,20 @@ class _CameraScreenState extends State<CameraScreen> {
           message: 'Your face could not be verified (match score: ${e.similarityScore}%).\n'
               'Ensure good lighting and face the camera directly, then try again.',
           icon: Icons.face_retouching_off,
+        );
+      }
+    } on CheckInNotAllowedException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _capturedImagePath = null;
+          _capturedLocation = null;
+        });
+        _showFaceError(
+          title: 'Check-In Not Allowed',
+          message: e.message,
+          icon: Icons.event_busy,
+          isWarning: true,
         );
       }
     } catch (e) {
@@ -241,13 +347,18 @@ class _CameraScreenState extends State<CameraScreen> {
     required String title,
     required String message,
     required IconData icon,
+    bool isWarning = false,
   }) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        icon: Icon(icon, color: Colors.redAccent, size: 48),
+        icon: Icon(
+          icon,
+          color: isWarning ? Colors.orangeAccent : Colors.redAccent,
+          size: 48,
+        ),
         title: Text(
           title,
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -260,8 +371,22 @@ class _CameraScreenState extends State<CameraScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Retake', style: TextStyle(color: Color(0xFFFF8B94))),
+            onPressed: () {
+              Navigator.pop(ctx);
+              if (!isWarning) {
+                // For face errors, allow retake
+                _retakePhoto();
+              } else {
+                // For leave errors, go back to attendance screen
+                Navigator.pop(context);
+              }
+            },
+            child: Text(
+              isWarning ? 'Go Back' : 'Retake',
+              style: TextStyle(
+                color: isWarning ? Colors.orangeAccent : const Color(0xFFFF8B94),
+              ),
+            ),
           ),
         ],
       ),

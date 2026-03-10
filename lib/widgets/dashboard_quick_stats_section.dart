@@ -4,6 +4,7 @@ import 'package:hrms_app/widgets/dashboard_stats_card.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:hrms_app/theme/app_theme.dart';
+import 'package:hrms_app/config/api_config.dart';
 
 class DashboardQuickStatsSection extends StatefulWidget {
   final String? userId;
@@ -71,7 +72,7 @@ class _DashboardQuickStatsSectionState
       final response = await http
           .get(
             Uri.parse(
-              'https://hrms-backend-zzzc.onrender.com/api/appreciations',
+              '${ApiConfig.baseUrl}/appreciations',
             ),
             headers: {'Authorization': 'Bearer $token'},
           )
@@ -94,7 +95,7 @@ class _DashboardQuickStatsSectionState
     try {
       final response = await http
           .get(
-            Uri.parse('https://hrms-backend-zzzc.onrender.com/api/warnings'),
+            Uri.parse('${ApiConfig.baseUrl}/warnings'),
             headers: {'Authorization': 'Bearer $token'},
           )
           .timeout(const Duration(seconds: 10));
@@ -116,7 +117,7 @@ class _DashboardQuickStatsSectionState
     try {
       final response = await http
           .get(
-            Uri.parse('https://hrms-backend-zzzc.onrender.com/api/expenses'),
+            Uri.parse('${ApiConfig.baseUrl}/expenses'),
             headers: {'Authorization': 'Bearer $token'},
           )
           .timeout(const Duration(seconds: 10));
@@ -160,7 +161,7 @@ class _DashboardQuickStatsSectionState
     try {
       final response = await http
           .get(
-            Uri.parse('https://hrms-backend-zzzc.onrender.com/api/complaints'),
+            Uri.parse('${ApiConfig.baseUrl}/complaints'),
             headers: {'Authorization': 'Bearer $token'},
           )
           .timeout(const Duration(seconds: 10));

@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../models/policy_model.dart';
 
 /// Service for company policy API calls (employee read-only).
 class PolicyService {
-  static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   static Map<String, String> _headers(String token) => {
     'Content-Type': 'application/json',

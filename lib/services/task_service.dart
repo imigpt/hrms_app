@@ -4,9 +4,10 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
 class TaskService {
-  static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   // ─── Helper Methods ────────────────────────────────────────────────────────
 
@@ -116,18 +117,22 @@ class TaskService {
     required String priority,
     required String dueDate,
     required String assignedTo,
+    String? startDate,
+    int? estimatedTime,
     String? projectId,
     List<String>? tags,
   }) async {
     try {
-      final body = {
+      final body = <String, dynamic>{
         'title': title,
         'description': description,
         'priority': priority,
         'dueDate': dueDate,
         'assignedTo': assignedTo,
-        'projectId': ?projectId,
-        'tags': ?tags,
+        if (startDate != null) 'startDate': startDate,
+        if (estimatedTime != null) 'estimatedTime': estimatedTime,
+        if (projectId != null) 'projectId': projectId,
+        if (tags != null && tags.isNotEmpty) 'tags': tags,
       };
 
       final response = await http
@@ -159,15 +164,21 @@ class TaskService {
     String? description,
     String? priority,
     String? dueDate,
+    String? startDate,
+    int? estimatedTime,
+    List<String>? tags,
     String? status,
   }) async {
     try {
       final body = <String, dynamic>{
-        'title': ?title,
-        'description': ?description,
-        'priority': ?priority,
-        'dueDate': ?dueDate,
-        'status': ?status,
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        if (priority != null) 'priority': priority,
+        if (dueDate != null) 'dueDate': dueDate,
+        if (startDate != null) 'startDate': startDate,
+        if (estimatedTime != null) 'estimatedTime': estimatedTime,
+        if (tags != null) 'tags': tags,
+        if (status != null) 'status': status,
       };
 
       if (body.isEmpty) {
@@ -424,6 +435,265 @@ class TaskService {
       }
     } catch (e) {
       throw Exception('Failed to submit review: $e');
+    }
+  }
+
+  // ─── PROJECTS ──────────────────────────────────────────────────────────────
+
+  static Future<dynamic> getProjects(String token) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/tasks/projects'), headers: _getHeaders(token))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch projects: $e');
+    }
+  }
+
+  static Future<dynamic> createProject(
+    String token, {
+    required String name,
+    String? description,
+    String priority = 'medium',
+    String? startDate,
+    String? endDate,
+    String color = '#3b82f6',
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'name': name,
+        if (description != null && description.isNotEmpty) 'description': description,
+        'priority': priority,
+        if (startDate != null) 'startDate': startDate,
+        if (endDate != null) 'endDate': endDate,
+        'color': color,
+      };
+      final response = await http
+          .post(Uri.parse('$baseUrl/tasks/projects'),
+              headers: _getHeaders(token), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to create project: $e');
+    }
+  }
+
+  static Future<void> deleteProject(String token, String projectId) async {
+    try {
+      final response = await http
+          .delete(Uri.parse('$baseUrl/tasks/projects/$projectId'),
+              headers: _getHeaders(token))
+          .timeout(const Duration(seconds: 15));
+      if (!(response.statusCode >= 200 && response.statusCode < 300)) {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to delete project: $e');
+    }
+  }
+
+  // ─── MILESTONES ─────────────────────────────────────────────────────────────
+
+  static Future<dynamic> getMilestones(String token, String projectId) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/tasks/milestones/project/$projectId'),
+              headers: _getHeaders(token))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch milestones: $e');
+    }
+  }
+
+  static Future<dynamic> createMilestone(
+    String token, {
+    required String title,
+    String? description,
+    required String projectId,
+    String? dueDate,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'title': title,
+        if (description != null && description.isNotEmpty) 'description': description,
+        'project': projectId,
+        if (dueDate != null) 'dueDate': dueDate,
+      };
+      final response = await http
+          .post(Uri.parse('$baseUrl/tasks/milestones'),
+              headers: _getHeaders(token), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to create milestone: $e');
+    }
+  }
+
+  static Future<void> deleteMilestone(String token, String milestoneId) async {
+    try {
+      final response = await http
+          .delete(Uri.parse('$baseUrl/tasks/milestones/$milestoneId'),
+              headers: _getHeaders(token))
+          .timeout(const Duration(seconds: 15));
+      if (!(response.statusCode >= 200 && response.statusCode < 300)) {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to delete milestone: $e');
+    }
+  }
+
+  // ─── TIME TRACKING ──────────────────────────────────────────────────────────
+
+  static Future<dynamic> getRunningTimer(String token) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/tasks/timer/running'),
+              headers: _getHeaders(token))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        return {'success': false, 'data': null};
+      }
+    } catch (_) {
+      return {'success': false, 'data': null};
+    }
+  }
+
+  static Future<dynamic> startTimer(String token, String taskId) async {
+    try {
+      final body = {'task': taskId};
+      final response = await http
+          .post(Uri.parse('$baseUrl/tasks/timer/start'),
+              headers: _getHeaders(token), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to start timer: $e');
+    }
+  }
+
+  static Future<dynamic> stopTimer(String token, String logId) async {
+    try {
+      final response = await http
+          .put(Uri.parse('$baseUrl/tasks/timer/stop/$logId'),
+              headers: _getHeaders(token))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to stop timer: $e');
+    }
+  }
+
+  static Future<dynamic> getTimeLogs(
+    String token, {
+    int limit = 10,
+    String? taskId,
+  }) async {
+    try {
+      final params = <String, String>{'limit': limit.toString()};
+      if (taskId != null) params['task'] = taskId;
+      final uri = Uri.parse('$baseUrl/tasks/timelog')
+          .replace(queryParameters: params);
+      final response = await http
+          .get(uri, headers: _getHeaders(token))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch time logs: $e');
+    }
+  }
+
+  static Future<dynamic> logTime(
+    String token, {
+    required String taskId,
+    required int durationMinutes,
+    String? description,
+    String? date,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'task': taskId,
+        'duration': durationMinutes,
+        if (description != null && description.isNotEmpty) 'description': description,
+        if (date != null) 'date': date,
+      };
+      final response = await http
+          .post(Uri.parse('$baseUrl/tasks/timelog'),
+              headers: _getHeaders(token), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to log time: $e');
+    }
+  }
+
+  // ─── ANALYTICS ──────────────────────────────────────────────────────────────
+
+  static Future<dynamic> getProductivityAnalytics(String token) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/tasks/analytics/productivity'),
+              headers: _getHeaders(token))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch productivity analytics: $e');
+    }
+  }
+
+  static Future<dynamic> getWorkloadDistribution(String token) async {
+    try {
+      final response = await http
+          .get(Uri.parse('$baseUrl/tasks/analytics/workload'),
+              headers: _getHeaders(token))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to fetch workload distribution: $e');
     }
   }
 }

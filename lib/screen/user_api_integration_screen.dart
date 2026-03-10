@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/token_storage_service.dart';
+import '../config/api_config.dart';
 
 enum ApiCategory {
   auth('🔐 Auth'),
@@ -61,7 +62,7 @@ class UserApiIntegrationScreen extends StatefulWidget {
 
 class _UserApiIntegrationScreenState extends State<UserApiIntegrationScreen>
     with SingleTickerProviderStateMixin {
-  static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   String? _token;
   bool _isLoading = true;

@@ -3,11 +3,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../models/auth_login_model.dart';
 import '../models/update_location_model.dart';
 
 class AuthService {
-  static const String _baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   // Create a custom HTTP client with connection timeout
   static final _httpClient = _createHttpClient();

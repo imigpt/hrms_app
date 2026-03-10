@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:hrms_app/services/settings_service.dart';
 import 'package:hrms_app/theme/app_theme.dart';
 import 'shared.dart';
@@ -16,18 +16,18 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
   bool _saving = false;
 
   String _currency = 'INR';
-  String _symbol = '₹';
+  final _symbolCtrl = TextEditingController(text: '₹');
   String _position = 'before';
 
   static const _currencies = [
     {'code': 'INR', 'symbol': '₹', 'name': 'Indian Rupee'},
-    {'code': 'USD', 'symbol': '\$', 'name': 'US Dollar'},
+    {'code': 'USD', 'symbol': r'$', 'name': 'US Dollar'},
     {'code': 'EUR', 'symbol': '€', 'name': 'Euro'},
     {'code': 'GBP', 'symbol': '£', 'name': 'British Pound'},
-    {'code': 'AED', 'symbol': 'AED', 'name': 'UAE Dirham'},
-    {'code': 'SAR', 'symbol': 'SAR', 'name': 'Saudi Riyal'},
-    {'code': 'CAD', 'symbol': 'C\$', 'name': 'Canadian Dollar'},
-    {'code': 'AUD', 'symbol': 'A\$', 'name': 'Australian Dollar'},
+    {'code': 'AED', 'symbol': 'د.إ', 'name': 'UAE Dirham'},
+    {'code': 'SAR', 'symbol': '﷼', 'name': 'Saudi Riyal'},
+    {'code': 'CAD', 'symbol': r'C$', 'name': 'Canadian Dollar'},
+    {'code': 'AUD', 'symbol': r'A$', 'name': 'Australian Dollar'},
     {'code': 'JPY', 'symbol': '¥', 'name': 'Japanese Yen'},
     {'code': 'CNY', 'symbol': '¥', 'name': 'Chinese Yuan'},
   ];
@@ -36,6 +36,12 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _symbolCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -48,7 +54,7 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
       if (d != null) {
         setState(() {
           _currency = d['currency'] ?? 'INR';
-          _symbol = d['currencySymbol'] ?? '₹';
+          _symbolCtrl.text = d['currencySymbol'] ?? '₹';
           _position = d['currencyPosition'] ?? 'before';
         });
       }
@@ -61,7 +67,7 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
     try {
       await SettingsService.updateLocalizationSettings(widget.token ?? '', {
         'currency': _currency,
-        'currencySymbol': _symbol,
+        'currencySymbol': _symbolCtrl.text,
         'currencyPosition': _position,
       });
       if (mounted) showAdminSnack(context, 'Currency settings updated');
@@ -95,57 +101,65 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
                         AdminCard(
                           title: 'Currency Configuration',
                           children: [
-                            AdminDropdown(
-                              label: 'Currency',
-                              value: _currency,
-                              items: _currencies
-                                  .map(
-                                    (c) => DropdownMenuItem<String>(
-                                      value: c['code'],
-                                      child: Text(
-                                        '${c['symbol']}  ${c['name']} (${c['code']})',
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (v) {
-                                if (v == null) return;
-                                final found = _currencies.firstWhere(
-                                  (c) => c['code'] == v,
-                                  orElse: () => _currencies.first,
-                                );
-                                setState(() {
-                                  _currency = v;
-                                  _symbol = found['symbol']!;
-                                });
-                              },
-                            ),
-                            const SizedBox(height: 14),
                             AdminRow2(
-                              left: _SymbolPreview(
-                                currency: _currency,
-                                symbol: _symbol,
+                              left: AdminDropdown(
+                                label: 'Currency',
+                                value: _currency,
+                                items: _currencies
+                                    .map(
+                                      (c) => DropdownMenuItem<String>(
+                                        value: c['code'],
+                                        child: Text(
+                                          '${c['symbol']}  ${c['name']} (${c['code']})',
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  final found = _currencies.firstWhere(
+                                    (c) => c['code'] == v,
+                                    orElse: () => _currencies.first,
+                                  );
+                                  setState(() {
+                                    _currency = v;
+                                    _symbolCtrl.text = found['symbol']!;
+                                  });
+                                },
                               ),
                               right: AdminDropdown(
                                 label: 'Symbol Position',
                                 value: _position,
-                                items: const [
+                                items: [
                                   DropdownMenuItem(
                                     value: 'before',
-                                    child: Text('Before Amount'),
+                                    child: Text(
+                                      'Before (${_symbolCtrl.text}100)',
+                                    ),
                                   ),
                                   DropdownMenuItem(
                                     value: 'after',
-                                    child: Text('After Amount'),
+                                    child: Text(
+                                      'After (100${_symbolCtrl.text})',
+                                    ),
                                   ),
                                 ],
                                 onChanged: (v) =>
                                     setState(() => _position = v!),
                               ),
                             ),
+                            const SizedBox(height: 14),
+                            AdminTextField(
+                              label: 'Currency Symbol',
+                              controller: _symbolCtrl,
+                              hint: '₹',
+                            ),
                           ],
                         ),
-                        _PreviewCard(symbol: _symbol, position: _position),
+                        _PreviewCard(
+                          symbolCtrl: _symbolCtrl,
+                          position: _position,
+                        ),
                       ],
                     ),
             ),
@@ -156,58 +170,36 @@ class _AdminCurrenciesScreenState extends State<AdminCurrenciesScreen> {
   }
 }
 
-class _SymbolPreview extends StatelessWidget {
-  final String currency;
-  final String symbol;
-  const _SymbolPreview({required this.currency, required this.symbol});
+class _PreviewCard extends StatefulWidget {
+  final TextEditingController symbolCtrl;
+  final String position;
+  const _PreviewCard({required this.symbolCtrl, required this.position});
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const AdminSectionLabel('Symbol', topPad: false),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E).withOpacity(0.5),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.07)),
-          ),
-          child: Row(
-            children: [
-              Text(
-                symbol,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                currency,
-                style: TextStyle(color: Colors.grey[500], fontSize: 13),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  State<_PreviewCard> createState() => _PreviewCardState();
 }
 
-class _PreviewCard extends StatelessWidget {
-  final String symbol;
-  final String position;
-  const _PreviewCard({required this.symbol, required this.position});
+class _PreviewCardState extends State<_PreviewCard> {
+  @override
+  void initState() {
+    super.initState();
+    widget.symbolCtrl.addListener(_refresh);
+  }
+
+  void _refresh() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.symbolCtrl.removeListener(_refresh);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final formatted = position == 'before'
-        ? '$symbol 1,234.56'
-        : '1,234.56 $symbol';
+    final sym = widget.symbolCtrl.text;
+    final formatted = widget.position == 'before'
+        ? '${sym}1,00,000'
+        : '1,00,000$sym';
     return AdminCard(
       title: 'Preview',
       children: [
@@ -218,20 +210,20 @@ class _PreviewCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFEAB308).withOpacity(0.2)),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.visibility_rounded,
-                color: Color(0xFFEAB308),
-                size: 18,
-              ),
-              const SizedBox(width: 10),
               Text(
-                'Sample: $formatted',
+                'Preview',
+                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                formatted,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],

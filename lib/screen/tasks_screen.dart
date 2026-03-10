@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -16,8 +17,7 @@ class TasksScreen extends StatefulWidget {
   State<TasksScreen> createState() => _TasksScreenState();
 }
 
-class _TasksScreenState extends State<TasksScreen>
-    with SingleTickerProviderStateMixin {
+class _TasksScreenState extends State<TasksScreen> {
   // ── Theme ──────────────────────────────────────────────────────────────────
   final Color _bgDark = const Color(0xFF050505);
   final Color _cardDark = const Color(0xFF141414);
@@ -28,7 +28,7 @@ class _TasksScreenState extends State<TasksScreen>
   final Color _accentPurple = const Color(0xFF651FFF);
   final Color _textGrey = const Color(0xFF9E9E9E);
 
-  late TabController _tabController;
+  String? _statusFilter;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _token;
@@ -41,6 +41,7 @@ class _TasksScreenState extends State<TasksScreen>
   List<dynamic> _tasks = [];
   Map<String, dynamic> _stats = {
     'total': 0,
+    'assigned': 0,
     'todo': 0,
     'inProgress': 0,
     'completed': 0,
@@ -56,18 +57,34 @@ class _TasksScreenState extends State<TasksScreen>
   String? _adminPriorityFilter;
   String? _adminEmployeeFilter; // employee _id
 
-  void _onTabChanged() {
-    // Tab changed - no action needed
-    if (mounted) {
-      setState(() {}); // Rebuild if needed
-    }
-  }
+  // ── Tab state ──────────────────────────────────────────────────────────────
+  int _employeeTab = 0; // 0=list, 1=kanban, 2=time
+  int _adminTab = 0; // 0=list, 1=kanban, 2=employees, 3=projects, 4=time, 5=analytics
+
+  // ── Employee priority filter ───────────────────────────────────────────────
+  String? _employeePriorityFilter;
+
+  // ── Projects state ─────────────────────────────────────────────────────────
+  List<dynamic> _projects = [];
+  Map<String, dynamic>? _selectedProject;
+  List<dynamic> _milestones = [];
+
+  // ── Time tracking state ────────────────────────────────────────────────────
+  Map<String, dynamic>? _runningTimer;
+  int _timerElapsed = 0;
+  bool _timerLoading = false;
+  List<dynamic> _timeLogs = [];
+  Timer? _timerInterval;
+
+  // ── Analytics state ────────────────────────────────────────────────────────
+  Map<String, dynamic>? _analyticsStats;
+  List<dynamic> _analyticsProductivity = [];
+  List<dynamic> _analyticsWorkload = [];
+  bool _analyticsLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(_onTabChanged);
     _searchController.addListener(() {
       setState(() => _searchQuery = _searchController.text);
     });
@@ -76,9 +93,8 @@ class _TasksScreenState extends State<TasksScreen>
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    _tabController.dispose();
     _searchController.dispose();
+    _timerInterval?.cancel();
     super.dispose();
   }
 
@@ -93,9 +109,9 @@ class _TasksScreenState extends State<TasksScreen>
     }
     _isAdmin = (widget.role?.toLowerCase() == 'admin');
     if (_isAdmin) {
-      await Future.wait([_loadData(), _loadEmployees()]);
+      await Future.wait([_loadData(), _loadEmployees(), _loadProjects()]);
     } else {
-      await _loadData();
+      await Future.wait([_loadData(), _loadRunningTimer(), _loadTimeLogs()]);
     }
   }
 
@@ -109,6 +125,355 @@ class _TasksScreenState extends State<TasksScreen>
         });
       }
     } catch (_) {}
+  }
+
+  // ── Time Tracking ──────────────────────────────────────────────────────────
+
+  Future<void> _loadRunningTimer() async {
+    if (_token == null) return;
+    try {
+      final res = await TaskService.getRunningTimer(_token!);
+      if (mounted) {
+        final data = res['data'];
+        setState(() {
+          _runningTimer = data != null ? Map<String, dynamic>.from(data) : null;
+          if (_runningTimer != null) {
+            final start = DateTime.tryParse(
+              (_runningTimer!['startTime'] ?? '').toString(),
+            );
+            if (start != null) {
+              _timerElapsed = DateTime.now().difference(start).inSeconds;
+            }
+            _startTimerTick();
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadTimeLogs() async {
+    if (_token == null) return;
+    try {
+      final res = await TaskService.getTimeLogs(_token!, limit: 10);
+      if (res['success'] == true && mounted) {
+        setState(() {
+          _timeLogs = (res['data'] as List<dynamic>? ?? []);
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _startTimerTick() {
+    _timerInterval?.cancel();
+    _timerInterval = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _timerElapsed++);
+    });
+  }
+
+  Future<void> _startTimer(String taskId) async {
+    if (_token == null) return;
+    setState(() => _timerLoading = true);
+    try {
+      final res = await TaskService.startTimer(_token!, taskId);
+      if (res['success'] == true) {
+        await _loadRunningTimer();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Timer started'),
+              backgroundColor: _accentGreen,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _timerLoading = false);
+    }
+  }
+
+  Future<void> _stopTimer() async {
+    if (_token == null || _runningTimer == null) return;
+    setState(() => _timerLoading = true);
+    try {
+      final logId = _runningTimer!['_id']?.toString() ?? '';
+      await TaskService.stopTimer(_token!, logId);
+      _timerInterval?.cancel();
+      if (mounted) {
+        setState(() {
+          _runningTimer = null;
+          _timerElapsed = 0;
+        });
+        await _loadTimeLogs();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Timer stopped'),
+            backgroundColor: _accentGreen,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _timerLoading = false);
+    }
+  }
+
+  Future<void> _logTime({
+    required String taskId,
+    required int durationMinutes,
+    String? description,
+    String? date,
+  }) async {
+    if (_token == null) return;
+    try {
+      await TaskService.logTime(
+        _token!,
+        taskId: taskId,
+        durationMinutes: durationMinutes,
+        description: description,
+        date: date,
+      );
+      await _loadTimeLogs();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Time logged successfully'),
+            backgroundColor: _accentGreen,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  String _formatElapsed(int seconds) {
+    final h = (seconds ~/ 3600).toString().padLeft(2, '0');
+    final m = ((seconds % 3600) ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
+
+  String _formatDuration(int minutes) {
+    if (minutes < 60) return '${minutes}m';
+    final h = minutes ~/ 60;
+    final m = minutes % 60;
+    return m == 0 ? '${h}h' : '${h}h ${m}m';
+  }
+
+  // ── Projects ───────────────────────────────────────────────────────────────
+
+  Future<void> _loadProjects() async {
+    if (_token == null) return;
+    try {
+      final res = await TaskService.getProjects(_token!);
+      if (res['success'] == true && mounted) {
+        setState(() {
+          _projects = (res['data'] as List<dynamic>? ?? []);
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadMilestones(String projectId) async {
+    if (_token == null) return;
+    try {
+      final res = await TaskService.getMilestones(_token!, projectId);
+      if (mounted) {
+        setState(() {
+          _milestones = (res['data'] as List<dynamic>? ?? []);
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _createProject({
+    required String name,
+    String? description,
+    String priority = 'medium',
+    String color = '#FF8FA3',
+  }) async {
+    if (_token == null) return;
+    try {
+      await TaskService.createProject(
+        _token!,
+        name: name,
+        description: description,
+        priority: priority,
+        color: color,
+      );
+      await _loadProjects();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Project created'),
+            backgroundColor: _accentGreen,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteProject(String projectId) async {
+    if (_token == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: _cardDark,
+        title: const Text(
+          'Delete Project',
+          style: TextStyle(color: Colors.white, fontSize: 17),
+        ),
+        content: const Text(
+          'Delete this project and all its milestones?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: _textGrey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await TaskService.deleteProject(_token!, projectId);
+      if (_selectedProject?['_id'] == projectId) {
+        setState(() {
+          _selectedProject = null;
+          _milestones = [];
+        });
+      }
+      await _loadProjects();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _createMilestone({
+    required String title,
+    required String projectId,
+    String? description,
+    String? dueDate,
+  }) async {
+    if (_token == null) return;
+    try {
+      await TaskService.createMilestone(
+        _token!,
+        title: title,
+        projectId: projectId,
+        description: description,
+        dueDate: dueDate,
+      );
+      await _loadMilestones(projectId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Milestone created'),
+            backgroundColor: _accentGreen,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteMilestone(String milestoneId, String projectId) async {
+    if (_token == null) return;
+    try {
+      await TaskService.deleteMilestone(_token!, milestoneId);
+      await _loadMilestones(projectId);
+    } catch (_) {}
+  }
+
+  // ── Analytics ──────────────────────────────────────────────────────────────
+
+  Future<void> _loadAnalytics() async {
+    if (_token == null) return;
+    setState(() => _analyticsLoading = true);
+    try {
+      final results = await Future.wait([
+        TaskService.getTaskStatistics(_token!),
+        TaskService.getProductivityAnalytics(_token!),
+        TaskService.getWorkloadDistribution(_token!),
+      ]);
+      if (mounted) {
+        setState(() {
+          final statsRes = results[0] as Map<String, dynamic>;
+          final prodRes = results[1] as Map<String, dynamic>;
+          final workRes = results[2] as Map<String, dynamic>;
+          _analyticsStats = statsRes['success'] == true ? statsRes['data'] : null;
+          _analyticsProductivity =
+              prodRes['success'] == true ? (prodRes['data'] as List<dynamic>? ?? []) : [];
+          _analyticsWorkload =
+              workRes['success'] == true ? (workRes['data'] as List<dynamic>? ?? []) : [];
+          _analyticsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _analyticsLoading = false);
+    }
   }
 
   /// Decodes the JWT payload (no signature verification needed—server
@@ -135,9 +500,9 @@ class _TasksScreenState extends State<TasksScreen>
     try {
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-      });
+      if (showLoading) {
+        setState(() => _isLoading = true);
+      }
 
       final results = await Future.wait([
         TaskService.getTasks(_token!),
@@ -154,6 +519,8 @@ class _TasksScreenState extends State<TasksScreen>
           if (statsRes['success'] == true && statsRes['data'] != null) {
             _stats = {
               'total': (statsRes['data']['total'] ?? 0) as int,
+              'assigned': (statsRes['data']['assigned'] as int?) ??
+                  _tasks.where((t) => t['status'] == 'assigned').length,
               'todo': (statsRes['data']['todo'] ?? 0) as int,
               'inProgress': (statsRes['data']['inProgress'] ?? 0) as int,
               'completed': (statsRes['data']['completed'] ?? 0) as int,
@@ -166,6 +533,8 @@ class _TasksScreenState extends State<TasksScreen>
           } else {
             _stats = {
               'total': _tasks.length,
+              'assigned':
+                  _tasks.where((t) => t['status'] == 'assigned').length,
               'todo': _tasks.where((t) => t['status'] == 'todo').length,
               'inProgress': _tasks
                   .where((t) => t['status'] == 'in-progress')
@@ -197,16 +566,18 @@ class _TasksScreenState extends State<TasksScreen>
           (t['description'] ?? '').toString().toLowerCase().contains(q);
     }).toList();
 
-    switch (_tabController.index) {
-      case 1:
-        list = list.where((t) => t['status'] == 'todo').toList();
-        break;
-      case 2:
-        list = list.where((t) => t['status'] == 'in-progress').toList();
-        break;
-      case 3:
-        list = list.where((t) => t['status'] == 'completed').toList();
-        break;
+    if (_statusFilter != null && _statusFilter!.isNotEmpty) {
+      list = list.where((t) => t['status'] == _statusFilter).toList();
+    }
+    if (_employeePriorityFilter != null &&
+        _employeePriorityFilter!.isNotEmpty) {
+      list = list
+          .where(
+            (t) =>
+                (t['priority'] ?? '').toString().toLowerCase() ==
+                _employeePriorityFilter,
+          )
+          .toList();
     }
     return list;
   }
@@ -255,6 +626,8 @@ class _TasksScreenState extends State<TasksScreen>
     switch (p.toLowerCase()) {
       case 'high':
         return Colors.redAccent;
+      case 'critical':
+        return const Color(0xFFFF1744);
       case 'medium':
         return _accentOrange;
       default:
@@ -270,6 +643,18 @@ class _TasksScreenState extends State<TasksScreen>
         return _accentGreen;
       case 'cancelled':
         return Colors.grey;
+      case 'assigned':
+        return Colors.amber;
+      case 'draft':
+        return Colors.grey;
+      case 'pending-approval':
+        return Colors.blueAccent;
+      case 'under-review':
+        return Colors.tealAccent;
+      case 'closed':
+        return Colors.grey;
+      case 'rejected':
+        return Colors.redAccent;
       default:
         return Colors.blueAccent;
     }
@@ -283,6 +668,18 @@ class _TasksScreenState extends State<TasksScreen>
         return 'Completed';
       case 'cancelled':
         return 'Cancelled';
+      case 'assigned':
+        return 'Assigned';
+      case 'draft':
+        return 'Draft';
+      case 'pending-approval':
+        return 'Pending Approval';
+      case 'under-review':
+        return 'Under Review';
+      case 'closed':
+        return 'Closed';
+      case 'rejected':
+        return 'Rejected';
       default:
         return 'Todo';
     }
@@ -295,6 +692,20 @@ class _TasksScreenState extends State<TasksScreen>
       return DateFormat('MMM d, y').format(dt);
     } catch (_) {
       return raw.toString();
+    }
+  }
+
+  bool _isOverdue(dynamic task) {
+    final status = (task['status'] ?? '').toString();
+    if (status == 'completed' || status == 'cancelled') return false;
+    final due = task['dueDate'];
+    if (due == null) return false;
+    try {
+      return DateTime.parse(due.toString()).toLocal().isBefore(
+            DateTime.now().subtract(const Duration(hours: 1)),
+          );
+    } catch (_) {
+      return false;
     }
   }
 
@@ -776,19 +1187,85 @@ class _TasksScreenState extends State<TasksScreen>
     final descCtrl = TextEditingController(
       text: task['description']?.toString() ?? '',
     );
+    final tagCtrl = TextEditingController();
     String selectedPriority = (task['priority'] ?? 'medium')
         .toString()
         .toLowerCase();
+
+    // Parse existing estimated time
+    final existingEst = task['estimatedTime'];
+    String? estimatedPreset;
+    final estimatedCustomCtrl = TextEditingController();
+    if (existingEst != null) {
+      final estInt = (existingEst as num).toInt();
+      if (estInt == 240) {
+        estimatedPreset = '240';
+      } else if (estInt == 480) {
+        estimatedPreset = '480';
+      } else {
+        estimatedPreset = null;
+        estimatedCustomCtrl.text = (estInt / 60).toStringAsFixed(1);
+      }
+    }
+
+    // Parse start date
+    DateTime? selectedStartDate;
+    if (task['startDate'] != null) {
+      try {
+        selectedStartDate = DateTime.parse(task['startDate'].toString()).toLocal();
+      } catch (_) {}
+    }
+
+    // Parse due date
     DateTime? selectedDueDate;
     if (task['dueDate'] != null) {
       try {
         selectedDueDate = DateTime.parse(task['dueDate'].toString()).toLocal();
       } catch (_) {}
     }
+
+    // Parse tags
+    List<String> tags = [];
+    if (task['tags'] is List) {
+      tags = (task['tags'] as List).map((t) => t.toString()).toList();
+    }
+
     bool submitting = false;
 
+    Future<DateTime?> _pickDateTime(
+      BuildContext ctx,
+      DateTime? initial,
+    ) async {
+      final date = await showDatePicker(
+        context: ctx,
+        initialDate: initial ?? DateTime.now().add(const Duration(days: 1)),
+        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+        builder: (_, c) => Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme:
+                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+          ),
+          child: c!,
+        ),
+      );
+      if (date == null) return null;
+      final time = await showTimePicker(
+        context: ctx,
+        initialTime: TimeOfDay.fromDateTime(initial ?? DateTime.now()),
+        builder: (_, c) => Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme:
+                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+          ),
+          child: c!,
+        ),
+      );
+      if (time == null) return date;
+      return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    }
+
     try {
-      // 1. Await karein aur type <bool> set karein
       final result = await showModalBottomSheet<bool>(
         context: context,
         backgroundColor: _cardDark,
@@ -798,12 +1275,12 @@ class _TasksScreenState extends State<TasksScreen>
         ),
         builder: (sheetContext) {
           return StatefulBuilder(
-            builder: (stateContext, ss) {
+            builder: (_, ss) {
               return Padding(
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-                  left: 24,
-                  right: 24,
+                  left: 20,
+                  right: 20,
                   top: 20,
                 ),
                 child: SingleChildScrollView(
@@ -811,6 +1288,7 @@ class _TasksScreenState extends State<TasksScreen>
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // ── Drag handle ─────────────────────────────────
                       Center(
                         child: Container(
                           width: 40,
@@ -844,7 +1322,9 @@ class _TasksScreenState extends State<TasksScreen>
                         ],
                       ),
                       const SizedBox(height: 20),
-                      _inputLabel('Task Title *'),
+
+                      // ── Title ────────────────────────────────────────
+                      _inputLabel('Title *'),
                       const SizedBox(height: 8),
                       _inputField(
                         controller: titleCtrl,
@@ -852,108 +1332,293 @@ class _TasksScreenState extends State<TasksScreen>
                         ctx: sheetContext,
                       ),
                       const SizedBox(height: 16),
+
+                      // ── Description ──────────────────────────────────
                       _inputLabel('Description'),
                       const SizedBox(height: 8),
                       _inputField(
                         controller: descCtrl,
-                        hint: 'Description...',
+                        hint: 'Task description',
                         maxLines: 3,
                         ctx: sheetContext,
                       ),
                       const SizedBox(height: 16),
-                      _inputLabel('Priority'),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        children: ['low', 'medium', 'high'].map((p) {
-                          final color = _priorityColor(p);
-                          final sel = selectedPriority == p;
-                          return ChoiceChip(
-                            label: Text(
-                              p[0].toUpperCase() + p.substring(1),
-                              style: TextStyle(
-                                color: sel ? color : _textGrey,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
+
+                      // ── Priority + Estimated Time ────────────────────
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _inputLabel('Priority'),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    'low',
+                                    'medium',
+                                    'high',
+                                    'critical',
+                                  ].map((p) {
+                                    final color = _priorityColor(p);
+                                    final sel = selectedPriority == p;
+                                    return GestureDetector(
+                                      onTap: () =>
+                                          ss(() => selectedPriority = p),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: sel
+                                              ? color.withOpacity(0.18)
+                                              : _inputDark,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: sel
+                                                ? color
+                                                : Colors.transparent,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          p[0].toUpperCase() + p.substring(1),
+                                          style: TextStyle(
+                                            color: sel ? color : _textGrey,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
                             ),
-                            selected: sel,
-                            onSelected: (_) => ss(() => selectedPriority = p),
-                            selectedColor: color.withOpacity(0.18),
-                            backgroundColor: _inputDark,
-                            side: BorderSide(
-                              color: sel ? color : Colors.transparent,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _inputLabel('Estimated Time'),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    _EstPreset('Custom Hours', null),
+                                    _EstPreset('Before Lunch(4h)', '240'),
+                                    _EstPreset('8h End of the Day(8h)', '480'),
+                                  ].map((ep) {
+                                    final sel = estimatedPreset == ep.value;
+                                    return GestureDetector(
+                                      onTap: () =>
+                                          ss(() => estimatedPreset = ep.value),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: sel
+                                              ? _accentPink.withOpacity(0.18)
+                                              : _inputDark,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: sel
+                                                ? _accentPink
+                                                : Colors.transparent,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          ep.label,
+                                          style: TextStyle(
+                                            color: sel
+                                                ? _accentPink
+                                                : _textGrey,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                if (estimatedPreset == null) ...[
+                                  const SizedBox(height: 8),
+                                  _inputField(
+                                    controller: estimatedCustomCtrl,
+                                    hint: 'e.g. 2 (hours)',
+                                    ctx: sheetContext,
+                                  ),
+                                ],
+                              ],
                             ),
-                          );
-                        }).toList(),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
-                      _inputLabel('Due Date'),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate:
-                                selectedDueDate ??
-                                DateTime.now().add(const Duration(days: 1)),
-                            firstDate: DateTime.now().subtract(
-                              const Duration(days: 365),
-                            ),
-                            lastDate: DateTime.now().add(
-                              const Duration(days: 365),
-                            ),
-                            builder: (_, child) => Theme(
-                              data: ThemeData.dark().copyWith(
-                                colorScheme: ColorScheme.dark(
-                                  primary: _accentPink,
-                                  surface: _cardDark,
+
+                      // ── Start Date & Due Date ────────────────────────
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _inputLabel('Start Date & Time'),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () async {
+                                    final picked = await _pickDateTime(
+                                      sheetContext,
+                                      selectedStartDate,
+                                    );
+                                    if (picked != null)
+                                      ss(() => selectedStartDate = picked);
+                                  },
+                                  child: _dateTimePickerBox(
+                                    selectedStartDate,
+                                    'Start date & time',
+                                  ),
                                 ),
-                              ),
-                              child: child!,
-                            ),
-                          );
-                          if (picked != null)
-                            ss(() => selectedDueDate = picked);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _inputDark,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.07),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today_outlined,
-                                color: _textGrey,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                selectedDueDate != null
-                                    ? DateFormat(
-                                        'MMM d, y',
-                                      ).format(selectedDueDate!)
-                                    : 'Select due date',
-                                style: TextStyle(
-                                  color: selectedDueDate != null
-                                      ? Colors.white
-                                      : _textGrey.withOpacity(0.6),
-                                  fontSize: 14,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _inputLabel('Due Date & Time'),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () async {
+                                    final picked = await _pickDateTime(
+                                      sheetContext,
+                                      selectedDueDate,
+                                    );
+                                    if (picked != null)
+                                      ss(() => selectedDueDate = picked);
+                                  },
+                                  child: _dateTimePickerBox(
+                                    selectedDueDate,
+                                    'Due date & time',
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
+                      const SizedBox(height: 16),
+
+                      // ── Tags ─────────────────────────────────────────
+                      _inputLabel('Tags'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _inputField(
+                              controller: tagCtrl,
+                              hint: 'Add a tag...',
+                              ctx: sheetContext,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              final t = tagCtrl.text.trim();
+                              if (t.isNotEmpty && !tags.contains(t)) {
+                                ss(() {
+                                  tags = [...tags, t];
+                                  tagCtrl.clear();
+                                });
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _accentPink.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _accentPink.withOpacity(0.4),
+                                ),
+                              ),
+                              child: Text(
+                                'Add',
+                                style: TextStyle(
+                                  color: _accentPink,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (tags.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: tags
+                              .map(
+                                (tag) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _accentPink.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: _accentPink.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        tag,
+                                        style: TextStyle(
+                                          color: _accentPink,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      GestureDetector(
+                                        onTap: () => ss(
+                                          () => tags = tags
+                                              .where((t) => t != tag)
+                                              .toList(),
+                                        ),
+                                        child: Icon(
+                                          Icons.close,
+                                          size: 12,
+                                          color: _accentPink,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
                       const SizedBox(height: 28),
+
+                      // ── Save Button ──────────────────────────────────
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -979,6 +1644,18 @@ class _TasksScreenState extends State<TasksScreen>
                                     return;
                                   }
                                   ss(() => submitting = true);
+                                  int? estMinutes;
+                                  if (estimatedPreset == '240') {
+                                    estMinutes = 240;
+                                  } else if (estimatedPreset == '480') {
+                                    estMinutes = 480;
+                                  } else {
+                                    final h = double.tryParse(
+                                      estimatedCustomCtrl.text.trim(),
+                                    );
+                                    if (h != null && h > 0)
+                                      estMinutes = (h * 60).round();
+                                  }
                                   try {
                                     await _updateTaskDetails(
                                       taskId: task['_id'].toString(),
@@ -986,10 +1663,10 @@ class _TasksScreenState extends State<TasksScreen>
                                       description: descCtrl.text.trim(),
                                       priority: selectedPriority,
                                       dueDate: selectedDueDate,
+                                      startDate: selectedStartDate,
+                                      estimatedTime: estMinutes,
+                                      tags: tags,
                                     );
-
-                                    // 2. CHANGE: Yahan se _loadData() hata dein.
-                                    // Sirf pop karein aur true pass karein.
                                     if (sheetContext.mounted)
                                       Navigator.pop(sheetContext, true);
                                   } catch (e) {
@@ -1041,11 +1718,8 @@ class _TasksScreenState extends State<TasksScreen>
         },
       );
 
-      // 3. CHANGE: Sheet poori tarah close hone ke baad _loadData aur SnackBar show karein
       if (result == true && mounted) {
-        // Adding delay to ensure bottom sheet is completely closed and widget tree is stable
         await Future.delayed(const Duration(milliseconds: 300));
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1058,9 +1732,10 @@ class _TasksScreenState extends State<TasksScreen>
         }
       }
     } finally {
-      // Always dispose controllers to prevent memory leaks and "used after dispose" errors
       titleCtrl.dispose();
       descCtrl.dispose();
+      tagCtrl.dispose();
+      estimatedCustomCtrl.dispose();
     }
   }
 
@@ -1071,6 +1746,9 @@ class _TasksScreenState extends State<TasksScreen>
     required String description,
     required String priority,
     DateTime? dueDate,
+    DateTime? startDate,
+    int? estimatedTime,
+    List<String>? tags,
   }) async {
     if (_token == null) throw Exception('Not authenticated');
     await TaskService.updateTask(
@@ -1079,12 +1757,11 @@ class _TasksScreenState extends State<TasksScreen>
       title: title,
       description: description.isEmpty ? null : description,
       priority: priority,
-      dueDate: dueDate != null
-          ? DateFormat('yyyy-MM-dd').format(dueDate)
-          : null,
+      dueDate: dueDate?.toIso8601String(),
+      startDate: startDate?.toIso8601String(),
+      estimatedTime: estimatedTime,
+      tags: tags,
     );
-
-    // Show notification for task update
     await NotificationService().showTaskUpdateNotification(
       taskTitle: title,
       updateType: 'updated',
@@ -1093,16 +1770,53 @@ class _TasksScreenState extends State<TasksScreen>
   }
 
   // ── Create Task ───────────────────────────────────────────────────────────
-  // ── Create Task ───────────────────────────────────────────────────────────
   Future<void> _showCreateTaskDialog() async {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
+    final tagCtrl = TextEditingController();
     String selectedPriority = 'medium';
+    // estimated: null = custom, 240 = 4h, 480 = 8h
+    String? estimatedPreset; // '240' | '480' | null(custom)
+    final estimatedCustomCtrl = TextEditingController();
+    DateTime? selectedStartDate;
     DateTime? selectedDueDate;
+    List<String> tags = [];
     bool submitting = false;
 
+    Future<DateTime?> _pickDateTime(
+      BuildContext ctx,
+      DateTime? initial,
+    ) async {
+      final date = await showDatePicker(
+        context: ctx,
+        initialDate: initial ?? DateTime.now().add(const Duration(days: 1)),
+        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+        builder: (_, c) => Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme:
+                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+          ),
+          child: c!,
+        ),
+      );
+      if (date == null) return null;
+      final time = await showTimePicker(
+        context: ctx,
+        initialTime: TimeOfDay.fromDateTime(initial ?? DateTime.now()),
+        builder: (_, c) => Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme:
+                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+          ),
+          child: c!,
+        ),
+      );
+      if (time == null) return date;
+      return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    }
+
     try {
-      // 1. showModalBottomSheet ka type <bool> set karein aur result ko await karein
       final result = await showModalBottomSheet<bool>(
         context: context,
         backgroundColor: _cardDark,
@@ -1112,12 +1826,12 @@ class _TasksScreenState extends State<TasksScreen>
         ),
         builder: (sheetContext) {
           return StatefulBuilder(
-            builder: (stateContext, ss) {
+            builder: (_, ss) {
               return Padding(
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-                  left: 24,
-                  right: 24,
+                  left: 20,
+                  right: 20,
                   top: 20,
                 ),
                 child: SingleChildScrollView(
@@ -1125,6 +1839,7 @@ class _TasksScreenState extends State<TasksScreen>
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // ── Drag handle ─────────────────────────────────
                       Center(
                         child: Container(
                           width: 40,
@@ -1139,7 +1854,7 @@ class _TasksScreenState extends State<TasksScreen>
                       Row(
                         children: [
                           const Text(
-                            'Create Task',
+                            'Create New Task',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 18,
@@ -1158,114 +1873,308 @@ class _TasksScreenState extends State<TasksScreen>
                         ],
                       ),
                       const SizedBox(height: 20),
+
+                      // ── Task Title ───────────────────────────────────
                       _inputLabel('Task Title *'),
                       const SizedBox(height: 8),
                       _inputField(
                         controller: titleCtrl,
-                        hint: 'e.g. Fix login bug',
+                        hint: 'Enter task title',
                         ctx: sheetContext,
                       ),
                       const SizedBox(height: 16),
+
+                      // ── Description ──────────────────────────────────
                       _inputLabel('Description'),
                       const SizedBox(height: 8),
                       _inputField(
                         controller: descCtrl,
-                        hint: 'Brief description...',
+                        hint: 'Enter task description',
                         maxLines: 3,
                         ctx: sheetContext,
                       ),
                       const SizedBox(height: 16),
-                      _inputLabel('Priority'),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        children: ['low', 'medium', 'high'].map((p) {
-                          final color = _priorityColor(p);
-                          final selected = selectedPriority == p;
-                          return ChoiceChip(
-                            label: Text(
-                              p[0].toUpperCase() + p.substring(1),
-                              style: TextStyle(
-                                color: selected ? color : _textGrey,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
+
+                      // ── Priority + Estimated Time (2 columns) ────────
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Priority
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _inputLabel('Priority *'),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    'low',
+                                    'medium',
+                                    'high',
+                                    'critical',
+                                  ].map((p) {
+                                    final color = _priorityColor(p);
+                                    final sel = selectedPriority == p;
+                                    return GestureDetector(
+                                      onTap: () =>
+                                          ss(() => selectedPriority = p),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: sel
+                                              ? color.withOpacity(0.18)
+                                              : _inputDark,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: sel
+                                                ? color
+                                                : Colors.transparent,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          p[0].toUpperCase() + p.substring(1),
+                                          style: TextStyle(
+                                            color: sel ? color : _textGrey,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
                             ),
-                            selected: selected,
-                            onSelected: (_) => ss(() => selectedPriority = p),
-                            selectedColor: color.withOpacity(0.18),
-                            backgroundColor: _inputDark,
-                            side: BorderSide(
-                              color: selected ? color : Colors.transparent,
+                          ),
+                          const SizedBox(width: 16),
+                          // Estimated Time
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _inputLabel('Estimated Time'),
+                                const SizedBox(height: 8),
+                                // Preset chips
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    _EstPreset('Custom', null),
+                                    _EstPreset('4h Lunch', '240'),
+                                    _EstPreset('8h Day', '480'),
+                                  ].map((ep) {
+                                    final sel = estimatedPreset == ep.value;
+                                    return GestureDetector(
+                                      onTap: () =>
+                                          ss(() => estimatedPreset = ep.value),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: sel
+                                              ? _accentPink.withOpacity(0.18)
+                                              : _inputDark,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: sel
+                                                ? _accentPink
+                                                : Colors.transparent,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          ep.label,
+                                          style: TextStyle(
+                                            color: sel
+                                                ? _accentPink
+                                                : _textGrey,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                if (estimatedPreset == null) ...[
+                                  const SizedBox(height: 8),
+                                  _inputField(
+                                    controller: estimatedCustomCtrl,
+                                    hint: 'e.g. 2 (hours)',
+                                    ctx: sheetContext,
+                                  ),
+                                ],
+                              ],
                             ),
-                          );
-                        }).toList(),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
-                      _inputLabel('Due Date'),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now().add(
-                              const Duration(days: 1),
-                            ),
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime.now().add(
-                              const Duration(days: 365),
-                            ),
-                            builder: (_, child) => Theme(
-                              data: ThemeData.dark().copyWith(
-                                colorScheme: ColorScheme.dark(
-                                  primary: _accentPink,
-                                  surface: _cardDark,
+
+                      // ── Start Date & Time ────────────────────────────
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _inputLabel('Start Date & Time'),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () async {
+                                    final picked = await _pickDateTime(
+                                      sheetContext,
+                                      selectedStartDate,
+                                    );
+                                    if (picked != null)
+                                      ss(() => selectedStartDate = picked);
+                                  },
+                                  child: _dateTimePickerBox(
+                                    selectedStartDate,
+                                    'Start date & time',
+                                  ),
                                 ),
-                              ),
-                              child: child!,
-                            ),
-                          );
-                          if (picked != null)
-                            ss(() => selectedDueDate = picked);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _inputDark,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.07),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today_outlined,
-                                color: _textGrey,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                selectedDueDate != null
-                                    ? DateFormat(
-                                        'MMM d, y',
-                                      ).format(selectedDueDate!)
-                                    : 'Select due date',
-                                style: TextStyle(
-                                  color: selectedDueDate != null
-                                      ? Colors.white
-                                      : _textGrey.withOpacity(0.6),
-                                  fontSize: 14,
+                          const SizedBox(width: 12),
+                          // Due Date & Time
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _inputLabel('Due Date & Time *'),
+                                const SizedBox(height: 8),
+                                GestureDetector(
+                                  onTap: () async {
+                                    final picked = await _pickDateTime(
+                                      sheetContext,
+                                      selectedDueDate,
+                                    );
+                                    if (picked != null)
+                                      ss(() => selectedDueDate = picked);
+                                  },
+                                  child: _dateTimePickerBox(
+                                    selectedDueDate,
+                                    'Due date & time',
+                                    required: true,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
+                      const SizedBox(height: 16),
+
+                      // ── Tags ─────────────────────────────────────────
+                      _inputLabel('Tags'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _inputField(
+                              controller: tagCtrl,
+                              hint: 'Add a tag...',
+                              ctx: sheetContext,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              final t = tagCtrl.text.trim();
+                              if (t.isNotEmpty && !tags.contains(t)) {
+                                ss(() {
+                                  tags = [...tags, t];
+                                  tagCtrl.clear();
+                                });
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _accentPink.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _accentPink.withOpacity(0.4),
+                                ),
+                              ),
+                              child: Text(
+                                'Add',
+                                style: TextStyle(
+                                  color: _accentPink,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (tags.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: tags
+                              .map(
+                                (tag) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _accentPink.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: _accentPink.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        tag,
+                                        style: TextStyle(
+                                          color: _accentPink,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      GestureDetector(
+                                        onTap: () => ss(
+                                          () => tags = tags
+                                              .where((t) => t != tag)
+                                              .toList(),
+                                        ),
+                                        child: Icon(
+                                          Icons.close,
+                                          size: 12,
+                                          color: _accentPink,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
                       const SizedBox(height: 28),
+
+                      // ── Submit Button ────────────────────────────────
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -1290,17 +2199,39 @@ class _TasksScreenState extends State<TasksScreen>
                                     );
                                     return;
                                   }
+                                  if (selectedDueDate == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Due date is required'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   ss(() => submitting = true);
+                                  // compute estimatedTime in minutes
+                                  int? estMinutes;
+                                  if (estimatedPreset == '240') {
+                                    estMinutes = 240;
+                                  } else if (estimatedPreset == '480') {
+                                    estMinutes = 480;
+                                  } else {
+                                    final h = double.tryParse(
+                                      estimatedCustomCtrl.text.trim(),
+                                    );
+                                    if (h != null && h > 0)
+                                      estMinutes = (h * 60).round();
+                                  }
                                   try {
                                     await _createTask(
                                       title: titleCtrl.text.trim(),
                                       description: descCtrl.text.trim(),
                                       priority: selectedPriority,
                                       dueDate: selectedDueDate,
+                                      startDate: selectedStartDate,
+                                      estimatedTime: estMinutes,
+                                      tags: tags,
                                     );
-
-                                    // 2. YAHAN CHANGE HAI: Yahan se _loadData() aur SnackBar nikal diya gaya hai.
-                                    // Sirf bottom sheet ko band karein aur sath mein "true" pass karein.
                                     if (sheetContext.mounted)
                                       Navigator.pop(sheetContext, true);
                                   } catch (e) {
@@ -1352,11 +2283,8 @@ class _TasksScreenState extends State<TasksScreen>
         },
       );
 
-      // 3. YAHAN CHANGE HAI: Jab Bottom sheet poori tarah close ho jaye, tab data reload karein.
       if (result == true && mounted) {
-        // Adding delay to ensure bottom sheet is completely closed and widget tree is stable
         await Future.delayed(const Duration(milliseconds: 300));
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1368,20 +2296,22 @@ class _TasksScreenState extends State<TasksScreen>
         }
       }
     } finally {
-      // Always dispose controllers to prevent memory leaks and "used after dispose" errors
       titleCtrl.dispose();
       descCtrl.dispose();
+      tagCtrl.dispose();
+      estimatedCustomCtrl.dispose();
     }
   }
 
-  /// Pure API call – no UI side-effects so it is safe to call while a
-  /// bottom-sheet is still open.  The caller is responsible for popping
-  /// the sheet first, then showing feedback and reloading data.
+  /// Pure API call – no UI side-effects.
   Future<void> _createTask({
     required String title,
     required String description,
     required String priority,
     DateTime? dueDate,
+    DateTime? startDate,
+    int? estimatedTime,
+    List<String>? tags,
   }) async {
     if (_token == null) throw Exception('Not authenticated');
     final assignTo = _userId ?? '';
@@ -1392,14 +2322,13 @@ class _TasksScreenState extends State<TasksScreen>
       description: description.isEmpty ? title : description,
       priority: priority,
       dueDate: dueDate != null
-          ? DateFormat('yyyy-MM-dd').format(dueDate)
-          : DateFormat(
-              'yyyy-MM-dd',
-            ).format(DateTime.now().add(const Duration(days: 7))),
+          ? dueDate.toIso8601String()
+          : DateTime.now().add(const Duration(days: 7)).toIso8601String(),
       assignedTo: assignTo,
+      startDate: startDate?.toIso8601String(),
+      estimatedTime: estimatedTime,
+      tags: tags?.isNotEmpty == true ? tags : null,
     );
-
-    // Show notification for task creation
     await NotificationService().showTaskAssignedNotification(
       taskTitle: title,
       assignedTo: 'You',
@@ -1445,6 +2374,50 @@ class _TasksScreenState extends State<TasksScreen>
     ),
   );
 
+  /// Consistent date/time picker button.
+  Widget _dateTimePickerBox(
+    DateTime? value,
+    String placeholder, {
+    bool required = false,
+  }) {
+    final hasValue = value != null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+      decoration: BoxDecoration(
+        color: _inputDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: (required && !hasValue)
+              ? _accentPink.withOpacity(0.5)
+              : Colors.white.withOpacity(0.07),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.schedule_outlined,
+            color: hasValue ? _accentPink : _textGrey,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              hasValue
+                  ? DateFormat('MMM d, y  HH:mm').format(value)
+                  : placeholder,
+              style: TextStyle(
+                color:
+                    hasValue ? Colors.white : _textGrey.withOpacity(0.6),
+                fontSize: 12,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _inputField({
     required TextEditingController controller,
     required String hint,
@@ -1485,6 +2458,16 @@ class _TasksScreenState extends State<TasksScreen>
             return Column(
               children: [
                 _buildHeader(context, isMobile),
+                // ── Employee Tab Bar ────────────────────────────────────
+                _buildTabBar(
+                  [
+                    {'label': 'List', 'icon': Icons.list_alt_rounded},
+                    {'label': 'Kanban', 'icon': Icons.view_column_outlined},
+                    {'label': 'Time', 'icon': Icons.timer_outlined},
+                  ],
+                  _employeeTab,
+                  (i) => setState(() => _employeeTab = i),
+                ),
                 Expanded(
                   child: _isLoading
                       ? Center(
@@ -1492,26 +2475,44 @@ class _TasksScreenState extends State<TasksScreen>
                         )
                       : _error != null
                       ? _buildError()
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildSearchBar(),
-                              const SizedBox(height: 20),
-                              isMobile
-                                  ? _buildMobileStats()
-                                  : _buildDesktopStats(),
-                              const SizedBox(height: 24),
-                              _buildTabBar(),
-                              const SizedBox(height: 20),
-                              _buildTaskList(),
-                              const SizedBox(height: 80),
-                            ],
-                          ),
+                      : IndexedStack(
+                          index: _employeeTab,
+                          children: [
+                            // ── Tab 0: List ─────────────────────────────
+                            RefreshIndicator(
+                              color: _accentPink,
+                              backgroundColor: _cardDark,
+                              onRefresh: () => _loadData(showLoading: false),
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildSearchBar(),
+                                    const SizedBox(height: 20),
+                                    isMobile
+                                        ? _buildMobileStats()
+                                        : _buildDesktopStats(),
+                                    const SizedBox(height: 24),
+                                    _buildEmployeeFilterRow(),
+                                    const SizedBox(height: 20),
+                                    _buildTaskList(),
+                                    const SizedBox(height: 80),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // ── Tab 1: Kanban ────────────────────────────
+                            _buildKanbanView(_filteredTasks),
+                            // ── Tab 2: Time Tracking ─────────────────────
+                            SingleChildScrollView(
+                              child: _buildTimeTrackingTab(),
+                            ),
+                          ],
                         ),
                 ),
               ],
@@ -1519,6 +2520,15 @@ class _TasksScreenState extends State<TasksScreen>
           },
         ),
       ),
+      floatingActionButton: _employeeTab == 0
+          ? FloatingActionButton(
+              onPressed: _showCreateTaskDialog,
+              backgroundColor: _accentPink,
+              foregroundColor: Colors.black,
+              elevation: 4,
+              child: const Icon(Icons.add, size: 26),
+            )
+          : null,
     );
   }
 
@@ -1530,51 +2540,100 @@ class _TasksScreenState extends State<TasksScreen>
         child: Column(
           children: [
             _buildAdminHeader(context),
+            // ── Admin Tab Bar ─────────────────────────────────────────
+            _buildTabBar(
+              [
+                {'label': 'List', 'icon': Icons.list_alt_rounded},
+                {'label': 'Kanban', 'icon': Icons.view_column_outlined},
+                {'label': 'Employees', 'icon': Icons.group_outlined},
+                {'label': 'Projects', 'icon': Icons.folder_outlined},
+                {'label': 'Time', 'icon': Icons.timer_outlined},
+                {'label': 'Analytics', 'icon': Icons.bar_chart_rounded},
+              ],
+              _adminTab,
+              (i) {
+                setState(() => _adminTab = i);
+                if (i == 5 && _analyticsStats == null) _loadAnalytics();
+                if (i == 4 && _timeLogs.isEmpty) _loadTimeLogs();
+                if (i == 4 && _runningTimer == null) _loadRunningTimer();
+              },
+            ),
             Expanded(
               child: _isLoading
                   ? Center(child: CircularProgressIndicator(color: _accentPink))
                   : _error != null
                   ? _buildError()
-                  : RefreshIndicator(
-                      color: _accentPink,
-                      backgroundColor: _cardDark,
-                      onRefresh: () async {
-                        await Future.wait([_loadData(), _loadEmployees()]);
-                      },
-                      child: SingleChildScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                  : IndexedStack(
+                      index: _adminTab,
+                      children: [
+                        // ── Tab 0: List ───────────────────────────────
+                        RefreshIndicator(
+                          color: _accentPink,
+                          backgroundColor: _cardDark,
+                          onRefresh: () async {
+                            await Future.wait([_loadData(), _loadEmployees()]);
+                          },
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildAdminStats(),
+                                const SizedBox(height: 20),
+                                _buildAdminSearchAndFilters(),
+                                const SizedBox(height: 16),
+                                _buildAdminTaskList(),
+                                const SizedBox(height: 80),
+                              ],
+                            ),
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildAdminStats(),
-                            const SizedBox(height: 20),
-                            _buildAdminSearchAndFilters(),
-                            const SizedBox(height: 16),
-                            _buildAdminTaskList(),
-                            const SizedBox(height: 80),
-                          ],
+                        // ── Tab 1: Kanban ─────────────────────────────
+                        _buildKanbanView(_adminFilteredTasks),
+                        // ── Tab 2: By Employee ────────────────────────
+                        _buildAdminByEmployeeTab(),
+                        // ── Tab 3: Projects ───────────────────────────
+                        _buildProjectsTab(),
+                        // ── Tab 4: Time Tracking ──────────────────────
+                        SingleChildScrollView(
+                          child: _buildTimeTrackingTab(),
                         ),
-                      ),
+                        // ── Tab 5: Analytics ──────────────────────────
+                        SingleChildScrollView(
+                          child: _buildAnalyticsTab(),
+                        ),
+                      ],
                     ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAdminCreateTaskDialog,
-        backgroundColor: _accentPink,
-        foregroundColor: Colors.black,
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text(
-          'Assign Task',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        elevation: 4,
-      ),
+      floatingActionButton: _adminTab == 0
+          ? FloatingActionButton.extended(
+              onPressed: _showAdminCreateTaskDialog,
+              backgroundColor: _accentPink,
+              foregroundColor: Colors.black,
+              icon: const Icon(Icons.add, size: 20),
+              label: const Text(
+                'Assign Task',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              elevation: 4,
+            )
+          : (_adminTab == 3
+              ? FloatingActionButton(
+                  onPressed: _showCreateProjectDialog,
+                  backgroundColor: _accentPink,
+                  foregroundColor: Colors.black,
+                  elevation: 4,
+                  tooltip: 'New Project',
+                  child: const Icon(Icons.add, size: 26),
+                )
+              : null),
     );
   }
 
@@ -1637,70 +2696,29 @@ class _TasksScreenState extends State<TasksScreen>
     final overdue = _stats['overdue'] ?? 0;
     final highPriority = _stats['highPriority'] ?? 0;
     final avgProgress = _stats['averageProgress'] ?? 0;
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'Total',
-                '$total',
-                Icons.folder_outlined,
-                _accentPurple,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'In Progress',
-                '$inProgress',
-                Icons.pending_actions,
-                _accentOrange,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'Completed',
-                '$completed',
-                Icons.check_circle_outline,
-                _accentGreen,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'Overdue',
-                '$overdue',
-                Icons.warning_amber_outlined,
-                Colors.redAccent,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'High Priority',
-                '$highPriority',
-                Icons.flag_outlined,
-                _accentPink,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'Avg Progress',
-                '$avgProgress%',
-                Icons.insights,
-                Colors.blueAccent,
-              ),
-            ),
-          ],
-        ),
-      ],
+    final statItems = [
+      _StatItem('Total', '$total', Icons.folder_outlined, _accentPurple),
+      _StatItem('In Progress', '$inProgress', Icons.pending_actions, _accentOrange),
+      _StatItem('Completed', '$completed', Icons.check_circle_outline, _accentGreen),
+      _StatItem('Overdue', '$overdue', Icons.warning_amber_outlined, Colors.redAccent),
+      _StatItem('High Priority', '$highPriority', Icons.flag_outlined, _accentPink),
+      _StatItem('Avg Progress', '$avgProgress%', Icons.insights, Colors.blueAccent),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth < 360 ? 2 : 3;
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 1.4,
+          children: statItems
+              .map((s) => _buildStatCard(s.label, s.count, s.icon, s.color))
+              .toList(),
+        );
+      },
     );
   }
 
@@ -2117,6 +3135,7 @@ class _TasksScreenState extends State<TasksScreen>
     final progress = ((task['progress'] ?? 0) as num).toDouble();
     final priorityColor = _priorityColor(priority);
     final statusColor = _statusColor(status);
+    final overdue = _isOverdue(task);
     final assignee = task['assignedTo'];
     final assigneeName = assignee is Map
         ? (assignee['name'] ?? 'Unassigned').toString()
@@ -2135,7 +3154,12 @@ class _TasksScreenState extends State<TasksScreen>
         decoration: BoxDecoration(
           color: _cardDark,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          border: Border.all(
+            color: overdue
+                ? Colors.redAccent.withOpacity(0.4)
+                : Colors.white.withValues(alpha: 0.06),
+            width: overdue ? 1.5 : 1.0,
+          ),
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
@@ -2158,6 +3182,10 @@ class _TasksScreenState extends State<TasksScreen>
                             ),
                             const SizedBox(width: 6),
                             _miniChip(_statusLabel(status), statusColor),
+                            if (overdue) ...[
+                              const SizedBox(width: 6),
+                              _miniChip('Overdue', Colors.redAccent),
+                            ],
                             const Spacer(),
                             // Review star: filled (gold) if reviewed, outline if not
                             GestureDetector(
@@ -2289,14 +3317,22 @@ class _TasksScreenState extends State<TasksScreen>
                             ),
                             const SizedBox(width: 8),
                             Icon(
-                              Icons.calendar_today_outlined,
-                              color: _textGrey,
+                              overdue
+                                  ? Icons.warning_amber_outlined
+                                  : Icons.calendar_today_outlined,
+                              color: overdue ? Colors.redAccent : _textGrey,
                               size: 11,
                             ),
                             const SizedBox(width: 3),
                             Text(
                               _formatDate(task['dueDate']),
-                              style: TextStyle(color: _textGrey, fontSize: 11),
+                              style: TextStyle(
+                                color: overdue ? Colors.redAccent : _textGrey,
+                                fontSize: 11,
+                                fontWeight: overdue
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
                             ),
                           ],
                         ),
@@ -3494,65 +4530,51 @@ class _TasksScreenState extends State<TasksScreen>
   Widget _buildHeader(BuildContext context, bool isMobile) {
     if (isMobile) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Row(
           children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                  style: IconButton.styleFrom(
-                    backgroundColor: _cardDark,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.all(10),
-                    minimumSize: const Size(44, 44),
-                  ),
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+              style: IconButton.styleFrom(
+                backgroundColor: _cardDark,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'My Tasks',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      // Text(
-                      //   DateFormat('MMM dd').format(DateTime.now()),
-                      //   style: TextStyle(color: _textGrey, fontSize: 12),
-                      // ),
-                    ],
-                  ),
-                ),
-              ],
+                padding: const EdgeInsets.all(10),
+                minimumSize: const Size(44, 44),
+              ),
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _showCreateTaskDialog,
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text(
-                  'Create Task',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _accentPink,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'My Tasks',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  elevation: 0,
+                  Text(
+                    '${_tasks.length} tasks',
+                    style: TextStyle(color: _textGrey, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            // Refresh button
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: () => _loadData(showLoading: false),
+              icon: Icon(Icons.refresh_rounded, color: _accentPink, size: 22),
+              style: IconButton.styleFrom(
+                backgroundColor: _accentPink.withOpacity(0.12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
@@ -3674,7 +4696,16 @@ class _TasksScreenState extends State<TasksScreen>
           _accentPurple,
         ),
       ),
-      const SizedBox(width: 16),
+      const SizedBox(width: 12),
+      Expanded(
+        child: _buildStatCard(
+          'Assigned',
+          '${_stats['assigned'] ?? 0}',
+          Icons.assignment_ind_outlined,
+          Colors.amber,
+        ),
+      ),
+      const SizedBox(width: 12),
       Expanded(
         child: _buildStatCard(
           'In Progress',
@@ -3683,7 +4714,7 @@ class _TasksScreenState extends State<TasksScreen>
           _accentOrange,
         ),
       ),
-      const SizedBox(width: 16),
+      const SizedBox(width: 12),
       Expanded(
         child: _buildStatCard(
           'Completed',
@@ -3692,7 +4723,7 @@ class _TasksScreenState extends State<TasksScreen>
           _accentGreen,
         ),
       ),
-      const SizedBox(width: 16),
+      const SizedBox(width: 12),
       Expanded(
         child: _buildStatCard(
           'Overdue',
@@ -3708,8 +4739,8 @@ class _TasksScreenState extends State<TasksScreen>
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
     crossAxisCount: 2,
-    crossAxisSpacing: 14,
-    mainAxisSpacing: 14,
+    crossAxisSpacing: 12,
+    mainAxisSpacing: 12,
     childAspectRatio: 1.35,
     children: [
       _buildStatCard(
@@ -3717,6 +4748,12 @@ class _TasksScreenState extends State<TasksScreen>
         '${_stats['total'] ?? _tasks.length}',
         Icons.folder_open,
         _accentPurple,
+      ),
+      _buildStatCard(
+        'Assigned',
+        '${_stats['assigned'] ?? 0}',
+        Icons.assignment_ind_outlined,
+        Colors.amber,
       ),
       _buildStatCard(
         'In Progress',
@@ -3790,50 +4827,106 @@ class _TasksScreenState extends State<TasksScreen>
     ),
   );
 
-  Widget _buildTabBar() => LayoutBuilder(
-    builder: (context, constraints) {
-      final isMobile = constraints.maxWidth < 600;
-      return Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: _cardDark,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          indicatorSize: TabBarIndicatorSize.tab,
-          dividerColor: Colors.transparent,
-          indicator: BoxDecoration(
-            color: _accentPink,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          labelColor: Colors.black,
-          unselectedLabelColor: _textGrey,
-          labelStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
-          padding: const EdgeInsets.all(5),
-          tabs: isMobile
-              ? [
-                  Tab(text: 'All'),
-                  Tab(text: 'Todo'),
-                  Tab(text: 'Progress'),
-                  Tab(text: 'Done'),
-                ]
-              : [
-                  Tab(text: 'All (${_tasks.length})'),
-                  Tab(text: 'Todo (${_stats['todo'] ?? 0})'),
-                  Tab(text: 'In Progress (${_stats['inProgress'] ?? 0})'),
-                  Tab(text: 'Done (${_stats['completed'] ?? 0})'),
+  Widget _buildStatusFilterRow() {
+    final count = _filteredTasks.length;
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: _showEmployeeStatusFilterSheet,
+            child: Container(
+              height: 46,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: _cardDark,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color:
+                      _statusFilter != null ? _accentPink : Colors.white12,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.filter_list_rounded,
+                    color: _statusFilter != null ? _accentPink : _textGrey,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _statusFilter == null
+                        ? 'All Status'
+                        : _statusLabel(_statusFilter!),
+                    style: TextStyle(
+                      color: _statusFilter != null
+                          ? _accentPink
+                          : Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.keyboard_arrow_down,
+                    color: _textGrey,
+                    size: 18,
+                  ),
                 ],
+              ),
+            ),
+          ),
         ),
-      );
-    },
-  );
+        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: _accentPink.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _accentPink.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Text(
+            '$count',
+            style: TextStyle(
+              color: _accentPink,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showEmployeeStatusFilterSheet() {
+    final options = [
+      {'value': null, 'label': 'All Status', 'color': Colors.white},
+      {'value': 'draft', 'label': 'Draft', 'color': Colors.grey},
+      {
+        'value': 'pending-approval',
+        'label': 'Pending Approval',
+        'color': Colors.blueAccent,
+      },
+      {'value': 'assigned', 'label': 'Assigned', 'color': Colors.amber},
+      {
+        'value': 'in-progress',
+        'label': 'In Progress',
+        'color': _accentOrange,
+      },
+      {
+        'value': 'under-review',
+        'label': 'Under Review',
+        'color': Colors.tealAccent,
+      },
+      {'value': 'completed', 'label': 'Completed', 'color': _accentGreen},
+      {'value': 'closed', 'label': 'Closed', 'color': Colors.grey},
+      {'value': 'rejected', 'label': 'Rejected', 'color': Colors.redAccent},
+    ];
+    _showFilterSheet('Filter by Status', options, _statusFilter, (v) {
+      setState(() => _statusFilter = v as String?);
+    });
+  }
 
   Widget _buildTaskList() {
     final list = _filteredTasks;
@@ -3885,6 +4978,7 @@ class _TasksScreenState extends State<TasksScreen>
     final priorityColor = _priorityColor(priority);
     final statusColor = _statusColor(status);
     final isCompleted = status == 'completed';
+    final overdue = _isOverdue(task);
 
     final canDelete = task['isDeletableByEmployee'] == true;
 
@@ -3953,7 +5047,12 @@ class _TasksScreenState extends State<TasksScreen>
           decoration: BoxDecoration(
             color: _cardDark,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.06)),
+            border: Border.all(
+              color: overdue
+                  ? Colors.redAccent.withOpacity(0.4)
+                  : Colors.white.withOpacity(0.06),
+              width: overdue ? 1.5 : 1.0,
+            ),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
@@ -3967,7 +5066,7 @@ class _TasksScreenState extends State<TasksScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Priority chip + status badge
+                          // Priority chip + status badge + overdue
                           Row(
                             children: [
                               Container(
@@ -4010,6 +5109,27 @@ class _TasksScreenState extends State<TasksScreen>
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              if (overdue) ...[
+                                const SizedBox(width: 7),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'Overdue',
+                                    style: TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                               const Spacer(),
                               Icon(
                                 Icons.edit_outlined,
@@ -4087,8 +5207,10 @@ class _TasksScreenState extends State<TasksScreen>
                           Row(
                             children: [
                               Icon(
-                                Icons.calendar_today_outlined,
-                                color: _textGrey,
+                                overdue
+                                    ? Icons.warning_amber_outlined
+                                    : Icons.calendar_today_outlined,
+                                color: overdue ? Colors.redAccent : _textGrey,
                                 size: 12,
                               ),
                               const SizedBox(width: 4),
@@ -4098,8 +5220,13 @@ class _TasksScreenState extends State<TasksScreen>
                                       ? _formatDate(task['dueDate'])
                                       : 'No due date',
                                   style: TextStyle(
-                                    color: _textGrey,
+                                    color: overdue
+                                        ? Colors.redAccent
+                                        : _textGrey,
                                     fontSize: 11,
+                                    fontWeight: overdue
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -4141,4 +5268,1367 @@ class _TasksScreenState extends State<TasksScreen>
       ), // closes GestureDetector (child of Dismissible)
     ); // closes Dismissible
   }
+
+  // ── Tab Bar ────────────────────────────────────────────────────────────────
+  Widget _buildTabBar(
+    List<Map<String, dynamic>> tabs,
+    int current,
+    ValueChanged<int> onChange,
+  ) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: List.generate(tabs.length, (i) {
+            final active = i == current;
+            return GestureDetector(
+              onTap: () => onChange(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: active ? _accentPink : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      tabs[i]['icon'] as IconData,
+                      size: 15,
+                      color: active ? Colors.black : _textGrey,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      tabs[i]['label'] as String,
+                      style: TextStyle(
+                        color: active ? Colors.black : _textGrey,
+                        fontSize: 12,
+                        fontWeight: active ? FontWeight.bold : FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  // ── Employee filter row (status + priority) ────────────────────────────────
+  Widget _buildEmployeeFilterRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: _showEmployeeStatusFilterSheet,
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: _cardDark,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _statusFilter != null ? _accentPink : Colors.white12,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.filter_list_rounded,
+                    color: _statusFilter != null ? _accentPink : _textGrey,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _statusFilter == null ? 'All Status' : _statusLabel(_statusFilter!),
+                      style: TextStyle(
+                        color: _statusFilter != null ? _accentPink : Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(Icons.keyboard_arrow_down, color: _textGrey, size: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              final options = [
+                {'value': null, 'label': 'All Priority', 'color': Colors.white},
+                {'value': 'low', 'label': 'Low', 'color': _accentGreen},
+                {'value': 'medium', 'label': 'Medium', 'color': _accentOrange},
+                {'value': 'high', 'label': 'High', 'color': Colors.redAccent},
+                {'value': 'critical', 'label': 'Critical', 'color': const Color(0xFFFF1744)},
+              ];
+              _showFilterSheet('Filter by Priority', options, _employeePriorityFilter, (v) {
+                setState(() => _employeePriorityFilter = v as String?);
+              });
+            },
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: _cardDark,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _employeePriorityFilter != null ? _accentPink : Colors.white12,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.flag_outlined,
+                    color: _employeePriorityFilter != null ? _accentPink : _textGrey,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _employeePriorityFilter == null
+                          ? 'All Priority'
+                          : '${_employeePriorityFilter![0].toUpperCase()}${_employeePriorityFilter!.substring(1)}',
+                      style: TextStyle(
+                        color: _employeePriorityFilter != null ? _accentPink : Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(Icons.keyboard_arrow_down, color: _textGrey, size: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (_statusFilter != null || _employeePriorityFilter != null) ...[
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => setState(() {
+              _statusFilter = null;
+              _employeePriorityFilter = null;
+            }),
+            child: Container(
+              height: 44,
+              width: 44,
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+              ),
+              child: const Icon(Icons.clear, color: Colors.redAccent, size: 16),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ── Kanban view ────────────────────────────────────────────────────────────
+  Widget _buildKanbanView(List<dynamic> tasks) {
+    final columns = [
+      {'status': 'todo', 'label': 'To Do', 'color': Colors.blueAccent},
+      {'status': 'in-progress', 'label': 'In Progress', 'color': _accentOrange},
+      {'status': 'under-review', 'label': 'Under Review', 'color': Colors.tealAccent},
+      {'status': 'completed', 'label': 'Completed', 'color': _accentGreen},
+    ];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: columns.map((col) {
+          final colStatus = col['status'] as String;
+          final colLabel = col['label'] as String;
+          final colColor = col['color'] as Color;
+          final colTasks = tasks.where((t) => t['status'] == colStatus).toList();
+          return Container(
+            width: 260,
+            margin: const EdgeInsets.only(right: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Column header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: colColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colColor.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(color: colColor, shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          colLabel,
+                          style: TextStyle(
+                            color: colColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: colColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${colTasks.length}',
+                          style: TextStyle(
+                            color: colColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Cards
+                ...colTasks.map((task) {
+                  final priority = (task['priority'] ?? 'medium').toString();
+                  final overdue = _isOverdue(task);
+                  return GestureDetector(
+                    onTap: () => _isAdmin
+                        ? _showAdminTaskDetail(task as Map<String, dynamic>)
+                        : _showUpdateDialog(task as Map<String, dynamic>),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _cardDark,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: overdue
+                              ? Colors.redAccent.withOpacity(0.4)
+                              : Colors.white.withOpacity(0.06),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              _miniChip(
+                                priority[0].toUpperCase() + priority.substring(1),
+                                _priorityColor(priority),
+                              ),
+                              if (overdue) ...[
+                                const SizedBox(width: 4),
+                                _miniChip('Overdue', Colors.redAccent),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            task['title'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (task['dueDate'] != null) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_today_outlined, size: 11, color: _textGrey),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _formatDate(task['dueDate']),
+                                  style: TextStyle(color: _textGrey, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ],
+                          if (_isAdmin) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(Icons.person_outline, size: 11, color: _textGrey),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    _assigneeName(task),
+                                    style: TextStyle(color: _textGrey, fontSize: 11),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ── Time Tracking Tab ──────────────────────────────────────────────────────
+  Widget _buildTimeTrackingTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Active timer card
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: _cardDark,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: _runningTimer != null
+                    ? _accentGreen.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.06),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.timer_outlined, color: _runningTimer != null ? _accentGreen : _textGrey, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Active Timer',
+                      style: TextStyle(
+                        color: _runningTimer != null ? _accentGreen : _textGrey,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (_runningTimer != null)
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF00C853),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (_runningTimer != null) ...[
+                  Text(
+                    _formatElapsed(_timerElapsed),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Task: ${(_runningTimer!['task'] is Map ? _runningTimer!['task']['title'] : _runningTimer!['task']) ?? 'Unknown'}',
+                    style: TextStyle(color: _textGrey, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _timerLoading ? null : _stopTimer,
+                      icon: _timerLoading
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            )
+                          : const Icon(Icons.stop_rounded, size: 18),
+                      label: const Text('Stop Timer', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Text(
+                    'No active timer',
+                    style: TextStyle(color: _textGrey, fontSize: 15),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap a task to start tracking time',
+                    style: TextStyle(color: _textGrey.withOpacity(0.6), fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Recent logs
+          Row(
+            children: [
+              Text(
+                'Recent Time Logs',
+                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              Text(
+                '${_timeLogs.length} entries',
+                style: TextStyle(color: _textGrey, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_timeLogs.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 24),
+                child: Column(
+                  children: [
+                    Icon(Icons.access_time_outlined, size: 40, color: _textGrey.withOpacity(0.4)),
+                    const SizedBox(height: 12),
+                    Text('No time logs yet', style: TextStyle(color: _textGrey, fontSize: 14)),
+                  ],
+                ),
+              ),
+            )
+          else
+            ...(_timeLogs.map((log) {
+              final taskInfo = log['task'];
+              final taskTitle = taskInfo is Map ? (taskInfo['title'] ?? 'Task') : 'Task';
+              final duration = (log['durationMinutes'] ?? 0) as num;
+              final desc = (log['description'] ?? '').toString();
+              final date = log['date'] ?? log['createdAt'];
+              String dateStr = '';
+              if (date != null) {
+                try {
+                  dateStr = DateFormat('MMM d').format(DateTime.parse(date.toString()).toLocal());
+                } catch (_) {}
+              }
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _cardDark,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _accentPink.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.timer_outlined, color: _accentPink, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            taskTitle.toString(),
+                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (desc.isNotEmpty)
+                            Text(desc, style: TextStyle(color: _textGrey, fontSize: 11), overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          _formatDuration(duration.toInt()),
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        if (dateStr.isNotEmpty)
+                          Text(dateStr, style: TextStyle(color: _textGrey, fontSize: 11)),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            })),
+        ],
+      ),
+    );
+  }
+
+  // ── Admin by-employee tab ──────────────────────────────────────────────────
+  Widget _buildAdminByEmployeeTab() {
+    if (_employees.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.group_outlined, size: 48, color: _textGrey.withOpacity(0.3)),
+              const SizedBox(height: 16),
+              Text('No employees found', style: TextStyle(color: _textGrey, fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      color: _accentPink,
+      backgroundColor: _cardDark,
+      onRefresh: () async { await Future.wait([_loadData(), _loadEmployees()]); },
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _employees.length,
+        itemBuilder: (_, i) {
+          final emp = _employees[i] as Map<String, dynamic>;
+          final empId = (emp['_id'] ?? '').toString();
+          final empTasks = _tasks.where((t) {
+            final assignedTo = t['assignedTo'];
+            if (assignedTo is Map) return (assignedTo['_id'] ?? '').toString() == empId;
+            if (assignedTo is String) return assignedTo == empId;
+            return false;
+          }).toList();
+          final completed = empTasks.where((t) => t['status'] == 'completed').length;
+          final inProgress = empTasks.where((t) => t['status'] == 'in-progress').length;
+          final overdue = empTasks.where((t) => _isOverdue(t)).length;
+          final name = (emp['name'] ?? 'Employee').toString();
+          final dept = (emp['department'] ?? '').toString();
+          final empIdNum = (emp['employeeId'] ?? '').toString();
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            decoration: BoxDecoration(
+              color: _cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.06)),
+            ),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              backgroundColor: Colors.transparent,
+              collapsedBackgroundColor: Colors.transparent,
+              shape: const Border(),
+              title: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: _accentPink.withOpacity(0.2),
+                    child: Text(
+                      name[0].toUpperCase(),
+                      style: TextStyle(color: _accentPink, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text(
+                          '${dept.isNotEmpty ? '$dept • ' : ''}${empIdNum.isNotEmpty ? empIdNum : ''}',
+                          style: TextStyle(color: _textGrey, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${empTasks.length} task${empTasks.length != 1 ? 's' : ''}',
+                        style: TextStyle(color: _textGrey, fontSize: 12),
+                      ),
+                      if (overdue > 0)
+                        Text(
+                          '$overdue overdue',
+                          style: const TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              subtitle: empTasks.isNotEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 6, left: 52),
+                      child: Row(
+                        children: [
+                          _miniChip('$completed Done', _accentGreen),
+                          const SizedBox(width: 6),
+                          _miniChip('$inProgress Active', _accentOrange),
+                        ],
+                      ),
+                    )
+                  : null,
+              children: empTasks.isEmpty
+                  ? [
+                      Text(
+                        'No tasks assigned',
+                        style: TextStyle(color: _textGrey.withOpacity(0.6), fontSize: 13),
+                      ),
+                    ]
+                  : empTasks.map((task) {
+                      final t = task as Map<String, dynamic>;
+                      final status = (t['status'] ?? 'todo').toString();
+                      final priority = (t['priority'] ?? 'medium').toString();
+                      return GestureDetector(
+                        onTap: () => _showAdminTaskDetail(t),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: _bgDark,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.05)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: _priorityColor(priority),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      t['title'] ?? '',
+                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (t['dueDate'] != null)
+                                      Text(
+                                        _formatDate(t['dueDate']),
+                                        style: TextStyle(color: _textGrey, fontSize: 11),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              _miniChip(_statusLabel(status), _statusColor(status)),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ── Projects Tab ───────────────────────────────────────────────────────────
+  Widget _buildProjectsTab() {
+    if (_projects.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.folder_outlined, size: 56, color: _textGrey.withOpacity(0.3)),
+              const SizedBox(height: 16),
+              Text('No projects yet', style: TextStyle(color: _textGrey, fontSize: 15)),
+              const SizedBox(height: 8),
+              Text(
+                'Tap + to create a project',
+                style: TextStyle(color: _textGrey.withOpacity(0.6), fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _projects.length,
+      itemBuilder: (_, i) {
+        final p = _projects[i] as Map<String, dynamic>;
+        final projId = (p['_id'] ?? '').toString();
+        final name = (p['name'] ?? 'Project').toString();
+        final desc = (p['description'] ?? '').toString();
+        final priority = (p['priority'] ?? 'medium').toString();
+        final colorHex = (p['color'] ?? '#FF8FA3').toString();
+        Color projColor = _accentPink;
+        try {
+          projColor = Color(int.parse(colorHex.replaceAll('#', '0xFF')));
+        } catch (_) {}
+        final isSelected = _selectedProject?['_id'] == projId;
+
+        return GestureDetector(
+          onTap: () async {
+            setState(() => _selectedProject = p);
+            await _loadMilestones(projId);
+            if (!mounted) return;
+            showModalBottomSheet(
+              context: context,
+              backgroundColor: _cardDark,
+              isScrollControlled: true,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              builder: (_) => StatefulBuilder(
+                builder: (ctx, ss) => DraggableScrollableSheet(
+                  expand: false,
+                  initialChildSize: 0.7,
+                  maxChildSize: 0.95,
+                  builder: (_, scroll) => Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(color: projColor, shape: BoxShape.circle),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                              onPressed: () async {
+                                Navigator.pop(ctx);
+                                await _deleteProject(projId);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white38, size: 20),
+                              onPressed: () => Navigator.pop(ctx),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (desc.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                          child: Text(desc, style: TextStyle(color: _textGrey, fontSize: 13)),
+                        ),
+                      const Divider(color: Colors.white10, height: 1),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
+                        child: Row(
+                          children: [
+                            Text('Milestones', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            TextButton.icon(
+                              onPressed: () => _showCreateMilestoneDialog(projId),
+                              icon: const Icon(Icons.add, size: 16),
+                              label: const Text('Add'),
+                              style: TextButton.styleFrom(foregroundColor: _accentPink),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: _milestones.isEmpty
+                            ? Center(child: Text('No milestones yet', style: TextStyle(color: _textGrey, fontSize: 13)))
+                            : ListView.builder(
+                                controller: scroll,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: _milestones.length,
+                                itemBuilder: (_, j) {
+                                  final m = _milestones[j] as Map<String, dynamic>;
+                                  final mTitle = (m['title'] ?? '').toString();
+                                  final mDue = m['dueDate'];
+                                  final mDone = m['isCompleted'] == true;
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: _bgDark,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.white.withOpacity(0.05)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          mDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+                                          color: mDone ? _accentGreen : _textGrey,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                mTitle,
+                                                style: TextStyle(
+                                                  color: mDone ? _textGrey : Colors.white,
+                                                  fontSize: 13,
+                                                  decoration: mDone ? TextDecoration.lineThrough : null,
+                                                ),
+                                              ),
+                                              if (mDue != null)
+                                                Text(_formatDate(mDue), style: TextStyle(color: _textGrey, fontSize: 11)),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(Icons.delete_outline, color: _textGrey.withOpacity(0.5), size: 16),
+                                          onPressed: () async {
+                                            await _deleteMilestone((m['_id'] ?? '').toString(), projId);
+                                            ss(() {});
+                                          },
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _cardDark,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? projColor.withOpacity(0.5) : Colors.white.withOpacity(0.06),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(color: projColor, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                      if (desc.isNotEmpty)
+                        Text(desc, style: TextStyle(color: _textGrey, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                _miniChip(priority[0].toUpperCase() + priority.substring(1), _priorityColor(priority)),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right, color: _textGrey, size: 18),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Analytics Tab ──────────────────────────────────────────────────────────
+  Widget _buildAnalyticsTab() {
+    if (_analyticsLoading) {
+      return Center(child: CircularProgressIndicator(color: _accentPink));
+    }
+    final stats = _analyticsStats;
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Overall stats
+          const Text(
+            'Overview',
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          if (stats != null) ...[
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.2,
+              children: [
+                _buildStatCard('Total', '${stats['total'] ?? 0}', Icons.folder_outlined, _accentPurple),
+                _buildStatCard('Completed', '${stats['completed'] ?? 0}', Icons.check_circle_outline, _accentGreen),
+                _buildStatCard('In Progress', '${stats['inProgress'] ?? 0}', Icons.pending_actions, _accentOrange),
+                _buildStatCard('Overdue', '${stats['overdue'] ?? 0}', Icons.warning_amber_outlined, Colors.redAccent),
+                _buildStatCard('High Priority', '${stats['highPriority'] ?? 0}', Icons.flag_outlined, _accentPink),
+                _buildStatCard('Avg Progress', '${stats['averageProgress'] ?? 0}%', Icons.insights, Colors.blueAccent),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+          // Workload distribution
+          if (_analyticsWorkload.isNotEmpty) ...[
+            const Text(
+              'Workload Distribution',
+              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ..._analyticsWorkload.map((w) {
+              final emp = w as Map<String, dynamic>;
+              final name = (emp['employeeName'] ?? emp['name'] ?? 'Employee').toString();
+              final count = (emp['taskCount'] ?? emp['count'] ?? 0) as num;
+              final total = _analyticsWorkload.fold<num>(
+                0,
+                (s, e) => s + ((e as Map)['taskCount'] ?? (e)['count'] ?? 0) as num,
+              );
+              final pct = total > 0 ? count / total : 0.0;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _cardDark,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                        ),
+                        Text('${count.toInt()} tasks', style: TextStyle(color: _textGrey, fontSize: 12)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: pct.toDouble(),
+                        minHeight: 6,
+                        backgroundColor: Colors.white.withOpacity(0.08),
+                        color: _accentPink,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 24),
+          ],
+          // Productivity
+          if (_analyticsProductivity.isNotEmpty) ...[
+            const Text(
+              'Productivity Trends',
+              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            ..._analyticsProductivity.take(10).map((p) {
+              final prod = p as Map<String, dynamic>;
+              final date = prod['date'] ?? prod['_id']?.toString() ?? '';
+              final completed = (prod['completed'] ?? prod['count'] ?? 0) as num;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: _cardDark,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(date.toString(), style: TextStyle(color: _textGrey, fontSize: 12)),
+                    ),
+                    _miniChip('${completed.toInt()} completed', _accentGreen),
+                  ],
+                ),
+              );
+            }),
+          ],
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  // ── Create project dialog ──────────────────────────────────────────────────
+  Future<void> _showCreateProjectDialog() async {
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    String selectedPriority = 'medium';
+    String selectedColor = '#FF8FA3';
+    bool submitting = false;
+
+    final colors = ['#FF8FA3', '#651FFF', '#FFB300', '#00C853', '#2196F3', '#FF5722'];
+    final priorities = ['low', 'medium', 'high'];
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (_, ss) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const Text(
+                  'New Project',
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                Text('Name', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _inputDark,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withOpacity(0.07)),
+                  ),
+                  child: TextField(
+                    controller: nameCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      hintText: 'Project name',
+                      hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text('Description (optional)', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _inputDark,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withOpacity(0.07)),
+                  ),
+                  child: TextField(
+                    controller: descCtrl,
+                    maxLines: 3,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      hintText: 'Short description...',
+                      hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text('Priority', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Row(
+                  children: priorities.map((pr) {
+                    final active = pr == selectedPriority;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => ss(() => selectedPriority = pr),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: active ? _priorityColor(pr).withOpacity(0.2) : _inputDark,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: active ? _priorityColor(pr) : Colors.white.withOpacity(0.07),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              pr[0].toUpperCase() + pr.substring(1),
+                              style: TextStyle(
+                                color: active ? _priorityColor(pr) : _textGrey,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+                Text('Color', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 10),
+                Row(
+                  children: colors.map((c) {
+                    Color col = _accentPink;
+                    try {
+                      col = Color(int.parse(c.replaceAll('#', '0xFF')));
+                    } catch (_) {}
+                    final active = c == selectedColor;
+                    return GestureDetector(
+                      onTap: () => ss(() => selectedColor = c),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 10),
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: col,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: active ? Colors.white : Colors.transparent,
+                            width: 2.5,
+                          ),
+                        ),
+                        child: active
+                            ? const Icon(Icons.check, color: Colors.white, size: 16)
+                            : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: submitting
+                        ? null
+                        : () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+                            ss(() => submitting = true);
+                            await _createProject(
+                              name: name,
+                              description: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : null,
+                              priority: selectedPriority,
+                              color: selectedColor,
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _accentPink,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          )
+                        : const Text('Create Project', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    nameCtrl.dispose();
+    descCtrl.dispose();
+  }
+
+  // ── Create milestone dialog ────────────────────────────────────────────────
+  Future<void> _showCreateMilestoneDialog(String projectId) async {
+    final titleCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    DateTime? dueDate;
+    bool submitting = false;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: _cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (_, ss) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const Text('New Milestone', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 20),
+                Text('Title', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _inputDark,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withOpacity(0.07)),
+                  ),
+                  child: TextField(
+                    controller: titleCtrl,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      hintText: 'Milestone title',
+                      hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text('Due Date (optional)', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: DateTime.now().add(const Duration(days: 7)),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                      builder: (ctx, child) => Theme(
+                        data: Theme.of(ctx).copyWith(colorScheme: ColorScheme.dark(primary: _accentPink)),
+                        child: child!,
+                      ),
+                    );
+                    if (picked != null) ss(() => dueDate = picked);
+                  },
+                  child: Container(
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: _inputDark,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: dueDate != null ? _accentPink : Colors.white.withOpacity(0.07),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.calendar_today_outlined, color: dueDate != null ? _accentPink : _textGrey, size: 16),
+                        const SizedBox(width: 10),
+                        Text(
+                          dueDate != null ? DateFormat('MMM d, y').format(dueDate!) : 'Select due date',
+                          style: TextStyle(color: dueDate != null ? Colors.white : _textGrey, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: submitting
+                        ? null
+                        : () async {
+                            final title = titleCtrl.text.trim();
+                            if (title.isEmpty) return;
+                            ss(() => submitting = true);
+                            await _createMilestone(
+                              title: title,
+                              projectId: projectId,
+                              dueDate: dueDate?.toIso8601String(),
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _accentPink,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          )
+                        : const Text('Create Milestone', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    titleCtrl.dispose();
+    descCtrl.dispose();
+  }
+}
+
+/// Helper class for admin stat grid items.
+class _StatItem {
+  final String label;
+  final String count;
+  final IconData icon;
+  final Color color;
+  const _StatItem(this.label, this.count, this.icon, this.color);
+}
+
+/// Simple data holder for estimated-time preset chips.
+class _EstPreset {
+  final String label;
+  final String? value; // null = custom
+  const _EstPreset(this.label, this.value);
 }

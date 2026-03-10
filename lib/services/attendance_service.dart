@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import '../config/api_config.dart';
 import '../models/attendance_checkin_model.dart';
 import '../models/attendance_summary_model.dart';
 import '../models/today_attendance_model.dart';
@@ -22,10 +23,19 @@ class FaceVerificationFailedException implements Exception {
   String toString() => message;
 }
 
+/// Thrown when check-in is not allowed due to leave or other business rules.
+class CheckInNotAllowedException implements Exception {
+  final String message;
+  final String? leaveType;
+
+  const CheckInNotAllowedException(this.message, {this.leaveType});
+
+  @override
+  String toString() => message;
+}
+
 class AttendanceService {
-  // Replace with your actual API base URL
-  // static const String baseUrl = 'https://hrms-backend-807r.onrender.com/api';
-  static const String baseUrl = 'https://hrms-backend-zzzc.onrender.com/api';
+  static String get baseUrl => ApiConfig.baseUrl;
 
   // Check In
   static Future<CheckInResponse> checkIn({
@@ -86,21 +96,28 @@ class AttendanceService {
         try {
           final errorData = json.decode(errorBody);
           final message = errorData['message'] as String? ?? 'Failed to check in';
+          
           // Include similarity score in the message when face verification failed
           final score = errorData['similarityScore'];
           if (score != null) {
             throw FaceVerificationFailedException(message, (score as num).toInt());
           }
+          
+          // Check if it's a leave-related error
+          if (message.toLowerCase().contains('leave')) {
+            throw CheckInNotAllowedException(message);
+          }
+          
           throw Exception(message);
         } catch (e) {
-          if (e is FaceVerificationFailedException) rethrow;
+          if (e is FaceVerificationFailedException || e is CheckInNotAllowedException) rethrow;
           throw Exception(
-            'Failed to check in: ${response.statusCode} - ${errorBody.substring(0, errorBody.length > 100 ? 100 : errorBody.length)}',
+            'Check-in error: $e',
           );
         }
       }
     } catch (e) {
-      if (e is FaceVerificationFailedException) rethrow;
+      if (e is FaceVerificationFailedException || e is CheckInNotAllowedException) rethrow;
       throw Exception('Check-in error: $e');
     }
   }

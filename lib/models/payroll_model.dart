@@ -152,6 +152,43 @@ class PayrollItem {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Salary User — nested user info inside EmployeeSalary
+// ─────────────────────────────────────────────────────────────────────────────
+
+class SalaryUser {
+  final String id;
+  final String? name;
+  final String? email;
+  final String? employeeId;
+  final String? position;
+  final String? department;
+  final String? profilePhotoUrl;
+
+  SalaryUser({
+    required this.id,
+    this.name,
+    this.email,
+    this.employeeId,
+    this.position,
+    this.department,
+    this.profilePhotoUrl,
+  });
+
+  factory SalaryUser.fromJson(Map<String, dynamic> json) {
+    final photo = json['profilePhoto'];
+    return SalaryUser(
+      id: json['_id'] ?? '',
+      name: json['name'],
+      email: json['email'],
+      employeeId: json['employeeId'],
+      position: json['position'],
+      department: json['department'],
+      profilePhotoUrl: photo is Map ? photo['url'] as String? : null,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Employee Salary — GET /api/payroll/salaries/me
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -192,6 +229,7 @@ class SalaryListResponse {
 
 class EmployeeSalary {
   final String id;
+  final SalaryUser? user;
   final double basicSalary;
   final List<SalaryComponent> allowances;
   final List<SalaryComponent> deductions;
@@ -205,6 +243,7 @@ class EmployeeSalary {
 
   EmployeeSalary({
     required this.id,
+    this.user,
     required this.basicSalary,
     this.allowances = const [],
     this.deductions = const [],
@@ -219,6 +258,7 @@ class EmployeeSalary {
 
   factory EmployeeSalary.fromJson(Map<String, dynamic> json) => EmployeeSalary(
     id: json['_id'] ?? '',
+    user: json['user'] is Map ? SalaryUser.fromJson(json['user'] as Map<String, dynamic>) : null,
     basicSalary: (json['basicSalary'] ?? 0).toDouble(),
     allowances: json['allowances'] != null
         ? List<SalaryComponent>.from(
