@@ -19,8 +19,8 @@ class AttendanceHistoryScreen extends StatefulWidget {
 
 class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   String _selectedFilter = 'All';
-  int _selectedMonth = 2; // February (current month)
-  int _selectedYear = 2026;
+  int _selectedMonth = DateTime.now().month;
+  int _selectedYear = DateTime.now().year;
 
   final List<String> _filters = [
     'All',

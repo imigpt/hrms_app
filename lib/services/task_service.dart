@@ -663,6 +663,85 @@ class TaskService {
     }
   }
 
+  // ─── COMMENTS ──────────────────────────────────────────────────────────────
+
+  /// Add a comment to a task
+  /// POST /api/tasks/:id/comments
+  static Future<dynamic> addComment(
+    String token,
+    String taskId, {
+    required String content,
+  }) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/tasks/$taskId/comments'),
+            headers: _getHeaders(token),
+            body: jsonEncode({'content': content}),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to add comment: $e');
+    }
+  }
+
+  /// Delete a comment from a task
+  /// DELETE /api/tasks/:id/comments/:commentId
+  static Future<void> deleteComment(
+    String token,
+    String taskId,
+    String commentId,
+  ) async {
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/tasks/$taskId/comments/$commentId'),
+            headers: _getHeaders(token),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (!(response.statusCode >= 200 && response.statusCode < 300)) {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to delete comment: $e');
+    }
+  }
+
+  /// Transition a task's workflow status
+  /// POST /api/tasks/:id/transition
+  static Future<dynamic> transitionTask(
+    String token,
+    String taskId, {
+    required String action,
+    String? comment,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'action': action,
+        if (comment != null && comment.isNotEmpty) 'comment': comment,
+      };
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/tasks/$taskId/transition'),
+            headers: _getHeaders(token),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to transition task: $e');
+    }
+  }
+
   // ─── ANALYTICS ──────────────────────────────────────────────────────────────
 
   static Future<dynamic> getProductivityAnalytics(String token) async {

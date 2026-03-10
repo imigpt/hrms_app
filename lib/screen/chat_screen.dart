@@ -768,7 +768,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         if (_messages.isNotEmpty) {
           for (int i = 0; i < (_messages.length > 5 ? 5 : _messages.length); i++) {
             final m = _messages[i];
-            print('   [$i] ID: ${m.id} | ${m.sender?.name ?? "Unknown"}: ${m.content?.substring(0, 40) ?? "[media]"}...');
+            print('   [$i] ID: ${m.id} | ${m.sender?.name ?? "Unknown"}: ${m.content.substring(0, 40)}...');
           }
           if (_messages.length > 5) print('   ... and ${_messages.length - 5} more');
         }

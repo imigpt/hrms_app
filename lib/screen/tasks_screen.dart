@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/task_service.dart';
@@ -7,6 +8,8 @@ import '../services/token_storage_service.dart';
 import '../services/admin_employees_service.dart';
 import '../services/notification_service.dart';
 import '../services/workflow_service.dart';
+import '../services/workflow_visualization_service.dart';
+import '../widgets/workflow_tab_widget.dart';
 import '../theme/app_theme.dart';
 
 class TasksScreen extends StatefulWidget {
@@ -19,7 +22,7 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
-  // ── Theme ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   final Color _bgDark = const Color(0xFF050505);
   final Color _cardDark = const Color(0xFF141414);
   final Color _inputDark = const Color(0xFF1F1F1F);
@@ -36,7 +39,7 @@ class _TasksScreenState extends State<TasksScreen> {
   String? _userId;
   bool _isAdmin = false;
 
-  // ── API state ──────────────────────────────────────────────────────────────
+  // â”€â”€ API state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bool _isLoading = true;
   String? _error;
   List<dynamic> _tasks = [];
@@ -52,38 +55,38 @@ class _TasksScreenState extends State<TasksScreen> {
     'averageProgress': 0,
   };
 
-  // ── Admin state ────────────────────────────────────────────────────────────
+  // â”€â”€ Admin state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   List<dynamic> _employees = [];
   String? _adminStatusFilter;
   String? _adminPriorityFilter;
   String? _adminEmployeeFilter; // employee _id
 
-  // ── Tab state ──────────────────────────────────────────────────────────────
+  // â”€â”€ Tab state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   int _employeeTab = 0; // 0=list, 1=kanban, 2=time
   int _adminTab = 0; // 0=list, 1=kanban, 2=employees, 3=projects, 4=time, 5=analytics
 
-  // ── Employee priority filter ───────────────────────────────────────────────
+  // â”€â”€ Employee priority filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   String? _employeePriorityFilter;
 
-  // ── Projects state ─────────────────────────────────────────────────────────
+  // â”€â”€ Projects state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   List<dynamic> _projects = [];
   Map<String, dynamic>? _selectedProject;
   List<dynamic> _milestones = [];
 
-  // ── Time tracking state ────────────────────────────────────────────────────
+  // â”€â”€ Time tracking state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Map<String, dynamic>? _runningTimer;
   int _timerElapsed = 0;
   bool _timerLoading = false;
   List<dynamic> _timeLogs = [];
   Timer? _timerInterval;
 
-  // ── Analytics state ────────────────────────────────────────────────────────
+  // â”€â”€ Analytics state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Map<String, dynamic>? _analyticsStats;
   List<dynamic> _analyticsProductivity = [];
   List<dynamic> _analyticsWorkload = [];
   bool _analyticsLoading = false;
 
-  // ── Workflow state ─────────────────────────────────────────────────────────
+  // â”€â”€ Workflow state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   List<dynamic> _workflows = [];
   Map<String, dynamic>? _selectedWorkflow;
   bool _workflowsLoading = false;
@@ -134,7 +137,7 @@ class _TasksScreenState extends State<TasksScreen> {
     } catch (_) {}
   }
 
-  // ── Time Tracking ──────────────────────────────────────────────────────────
+  // â”€â”€ Time Tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _loadRunningTimer() async {
     if (_token == null) return;
@@ -295,7 +298,7 @@ class _TasksScreenState extends State<TasksScreen> {
     return m == 0 ? '${h}h' : '${h}h ${m}m';
   }
 
-  // ── Projects ───────────────────────────────────────────────────────────────
+  // â”€â”€ Projects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _loadProjects() async {
     if (_token == null) return;
@@ -454,7 +457,7 @@ class _TasksScreenState extends State<TasksScreen> {
     } catch (_) {}
   }
 
-  // ── Analytics ──────────────────────────────────────────────────────────────
+  // â”€â”€ Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _loadAnalytics() async {
     if (_token == null) return;
@@ -483,7 +486,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // ── Workflow Loading (Enhanced) ────────────────────────────────────────────
+  // â”€â”€ Workflow Loading (Enhanced) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Future<void> _loadWorkflows() async {
     if (_token == null) {
@@ -570,7 +573,7 @@ class _TasksScreenState extends State<TasksScreen> {
           builder: (context, scrollController) {
             return Column(
               children: [
-                // ─── Header ───────────────────────────────────────────────
+                // â”€â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
@@ -615,7 +618,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     ],
                   ),
                 ),
-                // ─── Content ──────────────────────────────────────────────
+                // â”€â”€â”€ Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 Expanded(
                   child: _workflows.isEmpty
                       ? Center(
@@ -687,7 +690,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // ─ Title Row ─────────────────────────
+                                        // â”€ Title Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                                         Row(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -759,7 +762,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                                       overflow: TextOverflow.ellipsis,
                                                     ),
                                                   Text(
-                                                    'By $createdBy · ${steps.length} step${steps.length != 1 ? 's' : ''}',
+                                                    'By $createdBy Â· ${steps.length} step${steps.length != 1 ? 's' : ''}',
                                                     style: TextStyle(
                                                       fontSize: 10,
                                                       color: _textGrey.withValues(alpha: 0.5),
@@ -789,7 +792,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                             ),
                                           ],
                                         ),
-                                        // ─ Steps Preview (horizontal pills) ─
+                                        // â”€ Steps Preview (horizontal pills) â”€
                                         if (steps.isNotEmpty) ...[
                                           const SizedBox(height: 10),
                                           Divider(
@@ -914,7 +917,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  /// Decodes the JWT payload (no signature verification needed—server
+  /// Decodes the JWT payload (no signature verification neededâ€”server
   /// already validated it) to extract the `id` field.
   String? _decodeUserIdFromJwt(String token) {
     try {
@@ -995,7 +998,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
+  // â”€â”€ Filtering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   List<dynamic> get _filteredTasks {
     var list = _tasks.where((t) {
       final q = _searchQuery.toLowerCase();
@@ -1059,7 +1062,7 @@ class _TasksScreenState extends State<TasksScreen> {
     return '';
   }
 
-  // ── Priority / status helpers ──────────────────────────────────────────────
+  // â”€â”€ Priority / status helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Color _priorityColor(String p) {
     switch (p.toLowerCase()) {
       case 'high':
@@ -1147,14 +1150,26 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // ── Task detail / update sheet ────────────────────────────────────────────
+  // â”€â”€ Task detail / update sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _showUpdateDialog(Map<String, dynamic> task) async {
-    String selectedStatus = task['status'] ?? 'todo';
     double progress = ((task['progress'] ?? 0) as num).toDouble();
     final subTasks = (task['subTasks'] as List<dynamic>? ?? []);
-    final canDelete = task['isDeletableByEmployee'] == true;
 
-    final action = await showModalBottomSheet<String>(
+    // Mutable local copy of task data (for live updates of comments/attachments)
+    Map<String, dynamic> taskData = Map<String, dynamic>.from(task);
+
+    // Comments state
+    List<dynamic> comments = List<dynamic>.from(taskData['comments'] ?? []);
+    final commentCtrl = TextEditingController();
+    bool commentSubmitting = false;
+
+    // Attachments state
+    List<dynamic> attachments = List<dynamic>.from(taskData['attachments'] ?? []);
+    bool attachmentUploading = false;
+
+    String? sheetAction;
+
+    await showModalBottomSheet<void>(
       context: context,
       backgroundColor: _cardDark,
       isScrollControlled: true,
@@ -1162,351 +1177,777 @@ class _TasksScreenState extends State<TasksScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (stateContext, ss) {
-            return DraggableScrollableSheet(
-              expand: false,
-              initialChildSize: 0.75,
-              minChildSize: 0.4,
-              maxChildSize: 0.95,
-              builder: (_, scroll) => Column(
-                children: [
-                  // ── Drag handle ──────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12, bottom: 4),
-                    child: Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.white12,
-                          borderRadius: BorderRadius.circular(2),
+        return DefaultTabController(
+          length: 5,
+          child: StatefulBuilder(
+            builder: (stateContext, ss) {
+              // â”€â”€ helpers scoped to the sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              void addCommentAction() async {
+                final text = commentCtrl.text.trim();
+                if (text.isEmpty || _token == null) return;
+                ss(() => commentSubmitting = true);
+                try {
+                  final res = await TaskService.addComment(
+                    _token!,
+                    taskData['_id'].toString(),
+                    content: text,
+                  );
+                  final updated = res['data'];
+                  if (updated != null) {
+                    ss(() {
+                      comments = List<dynamic>.from(updated['comments'] ?? comments);
+                      commentCtrl.clear();
+                    });
+                  } else {
+                    // Optimistic update
+                    ss(() {
+                      comments = [...comments, {'content': text, 'user': {'name': 'You'}, 'createdAt': DateTime.now().toIso8601String()}];
+                      commentCtrl.clear();
+                    });
+                  }
+                  await _loadData(showLoading: false);
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(e.toString().replaceAll('Exception: ', '')),
+                      backgroundColor: Colors.red,
+                    ));
+                  }
+                } finally {
+                  ss(() => commentSubmitting = false);
+                }
+              }
+
+              void deleteCommentAction(String commentId) async {
+                if (_token == null) return;
+                try {
+                  await TaskService.deleteComment(_token!, taskData['_id'].toString(), commentId);
+                  ss(() => comments = comments.where((c) => c['_id']?.toString() != commentId).toList());
+                  await _loadData(showLoading: false);
+                } catch (_) {}
+              }
+
+              void pickAndUploadFile() async {
+                if (_token == null) return;
+                try {
+                  final result = await FilePicker.platform.pickFiles();
+                  if (result == null || result.files.isEmpty) return;
+                  final file = result.files.first;
+                  if (file.path == null) return;
+                  ss(() => attachmentUploading = true);
+                  await TaskService.addAttachment(
+                    _token!,
+                    taskData['_id'].toString(),
+                    filePath: file.path!,
+                    fileName: file.name,
+                    fileType: file.extension ?? 'document',
+                  );
+                  // Reload task to get updated attachments
+                  await _loadData(showLoading: false);
+                  final fresh = _tasks.firstWhere(
+                    (t) => t['_id']?.toString() == taskData['_id']?.toString(),
+                    orElse: () => taskData,
+                  );
+                  ss(() => attachments = List<dynamic>.from(fresh['attachments'] ?? attachments));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: const Text('File uploaded'),
+                      backgroundColor: _accentGreen,
+                    ));
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(e.toString().replaceAll('Exception: ', '')),
+                      backgroundColor: Colors.red,
+                    ));
+                  }
+                } finally {
+                  ss(() => attachmentUploading = false);
+                }
+              }
+
+              void deleteAttachmentAction(String attachmentId) async {
+                if (_token == null) return;
+                try {
+                  await TaskService.deleteAttachment(_token!, taskData['_id'].toString(), attachmentId);
+                  ss(() => attachments = attachments.where((a) => a['_id']?.toString() != attachmentId).toList());
+                  await _loadData(showLoading: false);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: const Text('Attachment deleted'),
+                      backgroundColor: _accentGreen,
+                    ));
+                  }
+                } catch (_) {}
+              }
+
+              // â”€â”€ Activity timeline builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              List<Map<String, dynamic>> buildTimeline() {
+                final items = <Map<String, dynamic>>[];
+                for (final e in (taskData['workflowHistory'] ?? [])) {
+                  items.add({
+                    'type': 'workflow',
+                    'icon': Icons.swap_horiz,
+                    'iconColor': const Color(0xFF60A5FA),
+                    'user': _getUserName(e['performedBy']),
+                    'action': '${_statusLabel(e['fromStatus'] ?? '')} â†’ ${_statusLabel(e['toStatus'] ?? '')}',
+                    'detail': e['comment'],
+                    'time': e['timestamp'],
+                  });
+                }
+                for (final e in (taskData['activityLog'] ?? [])) {
+                  items.add({
+                    'type': 'activity',
+                    'icon': Icons.edit_outlined,
+                    'iconColor': _textGrey,
+                    'user': _getUserName(e['user']),
+                    'action': (e['action'] ?? '').toString().replaceAll('_', ' '),
+                    'detail': e['details'],
+                    'time': e['createdAt'],
+                  });
+                }
+                items.sort((a, b) {
+                  final ta = DateTime.tryParse(a['time']?.toString() ?? '') ?? DateTime(0);
+                  final tb = DateTime.tryParse(b['time']?.toString() ?? '') ?? DateTime(0);
+                  return tb.compareTo(ta);
+                });
+                return items;
+              }
+
+              return DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.85,
+                minChildSize: 0.5,
+                maxChildSize: 0.97,
+                builder: (_, scroll) => Column(
+                  children: [
+                    // â”€â”€ Drag handle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 4),
+                      child: Center(
+                        child: Container(
+                          width: 40, height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.white12,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  // ── Header row ───────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            task['title'] ?? 'Task',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                    // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 8, 0),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  taskData['title'] ?? 'Task',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: _statusColor(taskData['status'] ?? 'todo').withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: _statusColor(taskData['status'] ?? 'todo').withValues(alpha: 0.4)),
+                                      ),
+                                      child: Text(
+                                        _statusLabel(taskData['status'] ?? 'todo'),
+                                        style: TextStyle(color: _statusColor(taskData['status'] ?? 'todo'), fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: _priorityColor(taskData['priority'] ?? 'medium').withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        (taskData['priority'] ?? 'medium').toString().toUpperCase(),
+                                        style: TextStyle(color: _priorityColor(taskData['priority'] ?? 'medium'), fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                        IconButton(
-                          tooltip: 'Edit task',
-                          onPressed: () => Navigator.pop(sheetContext, 'edit'),
-                          icon: Icon(
-                            Icons.edit_outlined,
-                            color: _accentPink,
-                            size: 20,
+                          IconButton(
+                            tooltip: 'Edit task',
+                            onPressed: () { sheetAction = 'edit'; Navigator.pop(sheetContext); },
+                            icon: Icon(Icons.edit_outlined, color: _accentPink, size: 20),
                           ),
-                        ),
-                        // if (canDelete)
-                        //   IconButton(
-                        //     tooltip: 'Delete task',
-                        //     onPressed: () =>
-                        //         Navigator.pop(sheetContext, 'delete'),
-                        //     icon: const Icon(
-                        //       Icons.delete_outline,
-                        //       color: Colors.redAccent,
-                        //       size: 20,
-                        //     ),
-                        //   ),
-                        // IconButton(
-                        //   onPressed: () => Navigator.pop(sheetContext),
-                        //   icon: const Icon(
-                        //     Icons.close,
-                        //     color: Colors.white38,
-                        //     size: 20,
-                        //   ),
-                        // ),
-                      ],
-                    ),
-                  ),
-                  // ── Scrollable body ──────────────────────────────────────
-                  Expanded(
-                    child: ListView(
-                      controller: scroll,
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                      children: [
-                        // Description
-                        if ((task['description'] ?? '')
-                            .toString()
-                            .isNotEmpty) ...[
-                          Text(
-                            task['description'].toString(),
-                            style: TextStyle(
-                              color: _textGrey,
-                              fontSize: 13,
-                              height: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
                         ],
-                        // Meta chips row
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            // Priority chip
-                            _metaChip(
-                              label: (task['priority'] ?? 'medium')
-                                  .toString()
-                                  .toUpperCase(),
-                              color: _priorityColor(
-                                (task['priority'] ?? 'medium').toString(),
-                              ),
-                              icon: Icons.flag_outlined,
-                            ),
-                            // Due date chip
-                            _metaChip(
-                              label: _formatDate(task['dueDate']),
-                              color: _textGrey,
-                              icon: Icons.calendar_today_outlined,
-                            ),
-                          ],
+                      ),
+                    ),
+                    // â”€â”€ Tab bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      decoration: BoxDecoration(
+                        color: _inputDark,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        dividerColor: Colors.transparent,
+                        indicator: BoxDecoration(
+                          color: _accentPink.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: _accentPink.withValues(alpha: 0.4)),
                         ),
-                        const SizedBox(height: 20),
-                        const Divider(color: Colors.white10),
-                        const SizedBox(height: 16),
-
-                        // ── Current status (read-only badge) ────────────
-                        Row(
-                          children: [
-                            Text(
-                              'Current Status',
-                              style: TextStyle(
-                                color: _textGrey,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                        labelColor: _accentPink,
+                        unselectedLabelColor: _textGrey,
+                        labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                        padding: const EdgeInsets.all(4),
+                        tabs: [
+                          const Tab(text: 'Details'),
+                          Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Text('Comments', style: TextStyle(fontSize: 11)),
+                            if (comments.isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(color: _accentPink, borderRadius: BorderRadius.circular(8)),
+                                child: Text('${comments.length}', style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold)),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
+                            ],
+                          ])),
+                          Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Text('Files', style: TextStyle(fontSize: 11)),
+                            if (attachments.isNotEmpty) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(color: _accentOrange, borderRadius: BorderRadius.circular(8)),
+                                child: Text('${attachments.length}', style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold)),
                               ),
-                              decoration: BoxDecoration(
-                                color: _statusColor(
-                                  selectedStatus,
-                                ).withOpacity(0.13),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _statusColor(
-                                    selectedStatus,
-                                  ).withOpacity(0.35),
+                            ],
+                          ])),
+                          Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Text('Workflow', style: TextStyle(fontSize: 11)),
+                            if ((taskData['taskWorkflow']?['steps'] as List?)?.isNotEmpty == true) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(color: _accentPurple, borderRadius: BorderRadius.circular(8)),
+                                child: Text('${(taskData['taskWorkflow']?['steps'] as List?)?.length ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ])),
+                          const Tab(text: 'Activity'),
+                        ],
+                      ),
+                    ),
+                    // â”€â”€ Tab content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          // â•â• TAB 0: DETAILS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                          ListView(
+                            controller: scroll,
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                            children: [
+                              if ((taskData['description'] ?? '').toString().isNotEmpty) ...[
+                                Text(
+                                  taskData['description'].toString(),
+                                  style: TextStyle(color: _textGrey, fontSize: 13, height: 1.5),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                              Wrap(
+                                spacing: 8, runSpacing: 8,
+                                children: [
+                                  _metaChip(
+                                    label: (taskData['priority'] ?? 'medium').toString().toUpperCase(),
+                                    color: _priorityColor((taskData['priority'] ?? 'medium').toString()),
+                                    icon: Icons.flag_outlined,
+                                  ),
+                                  _metaChip(
+                                    label: _formatDate(taskData['dueDate']),
+                                    color: _textGrey,
+                                    icon: Icons.calendar_today_outlined,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              // Tags
+                              if ((taskData['tags'] as List?)?.isNotEmpty == true) ...[
+                                Text('Tags', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6, runSpacing: 6,
+                                  children: (taskData['tags'] as List).map((tag) => Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _inputDark,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                                    ),
+                                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                      Icon(Icons.label_outline, size: 11, color: _accentPink),
+                                      const SizedBox(width: 4),
+                                      Text(tag.toString(), style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                    ]),
+                                  )).toList(),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                              const Divider(color: Colors.white10),
+                              const SizedBox(height: 12),
+                              // Progress
+                              Row(
+                                children: [
+                                  Text('Progress', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                    decoration: BoxDecoration(color: _accentPink.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(12)),
+                                    child: Text('${progress.toInt()}%', style: TextStyle(color: _accentPink, fontSize: 13, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              SliderTheme(
+                                data: SliderTheme.of(stateContext).copyWith(
+                                  activeTrackColor: _accentPink,
+                                  inactiveTrackColor: Colors.white12,
+                                  thumbColor: _accentPink,
+                                  overlayColor: _accentPink.withValues(alpha: 0.15),
+                                  trackHeight: 4,
+                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                                ),
+                                child: Slider(
+                                  value: progress, min: 0, max: 100, divisions: 20,
+                                  onChanged: (v) => ss(() => progress = v),
                                 ),
                               ),
-                              child: Text(
-                                _statusLabel(selectedStatus),
-                                style: TextStyle(
-                                  color: _statusColor(selectedStatus),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+                              Text(
+                                'Status updates automatically: 100% â†’ Completed, <100% â†’ In Progress',
+                                style: TextStyle(color: _textGrey.withValues(alpha: 0.55), fontSize: 11),
+                              ),
+                              // Subtasks
+                              if (subTasks.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                const Divider(color: Colors.white10),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Subtasks (${subTasks.where((s) => s['status'] == 'completed').length}/${subTasks.length})',
+                                  style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Status updates automatically: 100% → Completed, <100% → In Progress',
-                          style: TextStyle(
-                            color: _textGrey.withOpacity(0.55),
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // ── Progress slider ──────────────────────────────
-                        Row(
-                          children: [
-                            Text(
-                              'Progress',
-                              style: TextStyle(
-                                color: _textGrey,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _accentPink.withOpacity(0.13),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '${progress.toInt()}%',
-                                style: TextStyle(
-                                  color: _accentPink,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        SliderTheme(
-                          data: SliderTheme.of(stateContext).copyWith(
-                            activeTrackColor: _accentPink,
-                            inactiveTrackColor: Colors.white12,
-                            thumbColor: _accentPink,
-                            overlayColor: _accentPink.withOpacity(0.15),
-                            trackHeight: 4,
-                            thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 7,
-                            ),
-                          ),
-                          child: Slider(
-                            value: progress,
-                            min: 0,
-                            max: 100,
-                            divisions: 20,
-                            onChanged: (v) => ss(() => progress = v),
-                          ),
-                        ),
-
-                        // ── Sub-tasks ────────────────────────────────────
-                        if (subTasks.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          const Divider(color: Colors.white10),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Subtasks (${subTasks.where((s) => s['status'] == 'completed').length}/${subTasks.length})',
-                            style: TextStyle(
-                              color: _textGrey,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          ...subTasks.map((sub) {
-                            final done = sub['status'] == 'completed';
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(
-                                color: _inputDark,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.05),
-                                ),
-                              ),
-                              child: CheckboxListTile(
-                                dense: true,
-                                value: done,
-                                activeColor: _accentGreen,
-                                checkColor: Colors.black,
-                                side: BorderSide(
-                                  color: _textGrey.withOpacity(0.4),
-                                ),
-                                onChanged: (_) {
-                                  Navigator.pop(sheetContext); // close sheet
-                                  _toggleSubTask(
-                                    task['_id'].toString(),
-                                    sub['_id'].toString(),
-                                    !done,
+                                const SizedBox(height: 10),
+                                ...subTasks.map((sub) {
+                                  final done = sub['status'] == 'completed';
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    decoration: BoxDecoration(
+                                      color: _inputDark,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                                    ),
+                                    child: CheckboxListTile(
+                                      dense: true,
+                                      value: done,
+                                      activeColor: _accentGreen,
+                                      checkColor: Colors.black,
+                                      side: BorderSide(color: _textGrey.withValues(alpha: 0.4)),
+                                      onChanged: (_) {
+                                        Navigator.pop(sheetContext);
+                                        _toggleSubTask(taskData['_id'].toString(), sub['_id'].toString(), !done);
+                                      },
+                                      title: Text(
+                                        sub['title'] ?? '',
+                                        style: TextStyle(
+                                          color: done ? _textGrey : Colors.white,
+                                          fontSize: 13,
+                                          decoration: done ? TextDecoration.lineThrough : null,
+                                          decorationColor: _textGrey,
+                                        ),
+                                      ),
+                                    ),
                                   );
-                                },
-                                title: Text(
-                                  sub['title'] ?? '',
-                                  style: TextStyle(
-                                    color: done ? _textGrey : Colors.white,
-                                    fontSize: 13,
-                                    decoration: done
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                    decorationColor: _textGrey,
+                                }),
+                              ],
+                              // Review card
+                              if (taskData['review'] != null) ...[
+                                const SizedBox(height: 16),
+                                ..._buildReviewCard(taskData['review'] as Map<String, dynamic>),
+                              ],
+                              const SizedBox(height: 16),
+                              // Save button inline in scroll for details
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _accentPink, foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    elevation: 0,
+                                  ),
+                                  onPressed: () { sheetAction = 'update'; Navigator.pop(sheetContext); },
+                                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                                  label: const Text('Save Progress', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          // â•â• TAB 1: COMMENTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                          Column(
+                            children: [
+                              // Add comment input
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: commentCtrl,
+                                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                                        maxLines: null,
+                                        decoration: InputDecoration(
+                                          hintText: 'Add a comment...',
+                                          hintStyle: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 13),
+                                          filled: true,
+                                          fillColor: _inputDark,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                            borderSide: BorderSide(color: _accentPink.withValues(alpha: 0.5)),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: commentSubmitting ? null : addCommentAction,
+                                      child: Container(
+                                        width: 40, height: 40,
+                                        decoration: BoxDecoration(
+                                          color: _accentPink,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: commentSubmitting
+                                            ? const Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                                            : const Icon(Icons.send_rounded, color: Colors.black, size: 18),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Comments list
+                              Expanded(
+                                child: comments.isEmpty
+                                    ? Center(
+                                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                          Icon(Icons.chat_bubble_outline, size: 40, color: _textGrey.withValues(alpha: 0.3)),
+                                          const SizedBox(height: 8),
+                                          Text('No comments yet', style: TextStyle(color: _textGrey, fontSize: 13)),
+                                        ]),
+                                      )
+                                    : ListView.builder(
+                                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                                        itemCount: comments.length,
+                                        reverse: true,
+                                        itemBuilder: (_, i) {
+                                          final c = comments[comments.length - 1 - i];
+                                          final userName = _getUserName(c['user']);
+                                          final initials = userName.isNotEmpty ? userName[0].toUpperCase() : '?';
+                                          final commentId = c['_id']?.toString();
+                                          return Container(
+                                            margin: const EdgeInsets.only(bottom: 10),
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: _inputDark,
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                CircleAvatar(
+                                                  radius: 16,
+                                                  backgroundColor: _accentPink.withValues(alpha: 0.2),
+                                                  child: Text(initials, style: TextStyle(color: _accentPink, fontSize: 12, fontWeight: FontWeight.bold)),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Text(userName, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                                          const Spacer(),
+                                                          Text(_formatDate(c['createdAt']), style: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 10)),
+                                                          if (commentId != null) ...[
+                                                            const SizedBox(width: 4),
+                                                            GestureDetector(
+                                                              onTap: () => deleteCommentAction(commentId),
+                                                              child: Icon(Icons.delete_outline, size: 14, color: _textGrey.withValues(alpha: 0.5)),
+                                                            ),
+                                                          ],
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(c['content']?.toString() ?? '', style: TextStyle(color: _textGrey, fontSize: 13, height: 1.4)),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
+                          ),
+
+                          // â•â• TAB 2: ATTACHMENTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                          Column(
+                            children: [
+                              // Upload button
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                child: GestureDetector(
+                                  onTap: attachmentUploading ? null : pickAndUploadFile,
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: _accentPink.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: _accentPink.withValues(alpha: 0.3), style: BorderStyle.solid),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        if (attachmentUploading)
+                                          const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.pinkAccent))
+                                        else
+                                          Icon(Icons.upload_file_outlined, color: _accentPink, size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(attachmentUploading ? 'Uploading...' : 'Upload File', style: TextStyle(color: _accentPink, fontSize: 13, fontWeight: FontWeight.w600)),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
+                              // Attachments list
+                              Expanded(
+                                child: attachments.isEmpty
+                                    ? Center(
+                                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                          Icon(Icons.attach_file, size: 40, color: _textGrey.withValues(alpha: 0.3)),
+                                          const SizedBox(height: 8),
+                                          Text('No files attached', style: TextStyle(color: _textGrey, fontSize: 13)),
+                                          const SizedBox(height: 4),
+                                          Text('Tap "Upload File" to attach a file', style: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 11)),
+                                        ]),
+                                      )
+                                    : ListView.builder(
+                                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                                        itemCount: attachments.length,
+                                        itemBuilder: (_, i) {
+                                          final att = attachments[i];
+                                          final name = att['name']?.toString() ?? 'File';
+                                          final type = att['type']?.toString() ?? 'document';
+                                          final attId = att['_id']?.toString();
+                                          final uploadedBy = _getUserName(att['uploadedBy']);
+                                          IconData typeIcon;
+                                          Color typeColor;
+                                          switch (type) {
+                                            case 'image': typeIcon = Icons.image_outlined; typeColor = const Color(0xFF60A5FA); break;
+                                            case 'video': typeIcon = Icons.videocam_outlined; typeColor = const Color(0xFFA78BFA); break;
+                                            default: typeIcon = Icons.insert_drive_file_outlined; typeColor = _accentOrange;
+                                          }
+                                          return Container(
+                                            margin: const EdgeInsets.only(bottom: 10),
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: _inputDark,
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Container(
+                                                  width: 40, height: 40,
+                                                  decoration: BoxDecoration(
+                                                    color: typeColor.withValues(alpha: 0.15),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: Icon(typeIcon, color: typeColor, size: 20),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                      Row(children: [
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                          decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                                                          child: Text(type.toUpperCase(), style: TextStyle(color: typeColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                                                        ),
+                                                        if (uploadedBy.isNotEmpty) ...[
+                                                          const SizedBox(width: 6),
+                                                          Text('by $uploadedBy', style: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 10)),
+                                                        ],
+                                                        const SizedBox(width: 6),
+                                                        Text(_formatDate(att['uploadedAt']), style: TextStyle(color: _textGrey.withValues(alpha: 0.4), fontSize: 10)),
+                                                      ]),
+                                                    ],
+                                                  ),
+                                                ),
+                                                if (attId != null)
+                                                  IconButton(
+                                                    tooltip: 'Delete',
+                                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                                    onPressed: () => deleteAttachmentAction(attId),
+                                                  ),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
+                          ),
+
+                          // TAB 3: WORKFLOW
+                          WorkflowTabWidget(
+                            workflow: taskData['workflow'] ?? {},
+                            onStepComplete: (stepIndex, comment) => completeWorkflowStep(stepIndex, comment),
+                            onWorkflowAction: (action, data) => handleWorkflowAction(action, data),
+                          ),
+
+                          // â•â• TAB 4: ACTIVITY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                          Builder(builder: (_) {
+                            final timeline = buildTimeline();
+                            if (timeline.isEmpty) {
+                              return Center(
+                                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                  Icon(Icons.history, size: 40, color: _textGrey.withValues(alpha: 0.3)),
+                                  const SizedBox(height: 8),
+                                  Text('No activity recorded', style: TextStyle(color: _textGrey, fontSize: 13)),
+                                ]),
+                              );
+                            }
+                            return ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                              itemCount: timeline.length,
+                              itemBuilder: (_, i) {
+                                final item = timeline[i];
+                                return IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      // Timeline line + dot
+                                      SizedBox(
+                                        width: 32,
+                                        child: Column(
+                                          children: [
+                                            Container(
+                                              width: 28, height: 28,
+                                              decoration: BoxDecoration(
+                                                color: (item['iconColor'] as Color).withValues(alpha: 0.15),
+                                                shape: BoxShape.circle,
+                                                border: Border.all(color: (item['iconColor'] as Color).withValues(alpha: 0.3)),
+                                              ),
+                                              child: Icon(item['icon'] as IconData, size: 13, color: item['iconColor'] as Color),
+                                            ),
+                                            if (i < timeline.length - 1)
+                                              Expanded(child: Container(width: 1, color: Colors.white.withValues(alpha: 0.07))),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      // Content
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(bottom: 16),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: RichText(
+                                                      text: TextSpan(
+                                                        children: [
+                                                          TextSpan(text: item['user']?.toString() ?? 'System', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                                          const TextSpan(text: '  ', style: TextStyle(fontSize: 12)),
+                                                          TextSpan(text: item['action']?.toString() ?? '', style: TextStyle(color: _textGrey, fontSize: 12)),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              if ((item['detail'] ?? '').toString().isNotEmpty) ...[
+                                                const SizedBox(height: 3),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white.withValues(alpha: 0.04),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text('"${item['detail']}"', style: TextStyle(color: _textGrey, fontSize: 11, fontStyle: FontStyle.italic)),
+                                                ),
+                                              ],
+                                              const SizedBox(height: 3),
+                                              Text(_formatDate(item['time']), style: TextStyle(color: _textGrey.withValues(alpha: 0.4), fontSize: 10)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             );
                           }),
                         ],
-
-                        const SizedBox(height: 24),
-                        // ── Manager Review Section (read-only for employee) ──
-                        if (task['review'] != null)
-                          ..._buildReviewCard(
-                            task['review'] as Map<String, dynamic>,
-                          ),
-                        const SizedBox(height: 8),
-                      ],
-                    ),
-                  ),
-
-                  // ── Save button (pinned at bottom) ────────────────────
-                  Container(
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      12,
-                      20,
-                      20 + MediaQuery.of(sheetContext).viewInsets.bottom,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _cardDark,
-                      border: Border(
-                        top: BorderSide(color: Colors.white.withOpacity(0.06)),
                       ),
                     ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _accentPink,
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          elevation: 0,
-                        ),
-                        onPressed: () => Navigator.pop(sheetContext, 'update'),
-                        icon: const Icon(Icons.check_circle_outline, size: 18),
-                        label: const Text(
-                          'Save Changes',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+                  ],
+                ),
+              );
+            },
+          ),
         );
       },
     );
 
-    if (!mounted || action == null) return;
+    if (!mounted) return;
 
-    // Pop animation ko thoda waqt dein poori tarah khatam hone ke liye
-    if (action == 'edit') {
+    if (sheetAction == 'edit') {
       await Future.delayed(const Duration(milliseconds: 200));
       _showEditTaskDialog(task);
-    } else if (action == 'delete') {
-      await Future.delayed(const Duration(milliseconds: 200));
-      _deleteTask(task['_id'].toString());
-    } else if (action == 'update') {
+    } else if (sheetAction == 'update') {
       await _updateProgress(task['_id'].toString(), progress.toInt());
     }
+  }
+
+  // â”€â”€ Helper: extract user name from a user field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  String _getUserName(dynamic user) {
+    if (user == null) return '';
+    if (user is Map) return user['name']?.toString() ?? user['email']?.toString() ?? '';
+    return user.toString();
   }
 
   Future<void> _updateProgress(String taskId, int progress) async {
@@ -1616,8 +2057,7 @@ class _TasksScreenState extends State<TasksScreen> {
     } catch (_) {}
   }
 
-  // ── Edit task dialog ──────────────────────────────────────────────────────
-  // ── Edit task dialog ──────────────────────────────────────────────────────
+  // â”€â”€ Edit task dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _showEditTaskDialog(Map<String, dynamic> task) async {
     final titleCtrl = TextEditingController(
       text: task['title']?.toString() ?? '',
@@ -1726,7 +2166,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Drag handle ─────────────────────────────────
+                      // â”€â”€ Drag handle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       Center(
                         child: Container(
                           width: 40,
@@ -1761,7 +2201,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // ── Title ────────────────────────────────────────
+                      // â”€â”€ Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _inputLabel('Title *'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -1771,7 +2211,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── Description ──────────────────────────────────
+                      // â”€â”€ Description â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _inputLabel('Description'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -1782,7 +2222,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── Priority + Estimated Time ────────────────────
+                      // â”€â”€ Priority + Estimated Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1903,7 +2343,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── Start Date & Due Date ────────────────────────
+                      // â”€â”€ Start Date & Due Date â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       Row(
                         children: [
                           Expanded(
@@ -1957,7 +2397,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── Tags ─────────────────────────────────────────
+                      // â”€â”€ Tags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _inputLabel('Tags'),
                       const SizedBox(height: 8),
                       Row(
@@ -2056,7 +2496,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ],
                       const SizedBox(height: 28),
 
-                      // ── Save Button ──────────────────────────────────
+                      // â”€â”€ Save Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -2177,7 +2617,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  /// Pure API call – caller handles pop, snackbar, and reload.
+  /// Pure API call â€“ caller handles pop, snackbar, and reload.
   Future<void> _updateTaskDetails({
     required String taskId,
     required String title,
@@ -2207,7 +2647,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // ── Create Task ───────────────────────────────────────────────────────────
+  // â”€â”€ Create Task â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _showCreateTaskDialog() async {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -2278,7 +2718,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── Drag handle ─────────────────────────────────
+                      // â”€â”€ Drag handle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       Center(
                         child: Container(
                           width: 40,
@@ -2313,7 +2753,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // ── Task Title ───────────────────────────────────
+                      // â”€â”€ Task Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _inputLabel('Task Title *'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -2323,7 +2763,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── Description ──────────────────────────────────
+                      // â”€â”€ Description â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _inputLabel('Description'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -2334,7 +2774,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── Priority + Estimated Time (2 columns) ────────
+                      // â”€â”€ Priority + Estimated Time (2 columns) â”€â”€â”€â”€â”€â”€â”€â”€
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2458,7 +2898,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── Start Date & Time ────────────────────────────
+                      // â”€â”€ Start Date & Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       Row(
                         children: [
                           Expanded(
@@ -2514,7 +2954,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ── Tags ─────────────────────────────────────────
+                      // â”€â”€ Tags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       _inputLabel('Tags'),
                       const SizedBox(height: 8),
                       Row(
@@ -2613,7 +3053,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ],
                       const SizedBox(height: 28),
 
-                      // ── Workflow Template (optional) ────────────────
+                      // â”€â”€ Workflow Template (optional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -2704,7 +3144,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                               DropdownMenuItem<String?>(
                                                 value: null,
                                                 child: Text(
-                                                  '— No workflow —',
+                                                  'No workflow',
                                                   style: TextStyle(
                                                     color: _textGrey,
                                                     fontSize: 13,
@@ -2773,7 +3213,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                     ],
                                   ),
                       ),
-                      // ── Workflow Preview ────────────────────────────
+                      // â”€â”€ Workflow Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       if (selectedWorkflow != null &&
                           _workflows.isNotEmpty)
                         Builder(
@@ -2934,7 +3374,7 @@ class _TasksScreenState extends State<TasksScreen> {
                         ),
                       const SizedBox(height: 28),
 
-                      // ── Submit Button ────────────────────────────────
+                      // â”€â”€ Submit Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -3083,7 +3523,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  /// Pure API call – no UI side-effects.
+  /// Pure API call â€“ no UI side-effects.
   Future<String?> _createTask({
     required String title,
     required String description,
@@ -3125,7 +3565,7 @@ class _TasksScreenState extends State<TasksScreen> {
     return null;
   }
 
-  // ── Input helpers ──────────────────────────────────────────────────────────
+  // â”€â”€ Input helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _metaChip({
     required String label,
     required Color color,
@@ -3234,7 +3674,7 @@ class _TasksScreenState extends State<TasksScreen> {
     ),
   );
 
-  // ── Build ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   @override
   Widget build(BuildContext context) {
     if (_isAdmin) return _buildAdminScaffold(context);
@@ -3247,7 +3687,7 @@ class _TasksScreenState extends State<TasksScreen> {
             return Column(
               children: [
                 _buildHeader(context, isMobile),
-                // ── Employee Tab Bar ────────────────────────────────────
+                // â”€â”€ Employee Tab Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 _buildTabBar(
                   [
                     {'label': 'List', 'icon': Icons.list_alt_rounded},
@@ -3267,7 +3707,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       : IndexedStack(
                           index: _employeeTab,
                           children: [
-                            // ── Tab 0: List ─────────────────────────────
+                            // â”€â”€ Tab 0: List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                             RefreshIndicator(
                               color: _accentPink,
                               backgroundColor: _cardDark,
@@ -3295,9 +3735,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                 ),
                               ),
                             ),
-                            // ── Tab 1: Kanban ────────────────────────────
+                            // â”€â”€ Tab 1: Kanban â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                             _buildKanbanView(_filteredTasks),
-                            // ── Tab 2: Time Tracking ─────────────────────
+                            // â”€â”€ Tab 2: Time Tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                             SingleChildScrollView(
                               child: _buildTimeTrackingTab(),
                             ),
@@ -3321,7 +3761,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // ── ADMIN PANEL ─────────────────────────────────────────────────────────────
+  // â”€â”€ ADMIN PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildAdminScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: _bgDark,
@@ -3329,7 +3769,7 @@ class _TasksScreenState extends State<TasksScreen> {
         child: Column(
           children: [
             _buildAdminHeader(context),
-            // ── Admin Tab Bar ─────────────────────────────────────────
+            // â”€â”€ Admin Tab Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             _buildTabBar(
               [
                 {'label': 'List', 'icon': Icons.list_alt_rounded},
@@ -3355,7 +3795,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   : IndexedStack(
                       index: _adminTab,
                       children: [
-                        // ── Tab 0: List ───────────────────────────────
+                        // â”€â”€ Tab 0: List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         RefreshIndicator(
                           color: _accentPink,
                           backgroundColor: _cardDark,
@@ -3381,17 +3821,17 @@ class _TasksScreenState extends State<TasksScreen> {
                             ),
                           ),
                         ),
-                        // ── Tab 1: Kanban ─────────────────────────────
+                        // â”€â”€ Tab 1: Kanban â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         _buildKanbanView(_adminFilteredTasks),
-                        // ── Tab 2: By Employee ────────────────────────
+                        // â”€â”€ Tab 2: By Employee â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         _buildAdminByEmployeeTab(),
-                        // ── Tab 3: Projects ───────────────────────────
+                        // â”€â”€ Tab 3: Projects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         _buildProjectsTab(),
-                        // ── Tab 4: Time Tracking ──────────────────────
+                        // â”€â”€ Tab 4: Time Tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         SingleChildScrollView(
                           child: _buildTimeTrackingTab(),
                         ),
-                        // ── Tab 5: Analytics ──────────────────────────
+                        // â”€â”€ Tab 5: Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         SingleChildScrollView(
                           child: _buildAnalyticsTab(),
                         ),
@@ -3997,7 +4437,7 @@ class _TasksScreenState extends State<TasksScreen> {
                         const SizedBox(height: 8),
                         // Title
                         Text(
-                          task['title'] ?? '—',
+                          task['title'] ?? 'â€”',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -4149,7 +4589,7 @@ class _TasksScreenState extends State<TasksScreen> {
     ),
   );
 
-  // ── Review helpers ─────────────────────────────────────────────────────────
+  // â”€â”€ Review helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   List<Widget> _buildReviewCard(Map<String, dynamic> review) {
     final rating = (review['rating'] ?? 0) as num;
     final comment = (review['comment'] ?? '').toString();
@@ -4731,7 +5171,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       color: _accentPink,
                     ),
                   ),
-                  // ── Existing review display in detail ────────────────
+                  // â”€â”€ Existing review display in detail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                   if (task['review'] != null)
                     ..._buildReviewCard(task['review'] as Map<String, dynamic>),
                   const SizedBox(height: 20),
@@ -5115,7 +5555,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                             DropdownMenuItem<String?>(
                                               value: null,
                                               child: Text(
-                                                '— No workflow —',
+                                                'â€” No workflow â€”',
                                                 style: TextStyle(
                                                   color: _textGrey,
                                                   fontSize: 13,
@@ -5187,7 +5627,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                   ],
                                 ),
                     ),
-                    // ── Workflow Preview ────────────────────────────
+                    // â”€â”€ Workflow Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     if (selectedAdminWorkflow != null &&
                         _workflows.isNotEmpty)
                       Builder(
@@ -5621,7 +6061,7 @@ class _TasksScreenState extends State<TasksScreen> {
                             ),
                           ),
                           subtitle: Text(
-                            '${e['department'] ?? ''} • ${e['employeeId'] ?? ''}',
+                            '${e['department'] ?? ''} â€¢ ${e['employeeId'] ?? ''}',
                             style: TextStyle(color: _textGrey, fontSize: 11),
                           ),
                           onTap: () =>
@@ -6285,7 +6725,7 @@ class _TasksScreenState extends State<TasksScreen> {
                           const SizedBox(height: 8),
                           // Title
                           Text(
-                            task['title'] ?? '—',
+                            task['title'] ?? 'â€”',
                             style: TextStyle(
                               color: isCompleted ? _textGrey : Colors.white,
                               fontSize: 14,
@@ -6413,7 +6853,7 @@ class _TasksScreenState extends State<TasksScreen> {
     ); // closes Dismissible
   }
 
-  // ── Tab Bar ────────────────────────────────────────────────────────────────
+  // â”€â”€ Tab Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildTabBar(
     List<Map<String, dynamic>> tabs,
     int current,
@@ -6468,7 +6908,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // ── Employee filter row (status + priority) ────────────────────────────────
+  // â”€â”€ Employee filter row (status + priority) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildEmployeeFilterRow() {
     return Row(
       children: [
@@ -6585,7 +7025,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // ── Kanban view ────────────────────────────────────────────────────────────
+  // â”€â”€ Kanban view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildKanbanView(List<dynamic> tasks) {
     final columns = [
       {'status': 'todo', 'label': 'To Do', 'color': Colors.blueAccent},
@@ -6742,7 +7182,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // ── Time Tracking Tab ──────────────────────────────────────────────────────
+  // â”€â”€ Time Tracking Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildTimeTrackingTab() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -6936,7 +7376,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // ── Admin by-employee tab ──────────────────────────────────────────────────
+  // â”€â”€ Admin by-employee tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildAdminByEmployeeTab() {
     if (_employees.isEmpty) {
       return Center(
@@ -7006,7 +7446,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       children: [
                         Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
                         Text(
-                          '${dept.isNotEmpty ? '$dept • ' : ''}${empIdNum.isNotEmpty ? empIdNum : ''}',
+                          '${dept.isNotEmpty ? '$dept â€¢ ' : ''}${empIdNum.isNotEmpty ? empIdNum : ''}',
                           style: TextStyle(color: _textGrey, fontSize: 11),
                         ),
                       ],
@@ -7102,7 +7542,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // ── Projects Tab ───────────────────────────────────────────────────────────
+  // â”€â”€ Projects Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildProjectsTab() {
     if (_projects.isEmpty) {
       return Center(
@@ -7312,7 +7752,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // ── Analytics Tab ──────────────────────────────────────────────────────────
+  // â”€â”€ Analytics Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildAnalyticsTab() {
     if (_analyticsLoading) {
       return Center(child: CircularProgressIndicator(color: _accentPink));
@@ -7435,7 +7875,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // ── Create project dialog ──────────────────────────────────────────────────
+  // â”€â”€ Create project dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _showCreateProjectDialog() async {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -7627,7 +8067,7 @@ class _TasksScreenState extends State<TasksScreen> {
     descCtrl.dispose();
   }
 
-  // ── Create milestone dialog ────────────────────────────────────────────────
+  // â”€â”€ Create milestone dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _showCreateMilestoneDialog(String projectId) async {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
