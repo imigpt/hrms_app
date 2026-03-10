@@ -1830,9 +1830,15 @@ class _TasksScreenState extends State<TasksScreen> {
 
                           // TAB 3: WORKFLOW
                           WorkflowTabWidget(
-                            workflow: taskData['workflow'] ?? {},
-                            onStepComplete: (stepIndex, comment) => completeWorkflowStep(stepIndex, comment),
-                            onWorkflowAction: (action, data) => handleWorkflowAction(action, data),
+                            taskData: taskData,
+                            token: _token,
+                            statusGreen: _accentGreen,
+                            statusPink: _accentPink,
+                            statusOrange: _accentOrange,
+                            textGrey: _textGrey,
+                            inputDark: _inputDark,
+                            onStepCompleted: () => setState(() {}),
+                            formatDate: _formatDate,
                           ),
 
                           // â•â• TAB 4: ACTIVITY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
