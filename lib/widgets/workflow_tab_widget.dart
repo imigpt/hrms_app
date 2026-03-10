@@ -26,7 +26,7 @@ class WorkflowTabWidget extends StatelessWidget {
     required this.textGrey,
     required this.inputDark,
     required this.onStepCompleted,
-    required this.formatDate,
+    required this.formatDate, required workflow, required onStepComplete, required onWorkflowAction,
   });
 
   @override

@@ -4,6 +4,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' as http_parser;
 import '../config/api_config.dart';
 import '../models/chat_room_model.dart';
 
@@ -335,7 +336,36 @@ class ChatService {
   // MEDIA UPLOAD
   // =========================================================================
 
-  /// POST /api/chat/rooms/:roomId/messages — multipart upload for image/document.
+  /// Get MIME type from file extension
+  static String _getMimeType(String filePath) {
+    final ext = filePath.split('.').last.toLowerCase();
+    const mimes = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'pdf': 'application/pdf',
+      'doc': 'application/msword',
+      'docx':
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx':
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx':
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'txt': 'text/plain',
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav',
+      'mp4': 'video/mp4',
+      'mov': 'video/quicktime',
+      'zip': 'application/zip',
+    };
+    return mimes[ext] ?? 'application/octet-stream';
+  }
+
+  /// POST /api/chat/rooms/:roomId/upload — multipart upload for image/document.
   /// [messageType]: 'image' | 'document' | 'voice'
   static Future<SendMessageResponse> sendMediaMessage({
     required String token,
@@ -351,7 +381,17 @@ class ChatService {
     request.headers['Authorization'] = 'Bearer $token';
     request.fields['messageType'] = messageType;
     if (content.isNotEmpty) request.fields['content'] = content;
-    request.files.add(await http.MultipartFile.fromPath('file', file.path));
+
+    // Get correct MIME type from file extension
+    final mimeType = _getMimeType(file.path);
+    final mimeTypeParts = mimeType.split('/');
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        file.path,
+        contentType: http_parser.MediaType(mimeTypeParts[0], mimeTypeParts[1]),
+      ),
+    );
 
     final streamed = await request.send().timeout(const Duration(seconds: 90));
     final body = await streamed.stream.bytesToString();

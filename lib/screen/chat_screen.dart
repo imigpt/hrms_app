@@ -768,7 +768,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         if (_messages.isNotEmpty) {
           for (int i = 0; i < (_messages.length > 5 ? 5 : _messages.length); i++) {
             final m = _messages[i];
-            print('   [$i] ID: ${m.id} | ${m.sender?.name ?? "Unknown"}: ${m.content.substring(0, 40)}...');
+            final preview = m.content.length > 40 ? m.content.substring(0, 40) : m.content;
+            print('   [$i] ID: ${m.id} | ${m.sender?.name ?? "Unknown"}: $preview...');
           }
           if (_messages.length > 5) print('   ... and ${_messages.length - 5} more');
         }
@@ -3028,7 +3029,7 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
 
   Future<void> _downloadAndOpen() async {
     if (_isDownloading) return;
-    final url = widget.attachment.url;
+    var url = widget.attachment.url;
     if (url.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -3037,20 +3038,30 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
       }
       return;
     }
+    // Fix common Cloudinary URL typos (e.g. /iimage/ → /image/)
+    if (url.contains('cloudinary.com')) {
+      url = url
+          .replaceAll('/iimage/', '/image/')
+          .replaceAll('/image/uploadd/', '/image/upload/')
+          .replaceAll('/video/uploadd/', '/video/upload/')
+          .replaceAll('/raw/uploadd/', '/raw/upload/')
+          .replaceAll('/auto/uploadd/', '/auto/upload/');
+    }
     setState(() {
       _isDownloading = true;
       _downloadProgress = 0.0;
     });
+    final attachmentName = widget.attachment.name;
     try {
       // Ensure media service is ready
       await _media.init();
-
       // Use cache if available, otherwise download
-      String? cachedPath = _media.getCachedPath(url, 'documents');
+      String? cachedPath = _media.getCachedPath(url, 'documents', fileName: attachmentName);
       if (cachedPath == null || !File(cachedPath).existsSync()) {
         cachedPath = await _media.downloadMedia(
           url,
           'documents',
+          fileName: attachmentName,
           onProgress: (p) {
             if (mounted) {
               setState(() => _downloadProgress = p.clamp(0.0, 1.0));
@@ -3065,17 +3076,17 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
       await Future.delayed(const Duration(milliseconds: 150));
       if (mounted) setState(() => _isDownloading = false);
 
-      await _media.openFile(cachedPath);
+      await _media.openFile(cachedPath, fallbackUrl: url);
     } catch (e) {
       debugPrint('Document open error: $e');
       if (mounted) {
         setState(() => _isDownloading = false);
-        _showDownloadFailedSheet(url, e.toString());
+        _showDownloadFailedSheet(url, e.toString(), fileName: attachmentName);
       }
     }
   }
 
-  void _showDownloadFailedSheet(String url, String error) {
+  void _showDownloadFailedSheet(String url, String error, {String? fileName}) {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1C1C1E),
@@ -3123,7 +3134,7 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _media.openUrlInBrowser(url);
+                    _media.openUrlInBrowser(ChatMediaService.buildBrowserViewUrl(url, fileName: fileName));
                   },
                   icon: const Icon(Icons.open_in_browser, size: 18),
                   label: const Text('Open in Browser'),

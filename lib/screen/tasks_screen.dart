@@ -1838,7 +1838,7 @@ class _TasksScreenState extends State<TasksScreen> {
                             textGrey: _textGrey,
                             inputDark: _inputDark,
                             onStepCompleted: () => setState(() {}),
-                            formatDate: _formatDate,
+                            formatDate: _formatDate, workflow: null, onStepComplete: null, onWorkflowAction: null,
                           ),
 
                           // â•â• TAB 4: ACTIVITY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

@@ -82,14 +82,19 @@ class ChatMediaService {
 
   // ── Cache helpers ─────────────────────────────────────────────────────────
 
-  File _getCacheFile(String url, String mediaType) {
-    final uri = Uri.parse(url);
-    var rawName = uri.pathSegments.lastWhere(
-      (s) => s.isNotEmpty,
-      orElse: () => 'media_${DateTime.now().millisecondsSinceEpoch}',
-    );
-    // Decode percent-encoded characters (e.g. %20 → space)
-    rawName = Uri.decodeComponent(rawName);
+  File _getCacheFile(String url, String mediaType, {String? fileName}) {
+    String rawName;
+    if (fileName != null && fileName.isNotEmpty) {
+      // Use the original filename (e.g. "HRMS New (1).docx") to preserve extension
+      rawName = fileName;
+    } else {
+      final uri = Uri.parse(url);
+      rawName = uri.pathSegments.lastWhere(
+        (s) => s.isNotEmpty,
+        orElse: () => 'media_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      rawName = Uri.decodeComponent(rawName);
+    }
     // Sanitize: replace characters that are invalid in file names
     rawName = rawName.replaceAll(RegExp(r'[<>:"|?*\\]'), '_');
     if (rawName.isEmpty)
@@ -99,14 +104,14 @@ class ChatMediaService {
     return File('${typeDir.path}/$rawName');
   }
 
-  bool isCached(String url, String mediaType) {
+  bool isCached(String url, String mediaType, {String? fileName}) {
     if (!_initialized) return false;
-    return _getCacheFile(url, mediaType).existsSync();
+    return _getCacheFile(url, mediaType, fileName: fileName).existsSync();
   }
 
-  String? getCachedPath(String url, String mediaType) {
+  String? getCachedPath(String url, String mediaType, {String? fileName}) {
     if (!_initialized) return null;
-    final file = _getCacheFile(url, mediaType);
+    final file = _getCacheFile(url, mediaType, fileName: fileName);
     return file.existsSync() ? file.path : null;
   }
 
@@ -186,6 +191,7 @@ class ChatMediaService {
   Future<String> downloadMedia(
     String url,
     String mediaType, {
+    String? fileName,
     void Function(double progress)? onProgress,
   }) async {
     if (!_isValidUrl(url)) {
@@ -199,7 +205,7 @@ class ChatMediaService {
     // Ensure cache directory is ready
     await _ensureInitialized();
 
-    final file = _getCacheFile(url, mediaType);
+    final file = _getCacheFile(url, mediaType, fileName: fileName);
 
     if (file.existsSync() && file.lengthSync() > 0) {
       debugPrint('📦 Already cached: ${file.path}');
@@ -515,7 +521,8 @@ class ChatMediaService {
   /// Opens a file using the system "Open with" dialog.
   /// Copies file to a shareable temp directory first so external apps
   /// can access it (app-internal cache is not accessible to other apps).
-  Future<void> openFile(String filePath) async {
+  /// [fallbackUrl] is used to open in browser if no app is installed.
+  Future<void> openFile(String filePath, {String? fallbackUrl}) async {
     debugPrint('📂 Opening file: $filePath');
     final file = File(filePath);
 
@@ -567,11 +574,14 @@ class ChatMediaService {
             : 'No app found to open $ext files';
         debugPrint('   ❌ open_file returned error: $errorMsg');
 
-        // Fallback: try opening the original URL in browser
+        // Fallback: open URL in browser (use Google Docs Viewer for PDF + Office files)
         debugPrint('   🔄 Trying browser fallback...');
-        final originalUrl = _tryRecoverUrl(filePath);
-        if (originalUrl != null) {
-          final launched = await openUrlInBrowser(originalUrl);
+        final rawUrl = fallbackUrl ?? _tryRecoverUrl(filePath);
+        if (rawUrl != null && rawUrl.isNotEmpty) {
+          // Pass local fileName so we can detect extension even for Cloudinary raw URLs
+          final viewUrl = buildBrowserViewUrl(rawUrl, fileName: fileName);
+          debugPrint('   🌐 Browser URL: $viewUrl');
+          final launched = await openUrlInBrowser(viewUrl);
           if (launched) {
             debugPrint('   ✅ Opened in browser');
             return;
@@ -593,6 +603,42 @@ class ChatMediaService {
     // The file name is derived from the URL's last path segment.
     // We can't fully recover the URL, but this is used as a hint.
     return null;
+  }
+
+  /// Builds a browser-viewable URL for documents.
+  /// Routes through Google Docs Viewer for all viewable files.
+  /// This bypasses Cloudinary 401 auth issues because Google's servers fetch the file,
+  /// not the client browser (which has no Cloudinary credentials).
+  /// [fileName] should be the local filename (e.g. "report.pdf") for extension detection.
+  static String buildBrowserViewUrl(String url, {String? fileName}) {
+    // Detect file extension from local filename (preferred) or URL
+    String ext;
+    if (fileName != null && fileName.contains('.')) {
+      ext = fileName.split('.').last.toLowerCase();
+    } else {
+      final pathBeforeQuery = url.split('?').first;
+      final lastSegment = pathBeforeQuery.split('/').last;
+      ext = lastSegment.contains('.') ? lastSegment.split('.').last.toLowerCase() : '';
+    }
+
+    // All viewable file types that Google Docs Viewer supports
+    const viewerExts = {
+      'pdf',                                   // PDF
+      'doc', 'docx', 'odt',                    // Word/Text
+      'xls', 'xlsx', 'ods', 'csv',             // Spreadsheet
+      'ppt', 'pptx', 'odp',                    // Presentation
+      'txt',                                   // Text
+      'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'  // Images
+    };
+
+    // Route ALL viewable files through Google Docs Viewer
+    // This works around Cloudinary 401 because Google's servers fetch the URL
+    if (viewerExts.contains(ext)) {
+      return 'https://docs.google.com/viewer?url=${Uri.encodeComponent(url)}&embedded=true';
+    }
+
+    // Unsupported types (video, audio, etc.) — try direct URL
+    return url;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

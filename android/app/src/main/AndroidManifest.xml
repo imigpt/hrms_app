@@ -36,6 +36,19 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- ═══ FileProvider for open_file plugin ═══════════════════════════ -->
+        <!-- Required so open_file can share cached files with external apps   -->
+        <!-- Authority must match: {applicationId}.fileProvider.open_file      -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.aselea.hrms.fileProvider.open_file"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/open_file_provider_paths" />
+        </provider>
+
         <!-- ═══ Firebase Cloud Messaging ═══════════════════════════════════ -->
         <!-- Default notification channel (must match the channel ID created in Dart) -->
         <meta-data
