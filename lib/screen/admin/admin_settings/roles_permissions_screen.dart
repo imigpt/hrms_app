@@ -69,25 +69,34 @@ class _AdminRolesPermissionsScreenState
         widget.token ?? '',
         role['_id'],
       );
-      final list = res['data'] ?? res['permissions'] ?? [];
+      // Backend returns { data: { roleName: ..., permissions: [...] } }
+      final rawData = res['data'];
+      final List permList = (rawData is Map
+              ? rawData['permissions']
+              : rawData) as List? ??
+          [];
       final Map<String, Map<String, bool>> map = {};
-      for (final p in (list as List)) {
-        final moduleId = (p['module'] is Map ? p['module']['_id'] : p['module'])
+      for (final p in permList) {
+        final moduleKey = (p['module'] is Map
+                ? p['module']['name'] ?? p['module']['_id']
+                : p['module'])
             ?.toString();
-        if (moduleId != null) {
-          map[moduleId] = {
-            'view': p['view'] ?? p['read'] ?? false,
-            'create': p['create'] ?? false,
-            'edit': p['edit'] ?? p['update'] ?? false,
-            'delete': p['delete'] ?? false,
+        if (moduleKey != null) {
+          // Backend stores actions nested: { actions: { view, create, edit, delete } }
+          final actions = p['actions'] as Map?;
+          map[moduleKey] = {
+            'view': (actions?['view'] ?? p['view'] ?? p['read'] ?? false) as bool,
+            'create': (actions?['create'] ?? p['create'] ?? false) as bool,
+            'edit': (actions?['edit'] ?? p['edit'] ?? p['update'] ?? false) as bool,
+            'delete': (actions?['delete'] ?? p['delete'] ?? false) as bool,
           };
         }
       }
-      // fill missing modules
+      // fill missing modules using name as key
       for (final m in _modules) {
-        final id = m['_id'].toString();
+        final name = m['name']?.toString() ?? m['_id'].toString();
         map.putIfAbsent(
-          id,
+          name,
           () => {
             'view': false,
             'create': false,
@@ -103,14 +112,17 @@ class _AdminRolesPermissionsScreenState
 
   Future<void> _savePermissions() async {
     if (_selectedRole == null) return;
+    // Backend Role model stores: { module: String, actions: { view, create, edit, delete } }
     final list = _permissions.entries
         .map(
           (e) => {
             'module': e.key,
-            'view': e.value['view'] ?? false,
-            'create': e.value['create'] ?? false,
-            'edit': e.value['edit'] ?? false,
-            'delete': e.value['delete'] ?? false,
+            'actions': {
+              'view': e.value['view'] ?? false,
+              'create': e.value['create'] ?? false,
+              'edit': e.value['edit'] ?? false,
+              'delete': e.value['delete'] ?? false,
+            },
           },
         )
         .toList();
@@ -123,7 +135,7 @@ class _AdminRolesPermissionsScreenState
       if (mounted)
         showAdminSnack(
           context,
-          'Permissions saved for ${_selectedRole!['name']}',
+          'Permissions saved for ${_selectedRole!['roleName'] ?? _selectedRole!['name']}',
         );
     } catch (_) {
       if (mounted)
@@ -180,10 +192,12 @@ class _AdminRolesPermissionsScreenState
                       if (nameCtrl.text.trim().isEmpty) return;
                       setDlg(() => saving = true);
                       try {
+                        // Backend uses 'roleName' field
                         final data = {
-                          'name': nameCtrl.text.trim(),
+                          'roleName': nameCtrl.text.trim(),
                           'description': descCtrl.text.trim(),
                         };
+                        // Backend expects 'roleName' not 'name'
                         if (editing != null) {
                           await SettingsService.updateRole(
                             widget.token ?? '',
@@ -486,7 +500,7 @@ class _AdminRolesPermissionsScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        role['name'] ?? '',
+                        role['roleName']?.toString() ?? role['name']?.toString() ?? '',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -591,7 +605,7 @@ class _AdminRolesPermissionsScreenState
               ),
               const SizedBox(width: 8),
               Text(
-                _selectedRole!['name'] ?? '',
+                _selectedRole!['roleName']?.toString() ?? _selectedRole!['name']?.toString() ?? '',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -645,7 +659,8 @@ class _AdminRolesPermissionsScreenState
             separatorBuilder: (_, __) => const SizedBox(height: 4),
             itemBuilder: (_, i) {
               final module = _modules[i];
-              final mid = module['_id'].toString();
+              // Use module name as key (consistent with backend Role permission schema)
+              final mid = module['name']?.toString() ?? module['_id'].toString();
               final perms =
                   _permissions[mid] ??
                   {
@@ -666,7 +681,7 @@ class _AdminRolesPermissionsScreenState
                   children: [
                     Expanded(
                       child: Text(
-                        module['name']?.toString() ?? mid,
+                          module['label']?.toString() ?? module['name']?.toString() ?? mid,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,

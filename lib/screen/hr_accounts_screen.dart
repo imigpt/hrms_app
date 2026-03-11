@@ -134,6 +134,193 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     }
   }
 
+  Future<void> _showStatusMenu(Map<String, dynamic> account) async {
+    final statusOptions = ['active', 'on_leave', 'inactive'];
+    final statusLabels = {
+      'active': 'Active',
+      'on_leave': 'On Leave',
+      'inactive': 'Inactive',
+    };
+    final statusColors = {
+      'active': _secondaryAccent,
+      'on_leave': _orange,
+      'inactive': _red,
+    };
+    final statusIcons = {
+      'active': Icons.check_circle_rounded,
+      'on_leave': Icons.schedule_rounded,
+      'inactive': Icons.block_rounded,
+    };
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: _section,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _primaryAccent.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.person_rounded,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Change Status',
+                        style: TextStyle(
+                          color: _textLight,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        account['name'] ?? 'HR Manager',
+                        style: TextStyle(
+                          color: _textGrey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Divider(color: _border.withOpacity(0.3), height: 1),
+              const SizedBox(height: 12),
+              ...statusOptions.map((status) {
+                final isSelected =
+                    (account['status'] ?? 'active').toString().toLowerCase() ==
+                        status;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _updateHRStatus(account['_id'], status);
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 11,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? (statusColors[status] ?? _textGrey)
+                                  .withOpacity(0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected
+                                ? (statusColors[status] ?? _textGrey)
+                                    .withOpacity(0.5)
+                                : _border.withOpacity(0.2),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              statusIcons[status] ?? Icons.error_rounded,
+                              color: statusColors[status] ?? _textGrey,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              statusLabels[status] ?? status,
+                              style: TextStyle(
+                                color: statusColors[status] ?? _textGrey,
+                                fontSize: 14,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (isSelected)
+                              Icon(
+                                Icons.check_rounded,
+                                color: statusColors[status] ?? _textGrey,
+                                size: 18,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+              Divider(color: _border.withOpacity(0.3), height: 1),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(color: _textGrey, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateHRStatus(String hrId, String newStatus) async {
+    if (_token == null) return;
+    try {
+      await HRAccountsService.updateHRStatus(_token!, hrId, newStatus);
+      if (mounted) {
+        final statusLabels = {
+          'active': 'Active',
+          'on_leave': 'On Leave',
+          'inactive': 'Inactive',
+        };
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              'Status updated to ${statusLabels[newStatus] ?? newStatus}'),
+          backgroundColor: newStatus == 'active'
+              ? _secondaryAccent
+              : newStatus == 'on_leave'
+                  ? _orange
+                  : _red,
+        ));
+        _loadHRAccounts();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: _red,
+        ));
+      }
+    }
+  }
+
   void _onSearchChanged(String query) {
     setState(() {
       _searchQuery = query.toLowerCase();
@@ -1093,13 +1280,20 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
 
                                   // Create in background without loading dialog
                                   try {
-                                    await HRAccountsService.createHRAccountWithPhoto(
+                                    final result = await HRAccountsService.createHRAccountWithPhoto(
                                       _token!,
                                       data,
                                       photoFile,
                                     );
                                     
                                     if (mounted) {
+                                      // Directly add the new HR manager to the list
+                                      final newManager = result['data'] ?? result;
+                                      setState(() {
+                                        _hrAccounts.insert(0, newManager);
+                                        _filteredAccounts.insert(0, newManager);
+                                      });
+
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
                                           content: Text('✅ HR Manager created successfully'),
@@ -1107,7 +1301,6 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                           duration: Duration(seconds: 2),
                                         ),
                                       );
-                                      _loadHRAccounts();
                                     }
                                   } catch (e) {
                                     if (mounted) {
@@ -2132,7 +2325,21 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
 
   Widget _buildAccountCard(Map<String, dynamic> account, bool isMobile) {
     final status = (account['status'] ?? 'unknown').toString().toLowerCase();
-    final statusColor = status == 'active' ? _secondaryAccent : _orange;
+    final statusColor = status == 'active'
+        ? _secondaryAccent
+        : status == 'on_leave'
+            ? _orange
+            : _red;
+    final statusLabel = status == 'active'
+        ? 'Active'
+        : status == 'on_leave'
+            ? 'On Leave'
+            : 'Inactive';
+    final statusIcon = status == 'active'
+        ? Icons.check_circle_rounded
+        : status == 'on_leave'
+            ? Icons.schedule_rounded
+            : Icons.block_rounded;
     final joinDate = account['joinDate'] != null
         ? _formatDate(account['joinDate'])
         : null;
@@ -2219,37 +2426,37 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Status pill (tappable to toggle)
+                // Status action button
                 Tooltip(
-                  message: 'Tap to toggle status',
+                  message: 'Click to change status',
                   child: GestureDetector(
-                    onTap: () => _toggleStatus(account),
+                    onTap: () => _showStatusMenu(account),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 12,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
                         color: statusColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: statusColor.withOpacity(0.35),
-                          width: 1,
+                          width: 1.5,
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          Icon(statusIcon, color: statusColor, size: 14),
+                          const SizedBox(width: 6),
                           Text(
-                            status == 'active' ? 'Active' : 'Inactive',
+                            statusLabel,
                             style: TextStyle(
                               color: statusColor,
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(width: 3),
-                          Icon(Icons.swap_horiz_rounded, color: statusColor, size: 12),
                         ],
                       ),
                     ),

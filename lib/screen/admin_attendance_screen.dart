@@ -40,6 +40,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   // Filters
   String _searchQuery = '';
   String _statusFilter = 'all';
+  String _userRoleFilter = 'all';
 
   // Stats
   int _presentCount = 0;
@@ -87,6 +88,10 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             .map((e) => AttendanceRecord.fromJson(e as Map<String, dynamic>))
             .toList();
 
+        // Debug: Log all unique roles from API
+        final uniqueRoles = records.map((r) => r.user.role).toSet().toList();
+        print('🔍 Unique roles from API: $uniqueRoles');
+
         setState(() {
           _allRecords = records;
           _computeStats(records);
@@ -130,7 +135,13 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
         // Status filter
         final matchStatus = _statusFilter == 'all' || r.status == _statusFilter;
 
-        return matchSearch && matchStatus;
+        // User role filter
+        bool matchRole = _userRoleFilter == 'all';
+        if (!matchRole) {
+          matchRole = r.user.role.toLowerCase() == _userRoleFilter.toLowerCase();
+        }
+
+        return matchSearch && matchStatus && matchRole;
       }).toList();
 
       _computeStats(_filteredRecords);
@@ -576,7 +587,17 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                                                 child: _buildStatusFilter(),
                                               ),
                                               const SizedBox(width: 8),
-                                              _buildExportButton(),
+                                              Expanded(
+                                                child: _buildUserRoleFilter(),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildExportButton(),
+                                              ),
                                             ],
                                           ),
                                         ],
@@ -586,6 +607,8 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                                           Expanded(child: _buildSearchBar()),
                                           const SizedBox(width: 10),
                                           _buildStatusFilter(),
+                                          const SizedBox(width: 10),
+                                          _buildUserRoleFilter(),
                                           const SizedBox(width: 10),
                                           _buildExportButton(),
                                         ],
@@ -746,6 +769,53 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
           ],
           onChanged: (v) {
             setState(() => _statusFilter = v ?? 'all');
+            _applyFilters();
+          },
+        ),
+      ),
+    );
+  }
+
+  // ── User Role Filter ─────────────────────────────────────────────────────────
+  Widget _buildUserRoleFilter() {
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: _input,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _border.withOpacity(0.6)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _userRoleFilter,
+          dropdownColor: _card,
+          style: const TextStyle(color: _textLight, fontSize: 13),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: _textGrey,
+            size: 18,
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: 'all',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.people_outline,
+                    size: 14,
+                    color: Color(0xFF8E8E93),
+                  ),
+                  SizedBox(width: 6),
+                  Text('All Users'),
+                ],
+              ),
+            ),
+            DropdownMenuItem(value: 'employee', child: Text('Employee')),
+            DropdownMenuItem(value: 'hr', child: Text('HR Manager')),
+          ],
+          onChanged: (v) {
+            setState(() => _userRoleFilter = v ?? 'all');
             _applyFilters();
           },
         ),

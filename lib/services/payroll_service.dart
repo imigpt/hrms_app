@@ -338,6 +338,26 @@ class PayrollService {
     }
   }
 
+  /// GET /api/payroll (all payrolls - admin view)
+  static Future<PayrollListResponse> getAllPayrolls({
+    required String token,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll');
+      final response = await http
+          .get(uri, headers: _headers(token))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return payrollListResponseFromJson(response.body);
+      }
+      throw Exception(_extractError(response, 'Failed to fetch payrolls'));
+    } catch (e) {
+      print('PayrollService.getAllPayrolls error: $e');
+      rethrow;
+    }
+  }
+
   /// GET /api/payroll/:id
   static Future<Payroll> getPayrollById({
     required String token,
@@ -356,6 +376,82 @@ class PayrollService {
       throw Exception(_extractError(response, 'Failed to fetch payroll'));
     } catch (e) {
       print('PayrollService.getPayrollById error: $e');
+      rethrow;
+    }
+  }
+
+  /// POST /api/payroll/generate — Admin only
+  static Future<Payroll> generatePayroll({
+    required String token,
+    required String userId,
+    required int month,
+    required int year,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/generate');
+      final response = await http
+          .post(
+            uri,
+            headers: _headers(token),
+            body: json.encode({
+              'userId': userId,
+              'month': month,
+              'year': year,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return Payroll.fromJson(decoded['data']);
+      }
+      throw Exception(_extractError(response, 'Failed to generate payroll'));
+    } catch (e) {
+      print('PayrollService.generatePayroll error: $e');
+      rethrow;
+    }
+  }
+
+  /// PUT /api/payroll/:id — Admin only (update payroll, mark as paid, etc.)
+  static Future<Payroll> updatePayroll({
+    required String token,
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/$id');
+      final response = await http
+          .put(uri, headers: _headers(token), body: json.encode(data))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        return Payroll.fromJson(decoded['data']);
+      }
+      throw Exception(_extractError(response, 'Failed to update payroll'));
+    } catch (e) {
+      print('PayrollService.updatePayroll error: $e');
+      rethrow;
+    }
+  }
+
+  /// DELETE /api/payroll/:id — Admin only
+  static Future<bool> deletePayroll({
+    required String token,
+    required String id,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/payroll/$id');
+      final response = await http
+          .delete(uri, headers: _headers(token))
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      throw Exception(_extractError(response, 'Failed to delete payroll'));
+    } catch (e) {
+      print('PayrollService.deletePayroll error: $e');
       rethrow;
     }
   }

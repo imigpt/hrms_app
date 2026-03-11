@@ -482,14 +482,14 @@ class SettingsService {
 
   // ── Bulk Email ─────────────────────────────────────────────────────────────
 
-  /// POST /api/settings/email/bulk
+  /// POST /api/settings/email/send
   static Future<Map<String, dynamic>> sendBulkEmail(
     String token,
     Map<String, dynamic> data,
   ) async {
     final res = await http
         .post(
-          Uri.parse('$_base/settings/email/bulk'),
+          Uri.parse('$_base/settings/email/send'),
           headers: _h(token),
           body: jsonEncode(data),
         )

@@ -1101,21 +1101,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         await _loadTodayAttendance();
         await _loadDashboardStats();
-        
-        // Show BOD dialog after successful check-in (non-blocking)
-        if (result != null && result != 'cancel') {
-          // Delay slightly so the navigation animation completes
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => const BODBottomSheet(),
-              );
-            }
-          });
-        }
       }
     }
   }

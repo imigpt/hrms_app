@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
@@ -12,7 +13,6 @@ import '../services/token_storage_service.dart';
 import '../services/profile_service.dart';
 import '../models/profile_model.dart';
 import '../models/attendance_summary_model.dart';
-import '../models/attendance_checkin_model.dart';
 import '../models/attendance_records_model.dart' as records;
 import '../models/attendance_edit_request_model.dart';
 import '../widgets/welcome_card.dart';
@@ -39,6 +39,10 @@ class AttendanceScreen extends StatefulWidget {
 class _AttendanceScreenState extends State<AttendanceScreen> {
   // --- Existing State ---
   bool _isCheckedIn = false;
+
+  // --- Test Mode (for QA: allows unlimited check-in/check-out) ---
+  // Static so it persists when navigating away and back
+  static bool _testModeEnabled = false;
 
   // --- DateTime State for Welcome Card ---
   DateTime? _checkInDateTime;
@@ -393,46 +397,60 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  // Handle check-in result from camera
+  // Handle check-in result from camera (photo + location, face already verified)
   Future<void> _handleCheckInResult(dynamic result) async {
-    String? checkInAddress;
-    FaceVerification? faceVerification;
+    if (result is! Map<String, dynamic>) return;
 
-    // Extract address and faceVerification if result is a Map
-    if (result is Map<String, dynamic>) {
-      checkInAddress = result['checkInAddress'] as String?;
-      faceVerification = result['faceVerification'] as FaceVerification?;
-      result = result['attendanceData'];
+    final File? photoFile = result['photoFile'] as File?;
+    final double lat = (result['latitude'] as num?)?.toDouble() ?? 26.816224;
+    final double lng = (result['longitude'] as num?)?.toDouble() ?? 75.845444;
+    final String address = result['address'] as String? ?? 'Main Building';
+
+    if (photoFile == null) return;
+
+    // Step 2: Show BOD (Beginning of Day) — mandatory, matches website flow
+    final bodSubmitted = await _showBODBottomSheet();
+    if (bodSubmitted != true) {
+      // User dismissed BOD — cancel check-in
+      return;
     }
+    if (!mounted) return;
 
-    if (result != null && result is AttendanceData) {
-      setState(() {
-        _isCheckedIn = true;
-        _checkInDateTime = result.checkIn.time;
-        _checkOutDateTime = null;
-
-        // Use human-readable address if provided
-        if (checkInAddress != null && checkInAddress.isNotEmpty) {
-          _checkInLocation = checkInAddress;
-        } else if (result.checkIn.location != null) {
-          final d = Geolocator.distanceBetween(
-            result.checkIn.location!.latitude,
-            result.checkIn.location!.longitude,
-            26.816224,
-            75.845444,
+    // Step 3: Call check-in API with photo + location
+    try {
+      final token = _token ?? await TokenStorageService().getToken();
+      if (token == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Authentication error. Please login again.'), backgroundColor: Colors.red),
           );
-          _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
         }
+        return;
+      }
 
-        _workedDuration = DateTime.now().difference(result.checkIn.time);
-      });
+      final response = await AttendanceService.checkIn(
+        token: token,
+        photoFile: photoFile,
+        latitude: lat,
+        longitude: lng,
+      );
 
-      // Build success message with face score when available
-      final scoreLabel = faceVerification != null
-          ? ' · Face match ${faceVerification.similarityScore}%'
-          : '';
+      final data = response.data;
+      final faceVerification = response.faceVerification;
 
       if (mounted) {
+        setState(() {
+          _isCheckedIn = true;
+          _checkInDateTime = data.checkIn.time;
+          _checkOutDateTime = null;
+          _checkInLocation = address;
+          _workedDuration = DateTime.now().difference(data.checkIn.time);
+        });
+
+        final scoreLabel = faceVerification != null
+            ? ' · Face match ${faceVerification.similarityScore}%'
+            : '';
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -452,34 +470,67 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             duration: const Duration(seconds: 3),
           ),
         );
-      }
-      // Show BOD dialog after successful check-in (non-blocking).
-      // Delay slightly so the camera-screen pop animation fully completes
-      // before the bottom sheet is pushed — avoids silent no-show in Flutter.
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          _showBODBottomSheet();
-          // Pop back to dashboard/previous screen after BOD is closed
-          // (BOD is non-blocking, so user can skip and we still pop)
-          Future.delayed(const Duration(seconds: 1), () {
-            if (mounted) {
-              Navigator.pop(context, 'checkedIn');
-            }
-          });
+
+        // Pop back to dashboard if pushed there, otherwise refresh in-place
+        if (widget.initialAction != null) {
+          if (mounted) Navigator.pop(context, 'checkedIn');
+        } else {
+          // Opened directly via nav — stay on screen, refresh all data
+          await _fetchTodayAttendance();
+          await _fetchAttendanceSummary();
+          await _fetchAttendanceHistory();
+          await _fetchLatestRecords();
         }
-      });
-    } else if (result == 'refresh') {
-      // User was already checked in on backend - reload attendance data
-      await _fetchTodayAttendance();
+      }
+    } on CheckInNotAllowedException catch (e) {
+      if (mounted) {
+        showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF1E1E1E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            icon: const Icon(Icons.event_busy, color: Colors.orangeAccent, size: 48),
+            title: const Text('Check-In Not Allowed',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center),
+            content: Text(e.message,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                textAlign: TextAlign.center),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK', style: TextStyle(color: Colors.orangeAccent)),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        final errMsg = e.toString().replaceAll('Exception:', '').trim();
+        if (errMsg.toLowerCase().contains('already checked in')) {
+          await _fetchTodayAttendance();
+          if (mounted) Navigator.pop(context, 'checkedIn');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Check-in failed: $errMsg'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
     }
-    // else: null means user cancelled — do nothing
   }
 
-  // Show BOD (Beginning of Day) task planning sheet — non-blocking
-  void _showBODBottomSheet() {
-    showModalBottomSheet(
+  // Show BOD (Beginning of Day) task planning sheet — returns true if user submitted tasks
+  Future<bool?> _showBODBottomSheet() async {
+    return await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: Colors.transparent,
       builder: (_) => const BODBottomSheet(),
     );
@@ -565,16 +616,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         return;
       }
 
-      // Allow check-in if permission granted — navigate to CameraScreen
+      // Allow check-in if permission granted — navigate to CameraScreen (face verification)
       if (permission == LocationPermission.whileInUse ||
           permission == LocationPermission.always) {
         if (!mounted) return;
+
+        // Camera: capture selfie + verify face (no API call yet)
         final result = await Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const CameraScreen()),
         );
         if (!mounted) return;
         if (result != null) {
+          // After face verified: show BOD then call check-in API (see _handleCheckInResult)
           await _handleCheckInResult(result);
         }
       } else {
@@ -747,6 +801,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             response.data.checkIn.time,
           );
         });
+
+        // Test mode: reset to fresh state after 2 s so user can check-in again
+        if (_testModeEnabled) {
+          Future.delayed(const Duration(seconds: 2), () {
+            if (mounted) {
+              setState(() {
+                _checkInDateTime = null;
+                _checkOutDateTime = null;
+                _checkInLocation = null;
+                _checkOutLocation = null;
+                _workedDuration = Duration.zero;
+              });
+            }
+          });
+        }
       }
     } catch (e) {
       print('❌ [CHECK-OUT] Background API error: $e');
@@ -798,6 +867,45 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             fontSize: 18,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'TEST',
+                  style: TextStyle(
+                    color: _testModeEnabled ? Colors.orange : Colors.grey,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Switch(
+                  value: _testModeEnabled,
+                  onChanged: (v) {
+                    setState(() => _testModeEnabled = v);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          v
+                              ? '🔓 Test mode ON — unlimited check-in/out enabled'
+                              : '🔒 Test mode OFF',
+                        ),
+                        backgroundColor: v ? Colors.orange : Colors.grey[700],
+                        duration: const Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  activeColor: Colors.orange,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ],
+            ),
+          ),
+        ],
         // actions: [
         //   Tooltip(
         //     message: 'API Tests',

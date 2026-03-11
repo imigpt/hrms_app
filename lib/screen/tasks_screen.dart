@@ -10,7 +10,9 @@ import '../services/notification_service.dart';
 import '../services/workflow_service.dart';
 import '../services/workflow_visualization_service.dart';
 import '../widgets/workflow_tab_widget.dart';
+import '../widgets/workflow_template_manager.dart';
 import '../theme/app_theme.dart';
+import 'task_detail_sheet.dart';
 
 class TasksScreen extends StatefulWidget {
   final String? token;
@@ -51,8 +53,8 @@ class _TasksScreenState extends State<TasksScreen> {
     'completed': 0,
     'overdue': 0,
     'cancelled': 0,
-    'highPriority': 0,
-    'averageProgress': 0,
+    'pending': 0,
+    'underReview': 0,
   };
 
   // â”€â”€ Admin state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -67,6 +69,8 @@ class _TasksScreenState extends State<TasksScreen> {
 
   // â”€â”€ Employee priority filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   String? _employeePriorityFilter;
+  // Quick filter: 'overdue' | 'high-priority' | 'in-progress' | 'assigned' | null
+  String? _quickFilter;
 
   // â”€â”€ Projects state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   List<dynamic> _projects = [];
@@ -91,7 +95,14 @@ class _TasksScreenState extends State<TasksScreen> {
   Map<String, dynamic>? _selectedWorkflow;
   bool _workflowsLoading = false;
 
-  @override
+  // ── Workflow Editor state ────────────────────────────────────────────────
+  String _editorPanel = 'list'; // 'list' | 'create' | 'edit'
+  Map<String, dynamic>? _editingWorkflow;
+  String _workflowFormName = '';
+  String _workflowFormDesc = '';
+  bool _workflowFormShared = false;
+  List<Map<String, dynamic>> _workflowFormSteps = [];
+  bool _workflowSaving = false;
   void initState() {
     super.initState();
     _searchController.addListener(() {
@@ -555,8 +566,10 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  /// Display all available workflow templates in a modal dialog (web-like design)
+  /// Display workflow templates dialog (uses new WorkflowTemplateManager widget)
   void _showWorkflowTemplatesDialog() {
+    if (_token == null) return;
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -564,343 +577,216 @@ class _TasksScreenState extends State<TasksScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.85,
-          maxChildSize: 0.95,
-          minChildSize: 0.6,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                // â”€â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.07),
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Workflow Templates',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Select a template to apply to the task',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: _textGrey.withValues(alpha: 0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Icon(
-                          Icons.close,
-                          color: _textGrey,
-                          size: 20,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // â”€â”€â”€ Content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                Expanded(
-                  child: _workflows.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.layers_clear_outlined,
-                                size: 48,
-                                color: _textGrey.withValues(alpha: 0.4),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'No workflow templates yet',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: _textGrey.withValues(alpha: 0.7),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Create your first workflow to standardize task processes',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: _textGrey.withValues(alpha: 0.5),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          itemCount: _workflows.length,
-                          itemBuilder: (context, index) {
-                            final workflow = _workflows[index] as Map<String, dynamic>?;
-                            if (workflow == null) return const SizedBox.shrink();
-
-                            final workflowId = workflow['_id'] ?? '';
-                            final workflowName = workflow['name'] ?? 'Unnamed Template';
-                            final description = workflow['description'] ?? '';
-                            final steps = (workflow['steps'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-                            final createdBy = workflow['createdBy'] ?? 'Unknown';
-                            final isShared = workflow['isShared'] ?? false;
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: _inputDark.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.06),
-                                ),
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedWorkflow = workflow;
-                                    });
-                                    Navigator.pop(context);
-                                  },
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(14),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        // â”€ Title Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                                        Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: Text(
-                                                          workflowName,
-                                                          style: const TextStyle(
-                                                            fontSize: 14,
-                                                            fontWeight: FontWeight.w600,
-                                                            color: Colors.white,
-                                                          ),
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ),
-                                                      if (isShared) ...[
-                                                        const SizedBox(width: 6),
-                                                        Container(
-                                                          padding: const EdgeInsets.symmetric(
-                                                            horizontal: 6,
-                                                            vertical: 2,
-                                                          ),
-                                                          decoration: BoxDecoration(
-                                                            color: _accentGreen.withValues(alpha: 0.15),
-                                                            borderRadius: BorderRadius.circular(4),
-                                                            border: Border.all(
-                                                              color: _accentGreen.withValues(alpha: 0.3),
-                                                            ),
-                                                          ),
-                                                          child: Row(
-                                                            mainAxisSize: MainAxisSize.min,
-                                                            children: [
-                                                              Icon(
-                                                                Icons.people_outline,
-                                                                size: 10,
-                                                                color: _accentGreen,
-                                                              ),
-                                                              const SizedBox(width: 3),
-                                                              Text(
-                                                                'Shared',
-                                                                style: TextStyle(
-                                                                  fontSize: 8,
-                                                                  fontWeight: FontWeight.w500,
-                                                                  color: _accentGreen,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  if (description.isNotEmpty)
-                                                    Text(
-                                                      description,
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        color: _textGrey.withValues(alpha: 0.7),
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  Text(
-                                                    'By $createdBy Â· ${steps.length} step${steps.length != 1 ? 's' : ''}',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      color: _textGrey.withValues(alpha: 0.5),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: _accentPink.withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                '${steps.length} steps',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: _accentPink,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        // â”€ Steps Preview (horizontal pills) â”€
-                                        if (steps.isNotEmpty) ...[
-                                          const SizedBox(height: 10),
-                                          Divider(
-                                            color: Colors.white.withValues(alpha: 0.05),
-                                            height: 1,
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Wrap(
-                                            spacing: 6,
-                                            runSpacing: 6,
-                                            children: [
-                                              ...steps.take(6).toList().asMap().entries.map((entry) {
-                                                final stepIndex = entry.key + 1;
-                                                final step = entry.value;
-                                                final stepTitle = step['title'] ?? 'Untitled Step';
-                                                final role = step['responsibleRole'] ?? 'any';
-
-                                                return Container(
-                                                  padding: const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 4,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: _cardDark.withValues(alpha: 0.8),
-                                                    borderRadius: BorderRadius.circular(12),
-                                                    border: Border.all(
-                                                      color: Colors.white.withValues(alpha: 0.08),
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      Text(
-                                                        '$stepIndex.',
-                                                        style: TextStyle(
-                                                          fontSize: 9,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: _accentPink,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        stepTitle,
-                                                        style: const TextStyle(
-                                                          fontSize: 9,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: Colors.white,
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                      if (role != 'any') ...[
-                                                        const SizedBox(width: 6),
-                                                        Container(
-                                                          padding: const EdgeInsets.symmetric(
-                                                            horizontal: 4,
-                                                            vertical: 1,
-                                                          ),
-                                                          decoration: BoxDecoration(
-                                                            color: _roleColor(role).withValues(alpha: 0.2),
-                                                            borderRadius: BorderRadius.circular(3),
-                                                          ),
-                                                          child: Text(
-                                                            role,
-                                                            style: TextStyle(
-                                                              fontSize: 7,
-                                                              fontWeight: FontWeight.w600,
-                                                              color: _roleColor(role),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ],
-                                                  ),
-                                                );
-                                              }).toList(),
-                                              if (steps.length > 6)
-                                                Padding(
-                                                  padding: const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                    vertical: 4,
-                                                  ),
-                                                  child: Text(
-                                                    '+${steps.length - 6} more',
-                                                    style: TextStyle(
-                                                      fontSize: 9,
-                                                      color: _textGrey.withValues(alpha: 0.5),
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder: (context) => WorkflowTemplateManager(
+        token: _token!,
+        onSelectTemplate: (workflow) {
+          setState(() => _selectedWorkflow = workflow);
+          Navigator.pop(context);
+        },
+      ),
     );
+  }
+
+  /// API: Save workflow (create or update)
+  Future<void> _saveWorkflowTemplate() async {
+    if (_token == null || _workflowFormName.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Workflow name is required'),
+          backgroundColor: Color(0xFFEF5350),
+        ),
+      );
+      return;
+    }
+
+    // Validate at least one step with title
+    final validSteps = _workflowFormSteps.where((s) => (s['title'] as String?)?.trim().isNotEmpty == true).toList();
+    if (validSteps.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add at least one step with a title'),
+          backgroundColor: Color(0xFFEF5350),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _workflowSaving = true);
+    try {
+      final steps = validSteps.asMap().entries.map<Map<String, dynamic>>((e) {
+        final step = e.value;
+        return {
+          'order': e.key + 1,
+          'title': step['title'] ?? '',
+          'description': step['description'] ?? '',
+          'responsibleRole': step['responsibleRole'] ?? 'any',
+        };
+      }).toList();
+
+      if (_editorPanel == 'create') {
+        await WorkflowService.createTemplate(
+          _token!,
+          name: _workflowFormName.trim(),
+          description: _workflowFormDesc.isEmpty ? null : _workflowFormDesc,
+        );
+      } else if (_editorPanel == 'edit' && _editingWorkflow != null) {
+        await WorkflowService.updateTemplate(
+          _token!,
+          _editingWorkflow!['_id'],
+          name: _workflowFormName.trim(),
+          description: _workflowFormDesc,
+          isShared: _workflowFormShared,
+          steps: steps,
+        );
+      }
+
+      await _loadWorkflows();
+      if (mounted) {
+        setState(() => _editorPanel = 'list');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Workflow "${_workflowFormName.trim()}" ${_editingWorkflow == null ? 'created' : 'updated'}'),
+            backgroundColor: _accentGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: const Color(0xFFEF5350),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _workflowSaving = false);
+    }
+  }
+
+  /// API: Delete workflow template
+  Future<void> _deleteWorkflowTemplate(String templateId, String templateName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _cardDark,
+        title: const Text(
+          'Delete Workflow?',
+          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+        content: Text(
+          'Delete template "$templateName"? Tasks that already use it will keep their copy.',
+          style: TextStyle(color: _textGrey.withValues(alpha: 0.8)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: TextStyle(color: _textGrey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF5350))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (_token == null) return;
+    try {
+      await WorkflowService.deleteTemplate(_token!, templateId);
+      await _loadWorkflows();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('"$templateName" deleted'),
+            backgroundColor: _accentGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: const Color(0xFFEF5350),
+          ),
+        );
+      }
+    }
+  }
+
+  /// API: Duplicate workflow template
+  Future<void> _duplicateWorkflowTemplate(String templateId, String templateName) async {
+    if (_token == null) return;
+    try {
+      await WorkflowService.duplicateTemplate(_token!, templateId);
+      await _loadWorkflows();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Copy of "$templateName" created'),
+            backgroundColor: _accentGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: const Color(0xFFEF5350),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Helper: Add a new step
+  void _addWorkflowStep() {
+    setState(() {
+      _workflowFormSteps.add({
+        'order': _workflowFormSteps.length + 1,
+        'title': '',
+        'description': '',
+        'responsibleRole': 'any',
+      });
+    });
+  }
+
+  /// Helper: Remove step by index
+  void _removeWorkflowStep(int index) {
+    setState(() {
+      _workflowFormSteps.removeAt(index);
+      // Re-order remaining steps
+      for (int i = 0; i < _workflowFormSteps.length; i++) {
+        _workflowFormSteps[i]['order'] = i + 1;
+      }
+    });
+  }
+
+  /// Helper: Move step up/down
+  void _moveWorkflowStep(int index, int direction) {
+    final newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= _workflowFormSteps.length) return;
+
+    setState(() {
+      final temp = _workflowFormSteps[index];
+      _workflowFormSteps[index] = _workflowFormSteps[newIndex];
+      _workflowFormSteps[newIndex] = temp;
+      // Re-order
+      for (int i = 0; i < _workflowFormSteps.length; i++) {
+        _workflowFormSteps[i]['order'] = i + 1;
+      }
+    });
+  }
+
+  /// Helper: Update step field
+  void _updateWorkflowStep(int index, String field, String value) {
+    setState(() {
+      _workflowFormSteps[index][field] = value;
+    });
   }
 
   /// Get color for role badge
@@ -967,9 +853,8 @@ class _TasksScreenState extends State<TasksScreen> {
               'completed': (statsRes['data']['completed'] ?? 0) as int,
               'overdue': (statsRes['data']['overdue'] ?? 0) as int,
               'cancelled': (statsRes['data']['cancelled'] ?? 0) as int,
-              'highPriority': (statsRes['data']['highPriority'] ?? 0) as int,
-              'averageProgress':
-                  (statsRes['data']['averageProgress'] ?? 0) as int,
+              'pending': (statsRes['data']['pending'] ?? 0) as int,
+              'underReview': (statsRes['data']['underReview'] ?? 0) as int,
             };
           } else {
             _stats = {
@@ -1019,6 +904,22 @@ class _TasksScreenState extends State<TasksScreen> {
                 _employeePriorityFilter,
           )
           .toList();
+    }
+    if (_quickFilter == 'overdue') {
+      final now = DateTime.now();
+      list = list.where((t) {
+        final due = t['dueDate'];
+        if (due == null) return false;
+        try {
+          return DateTime.parse(due.toString()).isBefore(now) &&
+              t['status'] != 'completed' && t['status'] != 'closed';
+        } catch (_) { return false; }
+      }).toList();
+    } else if (_quickFilter == 'high-priority') {
+      list = list.where((t) =>
+        ['high', 'critical'].contains((t['priority'] ?? '').toString().toLowerCase())).toList();
+    } else if (_quickFilter != null) {
+      list = list.where((t) => t['status'] == _quickFilter).toList();
     }
     return list;
   }
@@ -1151,6 +1052,16 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   // â”€â”€ Task detail / update sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  void _showTaskDetail(Map<String, dynamic> task) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => TaskDetailSheet(task: task, token: _token),
+    );
+  }
+
   Future<void> _showUpdateDialog(Map<String, dynamic> task) async {
     double progress = ((task['progress'] ?? 0) as num).toDouble();
     final subTasks = (task['subTasks'] as List<dynamic>? ?? []);
@@ -2114,6 +2025,15 @@ class _TasksScreenState extends State<TasksScreen> {
       tags = (task['tags'] as List).map((t) => t.toString()).toList();
     }
 
+    // Workflow: pre-populate if task already has one
+    String? selectedEditWorkflow;
+    final existingWf = task['workflow'];
+    if (existingWf is Map) {
+      selectedEditWorkflow = (existingWf['_id'] ?? existingWf['id'])?.toString();
+    } else if (existingWf is String && existingWf.isNotEmpty) {
+      selectedEditWorkflow = existingWf;
+    }
+
     bool submitting = false;
 
     Future<DateTime?> _pickDateTime(
@@ -2500,7 +2420,337 @@ class _TasksScreenState extends State<TasksScreen> {
                               .toList(),
                         ),
                       ],
+                      const SizedBox(height: 16),
+
+                      // ── Workflow Template (optional) ──────────────────────
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: _inputLabel('Workflow Template (optional)'),
+                          ),
+                          GestureDetector(
+                            onTap: () => _showWorkflowTemplatesDialog(),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _accentPink.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.add_circle_outline,
+                                    size: 14,
+                                    color: _accentPink,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Manage',
+                                    style: TextStyle(
+                                      color: _accentPink,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _inputDark,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.07),
+                          ),
+                        ),
+                        child: _workflowsLoading
+                            ? const SizedBox(
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFFFF8FA3),
+                                  ),
+                                ),
+                              )
+                            : _workflows.isEmpty
+                                ? Text(
+                                    'No workflows available',
+                                    style: TextStyle(
+                                      color: _textGrey.withOpacity(0.6),
+                                      fontSize: 14,
+                                    ),
+                                  )
+                                : Row(
+                                    children: [
+                                      Expanded(
+                                        child: DropdownButtonHideUnderline(
+                                          child: DropdownButton<String?>(
+                                            isExpanded: true,
+                                            value: selectedEditWorkflow,
+                                            hint: Text(
+                                              'Select workflow...',
+                                              style: TextStyle(
+                                                color: _textGrey.withOpacity(0.6),
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            dropdownColor: _cardDark,
+                                            items: [
+                                              DropdownMenuItem<String?>(
+                                                value: null,
+                                                child: Text(
+                                                  '— No workflow —',
+                                                  style: TextStyle(
+                                                    color: _textGrey,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ),
+                                              ..._workflows.map((wf) {
+                                                final workflowId = wf['_id'] ?? '';
+                                                final workflowName = wf['name'] ?? 'Unnamed';
+                                                final stepCount = (wf['steps'] as List<dynamic>?)?.length ?? 0;
+                                                return DropdownMenuItem<String?>(
+                                                  value: workflowId,
+                                                  child: Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          workflowName,
+                                                          style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 13,
+                                                          ),
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
+                                                        decoration: BoxDecoration(
+                                                          color: _accentPink.withOpacity(0.2),
+                                                          borderRadius: BorderRadius.circular(4),
+                                                        ),
+                                                        child: Text(
+                                                          '$stepCount steps',
+                                                          style: TextStyle(
+                                                            color: _accentPink,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            ],
+                                            onChanged: (value) =>
+                                                ss(() => selectedEditWorkflow = value),
+                                          ),
+                                        ),
+                                      ),
+                                      if (selectedEditWorkflow != null) ...[
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () =>
+                                              ss(() => selectedEditWorkflow = null),
+                                          child: Icon(
+                                            Icons.close,
+                                            color: _accentPink,
+                                            size: 18,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                      ),
+                      // ── Workflow Preview ──────────────────────────────────
+                      if (selectedEditWorkflow != null && _workflows.isNotEmpty)
+                        Builder(
+                          builder: (context) {
+                            final selectedWfData = _workflows.firstWhere(
+                              (w) => (w['_id'] ?? w['id']) == selectedEditWorkflow,
+                              orElse: () => null,
+                            );
+                            if (selectedWfData == null) return const SizedBox.shrink();
+                            final steps = selectedWfData['steps'] as List<dynamic>? ?? [];
+                            return Column(
+                              children: [
+                                const SizedBox(height: 12),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: _cardDark.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _accentPink.withOpacity(0.2),
+                                    ),
+                                  ),
+                                  child: steps.isEmpty
+                                      ? Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Text(
+                                            'No workflow steps defined',
+                                            style: TextStyle(
+                                              color: _textGrey.withOpacity(0.6),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        )
+                                      : Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Padding(
+                                              padding: const EdgeInsets.all(12),
+                                              child: Text(
+                                                '${steps.length} workflow steps',
+                                                style: TextStyle(
+                                                  color: _accentPink,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            ...steps.asMap().entries.map((entry) {
+                                              final idx = entry.key;
+                                              final step = entry.value as Map<String, dynamic>;
+                                              final title = step['title'] ?? 'Step ${idx + 1}';
+                                              final role = step['responsibleRole'] ?? 'any';
+                                              Color roleColor;
+                                              switch (role.toString().toLowerCase()) {
+                                                case 'admin':
+                                                  roleColor = Colors.red;
+                                                  break;
+                                                case 'hr':
+                                                  roleColor = _accentPurple;
+                                                  break;
+                                                case 'employee':
+                                                  roleColor = _accentGreen;
+                                                  break;
+                                                default:
+                                                  roleColor = Colors.blue;
+                                              }
+                                              return Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 8,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    top: BorderSide(
+                                                      color: _textGrey.withOpacity(0.1),
+                                                    ),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      width: 28,
+                                                      height: 28,
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: _accentPink.withOpacity(0.15),
+                                                        border: Border.all(
+                                                          color: _accentPink.withOpacity(0.3),
+                                                        ),
+                                                      ),
+                                                      child: Center(
+                                                        child: Text(
+                                                          '${idx + 1}',
+                                                          style: TextStyle(
+                                                            color: _accentPink,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: Text(
+                                                        title,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 13,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: roleColor.withOpacity(0.15),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                      ),
+                                                      child: Text(
+                                                        role,
+                                                        style: TextStyle(
+                                                          color: roleColor,
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ],
+                                        ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                       const SizedBox(height: 28),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _cardDark,
+                            foregroundColor: _accentPink,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: _accentPink, width: 1.5),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () {
+                            Navigator.pop(sheetContext);
+                            _showTaskDetail(task);
+                          },
+                          icon: const Icon(Icons.tune_outlined, size: 20),
+                          label: const Text(
+                            'Manage',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
 
                       // â”€â”€ Save Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       SizedBox(
@@ -2551,6 +2801,25 @@ class _TasksScreenState extends State<TasksScreen> {
                                       estimatedTime: estMinutes,
                                       tags: tags,
                                     );
+                                    // Assign workflow if selected
+                                    if (selectedEditWorkflow != null && _token != null) {
+                                      try {
+                                        final workflowTemplate = _workflows.firstWhere(
+                                          (w) => (w['_id'] ?? w['id']) == selectedEditWorkflow,
+                                          orElse: () => null,
+                                        );
+                                        if (workflowTemplate != null) {
+                                          await WorkflowService.assignToTask(
+                                            _token!,
+                                            task['_id'].toString(),
+                                            templateId: selectedEditWorkflow!,
+                                            workflowName: workflowTemplate['name'],
+                                          );
+                                        }
+                                      } catch (e) {
+                                        print('Error assigning workflow: $e');
+                                      }
+                                    }
                                     if (sheetContext.mounted)
                                       Navigator.pop(sheetContext, true);
                                   } catch (e) {
@@ -3929,15 +4198,15 @@ class _TasksScreenState extends State<TasksScreen> {
     final inProgress = _stats['inProgress'] ?? 0;
     final completed = _stats['completed'] ?? 0;
     final overdue = _stats['overdue'] ?? 0;
-    final highPriority = _stats['highPriority'] ?? 0;
-    final avgProgress = _stats['averageProgress'] ?? 0;
+    final pending = _stats['pending'] ?? 0;
+    final underReview = _stats['underReview'] ?? 0;
     final statItems = [
       _StatItem('Total', '$total', Icons.folder_outlined, _accentPurple),
       _StatItem('In Progress', '$inProgress', Icons.pending_actions, _accentOrange),
       _StatItem('Completed', '$completed', Icons.check_circle_outline, _accentGreen),
       _StatItem('Overdue', '$overdue', Icons.warning_amber_outlined, Colors.redAccent),
-      _StatItem('High Priority', '$highPriority', Icons.flag_outlined, _accentPink),
-      _StatItem('Avg Progress', '$avgProgress%', Icons.insights, Colors.blueAccent),
+      _StatItem('Pending', '$pending', Icons.schedule, Colors.orangeAccent),
+      _StatItem('Under Review', '$underReview', Icons.visibility, Colors.blueAccent),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -4422,6 +4691,19 @@ class _TasksScreenState extends State<TasksScreen> {
                               _miniChip('Overdue', Colors.redAccent),
                             ],
                             const Spacer(),
+                            // Eye icon to show TaskDetailSheet
+                            GestureDetector(
+                              onTap: () => _showTaskDetail(task),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.visibility_outlined,
+                                  color: _textGrey.withValues(alpha: 0.6),
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             // Review star: filled (gold) if reviewed, outline if not
                             GestureDetector(
                               onTap: () => _showAdminReviewDialog(task),
@@ -6631,7 +6913,7 @@ class _TasksScreenState extends State<TasksScreen> {
           : null,
       onDismissed: (_) => _deleteTask(task['_id'].toString()),
       child: GestureDetector(
-        onTap: () => _showUpdateDialog(task),
+        onTap: () => _showTaskDetail(task),
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
@@ -7031,13 +7313,86 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
+  // Show bottom sheet to change task status from Kanban
+  void _showKanbanStatusPicker(BuildContext context, Map<String, dynamic> task) {
+    final statuses = [
+      {'status': 'draft', 'label': 'Draft', 'color': 0xFF9E9E9E},
+      {'status': 'pending-approval', 'label': 'Pending Approval', 'color': 0xFFFFC107},
+      {'status': 'assigned', 'label': 'Assigned', 'color': 0xFF2196F3},
+      {'status': 'todo', 'label': 'To Do', 'color': 0xFF03A9F4},
+      {'status': 'in-progress', 'label': 'In Progress', 'color': 0xFFFFAB00},
+      {'status': 'under-review', 'label': 'Under Review', 'color': 0xFF009688},
+      {'status': 'completed', 'label': 'Completed', 'color': 0xFF00C853},
+      {'status': 'closed', 'label': 'Closed', 'color': 0xFF607D8B},
+      {'status': 'rejected', 'label': 'Rejected', 'color': 0xFFEF5350},
+    ];
+    final current = (task['status'] ?? '').toString();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Move to',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(task['title'] ?? '',
+              style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
+              maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: statuses.map((s) {
+                final isCurrent = s['status'] == current;
+                final col = Color(s['color'] as int);
+                return GestureDetector(
+                  onTap: () async {
+                    Navigator.pop(context);
+                    if (isCurrent) return;
+                    final token = _token;
+                    if (token == null) return;
+                    await TaskService.updateTaskStatus(token, task['_id']?.toString() ?? '', s['status'] as String);
+                    // _loadTasks();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: col.withOpacity(isCurrent ? 0.25 : 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: col.withOpacity(isCurrent ? 0.8 : 0.3)),
+                    ),
+                    child: Text(s['label'] as String,
+                      style: TextStyle(color: col, fontSize: 13, fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal)),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   // â”€â”€ Kanban view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildKanbanView(List<dynamic> tasks) {
     final columns = [
-      {'status': 'todo', 'label': 'To Do', 'color': Colors.blueAccent},
+      {'status': 'draft', 'label': 'Draft', 'color': Colors.grey},
+      {'status': 'pending-approval', 'label': 'Pending Approval', 'color': Colors.amber},
+      {'status': 'assigned', 'label': 'Assigned', 'color': Colors.blueAccent},
+      {'status': 'todo', 'label': 'To Do', 'color': Colors.lightBlueAccent},
       {'status': 'in-progress', 'label': 'In Progress', 'color': _accentOrange},
       {'status': 'under-review', 'label': 'Under Review', 'color': Colors.tealAccent},
       {'status': 'completed', 'label': 'Completed', 'color': _accentGreen},
+      {'status': 'closed', 'label': 'Closed', 'color': Colors.blueGrey},
+      {'status': 'rejected', 'label': 'Rejected', 'color': Colors.redAccent},
     ];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -7105,9 +7460,8 @@ class _TasksScreenState extends State<TasksScreen> {
                   final priority = (task['priority'] ?? 'medium').toString();
                   final overdue = _isOverdue(task);
                   return GestureDetector(
-                    onTap: () => _isAdmin
-                        ? _showAdminTaskDetail(task as Map<String, dynamic>)
-                        : _showUpdateDialog(task as Map<String, dynamic>),
+                    onTap: () => _showTaskDetail(task as Map<String, dynamic>),
+                    onLongPress: () => _showKanbanStatusPicker(context, task as Map<String, dynamic>),
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
@@ -7788,8 +8142,8 @@ class _TasksScreenState extends State<TasksScreen> {
                 _buildStatCard('Completed', '${stats['completed'] ?? 0}', Icons.check_circle_outline, _accentGreen),
                 _buildStatCard('In Progress', '${stats['inProgress'] ?? 0}', Icons.pending_actions, _accentOrange),
                 _buildStatCard('Overdue', '${stats['overdue'] ?? 0}', Icons.warning_amber_outlined, Colors.redAccent),
-                _buildStatCard('High Priority', '${stats['highPriority'] ?? 0}', Icons.flag_outlined, _accentPink),
-                _buildStatCard('Avg Progress', '${stats['averageProgress'] ?? 0}%', Icons.insights, Colors.blueAccent),
+                _buildStatCard('Pending', '${stats['pending'] ?? 0}', Icons.schedule, Colors.orangeAccent),
+                _buildStatCard('Under Review', '${stats['underReview'] ?? 0}', Icons.visibility, Colors.blueAccent),
               ],
             ),
             const SizedBox(height: 24),
@@ -8222,3 +8576,4 @@ class _EstPreset {
   final String? value; // null = custom
   const _EstPreset(this.label, this.value);
 }
+

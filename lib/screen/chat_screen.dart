@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
 import '../models/chat_room_model.dart';
@@ -1156,12 +1157,52 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 color: AppTheme.primaryColor,
                 onTap: () async {
                   Navigator.pop(context);
-                  final result = await FilePicker.platform.pickFiles();
-                  if (result != null && result.files.single.path != null) {
-                    await _sendMedia(
-                      File(result.files.single.path!),
-                      'document',
+                  PlatformFile? picked;
+                  try {
+                    final result = await FilePicker.platform.pickFiles(
+                      withData: true,
                     );
+                    if (result != null && result.files.isNotEmpty) {
+                      picked = result.files.single;
+                    }
+                  } catch (e) {
+                    if (mounted) _showSnack('Could not open file picker');
+                    return;
+                  }
+                  if (picked == null) return;
+
+                  File? fileToSend;
+                  if (picked.path != null) {
+                    fileToSend = File(picked.path!);
+                  } else if (picked.bytes != null) {
+                    // Cloud-based file (Google Drive, iCloud, etc.) has no
+                    // local path — write bytes to a temp file before sending.
+                    try {
+                      final tmpDir = await getTemporaryDirectory();
+                      final safeName = picked.name
+                          .replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+                      final tmp = File('${tmpDir.path}/$safeName');
+                      await tmp.writeAsBytes(picked.bytes!);
+                      fileToSend = tmp;
+                    } catch (e) {
+                      if (mounted) {
+                        _showSnack(
+                          'Could not read file. Please pick a local file.',
+                        );
+                      }
+                      return;
+                    }
+                  } else {
+                    if (mounted) {
+                      _showSnack(
+                        'Could not access the selected file. Please pick a local file.',
+                      );
+                    }
+                    return;
+                  }
+
+                  if (mounted) {
+                    await _sendMedia(fileToSend, 'document');
                   }
                 },
               ),
@@ -3023,6 +3064,7 @@ class _DocumentBubble extends StatefulWidget {
 class _DocumentBubbleState extends State<_DocumentBubble> {
   bool _pressed = false;
   bool _isDownloading = false;
+  bool _isOpening = false;
   double _downloadProgress = 0.0;
 
   final _media = ChatMediaService();
@@ -3074,13 +3116,18 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
       }
       // Small delay so the user can see download completion
       await Future.delayed(const Duration(milliseconds: 150));
-      if (mounted) setState(() => _isDownloading = false);
+      if (mounted) setState(() {_isDownloading = false; _isOpening = true;});
 
-      await _media.openFile(cachedPath, fallbackUrl: url);
+      await _media.openFile(
+        cachedPath,
+        fallbackUrl: url,
+        mimeTypeOverride: widget.attachment.mimeType,
+      );
+      if (mounted) setState(() => _isOpening = false);
     } catch (e) {
       debugPrint('Document open error: $e');
       if (mounted) {
-        setState(() => _isDownloading = false);
+        setState(() { _isDownloading = false; _isOpening = false; });
         _showDownloadFailedSheet(url, e.toString(), fileName: attachmentName);
       }
     }
@@ -3134,7 +3181,11 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _media.openUrlInBrowser(ChatMediaService.buildBrowserViewUrl(url, fileName: fileName));
+                    _media.openUrlInBrowser(ChatMediaService.buildBrowserViewUrl(
+                      url,
+                      fileName: fileName,
+                      mimeType: widget.attachment.mimeType,
+                    ));
                   },
                   icon: const Icon(Icons.open_in_browser, size: 18),
                   label: const Text('Open in Browser'),
@@ -3194,12 +3245,12 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
               children: [
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
-                  child: _isDownloading
+                  child: (_isDownloading || _isOpening)
                       ? SizedBox(
                           width: 28,
                           height: 28,
                           child: CircularProgressIndicator(
-                            value: _downloadProgress > 0
+                            value: _isDownloading && _downloadProgress > 0
                                 ? _downloadProgress
                                 : null,
                             strokeWidth: 2.5,
@@ -3233,12 +3284,21 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (widget.attachment.mimeType != null)
+                      if (widget.attachment.mimeType != null && !_isOpening)
                         Text(
                           widget.attachment.mimeType!,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 10,
+                          ),
+                        ),
+                      if (_isOpening)
+                        Text(
+                          'Opening…',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 10,
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
                     ],

@@ -32,7 +32,8 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
     setState(() => _loading = true);
     try {
       final res = await SettingsService.getCompanySettings(widget.token ?? '');
-      final locs = res['data']?['locations'];
+      // Locations are stored in SystemSettings under 'company' category
+      final locs = res['data']?['settings']?['locations'];
       if (locs is List) {
         setState(
           () => _locations = locs
@@ -76,8 +77,11 @@ class _AdminLocationsScreenState extends State<AdminLocationsScreen> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
+      // Wrap in 'settings' so backend stores in SystemSettings
       await SettingsService.updateCompanySettings(widget.token ?? '', {
-        'locations': _locations,
+        'settings': {
+          'locations': _locations,
+        },
       });
       if (mounted) showAdminSnack(context, 'Locations updated');
     } catch (_) {

@@ -23,6 +23,7 @@ import 'package:hrms_app/screen/leave_management_screen.dart';
 import 'package:hrms_app/screen/leave_balance_screen.dart';
 import 'package:hrms_app/screen/all_clients_screen.dart';
 import 'package:hrms_app/screen/admin_attendance_screen.dart';
+import 'package:hrms_app/screen/admin_salary_screen.dart';
 import 'package:hrms_app/screen/edit_requests_screen.dart';
 
 class SidebarMenu extends StatefulWidget {
@@ -90,17 +91,21 @@ class _SidebarMenuState extends State<SidebarMenu> {
   ];
 
   /// Get payroll sub items based on user role
-  /// Employee: "My Salary" | Admin: "Employee Salary"
+  /// Employee: Pre Payments, Increment/Promotion, Payroll, My Salary
+  /// Admin: Pre Payments, Increment/Promotion, Payroll, Salary Management
   List<Map<String, dynamic>> get _payrollSubItems {
-    return [
+    final items = [
       {"title": "Pre Payments", "icon": Icons.payment_rounded},
       {"title": "Increment/Promotion", "icon": Icons.trending_up_rounded},
       {"title": "Payroll", "icon": Icons.payments_rounded},
-      {
-        "title": _userRole == 'admin' ? "Employee Salary" : "My Salary",
-        "icon": Icons.money_rounded
-      },
     ];
+    // Add My Salary for employees, Salary Management for admin
+    if (_userRole == 'admin') {
+      items.add({"title": "Employee Salary", "icon": Icons.admin_panel_settings_rounded});
+    } else {
+      items.add({"title": "My Salary", "icon": Icons.money_rounded});
+    }
+    return items;
   }
 
   /// Get the appropriate menu items based on user role
@@ -759,8 +764,14 @@ class _SidebarMenuState extends State<SidebarMenu> {
       ).push(_createSmoothRoute(const IncrementPromotionScreen()));
     } else if (title == "Payroll") {
       Navigator.of(context).push(_createSmoothRoute(const PayrollScreen()));
-    } else if (title == "My Salary" || title == "Employee Salary") {
+    } else if (title == "My Salary") {
       Navigator.of(context).push(_createSmoothRoute(const MySalaryScreen()));
+    } else if (title == "Employee Salary") {
+      Navigator.of(context).push(
+        _createSmoothRoute(
+          AdminSalaryScreen(token: widget.token),
+        ),
+      );
     }
   }
 

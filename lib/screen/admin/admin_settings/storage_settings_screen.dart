@@ -45,7 +45,7 @@ class _AdminStorageSettingsScreenState
       final res = await SettingsService.getStorageSettings(widget.token ?? '');
       final d = res['data'];
       if (d != null) {
-        setState(() => _driver = d['storageDriver'] ?? 'cloudinary');
+        setState(() => _driver = d['storageDriver'] ?? d['provider'] ?? 'cloudinary');
         _cloudNameCtrl.text = d['cloudinaryCloudName'] ?? '';
         _cloudKeyCtrl.text = d['cloudinaryApiKey'] ?? '';
         _cloudSecretCtrl.text = d['cloudinaryApiSecret'] ?? '';

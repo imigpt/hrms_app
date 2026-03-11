@@ -522,7 +522,9 @@ class ChatMediaService {
   /// Copies file to a shareable temp directory first so external apps
   /// can access it (app-internal cache is not accessible to other apps).
   /// [fallbackUrl] is used to open in browser if no app is installed.
-  Future<void> openFile(String filePath, {String? fallbackUrl}) async {
+  /// [mimeTypeOverride] skips extension-based MIME detection; pass the
+  /// attachment's mimeType from the server (e.g. "application/pdf").
+  Future<void> openFile(String filePath, {String? fallbackUrl, String? mimeTypeOverride}) async {
     debugPrint('📂 Opening file: $filePath');
     final file = File(filePath);
 
@@ -540,10 +542,13 @@ class ChatMediaService {
     debugPrint('   📏 File size: ${formatFileSize(file.lengthSync())}');
 
     final fileName = file.path.split(Platform.pathSeparator).last;
-    final mimeType = getMimeType(fileName);
+    // Use server-supplied MIME type when available; fall back to extension sniffing.
+    final mimeType = (mimeTypeOverride != null && mimeTypeOverride.isNotEmpty)
+        ? mimeTypeOverride
+        : getMimeType(fileName);
     final ext = fileName.contains('.') ? '.${fileName.split('.').last}' : '';
     debugPrint('   📋 File name: $fileName');
-    debugPrint('   🏷️ MIME type: $mimeType');
+    debugPrint('   🏷️ MIME type: $mimeType (override: $mimeTypeOverride)');
 
     // Copy to temp directory so external apps can read it.
     // App-internal cache (getApplicationCacheDirectory) is sandboxed
@@ -578,8 +583,13 @@ class ChatMediaService {
         debugPrint('   🔄 Trying browser fallback...');
         final rawUrl = fallbackUrl ?? _tryRecoverUrl(filePath);
         if (rawUrl != null && rawUrl.isNotEmpty) {
-          // Pass local fileName so we can detect extension even for Cloudinary raw URLs
-          final viewUrl = buildBrowserViewUrl(rawUrl, fileName: fileName);
+          // Pass local fileName AND mimeType so we can detect extension
+          // even for Cloudinary raw URLs that have no extension in the path.
+          final viewUrl = buildBrowserViewUrl(
+            rawUrl,
+            fileName: fileName,
+            mimeType: mimeTypeOverride,
+          );
           debugPrint('   🌐 Browser URL: $viewUrl');
           final launched = await openUrlInBrowser(viewUrl);
           if (launched) {
@@ -610,7 +620,8 @@ class ChatMediaService {
   /// This bypasses Cloudinary 401 auth issues because Google's servers fetch the file,
   /// not the client browser (which has no Cloudinary credentials).
   /// [fileName] should be the local filename (e.g. "report.pdf") for extension detection.
-  static String buildBrowserViewUrl(String url, {String? fileName}) {
+  /// [mimeType] is used as a fallback when the extension cannot be determined from the name.
+  static String buildBrowserViewUrl(String url, {String? fileName, String? mimeType}) {
     // Detect file extension from local filename (preferred) or URL
     String ext;
     if (fileName != null && fileName.contains('.')) {
@@ -619,6 +630,22 @@ class ChatMediaService {
       final pathBeforeQuery = url.split('?').first;
       final lastSegment = pathBeforeQuery.split('/').last;
       ext = lastSegment.contains('.') ? lastSegment.split('.').last.toLowerCase() : '';
+    }
+
+    // When we still don't have an extension, derive one from the MIME type.
+    if (ext.isEmpty && mimeType != null) {
+      const mimeToExt = {
+        'application/pdf': 'pdf',
+        'application/msword': 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        'application/vnd.ms-excel': 'xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+        'application/vnd.ms-powerpoint': 'ppt',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+        'text/plain': 'txt',
+        'text/csv': 'csv',
+      };
+      ext = mimeToExt[mimeType] ?? ext;
     }
 
     // All viewable file types that Google Docs Viewer supports
@@ -634,7 +661,7 @@ class ChatMediaService {
     // Route ALL viewable files through Google Docs Viewer
     // This works around Cloudinary 401 because Google's servers fetch the URL
     if (viewerExts.contains(ext)) {
-      return 'https://docs.google.com/viewer?url=${Uri.encodeComponent(url)}&embedded=true';
+      return 'https://docs.google.com/viewer?url=${Uri.encodeComponent(url)}';
     }
 
     // Unsupported types (video, audio, etc.) — try direct URL

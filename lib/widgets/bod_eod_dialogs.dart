@@ -131,9 +131,9 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
         );
       }
     } catch (_) {
-      // Non-blocking — even on failure, close the dialog
+      // BOD task creation failed — still proceed with check-in (non-blocking)
       if (mounted) {
-        Navigator.pop(context, false);
+        Navigator.pop(context, true);
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -200,7 +200,7 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
                         ),
                       ),
                       Text(
-                        'Plan the tasks you\'ll work on today',
+                        'Add the tasks you plan to work on today. These will appear as your daily goals.',
                         style:
                             TextStyle(color: Colors.grey[500], fontSize: 12),
                       ),
@@ -209,7 +209,7 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.grey, size: 20),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(context, false),
                 ),
               ],
             ),
@@ -253,58 +253,39 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
           Padding(
             padding: EdgeInsets.fromLTRB(
                 16, 12, 16, 12 + MediaQuery.of(context).viewInsets.bottom),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey[400],
-                      side: BorderSide(color: Colors.white.withOpacity(0.15)),
-                      minimumSize: const Size.fromHeight(48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text('Skip'),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _submitting ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.amber,
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: _submitting ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
-                      foregroundColor: Colors.black,
-                      minimumSize: const Size.fromHeight(48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: _submitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.black,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.checklist_rounded, size: 18),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Start My Day (${_tasks.where((t) => t.titleCtrl.text.trim().isNotEmpty).length} task${_tasks.where((t) => t.titleCtrl.text.trim().isNotEmpty).length != 1 ? 's' : ''})',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ],
+                child: _submitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.black,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.checklist_rounded, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Start My Day (${_tasks.where((t) => t.titleCtrl.text.trim().isNotEmpty).length} task${_tasks.where((t) => t.titleCtrl.text.trim().isNotEmpty).length != 1 ? 's' : ''})',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                  ),
-                ),
-              ],
+                        ],
+                      ),
+              ),
             ),
           ),
         ],
@@ -539,7 +520,7 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
     setState(() {});
   }
 
-  Future<void> _submitAndCheckOut() async {
+  Future<void> _submitEOD() async {
     setState(() => _submitting = true);
 
     try {
@@ -860,10 +841,10 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: _submitting ? null : _submitAndCheckOut,
+                    onPressed: _submitting ? null : _submitEOD,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xFFFFB300),
+                      foregroundColor: Colors.black,
                       minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -875,15 +856,15 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: Colors.black87,
                             ),
                           )
                         : const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.logout_rounded, size: 18),
+                              Icon(Icons.nightlight_round, size: 18),
                               SizedBox(width: 6),
-                              Text('Submit & Check Out',
+                              Text('End My Day',
                                   style: TextStyle(fontWeight: FontWeight.bold)),
                             ],
                           ),

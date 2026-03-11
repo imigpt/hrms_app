@@ -203,12 +203,14 @@ class User {
   String employeeId;
   String name;
   String department;
+  String role;
 
   User({
     required this.id,
     required this.employeeId,
     required this.name,
     required this.department,
+    required this.role,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -216,6 +218,7 @@ class User {
     employeeId: json["employeeId"] ?? "",
     name: json["name"] ?? "",
     department: json["department"] ?? "",
+    role: json["role"] ?? "employee",
   );
 
   Map<String, dynamic> toJson() => {
@@ -223,5 +226,6 @@ class User {
     "employeeId": employeeId,
     "name": name,
     "department": department,
+    "role": role,
   };
 }

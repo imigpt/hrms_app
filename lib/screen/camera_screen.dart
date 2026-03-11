@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
-import '../services/attendance_service.dart';
 import '../services/face_verification_service.dart';
 import '../services/profile_service.dart';
 import '../services/token_storage_service.dart';
@@ -239,106 +238,26 @@ class _CameraScreenState extends State<CameraScreen> {
         }
         return;
       }
-      // ── Face verified — proceed with check-in ───────────────────────────
-
-      final double lat = _capturedLocation?.latitude ?? 26.816224;
-      final double lng = _capturedLocation?.longitude ?? 75.845444;
-      final String address = _capturedAddress ?? 'Main Building';
-
-      final token = await TokenStorageService().getToken();
-      if (token == null) throw Exception('No token found');
-
-      final response = await AttendanceService.checkIn(
-        token: token,
-        photoFile: File(_capturedImagePath!),
-        latitude: lat,
-        longitude: lng,
-      );
-
+      // ── Face verified — return photo + location for BOD + check-in ──────
       if (mounted) {
         setState(() => _isSubmitting = false);
         Navigator.pop(context, {
-          'attendanceData': response.data,
-          'checkInAddress': address,
-          'faceVerification': response.faceVerification,
+          'photoFile': File(_capturedImagePath!),
+          'latitude': _capturedLocation?.latitude ?? 26.816224,
+          'longitude': _capturedLocation?.longitude ?? 75.845444,
+          'address': _capturedAddress ?? 'Main Building',
         });
-      }
-    } on FaceVerificationFailedException catch (e) {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-          // Reset so the user retakes the photo
-          _capturedImagePath = null;
-          _capturedLocation = null;
-        });
-        _showFaceError(
-          title: 'Face Not Matched',
-          message: 'Your face could not be verified (match score: ${e.similarityScore}%).\n'
-              'Ensure good lighting and face the camera directly, then try again.',
-          icon: Icons.face_retouching_off,
-        );
-      }
-    } on CheckInNotAllowedException catch (e) {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-          _capturedImagePath = null;
-          _capturedLocation = null;
-        });
-        _showFaceError(
-          title: 'Check-In Not Allowed',
-          message: e.message,
-          icon: Icons.event_busy,
-          isWarning: true,
-        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
-
-        final errMsg = e.toString().replaceAll('Exception:', '').trim();
-
-        if (errMsg.toLowerCase().contains('already checked in')) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Already checked in!'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 1),
-            ),
-          );
-          await Future.delayed(const Duration(milliseconds: 300));
-          if (mounted) Navigator.pop(context, 'refresh');
-        } else if (errMsg.toLowerCase().contains('no face detected') ||
-            errMsg.toLowerCase().contains('no face')) {
-          setState(() {
-            _capturedImagePath = null;
-            _faceErrorNoFace = true;
-          });
-          _showFaceError(
-            title: 'No Face Detected',
-            message: 'We could not detect a face in your photo.\n'
-                'Please ensure your face is clearly visible and well-lit.',
-            icon: Icons.no_photography,
-          );
-        } else if (errMsg.toLowerCase().contains('profile photo not found')) {
-          _showFaceError(
-            title: 'Profile Photo Missing',
-            message:
-                'You do not have a profile photo on file.\nPlease upload a profile photo from your profile settings before checking in.',
-            icon: Icons.account_circle_outlined,
-          );
-          setState(() => _capturedImagePath = null);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Check-in failed: $errMsg',
-              ),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString().replaceAll('Exception:', '').trim()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
@@ -776,7 +695,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     )
                   : const Icon(Icons.verified_user, color: Colors.white, size: 22),
               label: Text(
-                _isSubmitting ? 'Verifying…' : 'Confirm Check-In',
+                _isSubmitting ? 'Verifying…' : 'Verify Face',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,

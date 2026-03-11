@@ -220,6 +220,7 @@ class AdminEmployeesService {
   }
 
   /// Fetch attendance records for a specific employee (admin view)
+  /// Uses /api/attendance endpoint with date range filters and filters by userId on client side
   static Future<List<dynamic>> getEmployeeAttendance(
     String token,
     String userId, {
@@ -228,28 +229,61 @@ class AdminEmployeesService {
     int limit = 100,
   }) async {
     try {
-      final params = <String, String>{
-        'userId': userId,
-        'limit': limit.toString(),
-        'sortBy': 'date',
-        'order': 'desc',
-      };
+      final params = <String, String>{};
       if (startDate != null) params['startDate'] = startDate;
       if (endDate != null) params['endDate'] = endDate;
+      
       final uri = Uri.parse(
         '$_baseUrl/attendance',
-      ).replace(queryParameters: params);
+      ).replace(queryParameters: params.isNotEmpty ? params : null);
+      
       final response = await http
           .get(uri, headers: _headers(token))
           .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data is Map && data['data'] is List) return data['data'] as List;
-        if (data is Map && data['records'] is List)
-          return data['records'] as List;
-        if (data is List) return data;
-        return [];
+        List<dynamic> allRecords = [];
+        
+        if (data is Map && data['data'] is List) {
+          allRecords = data['data'] as List;
+        } else if (data is Map && data['records'] is List) {
+          allRecords = data['records'] as List;
+        } else if (data is List) {
+          allRecords = data;
+        }
+        
+        // Filter records by userId since each record contains user info
+        final filtered = allRecords.where((record) {
+          if (record is Map && record['user'] is Map) {
+            final user = record['user'] as Map;
+            return user['_id'] == userId || user['id'] == userId;
+          }
+          return false;
+        }).toList();
+        
+        // Transform records to ensure proper field names for display
+        final transformed = filtered.map((record) {
+          if (record is Map) {
+            return {
+              ...record,
+              // Ensure date field exists
+              'date': record['date'] ?? record['createdAt'] ?? DateTime.now().toIso8601String(),
+              // Normalize check-in/check-out format
+              'checkIn': record['checkIn'] ?? record['checkin'] ?? {},
+              'checkOut': record['checkOut'] ?? record['checkout'] ?? {},
+              // Normalize work hours field
+              'workHours': record['workHours'] ?? record['hoursWorked'] ?? record['hours_worked'] ?? 0,
+              // Ensure status field exists
+              'status': record['status'] ?? 'unmarked',
+              // Notes/remarks field
+              'notes': record['notes'] ?? record['remarks'] ?? '',
+            };
+          }
+          return record;
+        }).toList();
+        
+        return transformed;
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized - Token expired or invalid');
       } else if (response.statusCode == 403) {
@@ -302,6 +336,206 @@ class AdminEmployeesService {
     } catch (e) {
       if (e is Exception) rethrow;
       throw Exception('Error fetching tasks: $e');
+    }
+  }
+
+  /// PUT /api/tasks/:id
+  /// Update task details (title, description, priority, status, progress, dueDate, etc.)
+  static Future<Map<String, dynamic>> updateTask(
+    String token,
+    String taskId, {
+    String? title,
+    String? description,
+    String? priority,
+    String? status,
+    double? progress,
+    String? dueDate,
+    String? startDate,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      if (title != null && title.isNotEmpty) body['title'] = title;
+      if (description != null && description.isNotEmpty)
+        body['description'] = description;
+      if (priority != null && priority.isNotEmpty) body['priority'] = priority;
+      if (status != null && status.isNotEmpty) body['status'] = status;
+      if (progress != null) body['progress'] = progress.clamp(0, 100);
+      if (dueDate != null && dueDate.isNotEmpty) body['dueDate'] = dueDate;
+      if (startDate != null && startDate.isNotEmpty) body['startDate'] = startDate;
+
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/tasks/$taskId'),
+            headers: _headers(token),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized');
+      } else if (response.statusCode == 404) {
+        throw Exception('Task not found');
+      } else {
+        final respBody = jsonDecode(response.body);
+        throw Exception(respBody['message'] ?? 'Failed to update task');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error updating task: $e');
+    }
+  }
+
+  /// DELETE /api/tasks/:id
+  /// Delete a task
+  static Future<void> deleteTask(String token, String taskId) async {
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('$_baseUrl/tasks/$taskId'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return;
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized');
+      } else if (response.statusCode == 404) {
+        throw Exception('Task not found');
+      } else {
+        final body = jsonDecode(response.body);
+        throw Exception(body['message'] ?? 'Failed to delete task');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error deleting task: $e');
+    }
+  }
+
+  /// GET /api/tasks/:id/comments
+  /// Fetch comments for a task
+  static Future<List<dynamic>> getTaskComments(
+    String token,
+    String taskId,
+  ) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/tasks/$taskId/comments'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is List) return data;
+        return [];
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized');
+      } else {
+        return [];
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error fetching comments: $e');
+    }
+  }
+
+  /// POST /api/tasks/:id/comments
+  /// Add a comment to a task
+  static Future<Map<String, dynamic>> addTaskComment(
+    String token,
+    String taskId,
+    String text,
+  ) async {
+    try {
+      final body = <String, dynamic>{'text': text};
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/tasks/$taskId/comments'),
+            headers: _headers(token),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized');
+      } else {
+        final respBody = jsonDecode(response.body);
+        throw Exception(respBody['message'] ?? 'Failed to add comment');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error adding comment: $e');
+    }
+  }
+
+  /// GET /api/tasks/:id/history
+  /// Fetch change history for a task
+  static Future<List<dynamic>> getTaskHistory(
+    String token,
+    String taskId,
+  ) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/tasks/$taskId/history'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data['data'] is List) return data['data'] as List;
+        if (data is List) return data;
+        return [];
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized');
+      } else {
+        return [];
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error fetching history: $e');
+    }
+  }
+
+  /// PUT /api/tasks/:id/status
+  /// Update only the task status (for workflow transitions)
+  static Future<Map<String, dynamic>> updateTaskStatus(
+    String token,
+    String taskId,
+    String newStatus, {
+    String? comment,
+  }) async {
+    try {
+      final body = <String, dynamic>{'status': newStatus};
+      if (comment != null && comment.isNotEmpty) body['comment'] = comment;
+
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/tasks/$taskId/status'),
+            headers: _headers(token),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized');
+      } else {
+        final respBody = jsonDecode(response.body);
+        throw Exception(respBody['message'] ?? 'Failed to update status');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('Error updating status: $e');
     }
   }
 }

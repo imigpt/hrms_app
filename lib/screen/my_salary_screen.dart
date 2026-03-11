@@ -12,10 +12,16 @@ class MySalaryScreen extends StatefulWidget {
 }
 
 class _MySalaryScreenState extends State<MySalaryScreen> {
+  // Theme colors
+  static const Color _bgDark = Color(0xFF050505);
+  static const Color _cardDark = Color(0xFF0A0A0A);
+  static const Color _border = Color(0xFF1A1A1A);
+  static const Color _textGrey = Color(0xFF9E9E9E);
+  static const Color _accentGreen = Color(0xFF69F0AE);
+
   String? _token;
   EmployeeSalary? _salary;
   bool _isLoading = true;
-  String _selectedFilter = 'All';
 
   @override
   void initState() {
@@ -48,13 +54,22 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF050505),
+      backgroundColor: _bgDark,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0A0A),
+        backgroundColor: _cardDark,
         elevation: 0,
-        title: const Text(
-          'My Salary',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        title: const Row(
+          children: [
+            Icon(Icons.wallet, color: _accentGreen, size: 24),
+            SizedBox(width: 12),
+            Text(
+              'My Salary',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
@@ -64,7 +79,7 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: () => _loadData(),
+              onRefresh: _loadData,
               child: _salary == null
                   ? Center(
                       child: Column(
@@ -76,10 +91,10 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
                             color: Colors.grey[700],
                           ),
                           const SizedBox(height: 16),
-                          Text(
+                          const Text(
                             'No salary records found',
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: _textGrey,
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
@@ -95,30 +110,10 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'View your salary details',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                // Filter Tabs
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: [
-                                      _buildFilterChip('All'),
-                                      _buildFilterChip('Active'),
-                                      _buildFilterChip('Inactive'),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                _buildMainSalaryCard(),
-                                const SizedBox(height: 20),
+                                _buildMainCard(),
+                                const SizedBox(height: 24),
                                 _buildComponentsSection(),
+                                const SizedBox(height: 24),
                               ],
                             ),
                           ),
@@ -129,121 +124,122 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label) {
-    bool isSelected = _selectedFilter == label;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedFilter = label),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.blue[900] : const Color(0xFF1A1A1A),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? Colors.blue : Colors.grey[800]!,
-              width: 1,
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.blue[200] : Colors.grey[400],
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMainSalaryCard() {
+  Widget _buildMainCard() {
     if (_salary == null) return const SizedBox();
 
     final salary = _salary!;
     final ctc = salary.basicSalary + salary.totalAllowances;
+    final netSalary = ctc - salary.totalDeductions;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.blue[900]?.withOpacity(0.3) ?? Colors.transparent,
-            Colors.blue[700]?.withOpacity(0.2) ?? Colors.transparent,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.withOpacity(0.2), width: 1),
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Employee Salaries',
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _currency(ctc),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSalaryInfoItem('Basic', salary.basicSalary),
-              _buildSalaryInfoItem('Total Allowance', salary.totalAllowances),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Annual Salary (CTC)',
+                      style: TextStyle(
+                        color: _textGrey,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _currency(ctc),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: salary.status == 'active'
+                      ? _accentGreen.withOpacity(0.2)
+                      : Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: salary.status == 'active'
+                        ? _accentGreen.withOpacity(0.5)
+                        : Colors.orange.withOpacity(0.5),
+                  ),
+                ),
+                child: Text(
+                  salary.status[0].toUpperCase() +
+                      salary.status.substring(1).toLowerCase(),
+                  style: TextStyle(
+                    color:
+                        salary.status == 'active' ? _accentGreen : Colors.orange,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
           ),
-          if (salary.allowances.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              'Allowances',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+          const SizedBox(height: 20),
+          const Divider(color: _border),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildSalaryInfoItem('Basic', salary.basicSalary),
               ),
+              Expanded(
+                child: _buildSalaryInfoItem(
+                    'Allowances', salary.totalAllowances),
+              ),
+              Expanded(
+                child: _buildSalaryInfoItem('Deductions', salary.totalDeductions),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _border,
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: salary.allowances.map((a) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Net Salary (Monthly)',
+                  style: TextStyle(
+                    color: _textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                ),
+                Text(
+                  _currency(netSalary / 12),
+                  style: const TextStyle(
+                    color: _accentGreen,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
-                  child: Text(
-                    '${a.name}: ${_currency(a.amount)}',
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                );
-              }).toList(),
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -256,17 +252,17 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
         Text(
           label,
           style: TextStyle(
-            color: Colors.grey[600],
+            color: _textGrey,
             fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           _currency(amount),
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 14,
+            fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -282,48 +278,65 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Salary Components',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _buildComponentCard('Basic Salary', salary.basicSalary, Colors.green),
-        if (salary.allowances.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          const Text(
-            'Allowances',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...salary.allowances.map(
-            (a) => _buildComponentCard(a.name, a.amount, Colors.blue),
-          ),
-        ],
-        if (salary.deductions.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          const Text(
-            'Deductions',
+        const Padding(
+          padding: EdgeInsets.only(left: 4.0),
+          child: Text(
+            'Salary Breakdown',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),
           ),
+        ),
+        const SizedBox(height: 16),
+        _buildComponentCard(
+          'Basic Salary',
+          salary.basicSalary,
+          _accentGreen,
+        ),
+        if (salary.allowances.isNotEmpty) ...[
           const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 4.0, bottom: 12),
+            child: Text(
+              'Allowances',
+              style: TextStyle(
+                color: _textGrey,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ...salary.allowances.map(
+            (a) => Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: _buildComponentCard(a.name, a.amount, Colors.blue),
+            ),
+          ),
+        ],
+        if (salary.deductions.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(left: 4.0, bottom: 12),
+            child: Text(
+              'Deductions',
+              style: TextStyle(
+                color: _textGrey,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           ...salary.deductions.map(
-            (d) => _buildComponentCard(
-              d.name,
-              d.amount,
-              Colors.red,
-              isDeduction: true,
+            (d) => Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: _buildComponentCard(
+                d.name,
+                d.amount,
+                Colors.red,
+                isDeduction: true,
+              ),
             ),
           ),
         ],
@@ -337,51 +350,43 @@ class _MySalaryScreenState extends State<MySalaryScreen> {
     Color color, {
     bool isDeduction = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[900]!, width: 1),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _border),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: color.withOpacity(0.3)),
-              ),
-              child: Text(
-                (isDeduction ? '- ' : '') + _currency(amount),
-                style: TextStyle(
-                  color: color,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: color.withOpacity(0.3)),
+            ),
+            child: Text(
+              (isDeduction ? '- ' : '') + _currency(amount),
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

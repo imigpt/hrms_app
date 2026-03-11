@@ -95,6 +95,38 @@ class WorkflowService {
 
   // ─── POST ENDPOINTS ────────────────────────────────────────────────────────
 
+  /// Create a new workflow template
+  /// [name] - Workflow template name
+  /// [description] - Optional workflow description
+  static Future<dynamic> createTemplate(
+    String token, {
+    required String name,
+    String? description,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'name': name,
+        if (description != null && description.isNotEmpty) 'description': description,
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/workflow-templates'),
+            headers: _getHeaders(token),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to create workflow template: $e');
+    }
+  }
+
   /// Assign a workflow template to a task
   /// [templateId] - The workflow template ID to assign
   /// [workflowName] - The name of the workflow (for reference)
@@ -161,7 +193,91 @@ class WorkflowService {
     }
   }
 
+  // ─── PUT ENDPOINTS (Update) ───────────────────────────────────────────────
+
+  /// Update an existing workflow template
+  /// [templateId] - The ID of the template to update
+  /// [name] - Updated workflow name
+  /// [description] - Updated description
+  /// [isShared] - Whether the template should be shared with team
+  /// [steps] - List of workflow steps
+  static Future<dynamic> updateTemplate(
+    String token,
+    String templateId, {
+    required String name,
+    String? description,
+    bool? isShared,
+    List<Map<String, dynamic>>? steps,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'name': name,
+        if (description != null) 'description': description,
+        if (isShared != null) 'isShared': isShared,
+        if (steps != null) 'steps': steps,
+      };
+
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/workflow-templates/$templateId'),
+            headers: _getHeaders(token),
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to update workflow template: $e');
+    }
+  }
+
+  /// Duplicate a workflow template
+  /// [templateId] - The ID of the template to duplicate
+  static Future<dynamic> duplicateTemplate(String token, String templateId) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/workflow-templates/$templateId/duplicate'),
+            headers: _getHeaders(token),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to duplicate workflow template: $e');
+    }
+  }
+
   // ─── DELETE ENDPOINTS ──────────────────────────────────────────────────────
+
+  /// Delete a workflow template
+  /// [templateId] - The ID of the template to delete
+  static Future<dynamic> deleteTemplate(String token, String templateId) async {
+    try {
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/workflow-templates/$templateId'),
+            headers: _getHeaders(token),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception(_parseError(response));
+      }
+    } catch (e) {
+      throw Exception('Failed to delete workflow template: $e');
+    }
+  }
 
   /// Remove workflow from a task
   static Future<dynamic> removeFromTask(String token, String taskId) async {

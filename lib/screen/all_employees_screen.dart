@@ -9,6 +9,7 @@ import '../models/chat_room_model.dart';
 import '../utils/responsive_utils.dart';
 import 'package:hrms_app/theme/app_theme.dart';
 import 'chat_screen.dart';
+import 'task_detail_sheet.dart';
 
 class AllEmployeesScreen extends StatefulWidget {
   final String? token;
@@ -2352,20 +2353,20 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
             ),
             actions: [
               // Chat button
-              IconButton(
-                icon: const Icon(Icons.chat_rounded, color: _pink),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatScreen(
-                        recipientId: _userId,
-                      ),
-                    ),
-                  );
-                },
-                tooltip: 'Message Employee',
-              ),
+              // IconButton(
+              //   icon: const Icon(Icons.chat_rounded, color: _pink),
+              //   onPressed: () {
+              //     Navigator.push(
+              //       context,
+              //       MaterialPageRoute(
+              //         builder: (_) => ChatScreen(
+              //           recipientId: _userId,
+              //         ),
+              //       ),
+              //     );
+              //   },
+              //   tooltip: 'Message Employee',
+              // ),
               // Edit button
               IconButton(
                 icon: const Icon(Icons.edit_rounded, color: _pink),
@@ -2839,299 +2840,454 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
     final lateCount    = records.where((r) => r['status']?.toString().toLowerCase() == 'late').length;
     final absentCount  = records.where((r) => r['status']?.toString().toLowerCase() == 'absent').length;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // ── Controls card ─────────────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: _card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Weekly / Monthly toggle
-              Row(
-                children: [
-                  _attToggleBtn('Weekly', _attendanceView == 'weekly', () {
-                    if (_attendanceView != 'weekly') {
-                      setState(() {
-                        _attendanceView = 'weekly';
-                        _attendanceLoaded = false;
-                      });
-                      _loadAttendance();
-                    }
-                  }),
-                  const SizedBox(width: 8),
-                  _attToggleBtn('Monthly', _attendanceView == 'monthly', () {
-                    if (_attendanceView != 'monthly') {
-                      setState(() {
-                        _attendanceView = 'monthly';
-                        _attendanceLoaded = false;
-                      });
-                      _loadAttendance();
-                    }
-                  }),
-                ],
-              ),
-
-              // Month / Year pickers (monthly only)
-              if (_attendanceView == 'monthly') ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    // Prev month
-                    _attNavBtn(Icons.chevron_left, () {
-                      int m = _selectedMonth - 1;
-                      int y = _selectedYear;
-                      if (m < 0) { m = 11; y--; }
-                      setState(() {
-                        _selectedMonth = m;
-                        _selectedYear = y;
-                        _attendanceLoaded = false;
-                      });
-                      _loadAttendance();
-                    }),
-                    const SizedBox(width: 8),
-                    // Month dropdown
-                    Expanded(
-                      child: _attDropdown<int>(
-                        value: _selectedMonth,
-                        items: List.generate(
-                          12,
-                          (i) => DropdownMenuItem(
-                            value: i,
-                            child: Text(
-                              monthNames[i],
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                            ),
-                          ),
-                        ),
-                        onChanged: (v) {
-                          if (v != null && v != _selectedMonth) {
-                            setState(() { _selectedMonth = v; _attendanceLoaded = false; });
-                            _loadAttendance();
-                          }
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Year dropdown
-                    _attDropdown<int>(
-                      value: _selectedYear,
-                      items: [2024, 2025, 2026, 2027].map(
-                        (y) => DropdownMenuItem(
-                          value: y,
-                          child: Text(
-                            y.toString(),
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                          ),
-                        ),
-                      ).toList(),
-                      onChanged: (v) {
-                        if (v != null && v != _selectedYear) {
-                          setState(() { _selectedYear = v; _attendanceLoaded = false; });
-                          _loadAttendance();
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    // Next month
-                    _attNavBtn(Icons.chevron_right, () {
-                      int m = _selectedMonth + 1;
-                      int y = _selectedYear;
-                      if (m > 11) { m = 0; y++; }
-                      setState(() {
-                        _selectedMonth = m;
-                        _selectedYear = y;
-                        _attendanceLoaded = false;
-                      });
-                      _loadAttendance();
-                    }),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // ── Summary row ───────────────────────────────────────────────
-        Row(
-          children: [
-            Text('Showing ', style: const TextStyle(color: _textGrey, fontSize: 12)),
-            Text(
-              '${records.length}',
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-            Text(
-              _attendanceView == 'weekly'
-                  ? ' records (Last 7 days)'
-                  : ' records (${monthNames[_selectedMonth]} $_selectedYear)',
-              style: const TextStyle(color: _textGrey, fontSize: 12),
-            ),
-            const Spacer(),
-            if (records.isNotEmpty) ...[
-              _attLegendDot(_green, 'P: $presentCount'),
-              const SizedBox(width: 10),
-              _attLegendDot(_yellow, 'L: $lateCount'),
-              const SizedBox(width: 10),
-              _attLegendDot(_red, 'A: $absentCount'),
-            ],
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // ── Table or empty state ──────────────────────────────────────
-        if (records.isEmpty)
-          _emptyView('No attendance records found', Icons.access_time_rounded, _pink)
-        else
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Controls card ─────────────────────────────────────────────
           Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: _card,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: _border),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Theme(
-                  data: Theme.of(context).copyWith(
-                    dividerColor: _border,
-                  ),
-                  child: DataTable(
-                    headingRowColor: WidgetStateProperty.all(AppTheme.surfaceVariant),
-                    dataRowColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.hovered)) return _input;
-                      return Colors.transparent;
-                    }),
-                    columnSpacing: 20,
-                    horizontalMargin: 16,
-                    headingTextStyle: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    dataTextStyle: const TextStyle(color: _textGrey, fontSize: 12),
-                    columns: const [
-                      DataColumn(label: Text('Date')),
-                      DataColumn(label: Text('Day')),
-                      DataColumn(label: Text('Status')),
-                      DataColumn(label: Text('Punch In')),
-                      DataColumn(label: Text('Punch Out')),
-                      DataColumn(label: Text('Duration')),
-                      DataColumn(label: Text('Remarks')),
-                    ],
-                    rows: records.map<DataRow>((record) {
-                      final dateRaw = record['date']?.toString() ??
-                          record['createdAt']?.toString() ?? '';
-                      final status = record['status']?.toString() ?? '-';
-                      final checkIn  = record['checkIn'];
-                      final checkOut = record['checkOut'];
-                      final punchIn  = _attExtractTime(checkIn);
-                      final punchOut = _attExtractTime(checkOut);
-                      final duration = _attFormatDuration(
-                          record['workHours'] ?? record['hoursWorked']);
-                      final remarks  = record['notes']?.toString() ?? '-';
-
-                      DateTime? dateObj;
-                      try { dateObj = DateTime.parse(dateRaw); } catch (_) {}
-                      final dayName      = dateObj != null ? DateFormat('EEE').format(dateObj)        : '-';
-                      final formattedDate = dateObj != null ? DateFormat('d MMM yyyy').format(dateObj) : '-';
-
-                      Color statusColor;
-                      switch (status.toLowerCase()) {
-                        case 'present':  statusColor = _green;    break;
-                        case 'late':     statusColor = _yellow;   break;
-                        case 'absent':   statusColor = _red;      break;
-                        case 'half-day':
-                        case 'halfday':  statusColor = _blue;     break;
-                        default:         statusColor = _textGrey;
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Weekly / Monthly toggle
+                Row(
+                  children: [
+                    _attToggleBtn('Weekly', _attendanceView == 'weekly', () {
+                      if (_attendanceView != 'weekly') {
+                        setState(() {
+                          _attendanceView = 'weekly';
+                          _attendanceLoaded = false;
+                        });
+                        _loadAttendance();
                       }
+                    }),
+                    const SizedBox(width: 8),
+                    _attToggleBtn('Monthly', _attendanceView == 'monthly', () {
+                      if (_attendanceView != 'monthly') {
+                        setState(() {
+                          _attendanceView = 'monthly';
+                          _attendanceLoaded = false;
+                        });
+                        _loadAttendance();
+                      }
+                    }),
+                  ],
+                ),
 
-                      return DataRow(cells: [
-                        DataCell(Text(formattedDate,
-                            style: const TextStyle(color: _textGrey, fontSize: 12))),
-                        DataCell(Text(dayName,
-                            style: const TextStyle(color: _textGrey, fontSize: 12))),
-                        DataCell(
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              _capitalizeFirst(status),
-                              style: TextStyle(
-                                color: statusColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                // Month / Year pickers (monthly only)
+                if (_attendanceView == 'monthly') ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      // Prev month
+                      _attNavBtn(Icons.chevron_left, () {
+                        int m = _selectedMonth - 1;
+                        int y = _selectedYear;
+                        if (m < 0) { m = 11; y--; }
+                        setState(() {
+                          _selectedMonth = m;
+                          _selectedYear = y;
+                          _attendanceLoaded = false;
+                        });
+                        _loadAttendance();
+                      }),
+                      const SizedBox(width: 8),
+                      // Month dropdown
+                      Expanded(
+                        child: _attDropdown<int>(
+                          value: _selectedMonth,
+                          items: List.generate(
+                            12,
+                            (i) => DropdownMenuItem(
+                              value: i,
+                              child: Text(
+                                monthNames[i],
+                                style: const TextStyle(color: Colors.white, fontSize: 13),
                               ),
                             ),
                           ),
+                          onChanged: (v) {
+                            if (v != null && v != _selectedMonth) {
+                              setState(() { _selectedMonth = v; _attendanceLoaded = false; });
+                              _loadAttendance();
+                            }
+                          },
                         ),
-                        DataCell(Text(punchIn,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500))),
-                        DataCell(Text(punchOut,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500))),
-                        DataCell(Text(duration,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500))),
-                        DataCell(
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 140),
+                      ),
+                      const SizedBox(width: 8),
+                      // Year dropdown
+                      _attDropdown<int>(
+                        value: _selectedYear,
+                        items: [2024, 2025, 2026, 2027].map(
+                          (y) => DropdownMenuItem(
+                            value: y,
                             child: Text(
-                              remarks,
-                              style: const TextStyle(color: _textGrey, fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
+                              y.toString(),
+                              style: const TextStyle(color: Colors.white, fontSize: 13),
                             ),
                           ),
-                        ),
-                      ]);
-                    }).toList(),
+                        ).toList(),
+                        onChanged: (v) {
+                          if (v != null && v != _selectedYear) {
+                            setState(() { _selectedYear = v; _attendanceLoaded = false; });
+                            _loadAttendance();
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      // Next month
+                      _attNavBtn(Icons.chevron_right, () {
+                        int m = _selectedMonth + 1;
+                        int y = _selectedYear;
+                        if (m > 11) { m = 0; y++; }
+                        setState(() {
+                          _selectedMonth = m;
+                          _selectedYear = y;
+                          _attendanceLoaded = false;
+                        });
+                        _loadAttendance();
+                      }),
+                    ],
                   ),
-                ),
-              ),
+                ],
+              ],
             ),
           ),
-        const SizedBox(height: 24),
-      ],
+
+          // ── Summary row ───────────────────────────────────────────────
+          if (records.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Text('Showing ', style: const TextStyle(color: _textGrey, fontSize: 12)),
+                  Text(
+                    '${records.length}',
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    _attendanceView == 'weekly'
+                        ? ' records (Last 7 days)'
+                        : ' records (${monthNames[_selectedMonth]} $_selectedYear)',
+                    style: const TextStyle(color: _textGrey, fontSize: 12),
+                  ),
+                  const Spacer(),
+                  _attLegendDot(_green, 'P: $presentCount'),
+                  const SizedBox(width: 10),
+                  _attLegendDot(_yellow, 'L: $lateCount'),
+                  const SizedBox(width: 10),
+                  _attLegendDot(_red, 'A: $absentCount'),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+
+          // ── Daily Attendance Cards ────────────────────────────────────
+          if (records.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: _emptyView('No attendance records found', Icons.access_time_rounded, _pink),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              child: Column(
+                children: records.map<Widget>((record) {
+                  final dateRaw = record['date']?.toString() ?? record['createdAt']?.toString() ?? '';
+                  final status = record['status']?.toString() ?? 'unmarked';
+                  final checkIn = record['checkIn'];
+                  final checkOut = record['checkOut'];
+                  final punchIn = _attExtractTime(checkIn);
+                  final punchOut = _attExtractTime(checkOut);
+                  final duration = _attFormatDuration(record['workHours'] ?? 0);
+                  final remarks = record['notes']?.toString() ?? '';
+
+                  DateTime? dateObj;
+                  try {
+                    dateObj = DateTime.parse(dateRaw);
+                  } catch (_) {}
+
+                  final dayName = dateObj != null ? DateFormat('EEEE').format(dateObj) : '-';
+                  final formattedDate = dateObj != null ? DateFormat('d MMM yyyy').format(dateObj) : '-';
+
+                  Color statusColor;
+                  String statusLabel;
+                  IconData statusIcon;
+
+                  switch (status.toLowerCase()) {
+                    case 'present':
+                      statusColor = _green;
+                      statusLabel = 'Present';
+                      statusIcon = Icons.check_circle;
+                      break;
+                    case 'late':
+                      statusColor = _yellow;
+                      statusLabel = 'Late';
+                      statusIcon = Icons.schedule;
+                      break;
+                    case 'absent':
+                      statusColor = _red;
+                      statusLabel = 'Absent';
+                      statusIcon = Icons.cancel;
+                      break;
+                    case 'half-day':
+                    case 'halfday':
+                      statusColor = _blue;
+                      statusLabel = 'Half Day';
+                      statusIcon = Icons.event_available;
+                      break;
+                    default:
+                      statusColor = _textGrey;
+                      statusLabel = 'Unmarked';
+                      statusIcon = Icons.help_outline;
+                  }
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: _card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Date and Status Row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    formattedDate,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  Text(
+                                    dayName,
+                                    style: const TextStyle(
+                                      color: _textGrey,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: statusColor.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(statusIcon, color: statusColor, size: 14),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    statusLabel,
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Punch In / Out Details
+                        if (punchIn != '-' || punchOut != '-')
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Check In',
+                                      style: const TextStyle(color: _textGrey, fontSize: 11),
+                                    ),
+                                    Text(
+                                      punchIn,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Check Out',
+                                      style: const TextStyle(color: _textGrey, fontSize: 11),
+                                    ),
+                                    Text(
+                                      punchOut,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Duration',
+                                      style: const TextStyle(color: _textGrey, fontSize: 11),
+                                    ),
+                                    Text(
+                                      duration,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+
+                        // Remarks
+                        if (remarks.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: _input,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Remarks',
+                                  style: const TextStyle(color: _textGrey, fontSize: 11),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  remarks,
+                                  style: const TextStyle(color: Colors.white, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
   /// Extract a formatted time string from a checkIn/checkOut field.
   /// The field may be a Map with a "time" key, or a direct ISO string.
+  /// Properly handles UTC to local timezone conversion
   String _attExtractTime(dynamic data) {
     if (data == null) return '-';
+    
     String? raw;
+    
+    // Extract time value from different data structures
     if (data is Map) {
+      // Could be { time: '...', location: {...}, photo: {...} }
       raw = data['time']?.toString();
+      if (raw == null || raw.isEmpty) return '-';
+    } else if (data is String && data.isNotEmpty) {
+      raw = data;
     } else {
-      raw = data.toString();
+      return '-';
     }
+    
     if (raw == null || raw.isEmpty) return '-';
+    
     try {
+      // Parse the ISO 8601 datetime string
       final dt = DateTime.parse(raw);
-      return DateFormat('hh:mm a').format(dt);
-    } catch (_) {
+      
+      // Convert from UTC to local timezone
+      final localDt = dt.toLocal();
+      
+      // Format as 12-hour time with AM/PM
+      return DateFormat('hh:mm a').format(localDt);
+    } catch (e) {
+      // If parsing fails, try alternative formats
+      try {
+        // Try treating as milliseconds since epoch
+        final ms = int.tryParse(raw);
+        if (ms != null) {
+          final dt = DateTime.fromMillisecondsSinceEpoch(ms).toLocal();
+          return DateFormat('hh:mm a').format(dt);
+        }
+      } catch (_) {}
+      
+      // Return raw value if all parsing fails
       return raw;
     }
   }
 
-  /// Convert decimal work hours (e.g. 9.5) to "09:30" string.
+  /// Convert decimal work hours (e.g. 9.5) to "HH:MM" string format.
+  /// Also handles time values from check-in/check-out if they're stored as durations
   String _attFormatDuration(dynamic hours) {
     if (hours == null) return '-';
-    final h = double.tryParse(hours.toString());
-    if (h == null) return '-';
-    final hrs  = h.floor();
+    
+    // Handle different input types
+    double? h;
+    
+    if (hours is int) {
+      h = hours.toDouble();
+    } else if (hours is double) {
+      h = hours;
+    } else if (hours is String) {
+      h = double.tryParse(hours);
+    } else {
+      return '-';
+    }
+    
+    if (h == null || h < 0) return '-';
+    
+    // Convert decimal hours to hours and minutes
+    final hrs = h.floor();
     final mins = ((h - hrs) * 60).round();
+    
+    // Handle case where rounding gives 60 minutes
+    if (mins >= 60) {
+      return '${(hrs + 1).toString().padLeft(2, '0')}:00';
+    }
+    
     return '${hrs.toString().padLeft(2, '0')}:${mins.toString().padLeft(2, '0')}';
   }
 
@@ -3687,7 +3843,26 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _TaskDetailSheet(task: task),
+      builder: (_) => TaskDetailSheet(
+        task: task,
+        token: widget.token,
+        onEditTask: () => _showEditTaskDialog(task),
+      ),
+    );
+  }
+
+  void _showEditTaskDialog(Map<String, dynamic> task) {
+    showDialog(
+      context: context,
+      builder: (_) => _EditTaskDialog(
+        task: task,
+        taskId: task['_id']?.toString() ?? '',
+        token: widget.token,
+        onTaskUpdated: () {
+          Navigator.pop(context);
+          _loadTasks();
+        },
+      ),
     );
   }
 
@@ -3852,524 +4027,6 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
       token: widget.token,
     );
   }
-}
-
-// ─── Task Detail Sheet ────────────────────────────────────────────────────────
-
-class _TaskDetailSheet extends StatefulWidget {
-  final Map<String, dynamic> task;
-  const _TaskDetailSheet({required this.task});
-  @override
-  State<_TaskDetailSheet> createState() => _TaskDetailSheetState();
-}
-
-class _TaskDetailSheetState extends State<_TaskDetailSheet>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  late double _progress;
-  late TextEditingController _progressController;
-  final TextEditingController _reviewController = TextEditingController();
-  final TextEditingController _commentController = TextEditingController();
-  int _selectedRating = 0;
-
-  static const _bg = Color(0xFF0D0D0D);
-  static const _card = Color(0xFF181818);
-  static const _border = Color(0xFF2A2A2A);
-  static const _textGrey = Color(0xFF9E9E9E);
-  static const _pink = Color(0xFFFF8FA3);
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _progress = ((widget.task['progress'] as num?)?.toDouble() ?? 0).clamp(0, 100);
-    _progressController = TextEditingController(text: _progress.toInt().toString());
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _progressController.dispose();
-    _reviewController.dispose();
-    _commentController.dispose();
-    super.dispose();
-  }
-
-  String _formatDate(dynamic raw) {
-    if (raw == null) return '—';
-    try {
-      final d = DateTime.parse(raw.toString()).toLocal();
-      return '${d.day}/${d.month}/${d.year}';
-    } catch (_) {
-      return raw.toString();
-    }
-  }
-
-  Color _priorityColor(String p) {
-    switch (p.toLowerCase()) {
-      case 'high': return const Color(0xFFFF5252);
-      case 'low': return const Color(0xFF69F0AE);
-      default: return const Color(0xFFFFD740);
-    }
-  }
-
-  Color _statusColor(String s) {
-    switch (s.toLowerCase()) {
-      case 'completed': return const Color(0xFF69F0AE);
-      case 'in-progress': return const Color(0xFFFF9500);
-      case 'overdue': return const Color(0xFFFF5252);
-      default: return const Color(0xFF448AFF);
-    }
-  }
-
-  String _statusLabel(String s) {
-    switch (s.toLowerCase()) {
-      case 'completed': return 'Completed';
-      case 'in-progress': return 'In Progress';
-      case 'overdue': return 'Overdue';
-      case 'todo': return 'To Do';
-      default: return s;
-    }
-  }
-
-  Widget _badge(String label, Color color) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.15),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withOpacity(0.4)),
-    ),
-    child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-  );
-
-  Widget _statBox(String value, String label, Color color) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.25)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(value, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: _textGrey, fontSize: 10), textAlign: TextAlign.center),
-        ],
-      ),
-    ),
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    final task = widget.task;
-    final title = task['title']?.toString() ?? 'Untitled';
-    final description = task['description']?.toString() ?? '';
-    final status = task['status']?.toString() ?? 'todo';
-    final priority = task['priority']?.toString() ?? 'medium';
-    final dueDate = _formatDate(task['dueDate']);
-    final startDate = _formatDate(task['startDate'] ?? task['createdAt']);
-    final subtaskCount = (task['subtasks'] as List?)?.length ?? 0;
-    final commentCount = (task['comments'] as List?)?.length ?? 0;
-    final fileCount = (task['files'] as List?)?.length ?? 0;
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.93,
-      minChildSize: 0.5,
-      maxChildSize: 0.97,
-      builder: (_, scrollController) => Container(
-        decoration: const BoxDecoration(
-          color: _bg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            // drag handle
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 6),
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: _border, borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                controller: scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Header ──────────────────────────────────────────────
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(title,
-                                style: const TextStyle(
-                                  color: Colors.white, fontSize: 18,
-                                  fontWeight: FontWeight.bold)),
-                              if (description.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(description,
-                                  style: const TextStyle(color: _textGrey, fontSize: 13),
-                                  maxLines: 2, overflow: TextOverflow.ellipsis),
-                              ],
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 6,
-                                children: [
-                                  _badge(_statusLabel(status), _statusColor(status)),
-                                  _badge(
-                                    '${priority[0].toUpperCase()}${priority.substring(1)} Priority',
-                                    _priorityColor(priority)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: _textGrey),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // ── Workflow Action ──────────────────────────────────────
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: _card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Workflow Actions',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _commentController,
-                            maxLines: 2,
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                            decoration: InputDecoration(
-                              hintText: 'Optional comment for transition...',
-                              hintStyle: const TextStyle(color: _textGrey, fontSize: 13),
-                              filled: true,
-                              fillColor: const Color(0xFF111111),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: _border),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: _border),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: _pink.withOpacity(0.6)),
-                              ),
-                              contentPadding: const EdgeInsets.all(10),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.arrow_forward, size: 16),
-                              label: const Text('Submit for Approval'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _pink,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              onPressed: () {},
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // ── Stat Boxes ───────────────────────────────────────────
-                    Row(
-                      children: [
-                        _statBox('${_progress.toInt()}%', 'Progress', _pink),
-                        const SizedBox(width: 6),
-                        _statBox('$subtaskCount', 'Subtasks', const Color(0xFF448AFF)),
-                        const SizedBox(width: 6),
-                        _statBox('$commentCount', 'Comments', const Color(0xFFFF9500)),
-                        const SizedBox(width: 6),
-                        _statBox('$fileCount', 'Files', const Color(0xFF69F0AE)),
-                        const SizedBox(width: 6),
-                        _statBox('0m', 'Time Logged', const Color(0xFFAA80FF)),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-
-                    // ── Overall Progress ─────────────────────────────────────
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: _card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Text('Overall Progress',
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                              const Spacer(),
-                              Text('${_progress.toInt()}%',
-                                style: TextStyle(color: _pink, fontWeight: FontWeight.bold, fontSize: 16)),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          SliderTheme(
-                            data: SliderTheme.of(context).copyWith(
-                              activeTrackColor: _pink,
-                              inactiveTrackColor: _border,
-                              thumbColor: _pink,
-                              overlayColor: _pink.withOpacity(0.15),
-                              trackHeight: 5,
-                            ),
-                            child: Slider(
-                              value: _progress,
-                              min: 0, max: 100,
-                              onChanged: (v) => setState(() {
-                                _progress = v;
-                                _progressController.text = v.toInt().toString();
-                              }),
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: 64,
-                                child: TextField(
-                                  controller: _progressController,
-                                  keyboardType: TextInputType.number,
-                                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    filled: true,
-                                    fillColor: const Color(0xFF111111),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                      borderSide: const BorderSide(color: _border),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                      borderSide: const BorderSide(color: _border),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                      borderSide: BorderSide(color: _pink.withOpacity(0.6)),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  ),
-                                  onSubmitted: (v) {
-                                    final parsed = double.tryParse(v);
-                                    if (parsed != null) {
-                                      setState(() { _progress = parsed.clamp(0, 100); });
-                                    }
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton(
-                                onPressed: () {},
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: _pink,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                                  textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                child: const Text('Save'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // ── Tab Bar ──────────────────────────────────────────────
-                    Container(
-                      decoration: BoxDecoration(
-                        color: _card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _border),
-                      ),
-                      child: Column(
-                        children: [
-                          TabBar(
-                            controller: _tabController,
-                            isScrollable: true,
-                            tabAlignment: TabAlignment.start,
-                            labelColor: _pink,
-                            unselectedLabelColor: _textGrey,
-                            indicatorColor: _pink,
-                            dividerColor: _border,
-                            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                            tabs: const [
-                              Tab(text: 'Details'),
-                              Tab(text: 'Subtasks'),
-                              Tab(text: 'Files'),
-                              Tab(text: 'History'),
-                            ],
-                          ),
-                          SizedBox(
-                            height: 220,
-                            child: TabBarView(
-                              controller: _tabController,
-                              children: [
-                                // Details
-                                Padding(
-                                  padding: const EdgeInsets.all(14),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _detailRow(Icons.flag_rounded, 'Priority',
-                                        _badge(
-                                          '${priority[0].toUpperCase()}${priority.substring(1)}',
-                                          _priorityColor(priority))),
-                                      const SizedBox(height: 10),
-                                      _detailRow(Icons.calendar_today_rounded, 'Due Date',
-                                        Text(dueDate,
-                                          style: const TextStyle(color: Colors.white, fontSize: 13))),
-                                      const SizedBox(height: 10),
-                                      _detailRow(Icons.play_circle_outline_rounded, 'Start Date',
-                                        Text(startDate,
-                                          style: const TextStyle(color: Colors.white, fontSize: 13))),
-                                    ],
-                                  ),
-                                ),
-                                // Subtasks
-                                const Center(
-                                  child: Text('No subtasks yet',
-                                    style: TextStyle(color: _textGrey, fontSize: 13))),
-                                // Files
-                                const Center(
-                                  child: Text('No files attached',
-                                    style: TextStyle(color: _textGrey, fontSize: 13))),
-                                // History
-                                const Center(
-                                  child: Text('No history available',
-                                    style: TextStyle(color: _textGrey, fontSize: 13))),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // ── Add Review ───────────────────────────────────────────
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: _card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Add Review',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                          const SizedBox(height: 10),
-                          // Star rating
-                          Row(
-                            children: List.generate(5, (i) => GestureDetector(
-                              onTap: () => setState(() => _selectedRating = i + 1),
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: Icon(
-                                  i < _selectedRating ? Icons.star_rounded : Icons.star_outline_rounded,
-                                  color: i < _selectedRating ? const Color(0xFFFFD740) : _textGrey,
-                                  size: 28,
-                                ),
-                              ),
-                            )),
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _reviewController,
-                            maxLines: 3,
-                            style: const TextStyle(color: Colors.white, fontSize: 13),
-                            decoration: InputDecoration(
-                              hintText: 'Write your review...',
-                              hintStyle: const TextStyle(color: _textGrey, fontSize: 13),
-                              filled: true,
-                              fillColor: const Color(0xFF111111),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: _border),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: _border),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: _pink.withOpacity(0.6)),
-                              ),
-                              contentPadding: const EdgeInsets.all(10),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _pink,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              child: const Text('Submit Review',
-                                style: TextStyle(fontWeight: FontWeight.w600)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(IconData icon, String label, Widget valueWidget) => Row(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      Icon(icon, color: _textGrey, size: 16),
-      const SizedBox(width: 8),
-      SizedBox(
-        width: 80,
-        child: Text(label,
-          style: const TextStyle(color: _textGrey, fontSize: 13)),
-      ),
-      valueWidget,
-    ],
-  );
 }
 
 // ─── Embedded Chat Tab ───────────────────────────────────────────────────────
@@ -5062,6 +4719,7 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
 
   // Form fields - pre-filled from employee data
   final _formKey = GlobalKey<FormState>();
+  late String _employeeId;
   late String _fullName;
   late String _email;
   late String _phone;
@@ -5080,6 +4738,7 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
   void initState() {
     super.initState();
     // Initialize with existing employee data
+    _employeeId = widget.employee['employeeId']?.toString() ?? '';
     _fullName = widget.employee['name']?.toString() ?? '';
     _email = widget.employee['email']?.toString() ?? '';
     _phone = widget.employee['phone']?.toString() ?? '';
@@ -5226,6 +4885,15 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
                       const SizedBox(height: 14),
                       _formCard(
                         children: [
+                          _buildTextField(
+                            label: 'Employee ID',
+                            hint: 'EMP-001',
+                            icon: Icons.badge_outlined,
+                            initialValue: _employeeId,
+                            isReadOnly: true,
+                            onChanged: (v) => _employeeId = v,
+                          ),
+                          const SizedBox(height: 16),
                           _buildTextField(
                             label: 'Full Name',
                             hint: 'John Doe',
@@ -5535,6 +5203,7 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
     String? initialValue,
     bool isEmail = false,
     bool isPassword = false,
+    bool isReadOnly = false,
     required Function(String) onChanged,
   }) {
     return Column(
@@ -5554,6 +5223,7 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
           initialValue: initialValue,
           style: const TextStyle(color: _textLight, fontSize: 14),
           obscureText: isPassword,
+          readOnly: isReadOnly,
           onChanged: onChanged,
           validator: isEmail
               ? (v) => (v?.isEmpty ?? true) || !v!.contains('@')
@@ -5860,5 +5530,536 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+}
+
+// ─── Edit Task Dialog ──────────────────────────────────────────────────────
+
+class _EditTaskDialog extends StatefulWidget {
+  final Map<String, dynamic> task;
+  final String taskId;
+  final String? token;
+  final VoidCallback onTaskUpdated;
+
+  const _EditTaskDialog({
+    required this.task,
+    required this.taskId,
+    this.token,
+    required this.onTaskUpdated,
+  });
+
+  @override
+  State<_EditTaskDialog> createState() => _EditTaskDialogState();
+}
+
+class _EditTaskDialogState extends State<_EditTaskDialog> {
+  static const Color _bg = Color(0xFF0D0D0D);
+  static const Color _card = Color(0xFF181818);
+  static const Color _border = Color(0xFF2A2A2A);
+  static const Color _pink = Color(0xFFFF8FA3);
+  static const Color _green = Color(0xFF00C853);
+  static const Color _orange = Color(0xFFFF9500);
+  static const Color _red = Color(0xFFEF5350);
+  static const Color _textGrey = Color(0xFF9E9E9E);
+
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _dueDateController;
+  late TextEditingController _startDateController;
+  
+  String _selectedPriority = 'medium';
+  String _selectedStatus = 'todo';
+  double _progress = 0;
+  bool _isSubmitting = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.task['title'] ?? '');
+    _descriptionController =
+        TextEditingController(text: widget.task['description'] ?? '');
+    _dueDateController = TextEditingController(
+      text: widget.task['dueDate'] != null
+          ? _formatDateForInput(widget.task['dueDate'])
+          : '',
+    );
+    _startDateController = TextEditingController(
+      text: widget.task['startDate'] != null
+          ? _formatDateForInput(widget.task['startDate'])
+          : '',
+    );
+    _selectedPriority = widget.task['priority']?.toString() ?? 'medium';
+    _selectedStatus = widget.task['status']?.toString() ?? 'todo';
+    _progress = ((widget.task['progress'] as num?)?.toDouble() ?? 0).clamp(0, 100);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _dueDateController.dispose();
+    _startDateController.dispose();
+    super.dispose();
+  }
+
+  String _formatDateForInput(dynamic date) {
+    if (date == null) return '';
+    try {
+      final dt = DateTime.parse(date.toString());
+      return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Future<void> _selectDate(TextEditingController controller) async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2050),
+    );
+    if (selected != null) {
+      controller.text =
+          '${selected.year}-${selected.month.toString().padLeft(2, '0')}-${selected.day.toString().padLeft(2, '0')}';
+    }
+  }
+
+  Future<void> _saveTask() async {
+    if (_titleController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Title is required')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      await AdminEmployeesService.updateTask(
+        widget.token ?? '',
+        widget.taskId,
+        title: _titleController.text,
+        description: _descriptionController.text,
+        priority: _selectedPriority,
+        status: _selectedStatus,
+        progress: _progress,
+        dueDate: _dueDateController.text,
+        startDate: _startDateController.text,
+      );
+
+      if (mounted) {
+        widget.onTaskUpdated();
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = e.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
+  }
+
+  Future<void> _deleteTask() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: _card,
+        title: const Text(
+          'Delete Task',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this task? This action cannot be undone.',
+          style: TextStyle(color: _textGrey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: _red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await AdminEmployeesService.deleteTask(
+          widget.token ?? '',
+          widget.taskId,
+        );
+        if (mounted) {
+          widget.onTaskUpdated();
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Task deleted successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: _bg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _border),
+          ),
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  const Text(
+                    'Edit Task',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: _textGrey),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Title
+              TextField(
+                controller: _titleController,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  labelStyle: const TextStyle(color: _textGrey, fontSize: 12),
+                  filled: true,
+                  fillColor: _card,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: _pink.withOpacity(0.6)),
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Description
+              TextField(
+                controller: _descriptionController,
+                maxLines: 3,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Description',
+                  labelStyle: const TextStyle(color: _textGrey, fontSize: 12),
+                  filled: true,
+                  fillColor: _card,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: _pink.withOpacity(0.6)),
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Priority & Status Row
+              Row(
+                children: [
+                  // Priority
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Priority',
+                          style: TextStyle(
+                            color: _textGrey,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: _card,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: _border),
+                          ),
+                          child: DropdownButton<String>(
+                            value: _selectedPriority,
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            dropdownColor: _card,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                            ),
+                            items: ['low', 'medium', 'high']
+                                .map((p) => DropdownMenuItem(
+                                      value: p,
+                                      child: Text(p[0].toUpperCase() + p.substring(1)),
+                                    ))
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) setState(() => _selectedPriority = v);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Status
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Status',
+                          style: TextStyle(
+                            color: _textGrey,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: _card,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: _border),
+                          ),
+                          child: DropdownButton<String>(
+                            value: _selectedStatus,
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            dropdownColor: _card,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                            ),
+                            items: ['todo', 'in-progress', 'completed', 'overdue']
+                                .map((s) => DropdownMenuItem(
+                                      value: s,
+                                      child: Text(
+                                        s.replaceAll('-', ' ')[0].toUpperCase() +
+                                            s.replaceAll('-', ' ').substring(1),
+                                      ),
+                                    ))
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) setState(() => _selectedStatus = v);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Progress
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Progress',
+                        style: TextStyle(
+                          color: _textGrey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${_progress.toInt()}%',
+                        style: const TextStyle(color: _pink, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: _pink,
+                      inactiveTrackColor: _border,
+                      thumbColor: _pink,
+                      overlayColor: _pink.withOpacity(0.15),
+                      trackHeight: 5,
+                    ),
+                    child: Slider(
+                      value: _progress,
+                      min: 0,
+                      max: 100,
+                      onChanged: (v) => setState(() => _progress = v),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              // Start Date
+              TextField(
+                controller: _startDateController,
+                readOnly: true,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Start Date',
+                  labelStyle: const TextStyle(color: _textGrey, fontSize: 12),
+                  filled: true,
+                  fillColor: _card,
+                  suffixIcon: const Icon(Icons.calendar_today, color: _textGrey, size: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _border),
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+                onTap: () => _selectDate(_startDateController),
+              ),
+              const SizedBox(height: 12),
+
+              // Due Date
+              TextField(
+                controller: _dueDateController,
+                readOnly: true,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Due Date',
+                  labelStyle: const TextStyle(color: _textGrey, fontSize: 12),
+                  filled: true,
+                  fillColor: _card,
+                  suffixIcon: const Icon(Icons.calendar_today, color: _textGrey, size: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: _border),
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+                onTap: () => _selectDate(_dueDateController),
+              ),
+              const SizedBox(height: 16),
+
+              // Error message
+              if (_errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _red.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _red.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: _red, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.delete_rounded, size: 16),
+                      label: const Text('Delete'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: _isSubmitting ? null : _deleteTask,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.save_rounded, size: 16),
+                      label: _isSubmitting ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ) : const Text('Save Changes'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _pink,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: _isSubmitting ? null : _saveTask,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
