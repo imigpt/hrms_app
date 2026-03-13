@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/admin_employees_service.dart';
 import '../services/workflow_service.dart';
+import '../services/task_service.dart';
 import '../widgets/workflow_template_manager.dart';
 import '../widgets/task_workflow_canvas.dart';
 
@@ -246,12 +247,36 @@ class _TaskDetailSheetState extends State<TaskDetailSheet>
   Future<void> _submitWorkflow() async {
     try {
       final taskId = widget.task['_id']?.toString() ?? '';
-      await AdminEmployeesService.updateTaskStatus(
+      final currentStatus = widget.task['status']?.toString() ?? 'unknown';
+      
+      print('=== Submit Workflow ===');
+      print('Task ID: $taskId');
+      print('Current Status: $currentStatus');
+      print('Token: ${widget.token?.substring(0, 20)}...');
+      print('Action: submit');
+      print('Comment: ${_commentController.text}');
+      
+      if (taskId.isEmpty) {
+        throw Exception('Task ID is empty');
+      }
+      if (widget.token == null || widget.token!.isEmpty) {
+        throw Exception('Token is missing or empty');
+      }
+      
+      // Draft status is required for submit action
+      if (currentStatus != 'draft' && currentStatus.toLowerCase() != 'draft') {
+        print('⚠️ Task is in "$currentStatus" status, but "submit" action requires "draft" status');
+      }
+      
+      await TaskService.transitionTask(
         widget.token ?? '',
         taskId,
-        'in-progress',
+        action: 'submit',
         comment: _commentController.text.isNotEmpty ? _commentController.text : null,
       );
+      
+      print('✅ Workflow submitted successfully');
+      
       if (mounted) {
         _commentController.clear();
         setState(() {});
@@ -264,11 +289,17 @@ class _TaskDetailSheetState extends State<TaskDetailSheet>
         );
       }
     } catch (e) {
+      print('❌ Error: $e');
+      print('Stack trace: ${StackTrace.current}');
+      
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text('Error: $errorMsg'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -600,45 +631,85 @@ class _TaskDetailSheetState extends State<TaskDetailSheet>
                           Text('Workflow Actions',
                             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: _getResponsiveFontSize(context, small: 12, medium: 14, large: 14))),
                           const SizedBox(height: 10),
-                          TextField(
-                            controller: _commentController,
-                            maxLines: 2,
-                            style: TextStyle(color: Colors.white, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13)),
-                            decoration: InputDecoration(
-                              hintText: 'Optional comment for transition...',
-                              hintStyle: TextStyle(color: _textGrey, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13)),
-                              filled: true,
-                              fillColor: const Color(0xFF111111),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: _border),
+                          if (widget.task['status']?.toString().toLowerCase() == 'draft') ...[
+                            TextField(
+                              controller: _commentController,
+                              maxLines: 2,
+                              style: TextStyle(color: Colors.white, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13)),
+                              decoration: InputDecoration(
+                                hintText: 'Optional comment for transition...',
+                                hintStyle: TextStyle(color: _textGrey, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13)),
+                                filled: true,
+                                fillColor: const Color(0xFF111111),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: _border),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: _border),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: _pink.withOpacity(0.6)),
+                                ),
+                                contentPadding: const EdgeInsets.all(10),
                               ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: _border),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: _pink.withOpacity(0.6)),
-                              ),
-                              contentPadding: const EdgeInsets.all(10),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.arrow_forward, size: 16),
-                              label: const Text('Submit for Approval'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _pink,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: responsivePadding * 0.8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.arrow_forward, size: 16),
+                                label: const Text('Submit for Approval'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _pink,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: responsivePadding * 0.8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: _submitWorkflow,
                               ),
-                              onPressed: _submitWorkflow,
                             ),
-                          ),
+                          ] else ...[
+                            Container(
+                              padding: EdgeInsets.all(responsivePadding * 0.7),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_rounded, color: Colors.orange.shade600, size: 20),
+                                  SizedBox(width: responsivePadding * 0.6),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Submit Not Available',
+                                          style: TextStyle(
+                                            color: Colors.orange.shade600,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: _getResponsiveFontSize(context, small: 10, medium: 11, large: 12),
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Task must be in Draft status to submit for approval. Current status: ${_statusLabel(widget.task['status']?.toString() ?? 'unknown')}',
+                                          style: TextStyle(
+                                            color: Colors.orange.shade400,
+                                            fontSize: _getResponsiveFontSize(context, small: 9, medium: 10, large: 11),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -934,78 +1005,80 @@ class _TaskDetailSheetState extends State<TaskDetailSheet>
                     ),
                     SizedBox(height: responsivePadding * 0.9),
 
-                    // ── Add Review ───────────────────────────────────────────
-                    Container(
-                      padding: EdgeInsets.all(responsivePadding),
-                      decoration: BoxDecoration(
-                        color: _card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Add Review',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: _getResponsiveFontSize(context, small: 12, medium: 14, large: 14))),
-                          SizedBox(height: responsivePadding * 0.7),
-                          // Star rating
-                          Row(
-                            children: List.generate(5, (i) => GestureDetector(
-                              onTap: () => setState(() => _selectedRating = i + 1),
-                              child: Padding(
-                                padding: EdgeInsets.only(right: responsivePadding * 0.4),
-                                child: Icon(
-                                  i < _selectedRating ? Icons.star_rounded : Icons.star_outline_rounded,
-                                  color: i < _selectedRating ? const Color(0xFFFFD740) : _textGrey,
-                                  size: isMobile ? 24 : 28,
+                    // ── Add Review (Only for Admin/HR) ───────────────────────────────────────────
+                    if (widget.userRole == 'admin' || widget.userRole == 'hr')
+                      Container(
+                        padding: EdgeInsets.all(responsivePadding),
+                        decoration: BoxDecoration(
+                          color: _card,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Add Review',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: _getResponsiveFontSize(context, small: 12, medium: 14, large: 14))),
+                            SizedBox(height: responsivePadding * 0.7),
+                            // Star rating
+                            Row(
+                              children: List.generate(5, (i) => GestureDetector(
+                                onTap: () => setState(() => _selectedRating = i + 1),
+                                child: Padding(
+                                  padding: EdgeInsets.only(right: responsivePadding * 0.4),
+                                  child: Icon(
+                                    i < _selectedRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    color: i < _selectedRating ? const Color(0xFFFFD740) : _textGrey,
+                                    size: isMobile ? 24 : 28,
+                                  ),
                                 ),
-                              ),
-                            )),
-                          ),
-                          SizedBox(height: responsivePadding * 0.7),
-                          TextField(
-                            controller: _reviewController,
-                            maxLines: isMobile ? 3 : 4,
-                            style: TextStyle(color: Colors.white, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13)),
-                            decoration: InputDecoration(
-                              hintText: 'Write your review...',
-                              hintStyle: TextStyle(color: _textGrey, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13)),
-                              filled: true,
-                              fillColor: const Color(0xFF111111),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: _border),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: _border),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: _pink.withOpacity(0.6)),
-                              ),
-                              contentPadding: const EdgeInsets.all(10),
+                              )),
                             ),
-                          ),
-                          SizedBox(height: responsivePadding * 0.7),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _submitReview,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _pink,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(vertical: responsivePadding * 0.8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            SizedBox(height: responsivePadding * 0.7),
+                            TextField(
+                              controller: _reviewController,
+                              maxLines: isMobile ? 3 : 4,
+                              style: TextStyle(color: Colors.white, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13)),
+                              decoration: InputDecoration(
+                                hintText: 'Write your review...',
+                                hintStyle: TextStyle(color: _textGrey, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13)),
+                                filled: true,
+                                fillColor: const Color(0xFF111111),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: _border),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: _border),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: _pink.withOpacity(0.6)),
+                                ),
+                                contentPadding: const EdgeInsets.all(10),
                               ),
-                              child: Text('Submit Review',
-                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13))),
                             ),
-                          ),
-                        ],
+                            SizedBox(height: responsivePadding * 0.7),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _submitReview,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _pink,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: responsivePadding * 0.8),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: Text('Submit Review',
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: _getResponsiveFontSize(context, small: 11, medium: 13, large: 13))),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    SizedBox(height: responsivePadding * 1.5),
+                    if (widget.userRole == 'admin' || widget.userRole == 'hr')
+                      SizedBox(height: responsivePadding * 1.5),
                   ],
                 ),
               ),
@@ -1423,28 +1496,28 @@ class _TaskDetailSheetState extends State<TaskDetailSheet>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Edit Task ──────────────────────────────────────────────────
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.edit_rounded, size: 16),
-                label: const Text('Edit Task'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF448AFF),
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: responsivePadding * 0.7),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  textStyle: TextStyle(
-                    fontSize: _getResponsiveFontSize(context, small: 10, medium: 12, large: 12),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(this.context);
-                  widget.onEditTask?.call();
-                },
-              ),
-            ),
-            SizedBox(height: responsivePadding * 0.9),
+            // SizedBox(
+            //   width: double.infinity,
+            //   child: ElevatedButton.icon(
+            //     icon: const Icon(Icons.edit_rounded, size: 16),
+            //     label: const Text('Edit Task'),
+            //     style: ElevatedButton.styleFrom(
+            //       backgroundColor: const Color(0xFF448AFF),
+            //       foregroundColor: Colors.white,
+            //       padding: EdgeInsets.symmetric(vertical: responsivePadding * 0.7),
+            //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            //       textStyle: TextStyle(
+            //         fontSize: _getResponsiveFontSize(context, small: 10, medium: 12, large: 12),
+            //         fontWeight: FontWeight.w600,
+            //       ),
+            //     ),
+            //     onPressed: () {
+            //       Navigator.pop(this.context);
+            //       widget.onEditTask?.call();
+            //     },
+            //   ),
+            // ),
+            // SizedBox(height: responsivePadding * 0.9),
 
             // ── Workflow Canvas (when steps exist) ─────────────────────────
             if (steps.isNotEmpty) ...[
@@ -1599,73 +1672,110 @@ class _TaskDetailSheetState extends State<TaskDetailSheet>
             ],
 
             // ── Submit Workflow ────────────────────────────────────────────
-            Container(
-              padding: EdgeInsets.all(responsivePadding * 0.7),
-              decoration: BoxDecoration(
-                color: const Color(0xFF111111),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _border),
+            if (widget.task['status']?.toString().toLowerCase() == 'draft') ...[
+              Container(
+                padding: EdgeInsets.all(responsivePadding * 0.7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111111),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Submit for Approval',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: _getResponsiveFontSize(context, small: 11, medium: 12, large: 12),
+                      ),
+                    ),
+                    SizedBox(height: responsivePadding * 0.6),
+                    TextField(
+                      controller: _commentController,
+                      maxLines: 2,
+                      style: TextStyle(color: Colors.white, fontSize: _getResponsiveFontSize(context, small: 10, medium: 12, large: 12)),
+                      decoration: InputDecoration(
+                        hintText: 'Add submission comment...',
+                        hintStyle: TextStyle(color: _textGrey, fontSize: _getResponsiveFontSize(context, small: 10, medium: 12, large: 12)),
+                        filled: true,
+                        fillColor: const Color(0xFF0D0D0D),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: const BorderSide(color: _border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: const BorderSide(color: _border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                          borderSide: BorderSide(color: _pink.withOpacity(0.6)),
+                        ),
+                        contentPadding: EdgeInsets.all(responsivePadding * 0.6),
+                      ),
+                    ),
+                    SizedBox(height: responsivePadding * 0.6),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.arrow_forward, size: 14),
+                        label: const Text('Submit for Approval'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _pink,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: responsivePadding * 0.6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          textStyle: TextStyle(fontSize: _getResponsiveFontSize(context, small: 10, medium: 12, large: 12)),
+                        ),
+                        onPressed: _submitWorkflow,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Submit Workflow',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: _getResponsiveFontSize(context, small: 11, medium: 12, large: 12),
+              SizedBox(height: responsivePadding * 0.9),
+            ] else ...[
+              Container(
+                padding: EdgeInsets.all(responsivePadding * 0.7),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_rounded, color: Colors.orange.shade600, size: 20),
+                    SizedBox(width: responsivePadding * 0.6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Submit Not Available',
+                            style: TextStyle(
+                              color: Colors.orange.shade600,
+                              fontWeight: FontWeight.w600,
+                              fontSize: _getResponsiveFontSize(context, small: 10, medium: 11, large: 12),
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Task must be in Draft status to submit for approval. Current status: ${_statusLabel(widget.task['status']?.toString() ?? 'unknown')}',
+                            style: TextStyle(
+                              color: Colors.orange.shade400,
+                              fontSize: _getResponsiveFontSize(context, small: 9, medium: 10, large: 11),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(height: responsivePadding * 0.6),
-                  TextField(
-                    controller: _commentController,
-                    maxLines: 2,
-                    style: TextStyle(color: Colors.white, fontSize: _getResponsiveFontSize(context, small: 10, medium: 12, large: 12)),
-                    decoration: InputDecoration(
-                      hintText: 'Add workflow transition comment...',
-                      hintStyle: TextStyle(color: _textGrey, fontSize: _getResponsiveFontSize(context, small: 10, medium: 12, large: 12)),
-                      filled: true,
-                      fillColor: const Color(0xFF0D0D0D),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: const BorderSide(color: _border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: const BorderSide(color: _border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: BorderSide(color: _pink.withOpacity(0.6)),
-                      ),
-                      contentPadding: EdgeInsets.all(responsivePadding * 0.6),
-                    ),
-                  ),
-                  SizedBox(height: responsivePadding * 0.6),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.arrow_forward, size: 14),
-                      label: const Text('Submit for Approval'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _pink,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: responsivePadding * 0.6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                        textStyle: TextStyle(fontSize: _getResponsiveFontSize(context, small: 10, medium: 12, large: 12)),
-                      ),
-                      onPressed: () {
-                        ScaffoldMessenger.of(this.context).showSnackBar(
-                          const SnackBar(content: Text('Workflow submitted'), duration: Duration(seconds: 2)),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            SizedBox(height: responsivePadding * 0.9),
+              SizedBox(height: responsivePadding * 0.9),
+            ],
 
             // ── Current Status ─────────────────────────────────────────────
             Container(

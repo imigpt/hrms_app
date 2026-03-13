@@ -245,8 +245,16 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                 ),
                 _buildStatItem(
                   'Half Day',
-                  '${_records.where((r) => r.status.toLowerCase() == 'halfday' || r.status.toLowerCase() == 'half_day' || r.status.toLowerCase() == 'half day').length}',
+                  '${_records.where((r) {
+                    final status = r.status.toLowerCase();
+                    return status == 'halfday' || status == 'half_day' || status == 'half day' || status == 'half-day';
+                  }).length}',
                   Colors.amber,
+                ),
+                _buildStatItem(
+                  'Leave',
+                  '${_records.where((r) => r.status.toLowerCase() == 'leave').length}',
+                  Colors.purple,
                 ),
               ],
             ),

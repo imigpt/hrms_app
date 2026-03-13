@@ -30,7 +30,7 @@ enum AttendanceStatus { present, absent, late, halfDay, leave }
 class AttendanceScreen extends StatefulWidget {
   final String? initialAction;
 
-  const AttendanceScreen({super.key, this.initialAction});
+  const AttendanceScreen({super.key, this.initialAction, String? token});
 
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();

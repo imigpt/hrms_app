@@ -7,10 +7,17 @@ import '../models/profile_model.dart';
 class ProfileService {
   static String get _baseUrl => ApiConfig.baseUrl;
 
-  Future<ProfileUser?> fetchProfile(String token) async {
-    final url = Uri.parse('$_baseUrl/employees/profile');
+  /// Fetch profile for any user role (Employee, HR, Admin, Client)
+  /// Uses /auth/me for all roles - works for any authenticated user
+  Future<ProfileUser?> fetchProfile(String token, {String role = 'employee'}) async {
+    // /auth/me works for all authenticated users and returns their own profile
+    final url = Uri.parse('$_baseUrl/auth/me');
 
     try {
+      print('📡 ProfileService.fetchProfile: Role=$role');
+      print('  URL: $url');
+      print('  Token: ${token.substring(0, 20)}...');
+      
       final response = await http
           .get(
             url,
@@ -24,19 +31,43 @@ class ProfileService {
             onTimeout: () => throw Exception('Profile request timed out'),
           );
 
+      print('  Status: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
+        print('  ✅ Response received, parsing JSON...');
         final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-        // /employees/profile returns { success, data: {...} }
-        final userJson =
-            (decoded['data'] ?? decoded['user']) as Map<String, dynamic>?;
-        if (userJson == null) return null;
-        return ProfileUser.fromJson(userJson);
+        print('  Decoded keys: ${decoded.keys.toList()}');
+        
+        // /auth/me returns { success, user: {...}, data?: {...} }
+        final userJson = (decoded['user'] ?? decoded['data']) as Map<String, dynamic>?;
+        
+        if (userJson == null) {
+          print('  ⚠️ No user data found in response');
+          print('  Full response: $decoded');
+          return null;
+        }
+        
+        print('  User data keys: ${userJson.keys.toList()}');
+        final user = ProfileUser.fromJson(userJson);
+        print('  ✅ Profile loaded: ${user.name} (${user.role})');
+        print('    Email: ${user.email}');
+        print('    Department: ${user.department}');
+        print('    Phone: ${user.phone}');
+        return user;
+      } else if (response.statusCode == 401) {
+        print('  ❌ 401 Unauthorized - Invalid or expired token');
+        print('  Response: ${response.body}');
+        return null;
+      } else if (response.statusCode == 403) {
+        print('  ❌ 403 Forbidden - Access denied');
+        print('  Response: ${response.body}');
+        return null;
       } else {
-        print('Profile Error: ${response.body}');
+        print('  ❌ Error ${response.statusCode}: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Profile Error: $e');
+      print('  ❌ Exception: $e');
       return null;
     }
   }

@@ -120,6 +120,7 @@ class TaskService {
     String? startDate,
     int? estimatedTime,
     String? projectId,
+    String? status,
     List<String>? tags,
   }) async {
     try {
@@ -129,6 +130,7 @@ class TaskService {
         'priority': priority,
         'dueDate': dueDate,
         'assignedTo': assignedTo,
+        'status': status ?? 'draft',
         if (startDate != null) 'startDate': startDate,
         if (estimatedTime != null) 'estimatedTime': estimatedTime,
         if (projectId != null) 'projectId': projectId,
@@ -713,7 +715,7 @@ class TaskService {
   }
 
   /// Transition a task's workflow status
-  /// POST /api/tasks/:id/transition
+  /// PUT /api/tasks/:id/transition
   static Future<dynamic> transitionTask(
     String token,
     String taskId, {
@@ -726,7 +728,7 @@ class TaskService {
         if (comment != null && comment.isNotEmpty) 'comment': comment,
       };
       final response = await http
-          .post(
+          .put(
             Uri.parse('$baseUrl/tasks/$taskId/transition'),
             headers: _getHeaders(token),
             body: jsonEncode(body),

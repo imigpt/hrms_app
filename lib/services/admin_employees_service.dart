@@ -14,10 +14,13 @@ class AdminEmployeesService {
     'Authorization': 'Bearer $token',
   };
 
-  /// GET /api/admin/employees
+  /// GET /api/admin/employees or /api/hr/employees based on role
+  /// Admin → /api/admin/employees (all employees across companies)
+  /// HR → /api/hr/employees (employees in their company)
   /// Optional filters: company (ID), department (string), status (active|inactive|on-leave)
   static Future<Map<String, dynamic>> getAllEmployees(
     String token, {
+    String role = 'admin',
     String? company,
     String? department,
     String? status,
@@ -30,18 +33,37 @@ class AdminEmployeesService {
         queryParams['department'] = department;
       if (status != null && status.isNotEmpty) queryParams['status'] = status;
 
-      final uri = Uri.parse(
-        '$_baseUrl/admin/employees',
-      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      // Use role-based endpoint selection
+      final endpoint = (role.toLowerCase() == 'admin')
+          ? '/admin/employees'
+          : '/hr/employees';
+
+      final uri = Uri.parse('$_baseUrl$endpoint')
+          .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      print('📋 AdminEmployeesService.getAllEmployees: Role=$role, Endpoint=$endpoint');
 
       final response = await http
           .get(uri, headers: _headers(token))
           .timeout(const Duration(seconds: 30));
 
+      print('  Status: ${response.statusCode}');
+
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final result = jsonDecode(response.body) as Map<String, dynamic>;
+        final count = (result['data'] as List?)?.length ?? 0;
+        print('  ✅ Loaded $count employees');
+        return result;
       } else if (response.statusCode == 401) {
+        print('  ❌ 401 Unauthorized - Invalid or expired token');
         throw Exception('Unauthorized: Invalid or expired token');
+      } else if (response.statusCode == 403) {
+        print('  ❌ 403 Forbidden - ${response.body}');
+        final body = jsonDecode(response.body);
+        throw Exception(
+          body['message'] ??
+              'Access denied: Your role ($role) is not authorized for this endpoint',
+        );
       } else {
         final body = jsonDecode(response.body);
         throw Exception(

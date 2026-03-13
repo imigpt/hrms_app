@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hrms_app/services/settings_service.dart';
 import 'package:hrms_app/theme/app_theme.dart';
 import 'shared.dart';
@@ -19,6 +20,11 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   String _leaveStartMonth = 'January';
   final _clockInCtrl = TextEditingController(text: '09:30');
   final _clockOutCtrl = TextEditingController(text: '18:00');
+  late TextEditingController _earlyClockInCtrl;
+  late TextEditingController _allowClockOutTillCtrl;
+  late TextEditingController _lateMarkAfterCtrl;
+  late TextEditingController _halfDayHoursCtrl;
+  late TextEditingController _workingDaysPerWeekCtrl;
   int _earlyClockIn = 0;
   int _allowClockOutTill = 0;
   int _lateMarkAfter = 30;
@@ -57,6 +63,11 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _earlyClockInCtrl = TextEditingController(text: '0');
+    _allowClockOutTillCtrl = TextEditingController(text: '0');
+    _lateMarkAfterCtrl = TextEditingController(text: '30');
+    _halfDayHoursCtrl = TextEditingController(text: '4');
+    _workingDaysPerWeekCtrl = TextEditingController(text: '5');
     _load();
   }
 
@@ -73,10 +84,15 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
           _earlyClockIn = (d['earlyClockInMinutes'] ?? 0) as int;
           _allowClockOutTill = (d['allowClockOutTillMinutes'] ?? 0) as int;
           _lateMarkAfter = (d['lateMarkAfterMinutes'] ?? 30) as int;
+          _earlyClockInCtrl.text = _earlyClockIn.toString();
+          _allowClockOutTillCtrl.text = _allowClockOutTill.toString();
+          _lateMarkAfterCtrl.text = _lateMarkAfter.toString();
           _selfClocking = d['selfClocking'] ?? true;
           _captureLocation = d['captureLocation'] ?? false;
           _halfDayHours = (d['halfDayHours'] ?? 4) as int;
           _workingDaysPerWeek = (d['workingDaysPerWeek'] ?? 5) as int;
+          _halfDayHoursCtrl.text = _halfDayHours.toString();
+          _workingDaysPerWeekCtrl.text = _workingDaysPerWeek.toString();
           _weeklyOffDays = List<String>.from(d['weeklyOffDays'] ?? ['sunday']);
           _allowedIPs = List<String>.from(d['allowedIPs'] ?? []);
         });
@@ -114,25 +130,56 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   void dispose() {
     _clockInCtrl.dispose();
     _clockOutCtrl.dispose();
+    _earlyClockInCtrl.dispose();
+    _allowClockOutTillCtrl.dispose();
+    _lateMarkAfterCtrl.dispose();
+    _halfDayHoursCtrl.dispose();
+    _workingDaysPerWeekCtrl.dispose();
     super.dispose();
   }
 
-  Widget _numInput(String label, int value, ValueChanged<int> onChanged) {
-    final ctrl = TextEditingController(text: value.toString());
+  Widget _numInput(
+    String label,
+    TextEditingController controller,
+    ValueChanged<int> onChanged, {
+    String hint = '0',
+    String? description,
+    int? maxDigits,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AdminSectionLabel(label, topPad: false),
+        if (description != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            description,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 11,
+            ),
+          ),
+        ],
         const SizedBox(height: 6),
         TextFormField(
-          controller: ctrl,
+          controller: controller,
           keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            if (maxDigits != null) LengthLimitingTextInputFormatter(maxDigits),
+          ],
           onChanged: (v) {
             final parsed = int.tryParse(v);
-            if (parsed != null) onChanged(parsed);
+            if (parsed != null) {
+              onChanged(parsed);
+            } else if (v.isEmpty) {
+              onChanged(0);
+            }
           },
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
             filled: true,
             fillColor: AppTheme.surfaceVariant,
             border: OutlineInputBorder(
@@ -147,6 +194,8 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
+            suffixText: 'min',
+            suffixStyle: TextStyle(color: Colors.grey[600], fontSize: 12),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 14,
@@ -263,21 +312,26 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
             const SizedBox(height: 14),
             AdminRow2(
               left: _numInput(
-                'Early Clock In (min)',
-                _earlyClockIn,
+                'Early Clock In',
+                _earlyClockInCtrl,
                 (v) => setState(() => _earlyClockIn = v),
+                description: 'Allow early check-in before scheduled time',
+                maxDigits: 2,
               ),
               right: _numInput(
-                'Allow Clock Out Till (min)',
-                _allowClockOutTill,
+                'Allow Clock Out Till',
+                _allowClockOutTillCtrl,
                 (v) => setState(() => _allowClockOutTill = v),
+                description: 'Allow check-out after scheduled time',
+                maxDigits: 2,
               ),
             ),
             const SizedBox(height: 14),
             _numInput(
-              'Late Mark After (min)',
-              _lateMarkAfter,
+              'Late Mark After',
+              _lateMarkAfterCtrl,
               (v) => setState(() => _lateMarkAfter = v),
+              description: 'Mark attendance as late if check-in is after this time',
             ),
             const SizedBox(height: 14),
             AdminRow2(
@@ -308,12 +362,12 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
             AdminRow2(
               left: _numInput(
                 'Half Day Hours',
-                _halfDayHours,
+                _halfDayHoursCtrl,
                 (v) => setState(() => _halfDayHours = v),
               ),
               right: _numInput(
                 'Working Days / Week',
-                _workingDaysPerWeek,
+                _workingDaysPerWeekCtrl,
                 (v) => setState(() => _workingDaysPerWeek = v.clamp(1, 7)),
               ),
             ),

@@ -300,7 +300,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               //     ),
               //   ),
               // ),
-              if (!isMobile && !_isAdmin)
+              if (!isMobile && widget.role?.toLowerCase() != 'admin')
                 ElevatedButton.icon(
                   onPressed: () => _handleCreateExpense(context),
                   icon: const Icon(Icons.add, size: 18),
@@ -376,7 +376,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
             ),
 
-            if (isMobile && !_isAdmin) ...[
+            if (isMobile && widget.role?.toLowerCase() != 'admin') ...[
               const SizedBox(width: 10),
               IconButton(
                 onPressed: () => _handleCreateExpense(context),
@@ -764,7 +764,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
       await ExpenseService.submitExpense(
         token: _token!,
-        category: _selectedCategory!.toLowerCase(),
+        category: _selectedCategory!,
         amount: amount,
         currency: _selectedCurrency,
         date: _selectedDate!,
@@ -948,9 +948,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     color: Colors.grey,
                   ),
                   style: const TextStyle(color: Colors.white),
-                  items: ["Travel", "Meals", "Equipment", "Training", "Other"]
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
+                  items: const [
+                    DropdownMenuItem(value: "travel", child: Text("Travel")),
+                    DropdownMenuItem(value: "food", child: Text("Food & Meals")),
+                    DropdownMenuItem(value: "office-supplies", child: Text("Office Supplies")),
+                    DropdownMenuItem(value: "software", child: Text("Software")),
+                    DropdownMenuItem(value: "training", child: Text("Training")),
+                    DropdownMenuItem(value: "other", child: Text("Other")),
+                  ],
                   onChanged: (val) {
                     setState(() => _selectedCategory = val);
                     setDialogState(() => _selectedCategory = val);
@@ -1343,8 +1348,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     _amountController.text = expense.amount.toString();
     _descController.text = expense.description;
     _dateController.text = DateFormat('MMM d, y').format(expense.date);
-    _selectedCategory =
-        expense.category[0].toUpperCase() + expense.category.substring(1);
+    _selectedCategory = expense.category; // Use category as-is from backend
     _selectedCurrency = expense.currency;
     _selectedDate = expense.date;
     _selectedReceiptFile = null; // Cannot pre-fill file
@@ -1502,7 +1506,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       await ExpenseService.updateExpense(
         token: _token!,
         expenseId: expenseId,
-        category: _selectedCategory!.toLowerCase(),
+        category: _selectedCategory!,
         amount: amount,
         currency: _selectedCurrency,
         date: _selectedDate!,

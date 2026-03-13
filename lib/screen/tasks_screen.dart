@@ -4691,6 +4691,19 @@ class _TasksScreenState extends State<TasksScreen> {
                               _miniChip('Overdue', Colors.redAccent),
                             ],
                             const Spacer(),
+                            // Edit icon
+                            GestureDetector(
+                              onTap: () => _showEditTaskDialog(task),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.edit_outlined,
+                                  color: _accentPink,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             // Eye icon to show TaskDetailSheet
                             GestureDetector(
                               onTap: () => _showTaskDetail(task),
@@ -4699,23 +4712,6 @@ class _TasksScreenState extends State<TasksScreen> {
                                 child: Icon(
                                   Icons.visibility_outlined,
                                   color: _textGrey.withValues(alpha: 0.6),
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Review star: filled (gold) if reviewed, outline if not
-                            GestureDetector(
-                              onTap: () => _showAdminReviewDialog(task),
-                              child: Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: Icon(
-                                  task['review'] != null
-                                      ? Icons.star_rounded
-                                      : Icons.star_outline_rounded,
-                                  color: task['review'] != null
-                                      ? Colors.amber
-                                      : _textGrey.withValues(alpha: 0.5),
                                   size: 20,
                                 ),
                               ),
@@ -5273,15 +5269,15 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.edit_outlined,
-                      color: _accentPink,
-                      size: 20,
-                    ),
-                    tooltip: 'Edit',
-                    onPressed: () => Navigator.pop(sheetCtx, 'edit'),
-                  ),
+                  // IconButton(
+                  //   icon: Icon(
+                  //     Icons.edit_outlined,
+                  //     color: _accentPink,
+                  //     size: 20,
+                  //   ),
+                  //   tooltip: 'Edit',
+                  //   onPressed: () => Navigator.pop(sheetCtx, 'edit'),
+                  // ),
                   IconButton(
                     icon: Icon(
                       task['review'] != null
@@ -5843,7 +5839,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                             DropdownMenuItem<String?>(
                                               value: null,
                                               child: Text(
-                                                'â€” No workflow â€”',
+                                                'No workflow',
                                                 style: TextStyle(
                                                   color: _textGrey,
                                                   fontSize: 13,

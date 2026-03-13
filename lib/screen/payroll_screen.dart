@@ -551,326 +551,407 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
     return RefreshIndicator(
       onRefresh: () => _fetchPayrolls(_token ?? ''),
-      child: CustomScrollView(
-        slivers: [
-          // Statistics
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: _buildStatisticsCards(),
-            ),
-          ),
-          // Filters & Generate Button
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Column(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Statistics Cards
+            _buildStatisticsCards(),
+            const SizedBox(height: 16),
+
+            // Info Alert Banner
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.08),
+                border: Border.all(color: Colors.blue.withOpacity(0.25)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
                 children: [
-                  // Info Alert Banner
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.08),
-                      border: Border.all(color: Colors.blue.withOpacity(0.25)),
-                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.blue.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Icon(Icons.info, color: Colors.blue, size: 16),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'If you want to generate payroll for an employee then first setup basic salary for that employee.',
-                            style: TextStyle(
-                              color: Colors.blue[300],
-                              fontSize: isMobile ? 12 : 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: const Icon(Icons.info, color: Colors.blue, size: 16),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'If you want to generate payroll for an employee then first setup basic salary for that employee.',
+                      style: TextStyle(
+                        color: Colors.blue[300],
+                        fontSize: isMobile ? 12 : 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  // Filters - Responsive Layout
-                  if (isMobile)
-                    // Mobile: Vertical stack with horizontal scroll
-                    Column(
-                      children: [
-                        // Row 1: Employee, Year, Month
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 140,
-                                child: _buildFilterDropdown(
-                                  label: 'Employee',
-                                  value: _filterUserId,
-                                  items: [
-                                    DropdownMenuItem(
-                                      value: 'all',
-                                      child: const Text('All Employees'),
-                                    ),
-                                    ..._employees.map(
-                                      (e) => DropdownMenuItem(
-                                        value: e['_id']?.toString() ?? '',
-                                        child: Text(
-                                          (e['name']?.toString() ?? '')
-                                              .split(' ')
-                                              .first,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  onChanged: (v) {
-                                    setState(() => _filterUserId = v ?? 'all');
-                                    _applyFilters();
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              SizedBox(
-                                width: 100,
-                                child: _buildFilterDropdown(
-                                  label: 'Year',
-                                  value: _filterYear,
-                                  items: [
-                                    DropdownMenuItem(
-                                      value: 'all',
-                                      child: const Text('All Years'),
-                                    ),
-                                    ...List.generate(5, (i) {
-                                      final year = DateTime.now().year - i;
-                                      return DropdownMenuItem(
-                                        value: year.toString(),
-                                        child: Text(year.toString()),
-                                      );
-                                    }),
-                                  ],
-                                  onChanged: (v) {
-                                    setState(
-                                      () => _filterYear =
-                                          v ?? DateTime.now().year.toString(),
-                                    );
-                                    _applyFilters();
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              SizedBox(
-                                width: 110,
-                                child: _buildFilterDropdown(
-                                  label: 'Month',
-                                  value: _filterMonth,
-                                  items: [
-                                    DropdownMenuItem(
-                                      value: 'all',
-                                      child: const Text('All Months'),
-                                    ),
-                                    ...List.generate(
-                                      12,
-                                      (i) => DropdownMenuItem(
-                                        value: (i + 1).toString(),
-                                        child: Text(monthNamesShort[i]),
-                                      ),
-                                    ),
-                                  ],
-                                  onChanged: (v) {
-                                    setState(() => _filterMonth = v ?? 'all');
-                                    _applyFilters();
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        // Row 2: Action buttons
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: _applyFilters,
-                                icon: const Icon(Icons.filter_list, size: 14),
-                                label: const Text('Filter'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue.withOpacity(0.15),
-                                  foregroundColor: const Color(0xFF64B5F6),
-                                  side: BorderSide(
-                                    color: Colors.blue.withOpacity(0.3),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: _showGeneratePayrollDialog,
-                                icon: const Icon(Icons.add, size: 14),
-                                label: const Text('Generate'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.withOpacity(0.15),
-                                  foregroundColor: const Color(0xFF81C784),
-                                  side: BorderSide(
-                                    color: Colors.green.withOpacity(0.3),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Main Table Card
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF111111),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Card Header: title + filters + buttons
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: isMobile
+                        ? _buildTableCardHeaderMobile()
+                        : _buildTableCardHeaderDesktop(),
+                  ),
+                  Divider(color: Colors.white.withOpacity(0.06), height: 1),
+
+                  // Column Headers
+                  _buildTableColumnHeaders(isMobile),
+                  Divider(color: Colors.white.withOpacity(0.04), height: 1),
+
+                  // Table Rows
+                  if (_isLoadingPayrolls)
+                    Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: _loader(),
                     )
+                  else if (_filteredPayrolls.isEmpty)
+                    _emptyState('No payrolls found')
                   else
-                    // Desktop: Horizontal layout
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          // Employee Filter
-                          SizedBox(
-                            width: 160,
-                            child: _buildFilterDropdown(
-                              label: 'Employee',
-                              value: _filterUserId,
-                              items: [
-                                DropdownMenuItem(
-                                  value: 'all',
-                                  child: const Text('All Employees'),
-                                ),
-                                ..._employees.map(
-                                  (e) => DropdownMenuItem(
-                                    value: e['_id']?.toString() ?? '',
-                                    child: Text(e['name']?.toString() ?? ''),
-                                  ),
-                                ),
-                              ],
-                              onChanged: (v) {
-                                setState(() => _filterUserId = v ?? 'all');
-                                _applyFilters();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          // Year Filter
-                          SizedBox(
-                            width: 120,
-                            child: _buildFilterDropdown(
-                              label: 'Year',
-                              value: _filterYear,
-                              items: [
-                                DropdownMenuItem(
-                                  value: 'all',
-                                  child: const Text('All Years'),
-                                ),
-                                ...List.generate(5, (i) {
-                                  final year = DateTime.now().year - i;
-                                  return DropdownMenuItem(
-                                    value: year.toString(),
-                                    child: Text(year.toString()),
-                                  );
-                                }),
-                              ],
-                              onChanged: (v) {
-                                setState(
-                                  () => _filterYear =
-                                      v ?? DateTime.now().year.toString(),
-                                );
-                                _applyFilters();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          // Month Filter
-                          SizedBox(
-                            width: 130,
-                            child: _buildFilterDropdown(
-                              label: 'Month',
-                              value: _filterMonth,
-                              items: [
-                                DropdownMenuItem(
-                                  value: 'all',
-                                  child: const Text('All Months'),
-                                ),
-                                ...List.generate(
-                                  12,
-                                  (i) => DropdownMenuItem(
-                                    value: (i + 1).toString(),
-                                    child: Text(monthNames[i]),
-                                  ),
-                                ),
-                              ],
-                              onChanged: (v) {
-                                setState(() => _filterMonth = v ?? 'all');
-                                _applyFilters();
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          // Filter Button
-                          ElevatedButton.icon(
-                            onPressed: _applyFilters,
-                            icon: const Icon(Icons.filter_list, size: 16),
-                            label: const Text('Filter'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.withOpacity(0.15),
-                              foregroundColor: const Color(0xFF64B5F6),
-                              side: BorderSide(
-                                color: Colors.blue.withOpacity(0.3),
+                    Column(
+                      children: _filteredPayrolls.map((p) {
+                        final isLast = p == _filteredPayrolls.last;
+                        return Column(
+                          children: [
+                            _buildPayrollTableRow(p, isMobile: isMobile),
+                            if (!isLast)
+                              Divider(
+                                color: Colors.white.withOpacity(0.04),
+                                height: 1,
                               ),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          // Generate Payroll Button
-                          ElevatedButton.icon(
-                            onPressed: _showGeneratePayrollDialog,
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text('Generate'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.withOpacity(0.15),
-                              foregroundColor: const Color(0xFF81C784),
-                              side: BorderSide(
-                                color: Colors.green.withOpacity(0.3),
-                              ),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        );
+                      }).toList(),
                     ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableCardHeaderDesktop() {
+    return Row(
+      children: [
+        // Title block
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _primary.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.credit_card_rounded, color: _primary, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Payroll',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  'View your payroll history',
+                  style: TextStyle(color: _textGrey, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const Spacer(),
+        // Filters row
+        SizedBox(
+          width: 100,
+          child: _buildFilterDropdown(
+            label: 'Year',
+            value: _filterYear,
+            items: [
+              const DropdownMenuItem(value: 'all', child: Text('All Years')),
+              ...List.generate(5, (i) {
+                final year = DateTime.now().year - i;
+                return DropdownMenuItem(
+                  value: year.toString(),
+                  child: Text(year.toString()),
+                );
+              }),
+            ],
+            onChanged: (v) {
+              setState(() => _filterYear = v ?? DateTime.now().year.toString());
+              _applyFilters();
+            },
           ),
-          // Payroll Table
-          _isLoadingPayrolls
-              ? SliverFillRemaining(child: _loader())
-              : _filteredPayrolls.isEmpty
-                  ? SliverFillRemaining(
-                      child: _emptyState('No payrolls found'))
-                  : SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (ctx, i) =>
-                            _buildPayrollTableRow(_filteredPayrolls[i]),
-                        childCount: _filteredPayrolls.length,
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 120,
+          child: _buildFilterDropdown(
+            label: 'Month',
+            value: _filterMonth,
+            items: [
+              const DropdownMenuItem(value: 'all', child: Text('All Months')),
+              ...List.generate(
+                12,
+                (i) => DropdownMenuItem(
+                  value: (i + 1).toString(),
+                  child: Text(monthNames[i]),
+                ),
+              ),
+            ],
+            onChanged: (v) {
+              setState(() => _filterMonth = v ?? 'all');
+              _applyFilters();
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 130,
+          child: _buildFilterDropdown(
+            label: 'Employee',
+            value: _filterUserId,
+            items: [
+              const DropdownMenuItem(value: 'all', child: Text('All Employees')),
+              ..._employees.map(
+                (e) => DropdownMenuItem(
+                  value: e['_id']?.toString() ?? '',
+                  child: Text(
+                    e['name']?.toString() ?? '',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+            onChanged: (v) {
+              setState(() => _filterUserId = v ?? 'all');
+              _applyFilters();
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton.icon(
+          onPressed: _applyFilters,
+          icon: const Icon(Icons.filter_list, size: 14),
+          label: const Text('Filter'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue.withOpacity(0.15),
+            foregroundColor: const Color(0xFF64B5F6),
+            side: BorderSide(color: Colors.blue.withOpacity(0.3)),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton.icon(
+          onPressed: _showGeneratePayrollDialog,
+          icon: const Icon(Icons.add, size: 14),
+          label: const Text('Generate Payroll'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green.withOpacity(0.15),
+            foregroundColor: const Color(0xFF81C784),
+            side: BorderSide(color: Colors.green.withOpacity(0.3)),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTableCardHeaderMobile() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title block
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _primary.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.credit_card_rounded, color: _primary, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Payroll',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  'View your payroll history',
+                  style: TextStyle(color: _textGrey, fontSize: 12),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Filters row (scrollable)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 90,
+                child: _buildFilterDropdown(
+                  label: 'Year',
+                  value: _filterYear,
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('All')),
+                    ...List.generate(5, (i) {
+                      final year = DateTime.now().year - i;
+                      return DropdownMenuItem(
+                        value: year.toString(),
+                        child: Text(year.toString()),
+                      );
+                    }),
+                  ],
+                  onChanged: (v) {
+                    setState(() => _filterYear = v ?? DateTime.now().year.toString());
+                    _applyFilters();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 110,
+                child: _buildFilterDropdown(
+                  label: 'Month',
+                  value: _filterMonth,
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('All Months')),
+                    ...List.generate(
+                      12,
+                      (i) => DropdownMenuItem(
+                        value: (i + 1).toString(),
+                        child: Text(monthNamesShort[i]),
                       ),
                     ),
-        ],
-      ),
+                  ],
+                  onChanged: (v) {
+                    setState(() => _filterMonth = v ?? 'all');
+                    _applyFilters();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 120,
+                child: _buildFilterDropdown(
+                  label: 'Employee',
+                  value: _filterUserId,
+                  items: [
+                    const DropdownMenuItem(value: 'all', child: Text('All')),
+                    ..._employees.map(
+                      (e) => DropdownMenuItem(
+                        value: e['_id']?.toString() ?? '',
+                        child: Text(
+                          (e['name']?.toString() ?? '').split(' ').first,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    setState(() => _filterUserId = v ?? 'all');
+                    _applyFilters();
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _applyFilters,
+                icon: const Icon(Icons.filter_list, size: 13),
+                label: const Text('Filter'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.withOpacity(0.15),
+                  foregroundColor: const Color(0xFF64B5F6),
+                  side: BorderSide(color: Colors.blue.withOpacity(0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _showGeneratePayrollDialog,
+                icon: const Icon(Icons.add, size: 13),
+                label: const Text('Generate'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.withOpacity(0.15),
+                  foregroundColor: const Color(0xFF81C784),
+                  side: BorderSide(color: Colors.green.withOpacity(0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTableColumnHeaders(bool isMobile) {
+    const headerStyle = TextStyle(
+      color: Color(0xFF9E9E9E),
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: isMobile
+          ? Row(
+              children: [
+                const Expanded(flex: 3, child: Text('User', style: headerStyle)),
+                const Expanded(flex: 2, child: Text('Net Salary', style: headerStyle)),
+                const Expanded(flex: 2, child: Text('Status', style: headerStyle)),
+                const SizedBox(width: 64, child: Text('Action', style: headerStyle)),
+              ],
+            )
+          : Row(
+              children: [
+                const Expanded(flex: 3, child: Text('User', style: headerStyle)),
+                const Expanded(flex: 2, child: Text('Net Salary', style: headerStyle)),
+                const Expanded(flex: 2, child: Text('Month', style: headerStyle)),
+                const Expanded(flex: 2, child: Text('Payment Date', style: headerStyle)),
+                const Expanded(flex: 2, child: Text('Status', style: headerStyle)),
+                const SizedBox(width: 100, child: Text('Action', style: headerStyle)),
+              ],
+            ),
     );
   }
 
@@ -1197,226 +1278,261 @@ class _PayrollScreenState extends State<PayrollScreen> {
     );
   }
 
-  Widget _buildPayrollTableRow(Payroll payroll) {
-    final responsive = ResponsiveUtils(context);
-    final isMobile = responsive.screenWidth < 600;
+  Widget _buildPayrollTableRow(Payroll payroll, {bool isMobile = false}) {
+    final statusColor = _payrollStatusColor(payroll.status);
+    final paymentDateStr = payroll.paymentDate != null
+        ? DateFormat('dd MMM yyyy').format(payroll.paymentDate!)
+        : '—';
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        border: Border.all(color: Colors.grey.withOpacity(0.15)),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row: Avatar, Name, Department, Status
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Avatar
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _payrollStatusColor(payroll.status).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    (payroll.userName ?? 'U').characters.first.toUpperCase(),
-                    style: TextStyle(
-                      color: _payrollStatusColor(payroll.status),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+    return InkWell(
+      onTap: () => _showPayslipDetail(payroll),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: isMobile
+            ? Row(
+                children: [
+                  // User col
+                  Expanded(
+                    flex: 3,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              (payroll.userName ?? 'U').characters.first.toUpperCase(),
+                              style: TextStyle(
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                payroll.userName ?? payroll.userId ?? 'Unknown',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (payroll.userDepartment != null)
+                                Text(
+                                  payroll.userDepartment!,
+                                  style: TextStyle(color: _textGrey, fontSize: 11),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // User Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      payroll.userName ?? payroll.userId ?? 'Unknown User',
+                  // Net Salary col
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      _currency(payroll.netSalary),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    Text(
-                      '${_monthName(payroll.month)} ${payroll.year}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Status Badge
-              _statusBadge(payroll.status, _payrollStatusColor(payroll.status)),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-          Divider(color: Colors.grey[800], thickness: 0.5),
-          const SizedBox(height: 12),
-
-          // Salary & Payment Info Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Net Salary',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _currency(payroll.netSalary ?? 0),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (!isMobile && responsive.screenWidth > 500)
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Payment Date',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                  ),
+                  // Status col
+                  Expanded(
+                    flex: 2,
+                    child: _statusBadge(payroll.status, statusColor),
+                  ),
+                  // Action col
+                  SizedBox(
+                    width: 64,
+                    child: Row(
+                      children: [
+                        _tableIconButton(
+                          icon: Icons.visibility_outlined,
+                          color: Colors.blue,
+                          tooltip: 'View',
+                          onTap: () => _showPayslipDetail(payroll),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_rounded,
-                            size: 13,
-                            color: payroll.paymentDate != null
-                                ? Colors.green
-                                : Colors.orange,
+                        const SizedBox(width: 4),
+                        _tableIconButton(
+                          icon: Icons.download_outlined,
+                          color: Colors.purple,
+                          tooltip: 'Download',
+                          onTap: () => _downloadPayslip(payroll),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  // User col
+                  Expanded(
+                    flex: 3,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            payroll.paymentDate != null
-                                ? DateFormat('MMM d, y').format(
-                                    payroll.paymentDate is String
-                                        ? DateTime.parse(
-                                            payroll.paymentDate as String)
-                                        : payroll.paymentDate as DateTime,
-                                  )
-                                : 'Pending',
-                            style: TextStyle(
-                              color: payroll.paymentDate != null
-                                  ? Colors.green
-                                  : Colors.orange,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                          child: Center(
+                            child: Text(
+                              (payroll.userName ?? 'U').characters.first.toUpperCase(),
+                              style: TextStyle(
+                                color: statusColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                payroll.userName ?? payroll.userId ?? 'Unknown',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (payroll.userDepartment != null)
+                                Text(
+                                  payroll.userDepartment!,
+                                  style: TextStyle(color: _textGrey, fontSize: 11),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Net Salary col
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      _currency(payroll.netSalary),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Action Buttons - Responsive Layout
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              // View Button
-              SizedBox(
-                width: isMobile ? (ResponsiveUtils(context).screenWidth - 40) / 2 - 3 : null,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showPayslipDetail(payroll),
-                  icon: const Icon(Icons.visibility, size: 14),
-                  label: const Text('View'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.withOpacity(0.15),
-                    foregroundColor: Colors.blue,
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              ),
-              // Download Button
-              SizedBox(
-                width: isMobile ? (ResponsiveUtils(context).screenWidth - 40) / 2 - 3 : null,
-                child: ElevatedButton.icon(
-                  onPressed: () => _downloadPayslip(payroll),
-                  icon: const Icon(Icons.download, size: 14),
-                  label: const Text('Download'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple.withOpacity(0.15),
-                    foregroundColor: Colors.purple,
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              ),
-              // Mark Paid Button (if generated and admin)
-              if (_isAdmin && payroll.status == 'generated')
-                SizedBox(
-                  width: isMobile ? (ResponsiveUtils(context).screenWidth - 40) / 2 - 3 : null,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _markPayrollAsPaid(payroll),
-                    icon: const Icon(Icons.check_circle, size: 14),
-                    label: const Text('Mark Paid'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.withOpacity(0.15),
-                      foregroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
-                ),
-              // Delete Button (if admin)
-              if (_isAdmin)
-                SizedBox(
-                  width: isMobile ? (ResponsiveUtils(context).screenWidth - 40) / 2 - 3 : null,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _deletePayroll(payroll.id ?? ''),
-                    icon: const Icon(Icons.delete, size: 14),
-                    label: const Text('Delete'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.withOpacity(0.15),
-                      foregroundColor: Colors.red,
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  // Month col
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      '${_monthNameFull(payroll.month)} ${payroll.year}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                   ),
-                ),
-            ],
+                  // Payment Date col
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      paymentDateStr,
+                      style: TextStyle(
+                        color: payroll.paymentDate != null
+                            ? Colors.white70
+                            : _textGrey,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  // Status col
+                  Expanded(
+                    flex: 2,
+                    child: _statusBadge(payroll.status, statusColor),
+                  ),
+                  // Action col
+                  SizedBox(
+                    width: 100,
+                    child: Row(
+                      children: [
+                        _tableIconButton(
+                          icon: Icons.visibility_outlined,
+                          color: Colors.blue,
+                          tooltip: 'View',
+                          onTap: () => _showPayslipDetail(payroll),
+                        ),
+                        const SizedBox(width: 4),
+                        _tableIconButton(
+                          icon: Icons.download_outlined,
+                          color: Colors.purple,
+                          tooltip: 'Download',
+                          onTap: () => _downloadPayslip(payroll),
+                        ),
+                        if (_isAdmin && payroll.status == 'generated') ...[
+                          const SizedBox(width: 4),
+                          _tableIconButton(
+                            icon: Icons.check_circle_outline,
+                            color: Colors.green,
+                            tooltip: 'Mark Paid',
+                            onTap: () => _markPayrollAsPaid(payroll),
+                          ),
+                        ],
+                        if (_isAdmin) ...[
+                          const SizedBox(width: 4),
+                          _tableIconButton(
+                            icon: Icons.delete_outline,
+                            color: Colors.red,
+                            tooltip: 'Delete',
+                            onTap: () => _deletePayroll(payroll.id),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _tableIconButton({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
           ),
-        ],
+          child: Icon(icon, size: 15, color: color),
+        ),
       ),
     );
   }

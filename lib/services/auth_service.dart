@@ -141,7 +141,7 @@ class AuthService {
   }
 
   // ── Admin: Get dashboard stats ─────────────────────────────────────────────
-  /// Calls `GET /api/admin/dashboard`. Returns the `data.stats` map.
+  /// Calls `GET /api/admin/dashboard`. Returns full data including stats, systemHealth, alerts.
   Future<Map<String, dynamic>> getAdminDashboardStats(String token) async {
     final url = Uri.parse('$_baseUrl/admin/dashboard');
     try {
@@ -151,7 +151,7 @@ class AuthService {
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         final data = body['data'] as Map<String, dynamic>? ?? {};
-        return data['stats'] as Map<String, dynamic>? ?? {};
+        return data; // Returns full data with stats, systemHealth, alerts
       }
       throw Exception(_errorMessage(response, 'Failed to fetch admin stats'));
     } on Exception {

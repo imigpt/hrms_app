@@ -30,6 +30,7 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.user, this.token});
 
   bool get isAdmin => (user?.role.toLowerCase() == 'admin');
+  bool get isHR => (user?.role.toLowerCase() == 'hr');
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -97,6 +98,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     //   color: Color(0xFF64748B),
     //   route: 'about',
     // ),
+  ];
+
+  static const List<_SettingsItem> _hrItems = [
+    _SettingsItem(
+      section: 'Account',
+      title: 'User Credentials',
+      subtitle: 'Manage employee logins and reset passwords',
+      icon: Icons.people_rounded,
+      color: Color(0xFF8B5CF6),
+      route: 'settings_user_credentials',
+    ),
   ];
 
   static const List<_SettingsItem> _adminItems = [
@@ -208,6 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   List<_SettingsItem> get _allItems => [
     if (widget.isAdmin) ..._adminItems,
+    if (widget.isHR) ..._hrItems,
     ..._baseItems,
   ];
 

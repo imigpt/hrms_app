@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../theme/app_theme.dart';
 import '../models/chat_room_model.dart';
 import '../services/chat_service.dart';
@@ -214,7 +215,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
         actions: [
-          if (_userRole == 'admin')
+          if (_userRole == 'admin' || _userRole == 'hr')
             IconButton(
               icon: const Icon(Icons.group_add, color: Colors.white, size: 22),
               onPressed: _showCreateGroupDialog,
@@ -3118,11 +3119,22 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
       await Future.delayed(const Duration(milliseconds: 150));
       if (mounted) setState(() {_isDownloading = false; _isOpening = true;});
 
-      await _media.openFile(
-        cachedPath,
-        fallbackUrl: url,
-        mimeTypeOverride: widget.attachment.mimeType,
-      );
+      // Check if file is PDF
+      final fileName = widget.attachment.name ?? 'Document';
+      final isPdf = fileName.toLowerCase().endsWith('.pdf') || 
+                    widget.attachment.mimeType?.contains('pdf') == true;
+      
+      if (isPdf && mounted) {
+        // Open PDF in app using Syncfusion viewer
+        _showPdfViewer(cachedPath, fileName);
+      } else {
+        // For non-PDF files, try opening with external app
+        await _media.openFile(
+          cachedPath,
+          fallbackUrl: url,
+          mimeTypeOverride: widget.attachment.mimeType,
+        );
+      }
       if (mounted) setState(() => _isOpening = false);
     } catch (e) {
       debugPrint('Document open error: $e');
@@ -3133,7 +3145,47 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
     }
   }
 
+  /// Show PDF in full-screen Syncfusion viewer
+  void _showPdfViewer(String filePath, String fileName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog.fullscreen(
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(
+              fileName,
+              overflow: TextOverflow.ellipsis,
+            ),
+            backgroundColor: AppTheme.primaryColor,
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ),
+          body: SfPdfViewer.file(
+            File(filePath),
+            enableDocumentLinkAnnotation: true,
+            enableTextSelection: true,
+            interactionMode: PdfInteractionMode.selection,
+            onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+              debugPrint('PDF load failed: ${details.error}');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Failed to load PDF: ${details.error}')),
+                );
+              }
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showDownloadFailedSheet(String url, String error, {String? fileName}) {
+    // Determine the specific error type
+    final isBrowserError = error.contains('Browser') || error.contains('browser');
+    final isNoAppError = error.contains('No app found') || error.contains('no app');
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1C1C1E),
@@ -3171,21 +3223,40 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Download failed. You can open it in your browser instead.',
+                isNoAppError 
+                  ? 'No PDF reader app installed. Try opening in browser.'
+                  : isBrowserError
+                  ? 'Browser launch failed. Try downloading directly.'
+                  : 'Download or open failed. Try again or use browser.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey[400], fontSize: 13),
               ),
+              const SizedBox(height: 6),
+              Text(
+                'Error: ${error.length > 80 ? error.substring(0, 80) + "..." : error}',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
               const SizedBox(height: 20),
+              // Option 1: Open in Browser
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    _media.openUrlInBrowser(ChatMediaService.buildBrowserViewUrl(
+                    final browserUrl = ChatMediaService.buildBrowserViewUrl(
                       url,
                       fileName: fileName,
                       mimeType: widget.attachment.mimeType,
-                    ));
+                    );
+                    debugPrint('🌐 Opening browser: $browserUrl');
+                    _media.openUrlInBrowser(browserUrl);
                   },
                   icon: const Icon(Icons.open_in_browser, size: 18),
                   label: const Text('Open in Browser'),
@@ -3200,17 +3271,41 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
                 ),
               ),
               const SizedBox(height: 10),
+              // Option 2: Retry Download
               SizedBox(
                 width: double.infinity,
-                child: TextButton(
+                child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
                     _downloadAndOpen(); // retry
                   },
-                  child: Text(
-                    'Retry Download',
-                    style: TextStyle(color: Colors.grey[400]),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Retry Download'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[800],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Option 3: Copy URL (advanced option)
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: url));
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('URL copied to clipboard')),
+                    );
+                  },
+                  icon: const Icon(Icons.copy, size: 16),
+                  label: const Text('Copy URL'),
+                  style: TextButton.styleFrom(foregroundColor: Colors.grey[400]),
                 ),
               ),
             ],
@@ -3969,6 +4064,7 @@ class _CreateGroupDialog extends StatefulWidget {
 
 class _CreateGroupDialogState extends State<_CreateGroupDialog> {
   final TextEditingController _nameCtrl = TextEditingController();
+  final TextEditingController _descriptionCtrl = TextEditingController();
   final TextEditingController _searchCtrl = TextEditingController();
   List<ChatUser> _allUsers = [];
   List<ChatUser> _filtered = [];
@@ -3986,6 +4082,7 @@ class _CreateGroupDialogState extends State<_CreateGroupDialog> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _descriptionCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -4048,6 +4145,7 @@ class _CreateGroupDialogState extends State<_CreateGroupDialog> {
       await ChatService.createGroup(
         token: widget.token,
         name: name,
+        description: _descriptionCtrl.text.trim(),
         memberIds: _selectedMemberIds.toList(),
       );
       if (!mounted) return;
@@ -4119,6 +4217,43 @@ class _CreateGroupDialogState extends State<_CreateGroupDialog> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Group description input (optional)
+                TextField(
+                  controller: _descriptionCtrl,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'Description (optional)',
+                    hintStyle: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFF2C2C2E),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: Colors.grey[700] ?? const Color(0xFF3C3C3E),
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 2,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 12,

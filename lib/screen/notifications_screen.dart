@@ -191,6 +191,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     ('payroll', 'Payroll'),
   ];
 
+  // Tabs shown for client users (limited)
+  static const _clientTabs = [
+    ('all', 'All'),
+    ('unread', 'Unread'),
+    ('chat', 'Chat'),
+  ];
+
   String get _storageKey => 'notif_read_ids_${_userId ?? ''}';
 
   Future<Set<String>> _getReadIds() async {
@@ -531,42 +538,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   List<_AppNotif> get _filtered {
+    // When user is a client, restrict baseline notifications to chat only
+    final baseline = _role == 'client' ? _all.where((n) => n.type == 'chat').toList() : _all;
+
     switch (_selectedTab) {
       case 'unread':
-        return _all.where((n) => !n.read).toList();
+        return baseline.where((n) => !n.read).toList();
       case 'announcement':
-        return _all.where((n) => n.type == 'announcement').toList();
+        return baseline.where((n) => n.type == 'announcement').toList();
       case 'chat':
-        return _all.where((n) => n.type == 'chat').toList();
+        return baseline.where((n) => n.type == 'chat').toList();
       case 'leave':
-        final leaveNotifs = _all
+        final leaveNotifs = baseline
             .where((n) => n.type == 'leave' || n.type.startsWith('leave_'))
             .toList();
-        print('DEBUG [Filter Leave]: Total _all: ${_all.length}, Filtered leave notifs: ${leaveNotifs.length}');
-        for (final n in leaveNotifs) {
-          print('  - Leave notif: type=${n.type}, title=${n.title}, read=${n.read}');
-        }
         return leaveNotifs;
       case 'expense':
-        return _all
+        return baseline
             .where((n) => n.type == 'expense' || n.type.startsWith('expense_'))
             .toList();
       case 'attendance':
-        return _all
+        return baseline
             .where(
               (n) => n.type == 'attendance' || n.type.startsWith('attendance_'),
             )
             .toList();
       case 'task':
-        return _all
+        return baseline
             .where(
               (n) => n.type.startsWith('task_') || n.type == 'task_assigned',
             )
             .toList();
       case 'payroll':
-        return _all.where((n) => n.type == 'payroll').toList();
+        return baseline.where((n) => n.type == 'payroll').toList();
       default:
-        return _all;
+        return baseline;
     }
   }
 
@@ -673,6 +679,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Role-aware tabs list (compute once at build-time)
+    final tabs = _role == 'client' ? _clientTabs : _tabs;
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -783,7 +791,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   horizontal: _horizontalPadding,
                   vertical: 12,
                 ),
-                children: [
+                children: <Widget>[
                   // Role + source badge
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -867,24 +875,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     _unread,
                                     const Color(0xFF4ADE80),
                                   ),
-                                  _statCard(
-                                    Icons.check_circle_outline,
-                                    'Approvals',
-                                    _approvals,
-                                    Colors.tealAccent,
-                                  ),
-                                  _statCard(
-                                    Icons.cancel_outlined,
-                                    'Rejections',
-                                    _rejections,
-                                    Colors.redAccent,
-                                  ),
-                                  _statCard(
-                                    Icons.assignment_outlined,
-                                    'Tasks',
-                                    _tasks,
-                                    const Color(0xFFFB923C),
-                                  ),
+                                  if (_role != 'client') ...[
+                                    _statCard(
+                                      Icons.check_circle_outline,
+                                      'Approvals',
+                                      _approvals,
+                                      Colors.tealAccent,
+                                    ),
+                                    _statCard(
+                                      Icons.cancel_outlined,
+                                      'Rejections',
+                                      _rejections,
+                                      Colors.redAccent,
+                                    ),
+                                    _statCard(
+                                      Icons.assignment_outlined,
+                                      'Tasks',
+                                      _tasks,
+                                      const Color(0xFFFB923C),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ]
@@ -902,27 +912,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 _unread,
                                 const Color(0xFF4ADE80),
                               ),
-                              const SizedBox(width: 10),
-                              _statCard(
-                                Icons.check_circle_outline,
-                                'Approvals',
-                                _approvals,
-                                Colors.tealAccent,
-                              ),
-                              const SizedBox(width: 10),
-                              _statCard(
-                                Icons.cancel_outlined,
-                                'Rejections',
-                                _rejections,
-                                Colors.redAccent,
-                              ),
-                              const SizedBox(width: 10),
-                              _statCard(
-                                Icons.assignment_outlined,
-                                'Tasks',
-                                _tasks,
-                                const Color(0xFFFB923C),
-                              ),
+                              if (_role != 'client') ...[
+                                const SizedBox(width: 10),
+                                _statCard(
+                                  Icons.check_circle_outline,
+                                  'Approvals',
+                                  _approvals,
+                                  Colors.tealAccent,
+                                ),
+                                const SizedBox(width: 10),
+                                _statCard(
+                                  Icons.cancel_outlined,
+                                  'Rejections',
+                                  _rejections,
+                                  Colors.redAccent,
+                                ),
+                                const SizedBox(width: 10),
+                                _statCard(
+                                  Icons.assignment_outlined,
+                                  'Tasks',
+                                  _tasks,
+                                  const Color(0xFFFB923C),
+                                ),
+                              ],
                             ],
                     ),
                   ),
@@ -933,10 +945,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     height: 36,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: _tabs.length,
+                      itemCount: tabs.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (_, i) {
-                        final (key, label) = _tabs[i];
+                        final (key, label) = tabs[i];
                         final sel = key == _selectedTab;
                         return GestureDetector(
                           onTap: () => setState(() => _selectedTab = key),

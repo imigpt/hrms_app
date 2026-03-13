@@ -4,6 +4,7 @@ import '../services/payroll_service.dart';
 import '../services/admin_employees_service.dart';
 import '../services/token_storage_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/responsive_utils.dart';
 
 class AdminSalaryScreen extends StatefulWidget {
   final String? token;
@@ -154,166 +155,417 @@ class _AdminSalaryScreenState extends State<AdminSalaryScreen> {
   }
 
   void _showSalaryDialog() {
+    final responsive = ResponsiveUtils(context);
+    final isMobile = responsive.isMobile;
+    final dialogWidth = isMobile ? double.infinity : 500.0;
+    final dialogPadding = isMobile ? 16.0 : 24.0;
+
     showDialog(
       context: context,
+      barrierColor: Colors.black.withOpacity(0.7),
       builder: (ctx) => Dialog(
-        backgroundColor: AppTheme.cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _isEditMode ? 'Edit Salary' : 'Add New Salary',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFF9E9E9E)),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ],
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 12 : 40,
+          vertical: 24,
+        ),
+        child: Container(
+          constraints: BoxConstraints(maxWidth: dialogWidth),
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppTheme.outline,
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(dialogPadding),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: AppTheme.outline,
+                      width: 1,
+                    ),
                   ),
-                  const SizedBox(height: 24),
-                  // Form Fields
-                  Column(
-                    children: [
-                      // Employee Selection (only for create)
-                      if (!_isEditMode) ...[
-                        _buildFormLabel('Employee *'),
-                        const SizedBox(height: 8),
-                        _buildDropdownField(
-                          value: _selectedEmployee.isEmpty ? null : _selectedEmployee,
-                          items: _employees
-                              .map<DropdownMenuItem<String>>((e) => DropdownMenuItem(
-                                    value: e['_id']?.toString() ?? e['id']?.toString() ?? '',
-                                    child: Text(
-                                      e['name']?.toString() ?? 'Unknown',
-                                      style: const TextStyle(color: Color(0xFFE0E0E0)),
-                                    ),
-                                  ))
-                              .toList(),
-                          onChanged: (val) =>
-                              setState(() => _selectedEmployee = val ?? ''),
-                          hint: 'Select Employee',
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                      // Basic Salary
-                      _buildFormLabel('Basic Salary *'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _basicSalaryCtrl,
-                        hintText: '50000',
-                        keyboardType: TextInputType.number,
-                      ),
-                      const SizedBox(height: 20),
-                      // Effective From
-                      _buildFormLabel('Effective From'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _effectiveDateCtrl,
-                        hintText: 'YYYY-MM-DD',
-                        keyboardType: TextInputType.datetime,
-                      ),
-                      const SizedBox(height: 20),
-                      // Status
-                      _buildFormLabel('Status'),
-                      const SizedBox(height: 8),
-                      _buildDropdownField(
-                        value: _selectedStatus,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'active',
-                            child: Text('Active', style: TextStyle(color: Color(0xFFE0E0E0))),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _isEditMode ? 'Edit Salary' : 'Add New Salary',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.onSurface,
+                            ),
                           ),
-                          DropdownMenuItem(
-                            value: 'inactive',
-                            child: Text('Inactive', style: TextStyle(color: Color(0xFFE0E0E0))),
+                          const SizedBox(height: 4),
+                          Text(
+                            _isEditMode
+                                ? 'Update salary details'
+                                : 'Create a new salary record',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.onSurface.withOpacity(0.6),
+                            ),
                           ),
                         ],
-                        onChanged: (val) =>
-                            setState(() => _selectedStatus = val ?? 'active'),
                       ),
-                      const SizedBox(height: 20),
-                      // Notes
-                      _buildFormLabel('Notes'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _notesCtrl,
-                        hintText: 'Add any notes...',
-                        maxLines: 3,
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: AppTheme.onSurface,
+                        size: 24,
                       ),
-                    ],
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              // Content
+              SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.all(dialogPadding),
+                  child: isMobile
+                      ? _buildMobileSalaryForm()
+                      : _buildDesktopSalaryForm(),
+                ),
+              ),
+              // Actions
+              Container(
+                padding: EdgeInsets.all(dialogPadding),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: AppTheme.outline,
+                      width: 1,
+                    ),
                   ),
-                  const SizedBox(height: 28),
-                  // Action Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF2A2A2A)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
+                ),
+                child: isMobile
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _submitForm();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              _isEditMode ? 'Update' : 'Create',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                          child: const Text(
-                            'Cancel',
-                            style: TextStyle(
-                              color: Color(0xFF9E9E9E),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(height: 8),
+                          OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: AppTheme.outline,
+                                width: 1,
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: AppTheme.onSurface.withOpacity(0.6),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: AppTheme.outline,
+                                  width: 1,
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: AppTheme.onSurface.withOpacity(0.6),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _submitForm();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryColor,
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                _isEditMode ? 'Update' : 'Create',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(ctx);
-                            _submitForm();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF8FA3),
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: Text(
-                            _isEditMode ? 'Update' : 'Create',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileSalaryForm() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Employee Selection (only for create)
+        if (!_isEditMode) ...[
+          _buildFormLabel('Employee *'),
+          const SizedBox(height: 8),
+          _buildDropdownField(
+            value: _selectedEmployee.isEmpty ? null : _selectedEmployee,
+            items: _employees
+                .map<DropdownMenuItem<String>>((e) => DropdownMenuItem(
+                      value: e['_id']?.toString() ?? e['id']?.toString() ?? '',
+                      child: Text(
+                        e['name']?.toString() ?? 'Unknown',
+                        style: const TextStyle(color: AppTheme.onSurface),
                       ),
-                    ],
+                    ))
+                .toList(),
+            onChanged: (val) =>
+                setState(() => _selectedEmployee = val ?? ''),
+            hint: 'Select Employee',
+          ),
+          const SizedBox(height: 16),
+        ],
+        // Basic Salary
+        _buildFormLabel('Basic Salary *'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _basicSalaryCtrl,
+          hintText: '50000',
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 16),
+        // Effective From
+        _buildFormLabel('Effective From'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _effectiveDateCtrl,
+          hintText: 'YYYY-MM-DD',
+          keyboardType: TextInputType.datetime,
+        ),
+        const SizedBox(height: 16),
+        // Status
+        _buildFormLabel('Status'),
+        const SizedBox(height: 8),
+        _buildDropdownField(
+          value: _selectedStatus,
+          items: const [
+            DropdownMenuItem(
+              value: 'active',
+              child: Text('Active', style: TextStyle(color: AppTheme.onSurface)),
+            ),
+            DropdownMenuItem(
+              value: 'inactive',
+              child: Text('Inactive', style: TextStyle(color: AppTheme.onSurface)),
+            ),
+          ],
+          onChanged: (val) =>
+              setState(() => _selectedStatus = val ?? 'active'),
+        ),
+        const SizedBox(height: 16),
+        // Notes
+        _buildFormLabel('Notes'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _notesCtrl,
+          hintText: 'Add any notes...',
+          maxLines: 3,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopSalaryForm() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Employee & Basic Salary Row
+        if (!_isEditMode)
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFormLabel('Employee *'),
+                    const SizedBox(height: 8),
+                    _buildDropdownField(
+                      value: _selectedEmployee.isEmpty ? null : _selectedEmployee,
+                      items: _employees
+                          .map<DropdownMenuItem<String>>((e) => DropdownMenuItem(
+                                value: e['_id']?.toString() ?? e['id']?.toString() ?? '',
+                                child: Text(
+                                  e['name']?.toString() ?? 'Unknown',
+                                  style: const TextStyle(color: AppTheme.onSurface),
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (val) =>
+                          setState(() => _selectedEmployee = val ?? ''),
+                      hint: 'Select Employee',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFormLabel('Basic Salary *'),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller: _basicSalaryCtrl,
+                      hintText: '50000',
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildFormLabel('Basic Salary *'),
+              const SizedBox(height: 8),
+              _buildTextField(
+                controller: _basicSalaryCtrl,
+                hintText: '50000',
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        const SizedBox(height: 20),
+        // Effective From & Status Row
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildFormLabel('Effective From'),
+                  const SizedBox(height: 8),
+                  _buildTextField(
+                    controller: _effectiveDateCtrl,
+                    hintText: 'YYYY-MM-DD',
+                    keyboardType: TextInputType.datetime,
                   ),
                 ],
               ),
             ),
-          ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildFormLabel('Status'),
+                  const SizedBox(height: 8),
+                  _buildDropdownField(
+                    value: _selectedStatus,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'active',
+                        child: Text('Active',
+                            style: TextStyle(color: AppTheme.onSurface)),
+                      ),
+                      DropdownMenuItem(
+                        value: 'inactive',
+                        child: Text('Inactive',
+                            style: TextStyle(color: AppTheme.onSurface)),
+                      ),
+                    ],
+                    onChanged: (val) =>
+                        setState(() => _selectedStatus = val ?? 'active'),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ),
+        const SizedBox(height: 20),
+        // Notes
+        _buildFormLabel('Notes'),
+        const SizedBox(height: 8),
+        _buildTextField(
+          controller: _notesCtrl,
+          hintText: 'Add any notes...',
+          maxLines: 3,
+        ),
+      ],
     );
   }
 
@@ -687,7 +939,7 @@ class _AdminSalaryScreenState extends State<AdminSalaryScreen> {
     return Text(
       label,
       style: const TextStyle(
-        color: Color(0xFFE0E0E0),
+        color: AppTheme.onSurface,
         fontSize: 13,
         fontWeight: FontWeight.w600,
       ),
@@ -704,24 +956,29 @@ class _AdminSalaryScreenState extends State<AdminSalaryScreen> {
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 14),
+      style: const TextStyle(color: AppTheme.onSurface, fontSize: 14),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(color: Color(0xFF666666)),
+        hintStyle: TextStyle(
+          color: AppTheme.onSurface.withOpacity(0.4),
+        ),
         filled: true,
-        fillColor: const Color(0xFF141414),
+        fillColor: AppTheme.surfaceVariant,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+          borderSide: const BorderSide(color: AppTheme.outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF2A2A2A)),
+          borderSide: const BorderSide(color: AppTheme.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFFFF8FA3)),
+          borderSide: const BorderSide(
+            color: AppTheme.primaryColor,
+            width: 2,
+          ),
         ),
       ),
     );
@@ -736,8 +993,8 @@ class _AdminSalaryScreenState extends State<AdminSalaryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
+        color: AppTheme.surfaceVariant,
+        border: Border.all(color: AppTheme.outline),
         borderRadius: BorderRadius.circular(10),
       ),
       child: DropdownButton<String>(
@@ -746,15 +1003,15 @@ class _AdminSalaryScreenState extends State<AdminSalaryScreen> {
         onChanged: onChanged,
         isExpanded: true,
         underline: const SizedBox(),
-        dropdownColor: const Color(0xFF1A1A1A),
+        dropdownColor: AppTheme.surfaceVariant,
         style: const TextStyle(
-          color: Color(0xFFE0E0E0),
+          color: AppTheme.onSurface,
           fontSize: 14,
         ),
-        iconEnabledColor: const Color(0xFF9E9E9E),
+        iconEnabledColor: AppTheme.onSurface,
         hint: Text(
           hint ?? 'Select option',
-          style: const TextStyle(color: Color(0xFF666666)),
+          style: TextStyle(color: AppTheme.onSurface.withOpacity(0.4)),
         ),
       ),
     );

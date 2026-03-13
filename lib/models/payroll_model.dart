@@ -53,6 +53,7 @@ class Payroll {
   final String id;
   final String? userId;
   final String? userName;
+  final String? userDepartment;
   final int month;
   final int year;
   final double basicSalary;
@@ -71,6 +72,7 @@ class Payroll {
     required this.id,
     this.userId,
     this.userName,
+    this.userDepartment,
     required this.month,
     required this.year,
     required this.basicSalary,
@@ -92,6 +94,7 @@ class Payroll {
       id: json['_id'] ?? '',
       userId: user is Map ? user['_id'] : (user is String ? user : null),
       userName: user is Map ? user['name'] : null,
+      userDepartment: user is Map ? user['department'] : null,
       month: json['month'] ?? 1,
       year: json['year'] ?? 2025,
       basicSalary: (json['basicSalary'] ?? 0).toDouble(),

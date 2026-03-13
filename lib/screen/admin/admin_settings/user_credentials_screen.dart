@@ -407,6 +407,7 @@ class _AdminUserCredentialsScreenState
                       separatorBuilder: (_, __) => const SizedBox(height: 6),
                       itemBuilder: (_, i) => _UserTile(
                         user: _users[i],
+                        onSetCredential: () => _openResetDialog(_users[i]),
                       ),
                     ),
             ),
@@ -474,7 +475,8 @@ class _AdminUserCredentialsScreenState
 
 class _UserTile extends StatefulWidget {
   final Map<String, dynamic> user;
-  const _UserTile({required this.user});
+  final VoidCallback? onSetCredential;
+  const _UserTile({required this.user, this.onSetCredential});
 
   @override
   State<_UserTile> createState() => _UserTileState();
@@ -647,6 +649,38 @@ class _UserTileState extends State<_UserTile> {
                   ),
                 ],
               ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Set Credential button
+          GestureDetector(
+            onTap: widget.onSetCredential,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.lock_rounded,
+                    size: 14,
+                    color: AppTheme.primaryColor,
+                  ),
+                  const SizedBox(height: 3),
+                  const Text(
+                    'Set',
+                    style: TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

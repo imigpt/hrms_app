@@ -1,5 +1,7 @@
 import 'dart:async'; // Required for the Timer
 import 'package:flutter/material.dart';
+import 'package:hrms_app/models/expense_model.dart';
+import 'package:hrms_app/models/leave_management_model.dart';
 import 'package:hrms_app/models/profile_model.dart';
 import 'package:hrms_app/models/announcement_model.dart';
 import 'package:hrms_app/models/dashboard_stats_model.dart';
@@ -7,11 +9,14 @@ import 'package:hrms_app/services/attendance_service.dart';
 import 'package:hrms_app/services/announcement_service.dart';
 import 'package:hrms_app/services/announcement_websocket_service.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:hrms_app/services/expense_service.dart';
+import 'package:hrms_app/services/leave_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../services/profile_service.dart';
+import '../models/chat_room_model.dart';
 
 // Import our custom widgets
 import '../widgets/sidebar_menu.dart';
@@ -26,6 +31,8 @@ import '../widgets/dashboard_quick_stats_section.dart';
 import '../widgets/profile_card_widget.dart';
 import 'notifications_screen.dart';
 import 'chat_screen.dart';
+import 'expenses_screen.dart';
+import 'tasks_screen.dart';
 // import 'employee_api_test_screen.dart';
 import 'apply_leave_screen.dart';
 import 'attendance_screen.dart';
@@ -59,15 +66,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _checkOutLocation;
   Duration _workedDuration = const Duration(hours: 0, minutes: 0);
   Timer? _timer;
-  bool _isLoadingAttendance = true;
   List<Announcement> _announcements = [];
-  bool _isLoadingAnnouncements = true;
   int _unreadAnnouncementsCount = 0;
   int _unreadChatCount = 0; // Unread chat messages count
 
   // Dashboard stats
   DashboardStats? _dashboardStats;
-  bool _isLoadingStats = true;
+
+  // Consolidated loading state - single loading state for entire screen
+  bool _isLoading = true;
+  String? _errorMessage;
 
   // Tracks which announcement IDs have been marked read (persisted across sessions)
   Set<String> _readAnnouncementIds = {};
@@ -82,50 +90,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ── ADMIN DASHBOARD STATE ───────────────────────────────────────────────────
   Map<String, dynamic> _adminDashboard = {};
+  Map<String, dynamic> _systemHealth = {}; // Server load, database, storage
   List<dynamic> _recentActivity = [];
-  bool _isLoadingAdminData = true;
   String _userRole = 'employee';
+
+  // ── HR DASHBOARD STATE ──────────────────────────────────────────────────────
+  Map<String, dynamic> _hrDashboard = {};
+  List<dynamic> _pendingLeaves = [];
+  List<dynamic> _pendingExpenses = [];
+  Map<String, dynamic> _todayAttendance = {};
+
+  // ── CLIENT DASHBOARD STATE ───────────────────────────────────────────────────
+  int _personalChats = 0;
+  int _groupChats = 0;
+  int _clientUnreadMessages = 0;
 
   @override
   void initState() {
     super.initState();
 
     // Determine user role
-    _userRole = (widget.user?.role.toLowerCase() == 'admin')
-        ? 'admin'
-        : 'employee';
+    final roleStr = widget.user?.role.toLowerCase() ?? '';
+    if (roleStr == 'admin') {
+      _userRole = 'admin';
+    } else if (roleStr == 'hr') {
+      _userRole = 'hr';
+    } else if (roleStr == 'client') {
+      _userRole = 'client';
+    } else {
+      _userRole = 'employee';
+    }
 
-    // Fetch full profile data (includes phone, address, dob etc.)
+    // Load full profile data (includes phone, address, dob etc.)
     _fetchDashboardProfile();
 
     // Load unread chat count for both admin and employee
     _loadUnreadChatCount();
 
     if (_userRole == 'admin') {
-      // Load admin dashboard data
-      _loadAdminDashboard();
-      // Also load announcements and unread count for notification badge
-      _loadPersistedReadIds();
-      _loadUnreadCount();
-      _loadAnnouncementsFallback();
+      // Load admin dashboard data - all at once
+      _loadAdminDashboardData();
+    } else if (_userRole == 'hr') {
+      // Load HR dashboard data - all at once
+      _loadHRDashboardData();
+    } else if (_userRole == 'client') {
+      // Load client dashboard data - all at once
+      _loadClientDashboardData();
     } else {
-      // Load employee dashboard data
-      _loadCachedAttendanceState(); // Load cached state first
-      _loadPersistedReadIds(); // Load persisted read announcements
-      _loadTodayAttendance();
-      _loadDashboardStats(); // Load dashboard statistics
-
-      // Load unread count from API (fast badge update)
-      _loadUnreadCount();
-
-      // Load announcements immediately via REST API for quick display
-      _loadAnnouncementsFallback();
-
-      // Also connect to WebSocket for real-time updates
-      _connectToAnnouncementsWebSocket();
-
-      // Start the timer to simulate working hours increasing
-      _startTimer();
+      // Load employee dashboard data - all at once
+      _loadEmployeeDashboardData();
     }
   }
 
@@ -137,6 +150,484 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() => _dashboardUser = fresh);
       }
     } catch (_) {}
+  }
+
+  // ── CONSOLIDATED EMPLOYEE DASHBOARD LOADING ──────────────────────────────────
+  /// Load all employee dashboard data at once before showing UI
+  Future<void> _loadEmployeeDashboardData() async {
+    if (widget.token == null || widget.token!.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Authentication token missing';
+        });
+      }
+      return;
+    }
+
+    try {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+        });
+      }
+
+      // Load void methods first (cached data)
+      await _loadCachedAttendanceState();
+      await _loadPersistedReadIds();
+
+      // Then load all API data in parallel
+      final results = await Future.wait([
+        AttendanceService.getTodayAttendance(token: widget.token!),
+        AttendanceService.getDashboardStats(token: widget.token!),
+        AnnouncementService.getUnreadCount(token: widget.token!),
+        AnnouncementService.getAnnouncements(token: widget.token!),
+      ], eagerError: false);
+
+      if (mounted) {
+        // Process results with proper casting
+        dynamic todayAttendanceResult = results[0];
+        dynamic dashboardDataResult = results[1];
+        dynamic unreadCountResult = results[2];
+        dynamic announcementsResult = results[3];
+
+        // Update state with all loaded data at once
+        setState(() {
+          // Set attendance data from API
+          if (todayAttendanceResult is! Exception &&
+              todayAttendanceResult != null &&
+              todayAttendanceResult.data != null) {
+            try {
+              // Use same logic as Attendance Screen: checked-in only if checked in AND not checked out
+              final hasCheckedIn =
+                  todayAttendanceResult.data.hasCheckedIn ||
+                  (todayAttendanceResult.data.checkIn?.time != null);
+              final hasCheckedOut =
+                  todayAttendanceResult.data.hasCheckedOut ||
+                  (todayAttendanceResult.data.checkOut?.time != null);
+              _isCheckedIn = hasCheckedIn && !hasCheckedOut;
+
+              if (todayAttendanceResult.data.checkInTime != null) {
+                _checkInTime =
+                    DateTime.parse(todayAttendanceResult.data.checkInTime);
+              }
+              if (todayAttendanceResult.data.checkOutTime != null) {
+                _checkOutTime =
+                    DateTime.parse(todayAttendanceResult.data.checkOutTime);
+              }
+            } catch (e) {
+              print('Error processing attendance data: $e');
+            }
+          } else {
+            // No attendance record from server → user has NOT checked in today.
+            // Clear any stale cached state so Dashboard shows "Check In" correctly.
+            _isCheckedIn = false;
+            _checkInTime = null;
+            _checkOutTime = null;
+            _checkInLocation = null;
+            _checkOutLocation = null;
+            _workedDuration = const Duration(hours: 0, minutes: 0);
+          }
+
+          // Set dashboard stats from API
+          if (dashboardDataResult is! Exception &&
+              dashboardDataResult != null) {
+            try {
+              if (dashboardDataResult.data != null) {
+                _dashboardStats = dashboardDataResult.data.stats;
+              }
+            } catch (e) {
+              print('Error processing dashboard stats: $e');
+            }
+          }
+
+          // Set announcements data from API
+          if (announcementsResult is! Exception &&
+              announcementsResult != null) {
+            try {
+              if (announcementsResult.data != null) {
+                _announcements = announcementsResult.data;
+              }
+            } catch (e) {
+              print('Error processing announcements: $e');
+            }
+          }
+
+          if (unreadCountResult is! Exception &&
+              unreadCountResult is int) {
+            _unreadAnnouncementsCount = unreadCountResult;
+          }
+
+          // Calculate worked duration if checked in
+          if (_checkInTime != null) {
+            if (_checkOutTime != null) {
+              _workedDuration = _checkOutTime!.difference(_checkInTime!);
+            } else if (_isCheckedIn) {
+              _workedDuration = DateTime.now().difference(_checkInTime!);
+            }
+          }
+
+          // Mark loading complete
+          _isLoading = false;
+        });
+
+        // After UI loads, start the timer and connect WebSocket for real-time updates
+        if (_isCheckedIn) {
+          _startTimer();
+        }
+        _connectToAnnouncementsWebSocket();
+      }
+    } catch (e, stackTrace) {
+      print('Error loading employee dashboard: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  // ── CONSOLIDATED ADMIN DASHBOARD LOADING ──────────────────────────────────
+  /// Load all admin dashboard data at once before showing UI
+  Future<void> _loadAdminDashboardData() async {
+    if (widget.token == null || widget.token!.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Authentication token missing';
+        });
+      }
+      return;
+    }
+
+    try {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+        });
+      }
+
+      // Load cached data first
+      await _loadPersistedReadIds();
+
+      final authService = AuthService();
+
+      // Load all admin API data in parallel
+      final results = await Future.wait([
+        authService.getAdminDashboardStats(widget.token!),
+        authService.getAdminRecentActivity(widget.token!, limit: 8),
+        AnnouncementService.getUnreadCount(token: widget.token!),
+        AnnouncementService.getAnnouncements(token: widget.token!),
+      ], eagerError: false);
+
+      if (mounted) {
+        // Process results with proper type checks
+        dynamic statsResult = results[0];
+        dynamic activityResult = results[1];
+        dynamic unreadCountResult = results[2];
+        dynamic announcementsResult = results[3];
+
+        // Map activity items with icons
+        final IconData Function(String) iconForType = (String type) {
+          switch (type) {
+            case 'leave':
+              return Icons.calendar_today;
+            case 'task':
+              return Icons.assignment;
+            case 'expense':
+              return Icons.receipt_long;
+            case 'attendance':
+              return Icons.access_time;
+            default:
+              return Icons.info_outline;
+          }
+        };
+
+        // Process activity data
+        List<Map<String, dynamic>> mappedActivity = [];
+        if (activityResult is! Exception && activityResult is List) {
+          mappedActivity = activityResult
+              .cast<Map<String, dynamic>>()
+              .map((a) {
+                return {
+                  'type': a['type'] ?? '',
+                  'message':
+                      '${a['action'] ?? ''} — ${a['user'] ?? ''}',
+                  'timestamp': DateTime.tryParse(
+                          a['time']?.toString() ?? '') ??
+                      DateTime.now(),
+                  'icon': iconForType(a['type']?.toString() ?? ''),
+                  'status': a['status'] ?? '',
+                };
+              })
+              .toList();
+        }
+
+        setState(() {
+          // Set admin stats and system health
+          if (statsResult is! Exception &&
+              statsResult is Map<String, dynamic>) {
+            // Extract stats
+            final stats = statsResult['stats'] as Map<String, dynamic>? ?? {};
+            _adminDashboard = {
+              'totalCompanies': stats['totalCompanies'] ?? 0,
+              'totalHRAccounts': stats['totalHR'] ?? 0,
+              'totalEmployees': stats['totalEmployees'] ?? 0,
+              'activeToday': stats['activeToday'] ?? 0,
+              'totalLeaves': stats['totalLeaves'] ?? 0,
+              'totalTasks': stats['totalTasks'] ?? 0,
+            };
+            // Extract system health metrics
+            final health = statsResult['systemHealth'] as Map<String, dynamic>? ?? {};
+            _systemHealth = {
+              'serverLoad': (health['serverLoad'] ?? 0).toDouble(),
+              'database': (health['database'] ?? 0).toDouble(),
+              'storage': (health['storage'] ?? 0).toDouble(),
+            };
+          }
+
+          _recentActivity = mappedActivity;
+
+          if (unreadCountResult is! Exception &&
+              unreadCountResult is int) {
+            _unreadAnnouncementsCount = unreadCountResult;
+          }
+
+          // Set announcements data
+          if (announcementsResult is! Exception &&
+              announcementsResult != null) {
+            try {
+              if (announcementsResult.data != null) {
+                _announcements = announcementsResult.data;
+              }
+            } catch (e) {
+              print('Error processing announcements: $e');
+            }
+          }
+
+          // Mark loading complete
+          _isLoading = false;
+        });
+
+        // Connect WebSocket for real-time announcements after UI loads
+        _connectToAnnouncementsWebSocket();
+      }
+    } catch (e, stackTrace) {
+      print('Error loading admin dashboard: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  // ── CONSOLIDATED HR DASHBOARD LOADING ──────────────────────────────────────
+  /// Load all HR dashboard data at once before showing UI
+  Future<void> _loadHRDashboardData() async {
+    if (widget.token == null || widget.token!.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Authentication token missing';
+        });
+      }
+      return;
+    }
+
+    try {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+        });
+      }
+
+      // Load cached data first
+      await _loadPersistedReadIds();
+
+      // Load all HR API data in parallel
+      final results = await Future.wait([
+        AuthService().getAdminDashboardStats(widget.token!),
+        LeaveService.getAdminLeaves(
+          token: widget.token!,
+          status: 'pending',
+        ),
+        ExpenseService.getExpenses(token: widget.token!),
+        AnnouncementService.getUnreadCount(token: widget.token!),
+        AnnouncementService.getAnnouncements(token: widget.token!),
+      ], eagerError: false);
+
+      if (mounted) {
+        // Process results with proper type checks
+        dynamic statsResult = results[0];
+        dynamic leavesResult = results[1];
+        dynamic expensesResult = results[2];
+        dynamic unreadCountResult = results[3];
+        dynamic announcementsResult = results[4];
+
+        setState(() {
+          // Set HR dashboard stats
+          if (statsResult is! Exception &&
+              statsResult is Map<String, dynamic>) {
+            _hrDashboard = {
+              'totalEmployees': statsResult['totalEmployees'] ?? 0,
+              'totalDepartments': statsResult['totalDepartments'] ?? 0,
+              'activeTasks': statsResult['activeTasks'] ?? 0,
+            };
+          }
+
+          // Process pending leaves
+          if (leavesResult is! Exception &&
+              leavesResult is AdminLeavesResponse) {
+            _pendingLeaves = leavesResult.data;
+          }
+
+          // Process pending expenses (filter for pending status)
+          if (expensesResult is! Exception &&
+              expensesResult is ExpenseListResponse) {
+            _pendingExpenses = expensesResult.data
+                .where((e) => e.status.toLowerCase() == 'pending')
+                .toList();
+          }
+
+          if (unreadCountResult is! Exception &&
+              unreadCountResult is int) {
+            _unreadAnnouncementsCount = unreadCountResult;
+          }
+
+          // Set announcements data
+          if (announcementsResult is! Exception &&
+              announcementsResult != null) {
+            try {
+              if (announcementsResult.data != null) {
+                _announcements = announcementsResult.data;
+              }
+            } catch (e) {
+              print('Error processing announcements: $e');
+            }
+          }
+
+          // Mark loading complete
+          _isLoading = false;
+        });
+
+        // Connect WebSocket for real-time announcements after UI loads
+        _connectToAnnouncementsWebSocket();
+      }
+    } catch (e, stackTrace) {
+      print('Error loading HR dashboard: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  // ── CONSOLIDATED CLIENT DASHBOARD LOADING ──────────────────────────────────
+  /// Load all client dashboard data at once before showing UI
+  Future<void> _loadClientDashboardData() async {
+    if (widget.token == null || widget.token!.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Authentication token missing';
+        });
+      }
+      return;
+    }
+
+    try {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = null;
+        });
+      }
+
+      // Load cached data first
+      await _loadPersistedReadIds();
+
+      // Load all client API data in parallel
+      final results = await Future.wait([
+        ChatService.getChatRooms(token: widget.token!),
+        ChatService.getUnreadCount(token: widget.token!),
+        AnnouncementService.getUnreadCount(token: widget.token!),
+        AnnouncementService.getAnnouncements(token: widget.token!),
+      ], eagerError: false);
+
+      if (mounted) {
+        // Process results with proper type checks
+        dynamic chatRoomsResult = results[0];
+        dynamic unreadChatResult = results[1];
+        dynamic unreadCountResult = results[2];
+        dynamic announcementsResult = results[3];
+
+        // Calculate personal and group chats
+        int personalChats = 0;
+        int groupChats = 0;
+        int unreadMessages = 0;
+
+        if (chatRoomsResult is! Exception &&
+            chatRoomsResult is ChatRoomsResponse) {
+          final rooms = chatRoomsResult.data;
+          personalChats = rooms.where((r) => r.type == 'personal').length;
+          groupChats = rooms.where((r) => r.type == 'group').length;
+        }
+
+        if (unreadChatResult is! Exception &&
+            unreadChatResult is UnreadCountResponse) {
+          unreadMessages = unreadChatResult.count;
+        }
+
+        setState(() {
+          _personalChats = personalChats;
+          _groupChats = groupChats;
+          _clientUnreadMessages = unreadMessages;
+
+          if (unreadCountResult is! Exception &&
+              unreadCountResult is int) {
+            _unreadAnnouncementsCount = unreadCountResult;
+          }
+
+          // Set announcements data
+          if (announcementsResult is! Exception &&
+              announcementsResult != null) {
+            try {
+              if (announcementsResult.data != null) {
+                _announcements = announcementsResult.data;
+              }
+            } catch (e) {
+              print('Error processing announcements: $e');
+            }
+          }
+
+          // Mark loading complete
+          _isLoading = false;
+        });
+
+        // Connect WebSocket for real-time announcements after UI loads
+        _connectToAnnouncementsWebSocket();
+      }
+    } catch (e, stackTrace) {
+      print('Error loading client dashboard: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    }
   }
 
   // Save attendance state to local storage
@@ -227,9 +718,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadTodayAttendance() async {
     if (widget.token == null) {
-      setState(() {
-        _isLoadingAttendance = false;
-      });
       return;
     }
 
@@ -379,8 +867,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             print('Error parsing attendance data: $e');
             print('Stack trace: ${StackTrace.current}');
           }
-
-          _isLoadingAttendance = false;
         });
 
         // Save the loaded state to local storage
@@ -390,7 +876,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'Response is null - no attendance for today, clearing stale state',
         );
         setState(() {
-          _isLoadingAttendance = false;
           // No record from server means user hasn't checked in today.
           // Clear any stale SharedPreferences data so "Day Complete" doesn't linger.
           _isCheckedIn = false;
@@ -405,45 +890,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e, stackTrace) {
       print('Error loading today attendance: $e');
       print('Stack trace: $stackTrace');
-      if (mounted) {
-        setState(() {
-          _isLoadingAttendance = false;
-        });
-      }
     }
   }
 
-  // Connect to WebSocket for real-time announcements
+  // Connect to WebSocket for real-time announcements updates
+  // (Initial announcements are loaded via consolidated loading method)
   Future<void> _connectToAnnouncementsWebSocket() async {
     if (widget.token == null) {
-      setState(() {
-        _isLoadingAnnouncements = false;
-      });
       return;
     }
 
     try {
-      print('Connecting to announcements WebSocket...');
+      print('Connecting to announcements WebSocket for real-time updates...');
 
-      // Set a timeout - if no data received in 4 seconds, use REST API fallback
-      bool dataReceived = false;
-      Timer? timeoutTimer = Timer(const Duration(seconds: 4), () {
-        if (!dataReceived && mounted && _isLoadingAnnouncements) {
-          print('WebSocket timeout - falling back to REST API');
-          _loadAnnouncementsFallback();
-        }
-      });
-
-      // Listen to announcements stream
+      // Listen to announcements stream for real-time updates
       _announcementsSubscription = _wsService.announcementsStream.listen(
         (announcements) {
-          dataReceived = true;
-          timeoutTimer.cancel();
           if (mounted) {
             final previousCount = _unreadAnnouncementsCount;
             setState(() {
               _announcements = announcements;
-              _isLoadingAnnouncements = false;
               _unreadAnnouncementsCount = _calculateUnreadCount(announcements);
             });
             print(
@@ -458,10 +924,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         onError: (error) {
           print('WebSocket stream error: $error');
-          timeoutTimer.cancel();
-          if (mounted && _isLoadingAnnouncements) {
-            _loadAnnouncementsFallback();
-          }
         },
       );
 
@@ -469,14 +931,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await _wsService.connect(widget.token!);
     } catch (e) {
       print('Error connecting to announcements WebSocket: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingAnnouncements = false;
-        });
-      }
-
-      // Fallback to REST API if WebSocket fails
-      _loadAnnouncementsFallback();
+      // Silently fail - announcements are already loaded via API
     }
   }
 
@@ -511,23 +966,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // Fetch authoritative unread count from the dedicated API
-  Future<void> _loadUnreadCount() async {
-    if (widget.token == null) return;
-    try {
-      final count = await AnnouncementService.getUnreadCount(
-        token: widget.token!,
-      );
-      if (mounted) {
-        setState(() {
-          _unreadAnnouncementsCount = count;
-        });
-        print('Unread announcements count from API: $count');
-      }
-    } catch (e) {
-      print('Error loading unread count: $e');
-    }
-  }
-
   // Load unread chat count
   Future<void> _loadUnreadChatCount() async {
     if (widget.token == null) return;
@@ -545,179 +983,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _loadAnnouncementsFallback() async {
-    if (widget.token == null) return;
-
-    try {
-      print('Loading announcements from REST API (fallback)...');
-      final response = await AnnouncementService.getAnnouncements(
-        token: widget.token!,
-      );
-
-      print('Announcements loaded: ${response.data.length} items');
-
-      if (mounted) {
-        setState(() {
-          _announcements = response.data;
-          _isLoadingAnnouncements = false;
-          _unreadAnnouncementsCount = _calculateUnreadCount(response.data);
-        });
-      }
-    } catch (e) {
-      print('Error loading announcements: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingAnnouncements = false;
-        });
-      }
-    }
-  }
-
-  // Load Dashboard Stats
-  Future<void> _loadDashboardStats() async {
-    if (widget.token == null) {
-      setState(() {
-        _isLoadingStats = false;
-      });
-      return;
-    }
-
-    try {
-      print('Loading dashboard stats from /employees/dashboard ...');
-      final response = await AttendanceService.getDashboardStats(
-        token: widget.token!,
-      );
-
-      print('Dashboard stats response received: ${response != null}');
-
-      if (response != null && mounted) {
-        setState(() {
-          _dashboardStats = response.data.stats;
-          _isLoadingStats = false;
-
-          // Populate announcements from dashboard response if WebSocket hasn't loaded them yet
-          if (_isLoadingAnnouncements &&
-              response.data.announcements.isNotEmpty) {
-            _announcements = response.data.announcements
-                .map(
-                  (a) => Announcement(
-                    id: a.id,
-                    title: a.title,
-                    content: a.message,
-                    priority: 'normal',
-                    readBy: [],
-                    isActive: true,
-                    attachments: [],
-                    createdAt: a.createdAt,
-                    updatedAt: a.createdAt,
-                  ),
-                )
-                .toList();
-            _isLoadingAnnouncements = false;
-            _unreadAnnouncementsCount = _calculateUnreadCount(_announcements);
-          }
-        });
-        print('Dashboard stats loaded successfully');
-        print('Casual Leave Balance: ${_dashboardStats?.leaveBalance.casual}');
-        print('Active Tasks: ${_dashboardStats?.activeTasks}');
-        print('Pending Expenses: ${_dashboardStats?.pendingExpenses}');
-        print('Attendance %: ${_dashboardStats?.attendancePercentage}');
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoadingStats = false;
-          });
-        }
-      }
-    } catch (e) {
-      print('Error loading dashboard stats: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingStats = false;
-        });
-      }
-    }
-  }
-
   // ── LOAD ADMIN DASHBOARD ────────────────────────────────────────────────────
-  Future<void> _loadAdminDashboard() async {
-    if (widget.token == null) {
-      setState(() {
-        _isLoadingAdminData = false;
-      });
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isLoadingAdminData = true;
-      });
-    }
-
-    try {
-      final authService = AuthService();
-
-      // Fetch stats and activity in parallel
-      final results = await Future.wait([
-        authService.getAdminDashboardStats(widget.token!),
-        authService.getAdminRecentActivity(widget.token!, limit: 8),
-      ]);
-
-      final stats = results[0] as Map<String, dynamic>;
-      final activity = results[1] as List<Map<String, dynamic>>;
-
-      // Map activity items with icons
-      final IconData Function(String) iconForType = (String type) {
-        switch (type) {
-          case 'leave':
-            return Icons.calendar_today;
-          case 'task':
-            return Icons.assignment;
-          case 'expense':
-            return Icons.receipt_long;
-          case 'attendance':
-            return Icons.access_time;
-          default:
-            return Icons.info_outline;
-        }
-      };
-
-      final mappedActivity = activity.map((a) {
-        return {
-          'type': a['type'] ?? '',
-          'message': '${a['action'] ?? ''} — ${a['user'] ?? ''}',
-          'timestamp':
-              DateTime.tryParse(a['time']?.toString() ?? '') ?? DateTime.now(),
-          'icon': iconForType(a['type']?.toString() ?? ''),
-          'status': a['status'] ?? '',
-        };
-      }).toList();
-
-      if (mounted) {
-        setState(() {
-          _adminDashboard = {
-            'totalCompanies': stats['totalCompanies'] ?? 0,
-            'totalHRAccounts': stats['totalHR'] ?? 0,
-            'totalEmployees': stats['totalEmployees'] ?? 0,
-            'activeToday': stats['activeToday'] ?? 0,
-            'pendingLeaves': stats['pendingLeaves'] ?? 0,
-            'activeTasks': stats['activeTasks'] ?? 0,
-            'pendingExpenses': stats['pendingExpensesCount'] ?? 0,
-            'totalExpenseAmount': stats['pendingExpenses'] ?? 0,
-          };
-          _recentActivity = mappedActivity;
-          _isLoadingAdminData = false;
-        });
-      }
-    } catch (e) {
-      print('Error loading admin dashboard: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingAdminData = false;
-        });
-      }
-    }
-  }
 
   // ── Notification icon + popup ────────────────────────────────────────────
   Widget _buildNotificationIconButton(double iconSize) {
@@ -1049,10 +1315,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Persist to local storage so read state survives app restarts
     _persistReadId(announcementId);
 
-    // Call REST API + WebSocket, then sync authoritative count from server
-    _wsService.markAsRead(announcementId).then((_) {
-      _loadUnreadCount();
-    });
+    // Call REST API to mark as read (WebSocket will update announcements)
+    _wsService.markAsRead(announcementId);
   }
 
   @override
@@ -1090,7 +1354,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _handleCheckOut();
       }
     } else {
-      final result = await Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) =>
@@ -1100,7 +1364,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       if (mounted) {
         await _loadTodayAttendance();
-        await _loadDashboardStats();
       }
     }
   }
@@ -1283,9 +1546,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // Save the updated state to local storage
         await _saveAttendanceState();
 
-        // Reload dashboard stats to update attendance percentage
-        _loadDashboardStats();
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(response.message),
@@ -1317,6 +1577,1119 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ─── CLIENT DASHBOARD WIDGETS ────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildClientScaffold({
+    required BuildContext context,
+    required bool isMobile,
+    required bool isDesktopDevice,
+    required double titleFontSize,
+    required double iconSize,
+  }) {
+    final Color primaryColor = Theme.of(context).primaryColor;
+    final Color cardColor = Theme.of(context).cardColor;
+
+    // Stat cards for client dashboard
+    final statCards = [
+      {
+        'title': 'Direct Chats',
+        'value': _personalChats,
+        'icon': Icons.message_outlined,
+        'description': 'Active conversations with Admin / HR',
+        'color': Color(0xFF1E88E5),
+        'bg': Color(0xFF1E88E5).withOpacity(0.1),
+      },
+      {
+        'title': 'Group Chats',
+        'value': _groupChats,
+        'icon': Icons.groups_outlined,
+        'description': 'Groups you are a member of',
+        'color': Color(0xFF00C853),
+        'bg': Color(0xFF00C853).withOpacity(0.1),
+      },
+      {
+        'title': 'Unread Messages',
+        'value': _clientUnreadMessages,
+        'icon': Icons.notifications_outlined,
+        'description': 'Messages waiting for your response',
+        'color': Color(0xFFFF9800),
+        'bg': Color(0xFFFF9800).withOpacity(0.1),
+      },
+    ];
+
+    return Scaffold(
+      appBar: isMobile
+          ? AppBar(
+              title: Text(
+                'Client Portal',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: titleFontSize,
+                ),
+              ),
+              backgroundColor: cardColor,
+              elevation: 0,
+              actions: [
+                _buildNotificationIconButton(iconSize),
+              ],
+            )
+          : null,
+      drawer: !isDesktopDevice
+          ? Drawer(
+              child: SidebarMenu(user: widget.user, token: widget.token),
+            )
+          : null,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sidebar (Desktop only)
+          if (isDesktopDevice)
+            Container(
+              width: 250,
+              decoration: BoxDecoration(
+                border: Border(right: BorderSide(color: Colors.grey[800]!)),
+              ),
+              child: SidebarMenu(user: widget.user, token: widget.token),
+            ),
+          // Main content
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Welcome Banner
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(
+                        colors: [
+                          primaryColor.withOpacity(0.2),
+                          primaryColor.withOpacity(0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(
+                        color: primaryColor.withOpacity(0.2),
+                      ),
+                    ),
+                    padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome, ${widget.user?.name} 👋',
+                          style: TextStyle(
+                            fontSize: isMobile ? 20.0 : 24.0,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        SizedBox(height: isMobile ? 8.0 : 12.0),
+                        Text(
+                          'Your client communication portal. Chat with our team anytime.',
+                          style: TextStyle(
+                            fontSize: isMobile ? 12.0 : 14.0,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.color
+                                ?.withOpacity(0.7),
+                          ),
+                        ),
+                        SizedBox(height: isMobile ? 12.0 : 16.0),
+                        ElevatedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ChatScreen(),
+                            ),
+                          ),
+                          icon: Icon(Icons.open_in_new, size: iconSize - 4),
+                          label: Text(
+                            'Open Chat',
+                            style: TextStyle(
+                              fontSize: isMobile ? 12.0 : 14.0,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: isMobile ? 24.0 : 32.0),
+                  // Stats Grid
+                  Text(
+                    'Chat Statistics',
+                    style: TextStyle(
+                      fontSize: isMobile ? 16.0 : 18.0,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                  SizedBox(height: isMobile ? 12.0 : 16.0),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: isMobile ? 1 : 3,
+                      childAspectRatio: isMobile ? 1.2 : 1.4,
+                      crossAxisSpacing: isMobile ? 12.0 : 16.0,
+                      mainAxisSpacing: isMobile ? 12.0 : 16.0,
+                    ),
+                    itemCount: statCards.length,
+                    itemBuilder: (context, index) {
+                      final card = statCards[index];
+                      return _buildClientStatCard(card);
+                    },
+                  ),
+                  SizedBox(height: isMobile ? 24.0 : 32.0),
+                  // Info Card
+                  Container(
+                    decoration: BoxDecoration(
+                      color: cardColor.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: primaryColor.withOpacity(0.2),
+                      ),
+                    ),
+                    padding: EdgeInsets.all(isMobile ? 16.0 : 20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: EdgeInsets.all(isMobile ? 8.0 : 12.0),
+                              child: Icon(
+                                Icons.info_outlined,
+                                color: primaryColor,
+                                size: isMobile ? 18.0 : 22.0,
+                              ),
+                            ),
+                            SizedBox(width: isMobile ? 12.0 : 16.0),
+                            Expanded(
+                              child: Text(
+                                'How to use this portal',
+                                style: TextStyle(
+                                  fontSize: isMobile ? 14.0 : 16.0,
+                                  fontWeight: FontWeight.w600,
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.color,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: isMobile ? 12.0 : 16.0),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInfoBullet(
+                              'You can message Admin or HR directly from the Chat section.',
+                              isMobile,
+                            ),
+                            SizedBox(height: 8),
+                            _buildInfoBullet(
+                              'If you\'ve been added to a group, you can chat with all group members.',
+                              isMobile,
+                            ),
+                            SizedBox(height: 8),
+                            _buildInfoBullet(
+                              'Contact your Admin or HR if you need assistance.',
+                              isMobile,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build a stat card for client dashboard
+  Widget _buildClientStatCard(Map<String, dynamic> card) {
+    final Color accent = card['color'] as Color;
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  card['title'] as String,
+                  style: TextStyle(
+                    fontSize: 12.0,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.onSurface.withOpacity(0.9),
+                  ),
+                ),
+              ),
+              Container(
+                height: 36,
+                width: 36,
+                decoration: BoxDecoration(
+                  color: accent.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  card['icon'] as IconData,
+                  color: accent,
+                  size: 18,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _isLoading ? '...' : (card['value'] as int).toString(),
+            style: TextStyle(
+              fontSize: 28.0,
+              fontWeight: FontWeight.w700,
+              color: accent,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            card['description'] as String,
+            style: TextStyle(
+              fontSize: 12.0,
+              color: AppTheme.onSurface.withOpacity(0.7),
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build info bullet point for client dashboard
+  Widget _buildInfoBullet(String text, bool isMobile) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(top: isMobile ? 4.0 : 6.0, right: 8.0),
+          child: Icon(
+            Icons.check_circle_outline,
+            size: isMobile ? 14.0 : 16.0,
+            color: Theme.of(context).primaryColor.withOpacity(0.7),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: isMobile ? 12.0 : 13.0,
+              color: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.color
+                  ?.withOpacity(0.8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ─── HR DASHBOARD WIDGETS ───────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildHRScaffold({
+    required BuildContext context,
+    required bool isMobile,
+    required bool isTablet,
+    required bool isDesktopDevice,
+    required double sidebarWidth,
+    required double horizontalPadding,
+    required double verticalSpacing,
+    required double titleFontSize,
+    required double iconSize,
+  }) {
+    return Scaffold(
+      appBar: isDesktopDevice
+          ? null
+          : AppBar(
+              title: Text(
+                "HR Panel",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: titleFontSize,
+                ),
+              ),
+              backgroundColor: _cardDark,
+              elevation: 0,
+              actions: [
+                _buildChatIconButton(iconSize),
+                _buildNotificationIconButton(iconSize),
+              ],
+            ),
+      drawer: !isDesktopDevice
+          ? Drawer(
+              child: SidebarMenu(user: widget.user, token: widget.token),
+            )
+          : null,
+      backgroundColor: _bgDark,
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isDesktopDevice)
+            SizedBox(
+              width: sidebarWidth,
+              child: SidebarMenu(user: widget.user, token: widget.token),
+            ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
+                    onRefresh: _loadHRDashboardData,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.all(horizontalPadding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Welcome Card (Check-in/Check-out) ──
+                          WelcomeCard(
+                            isCheckedIn: _isCheckedIn,
+                            checkInTime: _checkInTime,
+                            checkOutTime: _checkOutTime,
+                            checkInLocation: _checkInLocation,
+                            checkOutLocation: _checkOutLocation,
+                            workHours: _workedDuration.inSeconds / 3600,
+                            onCheckInToggle: _toggleCheckIn,
+                            user: widget.user,
+                          ),
+                          SizedBox(height: verticalSpacing),
+
+                          // ── Row 1: HR Profile | HR Stats | Pending Approvals ──
+                          if (isDesktopDevice)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildHRProfileCard(isMobile),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _buildHRStatsCard(isMobile),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _buildPendingApprovalsCard(isMobile),
+                                ),
+                              ],
+                            )
+                          else ...[
+                            _buildHRProfileCard(isMobile),
+                            SizedBox(height: verticalSpacing),
+                            _buildHRStatsCard(isMobile),
+                            SizedBox(height: verticalSpacing),
+                            _buildPendingApprovalsCard(isMobile),
+                            SizedBox(height: verticalSpacing),
+                          ],
+
+                          // ── Row 2: 4 Stat Cards ──
+                          _buildSectionHeader(
+                            'Quick Stats',
+                            Icons.speed,
+                            _accentBlue,
+                          ),
+                          const SizedBox(height: 12),
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: isMobile ? 2 : (isTablet ? 3 : 4),
+                            crossAxisSpacing: isMobile ? 10 : 12,
+                            mainAxisSpacing: isMobile ? 10 : 12,
+                            childAspectRatio: isMobile
+                                ? 1.2
+                                : (isTablet ? 1.35 : 1.5),
+                            children: [
+                              _buildHRQuickStatCard(
+                                'Employees on Leave',
+                                '0',
+                                Icons.calendar_today,
+                                Colors.amber,
+                                isMobile: isMobile,
+                              ),
+                              _buildHRQuickStatCard(
+                                'Pending Approvals',
+                                '0',
+                                Icons.assignment,
+                                Colors.redAccent,
+                                isMobile: isMobile,
+                              ),
+                              _buildHRQuickStatCard(
+                                'Active Tasks',
+                                '${_hrDashboard['activeTasks'] ?? 0}',
+                                Icons.task_alt,
+                                _accentBlue,
+                                isMobile: isMobile,
+                              ),
+                              _buildHRQuickStatCard(
+                                'Total Departments',
+                                '${_hrDashboard['totalDepartments'] ?? 0}',
+                                Icons.domain,
+                                _accentGreen,
+                                isMobile: isMobile,
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: verticalSpacing),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── HR Profile Card ──
+  Widget _buildHRProfileCard(bool isMobile) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar and Info
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: _accentPink.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: Icon(
+                  Icons.person,
+                  color: _accentPink,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.user?.name ?? 'HR Manager',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'HR Manager',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Contact Info
+          Row(
+            children: [
+              Icon(Icons.phone, color: _accentPink.withOpacity(0.6), size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _dashboardUser?.phone ?? '—',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[400],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.email, color: _accentPink.withOpacity(0.6), size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.user?.email ?? '—',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[400],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── HR Stats Card ──
+  Widget _buildHRStatsCard(bool isMobile) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _accentBlue.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.business, color: _accentBlue, size: 18),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'HR Overview',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Stats rows
+          _buildHRStatRow(
+            'Total Employees',
+            '${_hrDashboard['totalEmployees'] ?? 0}',
+            _accentGreen,
+          ),
+          const SizedBox(height: 12),
+          _buildHRStatRow(
+            'Present Today',
+            '0',
+            _accentGreen,
+          ),
+          const SizedBox(height: 12),
+          _buildHRStatRow(
+            'On Leave',
+            '0',
+            Colors.amber,
+          ),
+          const SizedBox(height: 12),
+          _buildHRStatRow(
+            'Absent',
+            '0',
+            Colors.redAccent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHRStatRow(String label, String value, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[400],
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Pending Approvals Card ──
+  Widget _buildPendingApprovalsCard(bool isMobile) {
+    final leaveCount = _pendingLeaves.length;
+    final expenseCount = _pendingExpenses.length;
+    final taskCount = (_hrDashboard['activeTasks'] as num? ?? 0).toInt();
+    final totalPending = leaveCount + expenseCount + taskCount;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.redAccent,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pending Approvals',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (totalPending > 0)
+                      Text(
+                        '$totalPending items awaiting action',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Pending items - all children shown
+          GestureDetector(
+            onTap: () => _navigateToPendingLeaves(context),
+            child: _buildPendingItem('Leave Requests', leaveCount.toString()),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => _navigateToPendingExpenses(context),
+            child: _buildPendingItem('Expense Claims', expenseCount.toString()),
+          ),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: () => _navigateToPendingTasks(context),
+            child: _buildPendingItem('Active Tasks', taskCount.toString()),
+          ),
+          
+          // See All Button
+          if (totalPending > 0) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _navigateToAllPendingApprovals(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _accentBlue.withOpacity(0.2),
+                  foregroundColor: _accentBlue,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'See All Pending Approvals',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingItem(String label, String count) {
+    final itemCount = int.tryParse(count) ?? 0;
+    final hasItems = itemCount > 0;
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(8),
+        border: hasItems ? Border.all(color: _accentPink.withOpacity(0.3)) : null,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[400],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: hasItems ? _accentPink.withOpacity(0.25) : _accentGreen.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              count,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: hasItems ? _accentPink : _accentGreen,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Navigation Methods for Pending Items ──
+  
+  /// Navigate to pending leaves screen
+  void _navigateToPendingLeaves(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const LeaveScreen(),
+      ),
+    );
+  }
+
+  /// Navigate to pending expenses screen
+  void _navigateToPendingExpenses(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExpensesScreen(role: _userRole),
+      ),
+    );
+  }
+
+  /// Navigate to pending tasks screen
+  void _navigateToPendingTasks(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TasksScreen(token: widget.token, role: _userRole),
+      ),
+    );
+  }
+
+  /// Show all pending approvals in modal
+  void _navigateToAllPendingApprovals(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _bgDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Row(
+              children: [
+                const Text(
+                  'All Pending Approvals',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Icon(
+                    Icons.close_rounded,
+                    color: Colors.grey[400],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Pending Leaves Section
+                    _buildAllPendingSection(
+                      title: 'Leave Requests',
+                      count: _pendingLeaves.length,
+                      icon: Icons.calendar_today,
+                      color: Colors.amber,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _navigateToPendingLeaves(context);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Pending Expenses Section
+                    _buildAllPendingSection(
+                      title: 'Expense Claims',
+                      count: _pendingExpenses.length,
+                      icon: Icons.receipt_long,
+                      color: Colors.deepPurple,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _navigateToPendingExpenses(context);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Active Tasks Section
+                    _buildAllPendingSection(
+                      title: 'Active Tasks',
+                      count: (_hrDashboard['activeTasks'] as num? ?? 0).toInt(),
+                      icon: Icons.task_alt,
+                      color: _accentBlue,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _navigateToPendingTasks(context);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build pending section for all pending approvals modal
+  Widget _buildAllPendingSection({
+    required String title,
+    required int count,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        count > 0 ? '$count pending' : 'All clear',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: count > 0 ? Colors.grey[500] : _accentGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: color,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── HR Quick Stat Card ──
+  Widget _buildHRQuickStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color, {
+    bool isMobile = false,
+  }) {
+    final cardPadding = isMobile ? 12.0 : 16.0;
+    final iconSize = isMobile ? 18.0 : 22.0;
+    final iconPadding = isMobile ? 8.0 : 10.0;
+    final valueFontSize = isMobile ? 18.0 : 22.0;
+    final titleFontSize = isMobile ? 11.0 : 12.0;
+    final spacerHeight = isMobile ? 8.0 : 12.0;
+    final borderRadius = isMobile ? 12.0 : 16.0;
+
+    return Container(
+      padding: EdgeInsets.all(cardPadding),
+      decoration: BoxDecoration(
+        color: _cardDark,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(color: color.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Icon Container
+          Container(
+            padding: EdgeInsets.all(iconPadding),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(isMobile ? 8 : 12),
+              border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+            ),
+            child: Icon(icon, color: color, size: iconSize),
+          ),
+          SizedBox(height: spacerHeight),
+
+          // Value and Title
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: valueFontSize,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: isMobile ? 2 : 4),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: titleFontSize,
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1378,10 +2751,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: SidebarMenu(user: widget.user, token: widget.token),
             ),
           Expanded(
-            child: _isLoadingAdminData
+            child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
-                    onRefresh: _loadAdminDashboard,
+                    onRefresh: _loadAdminDashboardData,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: EdgeInsets.all(horizontalPadding),
@@ -1418,7 +2791,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      onPressed: _loadAdminDashboard,
+                                      onPressed: _loadAdminDashboardData,
                                       icon: Icon(
                                         Icons.refresh,
                                         size: iconSize,
@@ -1496,8 +2869,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               _buildAdminStatCard(
                                 'Active Today',
-                                '${_adminDashboard['activeToday'] ?? 0}',
-                                Icons.trending_up,
+                                '${_adminDashboard['activeToday'] ?? 0} / ${_adminDashboard['totalEmployees'] ?? 0}',
+                                Icons.access_time,
                                 _accentOrange,
                                 isMobile: isMobile,
                               ),
@@ -1972,24 +3345,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // Server Load
           _buildHealthMetric(
             label: 'Server Load',
-            percentage: 88,
-            color: Colors.redAccent,
+            percentage: (_systemHealth['serverLoad'] as num? ?? 0).toInt(),
+            color: _getHealthColor((_systemHealth['serverLoad'] as num? ?? 0).toDouble()),
           ),
           const SizedBox(height: 14),
 
           // Database
           _buildHealthMetric(
             label: 'Database',
-            percentage: 0,
-            color: _accentGreen,
+            percentage: (_systemHealth['database'] as num? ?? 0).toInt(),
+            color: _getHealthColor((_systemHealth['database'] as num? ?? 0).toDouble()),
           ),
           const SizedBox(height: 14),
 
           // Storage
           _buildHealthMetric(
             label: 'Storage',
-            percentage: 1,
-            color: _accentGreen,
+            percentage: (_systemHealth['storage'] as num? ?? 0).toInt(),
+            color: _getHealthColor((_systemHealth['storage'] as num? ?? 0).toDouble()),
           ),
         ],
       ),
@@ -2039,6 +3412,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ],
     );
+  }
+
+  /// Get color based on health percentage (green < 50, yellow < 80, red >= 80)
+  Color _getHealthColor(double percentage) {
+    if (percentage < 50) return _accentGreen;
+    if (percentage < 80) return _accentOrange;
+    return Colors.redAccent;
   }
 
   // ── Quick Actions Section ──
@@ -2098,6 +3478,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
+    // ── HR PANEL ── Route to HR scaffold if user is HR
+    if (_userRole == 'hr') {
+      return _buildHRScaffold(
+        context: context,
+        isMobile: isMobile,
+        isTablet: isTablet,
+        isDesktopDevice: isDesktopDevice,
+        sidebarWidth: sidebarWidth,
+        horizontalPadding: horizontalPadding,
+        verticalSpacing: verticalSpacing,
+        titleFontSize: titleFontSize,
+        iconSize: iconSize,
+      );
+    }
+
+    // ── CLIENT PANEL ── Route to client scaffold if user is client
+    if (_userRole == 'client') {
+      return _buildClientScaffold(
+        context: context,
+        isMobile: isMobile,
+        isDesktopDevice: isDesktopDevice,
+        titleFontSize: titleFontSize,
+        iconSize: iconSize,
+      );
+    }
+
     // ── EMPLOYEE PANEL ──
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -2139,53 +3545,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               // 2. MAIN CONTENT AREA
               Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(horizontalPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Desktop Header
-                      if (isDesktopDevice) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: _isLoading
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 16),
                             Text(
-                              "Employee Dashboard",
+                              'Loading Dashboard...',
                               style: TextStyle(
-                                fontSize: titleFontSize,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.color,
                               ),
-                            ),
-                            // Desktop Notification and More Icons
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildNotificationIconButton(iconSize),
-                                SizedBox(width: isMobile ? 4 : 8),
-                                IconButton(
-                                  onPressed: _onApplyLeave,
-                                  icon: Icon(Icons.more_vert, size: iconSize),
-                                  tooltip: 'More options',
-                                ),
-                              ],
                             ),
                           ],
                         ),
-                        SizedBox(height: verticalSpacing),
-                      ],
+                      )
+                    : SingleChildScrollView(
+                        padding: EdgeInsets.all(horizontalPadding),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Desktop Header
+                            if (isDesktopDevice) ...[
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Employee Dashboard",
+                                    style: TextStyle(
+                                      fontSize: titleFontSize,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  // Desktop Notification and More Icons
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildNotificationIconButton(iconSize),
+                                      SizedBox(width: isMobile ? 4 : 8),
+                                      IconButton(
+                                        onPressed: _onApplyLeave,
+                                        icon:
+                                            Icon(Icons.more_vert, size: iconSize),
+                                        tooltip: 'More options',
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: verticalSpacing),
+                            ],
 
-                      _isLoadingAttendance
-                          ? Container(
-                              padding: const EdgeInsets.all(40),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).cardColor,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            )
-                          : WelcomeCard(
+                            // Welcome Card (always visible after loading completes)
+                            WelcomeCard(
                               isCheckedIn: _isCheckedIn,
                               checkInTime: _checkInTime,
                               checkOutTime: _checkOutTime,
@@ -2195,53 +3612,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               onCheckInToggle: _toggleCheckIn,
                               user: widget.user,
                             ),
-                      SizedBox(height: verticalSpacing),
+                            SizedBox(height: verticalSpacing),
 
-                      // Profile Card
-                      ProfileCardWidget(
-                        name: (_dashboardUser ?? widget.user)?.name,
-                        role: (_dashboardUser ?? widget.user)?.role,
-                        department: (_dashboardUser ?? widget.user)?.department,
-                        phone: (_dashboardUser ?? widget.user)?.phone,
-                        email: (_dashboardUser ?? widget.user)?.email,
-                        address: (_dashboardUser ?? widget.user)?.address,
-                        dateOfBirth: (_dashboardUser ?? widget.user)?.dateOfBirth?.toIso8601String(),
-                        isActive:
-                            ((_dashboardUser ?? widget.user)?.status ?? '').toLowerCase() ==
-                            'active',
-                      ),
-                      SizedBox(height: verticalSpacing),
+                            // Profile Card
+                            ProfileCardWidget(
+                              name: (_dashboardUser ?? widget.user)?.name,
+                              role: (_dashboardUser ?? widget.user)?.role,
+                              department: (_dashboardUser ?? widget.user)?.department,
+                              phone: (_dashboardUser ?? widget.user)?.phone,
+                              email: (_dashboardUser ?? widget.user)?.email,
+                              address: (_dashboardUser ?? widget.user)?.address,
+                              dateOfBirth: (_dashboardUser ?? widget.user)
+                                  ?.dateOfBirth
+                                  ?.toIso8601String(),
+                              isActive: ((_dashboardUser ?? widget.user)?.status ?? '')
+                                      .toLowerCase() ==
+                                  'active',
+                            ),
+                            SizedBox(height: verticalSpacing),
 
-                      // Status Card (Updates based on timer)
-                      StatusCard(
-                        workedDuration: _workedDuration,
-                        progress: progress,
-                        checkInTime: _checkInTime,
-                      ),
-                      SizedBox(height: verticalSpacing),
+                            // Status Card (Updates based on timer)
+                            StatusCard(
+                              workedDuration: _workedDuration,
+                              progress: progress,
+                              checkInTime: _checkInTime,
+                            ),
+                            SizedBox(height: verticalSpacing),
 
-                      // Responsive Grid
-                      GridView.count(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisCount: gridCrossAxisCount,
-                        crossAxisSpacing: gridSpacing,
-                        mainAxisSpacing: gridSpacing,
-                        childAspectRatio: gridChildAspectRatio,
-                        children: _isLoadingStats
-                            ? List.generate(
-                                4,
-                                (index) => Container(
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).cardColor,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                ),
-                              )
-                            : [
+                            // Stats Grid (now visible after loading completes)
+                            GridView.count(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisCount: gridCrossAxisCount,
+                              crossAxisSpacing: gridSpacing,
+                              mainAxisSpacing: gridSpacing,
+                              childAspectRatio: gridChildAspectRatio,
+                              children: [
                                 // StatCard(
                                 //   title: "Casual Leave",
                                 //   value: "${_dashboardStats?.leaveBalance.casual ?? 0} days",
@@ -2267,69 +3673,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 //   isAlert: (_dashboardStats?.attendancePercentage ?? 0) < 80,
                                 // ),
                               ],
-                      ),
-                      SizedBox(height: verticalSpacing),
-
-                      // Quick Stats: Appreciations, Warnings, Expenses, Complaints
-                      DashboardQuickStatsSection(userId: widget.user?.id),
-                      SizedBox(height: verticalSpacing),
-
-                      // Attendance Statistics + Leave Statistics
-                      if (isDesktopDevice)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: AttendanceStatisticsSection(
-                                userId: widget.user?.id,
-                              ),
                             ),
-                            SizedBox(width: verticalSpacing),
-                            Expanded(
-                              child: LeaveStatisticsSection(
-                                userId: widget.user?.id,
-                              ),
-                            ),
-                          ],
-                        )
-                      else ...[
-                        AttendanceStatisticsSection(userId: widget.user?.id),
-                        SizedBox(height: verticalSpacing),
-                        LeaveStatisticsSection(userId: widget.user?.id),
-                      ],
-                      SizedBox(height: verticalSpacing),
+                            SizedBox(height: verticalSpacing),
 
-                      // Responsive Bottom Section
-                      if (isDesktopDevice)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(child: TasksSection(token: widget.token)),
-                            SizedBox(width: verticalSpacing),
-                            Expanded(
-                              child: AnnouncementsSection(
+                            // Quick Stats: Appreciations, Warnings, Expenses, Complaints
+                            DashboardQuickStatsSection(userId: widget.user?.id),
+                            SizedBox(height: verticalSpacing),
+
+                            // Attendance Statistics + Leave Statistics
+                            if (isDesktopDevice)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: AttendanceStatisticsSection(
+                                      userId: widget.user?.id,
+                                    ),
+                                  ),
+                                  SizedBox(width: verticalSpacing),
+                                  Expanded(
+                                    child: LeaveStatisticsSection(
+                                      userId: widget.user?.id,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else ...[
+                              AttendanceStatisticsSection(userId: widget.user?.id),
+                              SizedBox(height: verticalSpacing),
+                              LeaveStatisticsSection(userId: widget.user?.id),
+                            ],
+                            SizedBox(height: verticalSpacing),
+
+                            // Tasks + Announcements Section
+                            if (isDesktopDevice)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: TasksSection(token: widget.token)),
+                                  SizedBox(width: verticalSpacing),
+                                  Expanded(
+                                    child: AnnouncementsSection(
+                                      announcements: _announcements,
+                                      isLoading: false,
+                                      userId: widget.user?.id,
+                                      onAnnouncementTap: _markAnnouncementAsRead,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else ...[
+                              TasksSection(token: widget.token),
+                              SizedBox(height: verticalSpacing),
+                              AnnouncementsSection(
                                 announcements: _announcements,
-                                isLoading: _isLoadingAnnouncements,
+                                isLoading: false,
                                 userId: widget.user?.id,
                                 onAnnouncementTap: _markAnnouncementAsRead,
                               ),
-                            ),
+                            ],
+                            SizedBox(height: verticalSpacing),
                           ],
-                        )
-                      else ...[
-                        TasksSection(token: widget.token),
-                        SizedBox(height: verticalSpacing),
-                        AnnouncementsSection(
-                          announcements: _announcements,
-                          isLoading: _isLoadingAnnouncements,
-                          userId: widget.user?.id,
-                          onAnnouncementTap: _markAnnouncementAsRead,
                         ),
-                      ],
-                      SizedBox(height: verticalSpacing),
-                    ],
-                  ),
-                ),
+                      ),
               ),
             ],
           ),

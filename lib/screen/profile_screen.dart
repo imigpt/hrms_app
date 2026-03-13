@@ -9,8 +9,14 @@ import 'package:hrms_app/utils/responsive_utils.dart';
 class ProfileScreen extends StatefulWidget {
   final ProfileUser? user;
   final String? token;
+  final String role; // 'employee', 'hr', 'admin', 'client'
 
-  const ProfileScreen({super.key, this.user, this.token});
+  const ProfileScreen({
+    super.key,
+    this.user,
+    this.token,
+    this.role = 'employee',
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -44,6 +50,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     final user = widget.user;
     _currentUser = user;
+    
+    // Debug: Log initial user data
+    debugPrint('🔍 ProfileScreen InitState:');
+    debugPrint('  Token: ${widget.token?.isNotEmpty == true ? "✓" : "✗"}');
+    debugPrint('  User: ${user?.name ?? "NULL"}');
+    debugPrint('  Role: ${widget.role}');
+    
     // Create controllers once
     _nameController = TextEditingController(text: user?.name ?? "");
     _emailController = TextEditingController(text: user?.email ?? "");
@@ -66,12 +79,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       "Status": _titleCase(user?.status) ?? "",
       "Join Date": _formatDate(user?.joinDate) ?? "",
     };
+    
+    debugPrint('  Initial Name: ${_nameController.text}');
+    debugPrint('  Initial Phone: ${_phoneController.text}');
+    debugPrint('  Initial Email: ${_emailController.text}');
+    
     // Fetch fresh data from API (shows latest saved values even after back+return)
     _fetchFreshProfile();
   }
 
   /// Refreshes UI from a ProfileUser without recreating controllers.
   void _applyUser(ProfileUser u) {
+    debugPrint('🔄 ProfileScreen: Applying user data to UI');
     _currentUser = u;
     _nameController.text = u.name;
     _emailController.text = u.email;
@@ -89,17 +108,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
       "Status": _titleCase(u.status) ?? "",
       "Join Date": _formatDate(u.joinDate) ?? "",
     };
+    
+    debugPrint('  Updated Name: ${_nameController.text}');
+    debugPrint('  Updated Phone: ${_phoneController.text}');
+    debugPrint('  Updated Email: ${_emailController.text}');
+    debugPrint('  Updated Department: ${_employmentData["Department"]}');
   }
 
   Future<void> _fetchFreshProfile() async {
-    if (widget.token == null || widget.token!.isEmpty) return;
+    if (widget.token == null || widget.token!.isEmpty) {
+      debugPrint('⚠️ ProfileScreen: Missing token, cannot fetch profile');
+      return;
+    }
+    
     try {
-      final freshUser = await _profileService.fetchProfile(widget.token!);
-      if (freshUser != null && mounted) {
-        setState(() => _applyUser(freshUser));
+      debugPrint('📡 ProfileScreen: Fetching fresh profile from API...');
+      final freshUser = await _profileService.fetchProfile(
+        widget.token!,
+        role: widget.role,
+      );
+      
+      if (freshUser != null) {
+        debugPrint('✅ ProfileScreen: Profile loaded successfully');
+        debugPrint('  Name: ${freshUser.name}');
+        debugPrint('  Email: ${freshUser.email}');
+        debugPrint('  Department: ${freshUser.department}');
+        debugPrint('  ProfilePhoto: ${freshUser.profilePhotoUrl}');
+        
+        if (mounted) {
+          setState(() => _applyUser(freshUser));
+        }
+      } else {
+        debugPrint('⚠️ ProfileScreen: API returned null user');
       }
-    } catch (_) {
-      // Silently fall back to widget.user already shown
+    } catch (e) {
+      debugPrint('❌ ProfileScreen: Error fetching profile: $e');
+      // Fall back to widget.user already shown
     }
   }
 

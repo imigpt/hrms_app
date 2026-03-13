@@ -591,13 +591,28 @@ class ChatMediaService {
             mimeType: mimeTypeOverride,
           );
           debugPrint('   🌐 Browser URL: $viewUrl');
-          final launched = await openUrlInBrowser(viewUrl);
-          if (launched) {
-            debugPrint('   ✅ Opened in browser');
-            return;
+          try {
+            final launched = await openUrlInBrowser(viewUrl);
+            if (launched) {
+              debugPrint('   ✅ Opened in browser');
+              return;
+            } else {
+              debugPrint('   ⚠️ Browser launch returned false - no browser app available');
+            }
+          } catch (e) {
+            debugPrint('   ⚠️ Browser fallback error: $e');
           }
+        } else {
+          debugPrint('   ⚠️ No fallback URL available for browser view');
         }
-        throw Exception(errorMsg);
+        
+        // If both app and browser failed, provide detailed error message
+        throw Exception(
+          'Cannot open PDF with available methods. '
+          'Local app: $errorMsg. '
+          'Browser fallback: ${fallbackUrl != null ? "attempted but failed" : "no URL available"}. '
+          'Please try downloading directly.'
+        );
       }
 
       debugPrint('   ✅ File opened successfully');

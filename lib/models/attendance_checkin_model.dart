@@ -18,8 +18,10 @@ class FaceVerification {
 
   factory FaceVerification.fromJson(Map<String, dynamic> json) =>
       FaceVerification(
-        similarityScore: (json["similarityScore"] as num).toInt(),
-        matched: json["matched"] as bool,
+        similarityScore: json["similarityScore"] != null
+            ? (json["similarityScore"] as num).toInt()
+            : 0,
+        matched: json["matched"] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {

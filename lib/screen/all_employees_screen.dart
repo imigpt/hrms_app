@@ -13,8 +13,9 @@ import 'task_detail_sheet.dart';
 
 class AllEmployeesScreen extends StatefulWidget {
   final String? token;
+  final String role;
 
-  const AllEmployeesScreen({super.key, this.token});
+  const AllEmployeesScreen({super.key, this.token, this.role = 'admin'});
 
   @override
   State<AllEmployeesScreen> createState() => _AllEmployeesScreenState();
@@ -76,7 +77,10 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
         _isLoading = true;
         _error = null;
       });
-      final result = await AdminEmployeesService.getAllEmployees(widget.token!);
+      final result = await AdminEmployeesService.getAllEmployees(
+        widget.token!,
+        role: widget.role,
+      );
       if (!mounted) return;
       if (result['success'] == true) {
         final data = (result['data'] as List<dynamic>?) ?? [];
@@ -543,16 +547,16 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
     return Column(
       children: [
         _searchField(),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(child: _companyDropdown()),
             const SizedBox(width: 8),
-            Expanded(child: _statusDropdown()),
+            Expanded(child: _departmentDropdown()),
           ],
         ),
         const SizedBox(height: 8),
-        SizedBox(width: double.infinity, child: _departmentDropdown()),
+        SizedBox(width: double.infinity, child: _statusDropdown()),
       ],
     );
   }
@@ -575,6 +579,7 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
           Expanded(flex: 2, child: _departmentDropdown()),
           const SizedBox(width: 12),
           Expanded(flex: 2, child: _statusDropdown()),
+
         ],
       ),
     );
@@ -764,6 +769,7 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
       fontWeight: FontWeight.w600,
       letterSpacing: 0.5,
     );
+
     return Container(
       color: _tableHeader,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -4707,6 +4713,7 @@ class _EditEmployeeDialog extends StatefulWidget {
 class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
   // Use AppTheme for consistency
   static const Color _bg = AppTheme.background;
+  static const Color _card = AppTheme.cardColor;
   static const Color _section = AppTheme.surface;
   static const Color _input = AppTheme.surface;
   static const Color _border = AppTheme.outline;
@@ -4755,18 +4762,20 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 620),
+        constraints: const BoxConstraints(maxWidth: 680),
         decoration: BoxDecoration(
           color: _bg,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: _border.withOpacity(0.5), width: 1),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _border, width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              blurRadius: 24,
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 20,
               offset: const Offset(0, 8),
+              spreadRadius: -2,
             ),
           ],
         ),
@@ -4774,44 +4783,40 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Drag handle
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: _border.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(2),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Container(
+                  width: 36,
+                  height: 3.5,
+                  decoration: BoxDecoration(
+                    color: _border.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
             ),
-            // Header with gradient background
+            // Header with modern design
             Container(
               decoration: BoxDecoration(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(28),
+                  top: Radius.circular(24),
                 ),
-                gradient: LinearGradient(
-                  colors: [_blue.withOpacity(0.08), _purple.withOpacity(0.04)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                color: _card,
+                border: Border(
+                  bottom: BorderSide(color: _border, width: 1),
                 ),
               ),
-              padding: const EdgeInsets.fromLTRB(24, 16, 20, 18),
+              padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(11),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          _blue.withOpacity(0.2),
-                          _blue.withOpacity(0.08),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
+                      color: _blue.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: _blue.withOpacity(0.3),
+                        color: _blue.withOpacity(0.25),
                         width: 1,
                       ),
                     ),
@@ -4831,17 +4836,17 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
                           style: TextStyle(
                             color: _textLight,
                             fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.3,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 4),
                         Text(
                           'Update employee information',
                           style: TextStyle(
                             color: _textGrey,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],
@@ -4850,9 +4855,9 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      padding: const EdgeInsets.all(7),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: _border.withOpacity(0.6),
+                        color: _border.withOpacity(0.4),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: _border, width: 1),
                       ),
@@ -4866,7 +4871,6 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
                 ],
               ),
             ),
-            Container(height: 1, color: _border.withOpacity(0.4)),
             // Form
             Expanded(
               child: SingleChildScrollView(
@@ -5062,67 +5066,30 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
                           const SizedBox(width: 12),
                           Expanded(
                             flex: 2,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [_blue, _blue.withOpacity(0.85)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(13),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _blue.withOpacity(0.3),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
+                            child: ElevatedButton.icon(
+                              onPressed: _isSubmitting ? null : _submitForm,
+                              icon: Icon(
+                                _isSubmitting ? Icons.hourglass_bottom_rounded : Icons.check_rounded,
+                                size: 17,
+                                color: Colors.black,
                               ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: _isSubmitting ? null : _submitForm,
-                                  borderRadius: BorderRadius.circular(13),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    child: Center(
-                                      child: _isSubmitting
-                                          ? const SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2.5,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation(
-                                                      Color(0xFF0A0E27),
-                                                    ),
-                                              ),
-                                            )
-                                          : const Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  Icons.check_rounded,
-                                                  size: 17,
-                                                ),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  'Save Changes',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    fontSize: 14,
-                                                    letterSpacing: 0.3,
-                                                    color: Color(0xFF0A0E27),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                    ),
-                                  ),
+                              label: Text(
+                                _isSubmitting ? 'Saving...' : 'Save Changes',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  letterSpacing: 0.2,
+                                  color: Colors.black,
                                 ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _blue,
+                                disabledBackgroundColor: _border.withOpacity(0.5),
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(11),
+                                ),
+                                elevation: 0,
                               ),
                             ),
                           ),
@@ -5146,11 +5113,11 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.3), width: 1),
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: color.withOpacity(0.2), width: 1),
           ),
-          child: Icon(icon, size: 15, color: color),
+          child: Icon(icon, size: 16, color: color),
         ),
         const SizedBox(width: 12),
         Text(
@@ -5159,16 +5126,16 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
             color: color,
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            letterSpacing: 0.5,
+            letterSpacing: 0.3,
           ),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 12),
         Expanded(
           child: Container(
-            height: 1,
+            height: 0.8,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.3), color.withOpacity(0)],
+                colors: [color.withOpacity(0.25), color.withOpacity(0)],
               ),
             ),
           ),
@@ -5183,14 +5150,7 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
       decoration: BoxDecoration(
         color: _section,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _border.withOpacity(0.6), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: _border, width: 1),
       ),
       child: Column(children: children),
     );
@@ -5215,13 +5175,13 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
             color: _textLight,
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
+            letterSpacing: -0.3,
           ),
         ),
         const SizedBox(height: 8),
         TextFormField(
           initialValue: initialValue,
-          style: const TextStyle(color: _textLight, fontSize: 14),
+          style: const TextStyle(color: _textLight, fontSize: 13.5),
           obscureText: isPassword,
           readOnly: isReadOnly,
           onChanged: onChanged,
@@ -5232,30 +5192,32 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
               : null,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: _textGrey, fontSize: 13),
-            prefixIcon: Icon(icon, size: 17, color: _textGrey),
+            hintStyle: TextStyle(color: _textGrey.withOpacity(0.6), fontSize: 13),
+            prefixIcon: Icon(icon, size: 16, color: _textGrey),
+            suffixIcon: isPassword ? Icon(Icons.visibility_off_outlined, size: 16, color: _textGrey) : null,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 13,
-              vertical: 13,
+              horizontal: 14,
+              vertical: 12,
             ),
             filled: true,
             fillColor: _input,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(11),
-              borderSide: BorderSide(color: _border.withOpacity(0.6), width: 1),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: _border, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(11),
-              borderSide: BorderSide(color: _border.withOpacity(0.6), width: 1),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: _border, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(11),
-              borderSide: const BorderSide(color: _blue, width: 1.8),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _blue, width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(11),
-              borderSide: const BorderSide(color: _red, width: 1),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _red, width: 1.5),
             ),
+            errorStyle: const TextStyle(color: _red, fontSize: 11),
           ),
         ),
       ],
@@ -5278,39 +5240,40 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
             color: _textLight,
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            letterSpacing: -0.2,
+            letterSpacing: -0.3,
           ),
         ),
         const SizedBox(height: 8),
         TextFormField(
           initialValue: initialValue,
-          style: const TextStyle(color: _textLight, fontSize: 14),
+          style: const TextStyle(color: _textLight, fontSize: 13.5),
           maxLines: 3,
+          minLines: 2,
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: _textGrey, fontSize: 13),
+            hintStyle: TextStyle(color: _textGrey.withOpacity(0.6), fontSize: 13),
             prefixIcon: Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Icon(icon, size: 17, color: _textGrey),
+              padding: const EdgeInsets.only(top: 12),
+              child: Icon(icon, size: 16, color: _textGrey),
             ),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 13,
-              vertical: 13,
+              horizontal: 14,
+              vertical: 12,
             ),
             filled: true,
             fillColor: _input,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(11),
-              borderSide: BorderSide(color: _border.withOpacity(0.6), width: 1),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: _border, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(11),
-              borderSide: BorderSide(color: _border.withOpacity(0.6), width: 1),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: _border, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(11),
-              borderSide: const BorderSide(color: _blue, width: 1.8),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: _blue, width: 2),
             ),
           ),
         ),
@@ -5325,6 +5288,19 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
     String? initialValue,
     required Function(String) onChanged,
   }) {
+    // Extract only the date portion (YYYY-MM-DD) from initialValue if it contains time
+    String _getDateOnly(String? value) {
+      if (value?.isEmpty ?? true) return '';
+      // Parse the date string and return only the date portion
+      try {
+        final dateTime = DateTime.parse(value!);
+        return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')}';
+      } catch (e) {
+        // If already in correct format, return as-is
+        return value ?? '';
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -5350,7 +5326,7 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
               );
               if (picked != null) {
                 final formatted =
-                    '${picked.year}-${String.fromCharCode(48 + picked.month ~/ 10)}${String.fromCharCode(48 + picked.month % 10)}-${String.fromCharCode(48 + picked.day ~/ 10)}${String.fromCharCode(48 + picked.day % 10)}';
+                    '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
                 setState(() {});
                 onChanged(formatted);
               }
@@ -5368,7 +5344,7 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      initialValue?.isNotEmpty ?? false ? initialValue! : hint,
+                      initialValue?.isNotEmpty ?? false ? _getDateOnly(initialValue) : hint,
                       style: TextStyle(
                         color: (initialValue?.isNotEmpty ?? false)
                             ? _textLight

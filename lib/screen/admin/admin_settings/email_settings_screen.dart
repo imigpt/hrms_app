@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:hrms_app/services/settings_service.dart';
 import 'package:hrms_app/theme/app_theme.dart';
+import 'package:hrms_app/utils/responsive_utils.dart';
 import 'shared.dart';
 
 class AdminEmailSettingsScreen extends StatefulWidget {
@@ -362,12 +363,22 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = ResponsiveUtils(context);
+    final isMobile = responsive.isMobile;
+    
     const tabLabels = [
       'Server Config',
       'Email Triggers',
       'Test & Logs',
       'Templates',
     ];
+    const shortTabLabels = [
+      'Config',
+      'Triggers',
+      'Logs',
+      'Templates',
+    ];
+    
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
@@ -375,65 +386,94 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
           children: [
             AdminSubScreenHeader(
               title: 'Email Settings',
-              subtitle: 'SMTP configuration and email triggers',
+              subtitle: isMobile ? 'Configure email' : 'SMTP configuration and email triggers',
               icon: Icons.email_rounded,
               iconColor: const Color(0xFF8B5CF6),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GestureDetector(
-                    onTap: _showBulkEmailDialog,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardColor,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.1),
+              trailing: isMobile
+                  ? GestureDetector(
+                      onTap: _showBulkEmailDialog,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.send_rounded,
+                          size: 18,
+                          color: Color(0xFF8B5CF6),
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.send_rounded,
-                            size: 14,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Send Email',
-                            style: TextStyle(
-                              color: Colors.grey[300],
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: _showBulkEmailDialog,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 9,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardColor,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.1),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.send_rounded,
+                                  size: 14,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Send Email',
+                                  style: TextStyle(
+                                    color: Colors.grey[300],
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 8),
+                        AdminSaveButton(saving: _saving, onTap: _save),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  AdminSaveButton(saving: _saving, onTap: _save),
-                ],
-              ),
             ),
-            // Tabs (4 tabs)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                children: tabLabels.asMap().entries.map((e) {
-                  final isLast = e.key == tabLabels.length - 1;
-                  return Expanded(
-                    child: GestureDetector(
+            // Tabs (responsive)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 12 : 20,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: (isMobile ? shortTabLabels : tabLabels)
+                      .asMap()
+                      .entries
+                      .map((e) {
+                    final isLast = e.key == tabLabels.length - 1;
+                    return GestureDetector(
                       onTap: () => setState(() => _tab = e.key),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
-                        margin: EdgeInsets.only(right: isLast ? 0 : 6),
-                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        margin: EdgeInsets.only(right: isLast ? 0 : 8),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isMobile ? 10 : 14,
+                          vertical: 9,
+                        ),
                         decoration: BoxDecoration(
                           color: _tab == e.key
                               ? AppTheme.primaryColor
@@ -447,30 +487,29 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
                         ),
                         child: Text(
                           e.value,
-                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: _tab == e.key
                                 ? Colors.white
                                 : Colors.grey[500],
-                            fontSize: 11,
+                            fontSize: isMobile ? 10 : 11,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
             Expanded(
               child: _loading
                   ? adminLoader()
                   : _tab == 0
-                  ? _buildServer()
+                  ? _buildServer(isMobile)
                   : _tab == 1
-                  ? _buildTriggers()
+                  ? _buildTriggers(isMobile)
                   : _tab == 2
-                  ? _buildTestLogs()
+                  ? _buildTestLogs(isMobile)
                   : _buildTemplates(),
             ),
           ],
@@ -479,137 +518,197 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
     );
   }
 
-  Widget _buildServer() {
+  Widget _buildServer(bool isMobile) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 12 : 0,
+        0,
+        isMobile ? 12 : 0,
+        24,
+      ),
       children: [
         AdminCard(
           title: 'Mail Server',
           children: [
-            // Row 1: Driver + Encryption
-            AdminRow2(
-              left: AdminDropdown(
-                label: 'Mail Driver',
-                value: _driver,
-                items: const [
-                  DropdownMenuItem(value: 'smtp', child: Text('SMTP')),
-                  DropdownMenuItem(
-                    value: 'sendgrid',
-                    child: Text('SendGrid'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'ses',
-                    child: Text('Amazon SES'),
-                  ),
-                  DropdownMenuItem(value: 'mailgun', child: Text('Mailgun')),
-                ],
-                onChanged: (v) => setState(() => _driver = v!),
-              ),
-              right: AdminDropdown(
-                label: 'Encryption',
-                value: _encryption,
-                items: const [
-                  DropdownMenuItem(value: 'none', child: Text('None')),
-                  DropdownMenuItem(value: 'ssl', child: Text('SSL')),
-                  DropdownMenuItem(value: 'tls', child: Text('TLS')),
-                ],
-                onChanged: (v) => setState(() => _encryption = v!),
-              ),
-            ),
-            const SizedBox(height: 14),
-            // Row 2: SMTP Host + Port
-            AdminRow2(
-              left: AdminTextField(
-                label: 'SMTP Host',
-                controller: _smtpHostCtrl,
-                hint: 'smtp.gmail.com',
-              ),
-              right: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            if (isMobile)
+              Column(
                 children: [
-                  const AdminSectionLabel('SMTP Port', topPad: false),
-                  const SizedBox(height: 6),
-                  TextFormField(
-                    initialValue: _smtpPort.toString(),
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) =>
-                        setState(() => _smtpPort = int.tryParse(v) ?? 587),
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: AppTheme.surfaceVariant,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.white.withOpacity(0.07),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const AdminSectionLabel('Mail Driver', topPad: false),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<String>(
+                        value: _driver,
+                        dropdownColor: AppTheme.cardColor,
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: AppTheme.surfaceVariant,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'smtp', child: Text('SMTP')),
+                          DropdownMenuItem(value: 'sendgrid', child: Text('SendGrid')),
+                          DropdownMenuItem(value: 'ses', child: Text('Amazon SES')),
+                          DropdownMenuItem(value: 'mailgun', child: Text('Mailgun')),
+                        ],
+                        onChanged: (v) => setState(() => _driver = v!),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const AdminSectionLabel('Encryption', topPad: false),
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<String>(
+                        value: _encryption,
+                        dropdownColor: AppTheme.cardColor,
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: AppTheme.surfaceVariant,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'none', child: Text('None')),
+                          DropdownMenuItem(value: 'ssl', child: Text('SSL')),
+                          DropdownMenuItem(value: 'tls', child: Text('TLS')),
+                        ],
+                        onChanged: (v) => setState(() => _encryption = v!),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  AdminTextField(label: 'SMTP Host', controller: _smtpHostCtrl, hint: 'smtp.gmail.com'),
+                  const SizedBox(height: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const AdminSectionLabel('SMTP Port', topPad: false),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        initialValue: _smtpPort.toString(),
+                        keyboardType: TextInputType.number,
+                        onChanged: (v) => setState(() => _smtpPort = int.tryParse(v) ?? 587),
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: AppTheme.surfaceVariant,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.07)),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         ),
                       ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.white.withOpacity(0.07),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  AdminTextField(label: 'Username', controller: _usernameCtrl),
+                  const SizedBox(height: 12),
+                  AdminTextField(
+                    label: 'Password',
+                    controller: _passwordCtrl,
+                    obscure: !_showPassword,
+                    suffix: IconButton(
+                      icon: Icon(_showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey[500], size: 16),
+                      onPressed: () => setState(() => _showPassword = !_showPassword),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  AdminTextField(label: 'From Name', controller: _fromNameCtrl),
+                  const SizedBox(height: 12),
+                  AdminTextField(label: 'From Email', controller: _fromEmailCtrl, keyboardType: TextInputType.emailAddress),
+                ],
+              )
+            else
+              Column(
+                children: [
+                  AdminRow2(
+                    left: AdminDropdown(
+                      label: 'Mail Driver',
+                      value: _driver,
+                      items: const [
+                        DropdownMenuItem(value: 'smtp', child: Text('SMTP')),
+                        DropdownMenuItem(value: 'sendgrid', child: Text('SendGrid')),
+                        DropdownMenuItem(value: 'ses', child: Text('Amazon SES')),
+                        DropdownMenuItem(value: 'mailgun', child: Text('Mailgun')),
+                      ],
+                      onChanged: (v) => setState(() => _driver = v!),
+                    ),
+                    right: AdminDropdown(
+                      label: 'Encryption',
+                      value: _encryption,
+                      items: const [
+                        DropdownMenuItem(value: 'none', child: Text('None')),
+                        DropdownMenuItem(value: 'ssl', child: Text('SSL')),
+                        DropdownMenuItem(value: 'tls', child: Text('TLS')),
+                      ],
+                      onChanged: (v) => setState(() => _encryption = v!),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  AdminRow2(
+                    left: AdminTextField(label: 'SMTP Host', controller: _smtpHostCtrl, hint: 'smtp.gmail.com'),
+                    right: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const AdminSectionLabel('SMTP Port', topPad: false),
+                        const SizedBox(height: 6),
+                        TextFormField(
+                          initialValue: _smtpPort.toString(),
+                          keyboardType: TextInputType.number,
+                          onChanged: (v) => setState(() => _smtpPort = int.tryParse(v) ?? 587),
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: AppTheme.surfaceVariant,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.07))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          ),
                         ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: AppTheme.primaryColor,
-                          width: 1.5,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  AdminRow2(
+                    left: AdminTextField(label: 'Username', controller: _usernameCtrl),
+                    right: AdminTextField(
+                      label: 'Password',
+                      controller: _passwordCtrl,
+                      obscure: !_showPassword,
+                      suffix: IconButton(
+                        icon: Icon(_showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.grey[500], size: 18),
+                        onPressed: () => setState(() => _showPassword = !_showPassword),
                       ),
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  AdminRow2(
+                    left: AdminTextField(label: 'From Name', controller: _fromNameCtrl),
+                    right: AdminTextField(label: 'From Email', controller: _fromEmailCtrl, keyboardType: TextInputType.emailAddress),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 14),
-            // Row 3: Username + Password
-            AdminRow2(
-              left: AdminTextField(
-                label: 'Username',
-                controller: _usernameCtrl,
-              ),
-              right: AdminTextField(
-                label: 'Password',
-                controller: _passwordCtrl,
-                obscure: !_showPassword,
-                suffix: IconButton(
-                  icon: Icon(
-                    _showPassword
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
-                    color: Colors.grey[500],
-                    size: 18,
-                  ),
-                  onPressed: () =>
-                      setState(() => _showPassword = !_showPassword),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            // Row 4: From Name + From Email
-            AdminRow2(
-              left: AdminTextField(
-                label: 'From Name',
-                controller: _fromNameCtrl,
-              ),
-              right: AdminTextField(
-                label: 'From Email',
-                controller: _fromEmailCtrl,
-                keyboardType: TextInputType.emailAddress,
-              ),
-            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildTriggers() {
+  Widget _buildTriggers(bool isMobile) {
     final triggers = [
       ('Leave Application', _leaveApplication, (v) => setState(() => _leaveApplication = v)),
       ('Leave Approval', _leaveApproval, (v) => setState(() => _leaveApproval = v)),
@@ -629,9 +728,9 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
       ('Announcement', _announcement, (v) => setState(() => _announcement = v)),
     ];
 
-    // Build 2-column grid of toggle tiles
+    final colsPerRow = isMobile ? 1 : 2;
     final rows = <Widget>[];
-    for (int i = 0; i < triggers.length; i += 2) {
+    for (int i = 0; i < triggers.length; i += colsPerRow) {
       rows.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -644,8 +743,8 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
                   onChanged: (v) => triggers[i].$3(v),
                 ),
               ),
-              const SizedBox(width: 8),
-              if (i + 1 < triggers.length)
+              if (!isMobile) const SizedBox(width: 8),
+              if (!isMobile && i + 1 < triggers.length)
                 Expanded(
                   child: _TriggerTile(
                     label: triggers[i + 1].$1,
@@ -653,7 +752,7 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
                     onChanged: (v) => triggers[i + 1].$3(v),
                   ),
                 )
-              else
+              else if (!isMobile)
                 const Expanded(child: SizedBox()),
             ],
           ),
@@ -662,7 +761,12 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 12 : 0,
+        0,
+        isMobile ? 12 : 0,
+        24,
+      ),
       children: [
         AdminCard(
           title: 'Email Triggers',
@@ -671,7 +775,7 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(
                 'Enable or disable automatic email notifications for these events:',
-                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                style: TextStyle(color: Colors.grey[500], fontSize: isMobile ? 11 : 12),
               ),
             ),
             ...rows,
@@ -681,72 +785,90 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
     );
   }
 
-  Widget _buildTestLogs() {
+  Widget _buildTestLogs(bool isMobile) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 12 : 0,
+        0,
+        isMobile ? 12 : 0,
+        24,
+      ),
       children: [
         AdminCard(
           title: 'Send Test Email',
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: AdminTextField(
+            if (isMobile)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AdminTextField(
                     label: 'Recipient Address',
                     controller: _testEmailCtrl,
                     keyboardType: TextInputType.emailAddress,
                     hint: 'recipient@example.com',
                   ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: _testSending ? null : _sendTest,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF3B82F6).withOpacity(0.4),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: _testSending ? null : _sendTest,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.4)),
                       ),
-                    ),
-                    child: _testSending
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFF3B82F6),
+                      child: _testSending
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF3B82F6)))
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.science_rounded, color: Color(0xFF3B82F6), size: 16),
+                                SizedBox(width: 8),
+                                Text('Send Test Email', style: TextStyle(color: Color(0xFF3B82F6), fontSize: 12, fontWeight: FontWeight.w600)),
+                              ],
                             ),
-                          )
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Icon(
-                                Icons.science_rounded,
-                                color: Color(0xFF3B82F6),
-                                size: 18,
-                              ),
-                              SizedBox(width: 6),
-                              Text(
-                                'Send Test',
-                                style: TextStyle(
-                                  color: Color(0xFF3B82F6),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              )
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: AdminTextField(
+                      label: 'Recipient Address',
+                      controller: _testEmailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                      hint: 'recipient@example.com',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: _testSending ? null : _sendTest,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.4)),
+                      ),
+                      child: _testSending
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF3B82F6)))
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.science_rounded, color: Color(0xFF3B82F6), size: 18),
+                                SizedBox(width: 6),
+                                Text('Send Test', style: TextStyle(color: Color(0xFF3B82F6), fontSize: 13, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
         AdminCard(
@@ -758,54 +880,32 @@ class _AdminEmailSettingsScreenState extends State<AdminEmailSettingsScreen> {
                 child: Center(
                   child: Text(
                     'No email logs found.',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(color: Colors.grey[600], fontSize: isMobile ? 12 : 13),
                   ),
                 ),
               )
             else ...[
-              // Table header
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        'Subject',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+              if (!isMobile)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text('Subject', style: TextStyle(color: Colors.grey[500], fontSize: 11, fontWeight: FontWeight.w600)),
                       ),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        'Recipient',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Expanded(
+                        flex: 2,
+                        child: Text('Recipient', style: TextStyle(color: Colors.grey[500], fontSize: 11, fontWeight: FontWeight.w600)),
                       ),
-                    ),
-                    SizedBox(
-                      width: 60,
-                      child: Text(
-                        'Status',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      SizedBox(
+                        width: 60,
+                        child: Text('Status', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[500], fontSize: 11, fontWeight: FontWeight.w600)),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              ..._logs.take(20).map((log) => _LogRow(log: log)),
+              ..._logs.take(20).map((log) => _LogRow(log: log, isMobile: isMobile)),
             ],
           ],
         ),
@@ -905,12 +1005,68 @@ class _TriggerTile extends StatelessWidget {
 
 class _LogRow extends StatelessWidget {
   final Map<String, dynamic> log;
-  const _LogRow({required this.log});
+  final bool isMobile;
+  const _LogRow({required this.log, this.isMobile = false});
 
   @override
   Widget build(BuildContext context) {
     final status = log['status']?.toString() ?? 'unknown';
     final isSuccess = status == 'sent' || status == 'success';
+    
+    if (isMobile) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSuccess ? const Color(0xFF22C55E).withOpacity(0.15) : const Color(0xFFEF4444).withOpacity(0.15),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    log['subject']?.toString() ?? 'No subject',
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSuccess ? const Color(0xFF22C55E).withOpacity(0.15) : const Color(0xFFEF4444).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      color: isSuccess ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'To: ${log['to']?.toString() ?? '—'}',
+              style: TextStyle(color: Colors.grey[500], fontSize: 11),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      );
+    }
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -918,9 +1074,7 @@ class _LogRow extends StatelessWidget {
         color: AppTheme.background,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isSuccess
-              ? const Color(0xFF22C55E).withOpacity(0.15)
-              : const Color(0xFFEF4444).withOpacity(0.15),
+          color: isSuccess ? const Color(0xFF22C55E).withOpacity(0.15) : const Color(0xFFEF4444).withOpacity(0.15),
         ),
       ),
       child: Row(
@@ -929,11 +1083,7 @@ class _LogRow extends StatelessWidget {
             flex: 3,
             child: Text(
               log['subject']?.toString() ?? 'No subject',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -951,22 +1101,15 @@ class _LogRow extends StatelessWidget {
             width: 60,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isSuccess
-                      ? const Color(0xFF22C55E).withOpacity(0.15)
-                      : const Color(0xFFEF4444).withOpacity(0.15),
+                  color: isSuccess ? const Color(0xFF22C55E).withOpacity(0.15) : const Color(0xFFEF4444).withOpacity(0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   status,
                   style: TextStyle(
-                    color: isSuccess
-                        ? const Color(0xFF22C55E)
-                        : const Color(0xFFEF4444),
+                    color: isSuccess ? const Color(0xFF22C55E) : const Color(0xFFEF4444),
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),

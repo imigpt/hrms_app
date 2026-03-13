@@ -5,6 +5,8 @@ import '../models/profile_model.dart';
 import '../services/payroll_service.dart';
 import '../services/token_storage_service.dart';
 import '../services/admin_employees_service.dart';
+import '../utils/responsive_utils.dart';
+import '../theme/app_theme.dart';
 
 class PrePaymentsScreen extends StatefulWidget {
   const PrePaymentsScreen({super.key});
@@ -883,19 +885,30 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
   }
 
   void _showFormDialog() {
+    final responsive = ResponsiveUtils(context);
+    final isMobile = responsive.isMobile;
+    final dialogWidth = isMobile ? double.infinity : 500.0;
+    final dialogPadding = isMobile ? 16.0 : 20.0;
+
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.7),
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 12 : 40,
+          vertical: 24,
+        ),
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 500),
+          constraints: BoxConstraints(
+            maxWidth: dialogWidth,
+          ),
           decoration: BoxDecoration(
-            color: const Color(0xFF0A0A0A),
+            color: AppTheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Colors.grey[900]!,
+              color: AppTheme.outline,
               width: 1,
             ),
             boxShadow: [
@@ -911,11 +924,11 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
             children: [
               // Header
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(dialogPadding),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: Colors.grey[900]!,
+                      color: AppTheme.outline,
                       width: 1,
                     ),
                   ),
@@ -923,33 +936,36 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _isEditMode ? 'Edit Pre-Payment' : 'Add Pre-Payment',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _isEditMode ? 'Edit Pre-Payment' : 'Add Pre-Payment',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.onSurface,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _isEditMode
-                              ? 'Update payment details'
-                              : 'Create a new pre-payment record',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
+                          const SizedBox(height: 4),
+                          Text(
+                            _isEditMode
+                                ? 'Update payment details'
+                                : 'Create a new pre-payment record',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.onSurface.withOpacity(0.6),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(
                         Icons.close_rounded,
-                        color: Colors.grey,
+                        color: AppTheme.onSurface,
+                        size: 24,
                       ),
                       onPressed: () {
                         Navigator.pop(context);
@@ -962,167 +978,351 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
               // Content
               SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Employee Dropdown (Admin only)
-                      if (_userRole?.toLowerCase() == 'admin')
-                        _buildFormField(
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedUserId,
-                            onChanged: (value) =>
-                                setState(() => _selectedUserId = value),
-                            decoration: _inputDecoration('Select Employee *'),
-                            items: _employees
-                                .map(
-                                  (e) => DropdownMenuItem(
-                                    value: e.id,
-                                    child: Text(e.name),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        )
-                      else
-                        _buildFormField(
-                          child: TextFormField(
-                            readOnly: true,
-                            initialValue: (_employees
-                                    .where((e) => e.id == _selectedUserId)
-                                    .firstOrNull)
-                                ?.name ??
-                                'Unknown',
-                            decoration: _inputDecoration('Employee'),
-                          ),
-                        ),
-                      _buildFormField(
-                        child: TextFormField(
-                          controller: _amountCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: _inputDecoration(
-                            'Amount *',
-                            hint: 'Enter amount',
-                            prefixIcon: Icons.currency_rupee_rounded,
-                          ),
-                        ),
-                      ),
-                      _buildFormField(
-                        child: TextFormField(
-                          controller: _deductMonthCtrl,
-                          decoration: _inputDecoration(
-                            'Deduct Month *',
-                            hint: 'YYYY-MM',
-                            prefixIcon: Icons.calendar_month_rounded,
-                          ),
-                        ),
-                      ),
-                      _buildFormField(
-                        child: TextFormField(
-                          controller: _bankNameCtrl,
-                          decoration: _inputDecoration(
-                            'Bank Name',
-                            hint: 'Optional',
-                            prefixIcon: Icons.account_balance_rounded,
-                          ),
-                        ),
-                      ),
-                      _buildFormField(
-                        child: TextFormField(
-                          controller: _accountNumberCtrl,
-                          decoration: _inputDecoration(
-                            'Account Number',
-                            hint: 'Optional',
-                            prefixIcon: Icons.numbers_rounded,
-                          ),
-                        ),
-                      ),
-                      _buildFormField(
-                        child: TextFormField(
-                          controller: _descriptionCtrl,
-                          maxLines: 3,
-                          decoration: _inputDecoration(
-                            'Description',
-                            hint: 'Optional',
-                            prefixIcon: Icons.description_rounded,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  padding: EdgeInsets.all(dialogPadding),
+                  child: isMobile
+                      ? _buildMobileFormContent()
+                      : _buildDesktopFormContent(),
                 ),
               ),
               // Actions
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(dialogPadding),
                 decoration: BoxDecoration(
                   border: Border(
                     top: BorderSide(
-                      color: Colors.grey[900]!,
+                      color: AppTheme.outline,
                       width: 1,
                     ),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _resetForm();
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey[600],
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: _isSubmitting
-                          ? null
-                          : () {
-                              Navigator.pop(context);
-                              _handleSubmit();
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF8FA3),
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                      ),
-                      icon: _isSubmitting
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.black,
-                                ),
+                child: isMobile
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _isSubmitting
+                                ? null
+                                : () {
+                                    Navigator.pop(context);
+                                    _handleSubmit();
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 14,
                               ),
-                            )
-                          : Icon(
-                              _isEditMode
-                                  ? Icons.edit_rounded
-                                  : Icons.add_rounded,
                             ),
-                      label: Text(
-                        _isEditMode ? 'Update' : 'Create',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                            icon: _isSubmitting
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor:
+                                          AlwaysStoppedAnimation<Color>(
+                                        Colors.black,
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    _isEditMode
+                                        ? Icons.edit_rounded
+                                        : Icons.add_rounded,
+                                  ),
+                            label: Text(
+                              _isEditMode ? 'Update' : 'Create',
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _resetForm();
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor:
+                                  AppTheme.onSurface.withOpacity(0.6),
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _resetForm();
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor:
+                                  AppTheme.onSurface.withOpacity(0.6),
+                            ),
+                            child: const Text(
+                              'Cancel',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            onPressed: _isSubmitting
+                                ? null
+                                : () {
+                                    Navigator.pop(context);
+                                    _handleSubmit();
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryColor,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                            ),
+                            icon: _isSubmitting
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor:
+                                          AlwaysStoppedAnimation<Color>(
+                                        Colors.black,
+                                      ),
+                                    ),
+                                  )
+                                : Icon(
+                                    _isEditMode
+                                        ? Icons.edit_rounded
+                                        : Icons.add_rounded,
+                                  ),
+                            label: Text(
+                              _isEditMode ? 'Update' : 'Create',
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMobileFormContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Employee Dropdown/Field
+        if (_userRole?.toLowerCase() == 'admin')
+          _buildFormField(
+            child: DropdownButtonFormField<String>(
+              value: _selectedUserId,
+              onChanged: (value) => setState(() => _selectedUserId = value),
+              decoration: _inputDecoration('Select Employee *'),
+              items: _employees
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e.id,
+                      child: Text(e.name),
+                    ),
+                  )
+                  .toList(),
+            ),
+          )
+        else
+          _buildFormField(
+            child: TextFormField(
+              readOnly: true,
+              initialValue: (_employees
+                      .where((e) => e.id == _selectedUserId)
+                      .firstOrNull)
+                  ?.name ??
+                  'Unknown',
+              decoration: _inputDecoration('Employee'),
+            ),
+          ),
+        _buildFormField(
+          child: TextFormField(
+            controller: _amountCtrl,
+            keyboardType: TextInputType.number,
+            decoration: _inputDecoration(
+              'Amount *',
+              hint: 'Enter amount',
+              prefixIcon: Icons.currency_rupee_rounded,
+            ),
+          ),
+        ),
+        _buildFormField(
+          child: TextFormField(
+            controller: _deductMonthCtrl,
+            decoration: _inputDecoration(
+              'Deduct Month *',
+              hint: 'YYYY-MM',
+              prefixIcon: Icons.calendar_month_rounded,
+            ),
+          ),
+        ),
+        _buildFormField(
+          child: TextFormField(
+            controller: _bankNameCtrl,
+            decoration: _inputDecoration(
+              'Bank Name',
+              hint: 'Optional',
+              prefixIcon: Icons.account_balance_rounded,
+            ),
+          ),
+        ),
+        _buildFormField(
+          child: TextFormField(
+            controller: _accountNumberCtrl,
+            decoration: _inputDecoration(
+              'Account Number',
+              hint: 'Optional',
+              prefixIcon: Icons.numbers_rounded,
+            ),
+          ),
+        ),
+        _buildFormField(
+          child: TextFormField(
+            controller: _descriptionCtrl,
+            maxLines: 3,
+            decoration: _inputDecoration(
+              'Description',
+              hint: 'Optional',
+              prefixIcon: Icons.description_rounded,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopFormContent() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Employee & Amount Row
+        Row(
+          children: [
+            Expanded(
+              child: _userRole?.toLowerCase() == 'admin'
+                  ? _buildFormField(
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedUserId,
+                        onChanged: (value) =>
+                            setState(() => _selectedUserId = value),
+                        decoration: _inputDecoration('Select Employee *'),
+                        items: _employees
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e.id,
+                                child: Text(e.name),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    )
+                  : _buildFormField(
+                      child: TextFormField(
+                        readOnly: true,
+                        initialValue: (_employees
+                                .where((e) => e.id == _selectedUserId)
+                                .firstOrNull)
+                            ?.name ??
+                            'Unknown',
+                        decoration: _inputDecoration('Employee'),
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildFormField(
+                child: TextFormField(
+                  controller: _amountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: _inputDecoration(
+                    'Amount *',
+                    hint: 'Enter amount',
+                    prefixIcon: Icons.currency_rupee_rounded,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        // Deduct Month & Bank Name Row
+        Row(
+          children: [
+            Expanded(
+              child: _buildFormField(
+                child: TextFormField(
+                  controller: _deductMonthCtrl,
+                  decoration: _inputDecoration(
+                    'Deduct Month *',
+                    hint: 'YYYY-MM',
+                    prefixIcon: Icons.calendar_month_rounded,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildFormField(
+                child: TextFormField(
+                  controller: _bankNameCtrl,
+                  decoration: _inputDecoration(
+                    'Bank Name',
+                    hint: 'Optional',
+                    prefixIcon: Icons.account_balance_rounded,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        // Account Number & Description Row
+        Row(
+          children: [
+            Expanded(
+              child: _buildFormField(
+                child: TextFormField(
+                  controller: _accountNumberCtrl,
+                  decoration: _inputDecoration(
+                    'Account Number',
+                    hint: 'Optional',
+                    prefixIcon: Icons.numbers_rounded,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildFormField(
+                child: TextFormField(
+                  controller: _descriptionCtrl,
+                  maxLines: 3,
+                  decoration: _inputDecoration(
+                    'Description',
+                    hint: 'Optional',
+                    prefixIcon: Icons.description_rounded,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1141,39 +1341,42 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+      hintStyle: TextStyle(
+        color: AppTheme.onSurface.withOpacity(0.4),
+        fontSize: 13,
+      ),
       labelStyle: TextStyle(
-        color: Colors.grey[500],
+        color: AppTheme.onSurface.withOpacity(0.6),
         fontSize: 13,
         fontWeight: FontWeight.w500,
       ),
       prefixIcon: prefixIcon != null
           ? Icon(
               prefixIcon,
-              color: Colors.grey[700],
+              color: AppTheme.onSurface.withOpacity(0.5),
               size: 20,
             )
           : null,
       filled: true,
-      fillColor: const Color(0xFF1A1A1A),
+      fillColor: AppTheme.surfaceVariant,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(
-          color: Colors.grey[800]!,
+          color: AppTheme.outline,
           width: 1,
         ),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: BorderSide(
-          color: Colors.grey[800]!,
+          color: AppTheme.outline,
           width: 1,
         ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(
-          color: Color(0xFFFF8FA3),
+          color: AppTheme.primaryColor,
           width: 2,
         ),
       ),

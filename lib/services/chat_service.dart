@@ -179,12 +179,17 @@ class ChatService {
     required String token,
     required String name,
     required List<String> memberIds,
+    String? description,
   }) async {
     final response = await http
         .post(
           Uri.parse('$_baseUrl/chat/groups'),
           headers: _headers(token),
-          body: jsonEncode({'name': name, 'memberIds': memberIds}),
+          body: jsonEncode({
+            'name': name,
+            'memberIds': memberIds,
+            if (description != null && description.isNotEmpty) 'description': description,
+          }),
         )
         .timeout(const Duration(seconds: 30));
 
