@@ -1194,10 +1194,14 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
+    // Get today's date without time component (00:00:00)
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
+      initialDate: todayDate,
+      firstDate: todayDate,
       lastDate: DateTime(2030),
       builder: (context, child) {
         return Theme(

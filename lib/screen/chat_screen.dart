@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../theme/app_theme.dart';
 import '../models/chat_room_model.dart';
 import '../services/chat_service.dart';
@@ -3075,8 +3074,85 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
     var url = widget.attachment.url;
     if (url.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Document URL is not available')),
+        // Show helpful error dialog with debugging info
+        final hasPublicId = widget.attachment.publicId != null &&
+                            widget.attachment.publicId!.isNotEmpty;
+        final fileName = widget.attachment.name ?? 'Document';
+
+        debugPrint('❌ [CHAT] PDF Download Attempted - URL Empty');
+        debugPrint('   File: $fileName');
+        debugPrint('   Size: ${widget.attachment.size} bytes');
+        debugPrint('   MIME: ${widget.attachment.mimeType}');
+        debugPrint('   Public ID: ${widget.attachment.publicId ?? "MISSING"}');
+
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('⚠️ File Not Ready'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'The file URL is missing from the server response.',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'This could mean:',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildErrorPoint('Backend Cloudinary upload might have failed'),
+                  _buildErrorPoint('Environment variables not configured (CLOUDINARY_*)'),
+                  _buildErrorPoint('Network interruption during upload'),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'File Details:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDetailRow('Name', fileName),
+                        if (hasPublicId)
+                          _buildDetailRow('Public ID', widget.attachment.publicId!),
+                        _buildDetailRow('Size', _formatBytes(widget.attachment.size ?? 0)),
+                        _buildDetailRow('Type', widget.attachment.mimeType ?? 'Unknown'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _downloadAndOpen(); // Retry
+                },
+                child: const Text('Try Again'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue,
+                ),
+              ),
+            ],
+          ),
         );
       }
       return;
@@ -3121,12 +3197,26 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
 
       // Check if file is PDF
       final fileName = widget.attachment.name ?? 'Document';
-      final isPdf = fileName.toLowerCase().endsWith('.pdf') || 
+      final isPdf = fileName.toLowerCase().endsWith('.pdf') ||
                     widget.attachment.mimeType?.contains('pdf') == true;
-      
+
       if (isPdf && mounted) {
-        // Open PDF in app using Syncfusion viewer
-        _showPdfViewer(cachedPath, fileName);
+        // For PDFs: Open in browser (safest, no GPU issues)
+        // This avoids Syncfusion viewer which has GPU compatibility problems
+        debugPrint('📄 [PDF] Opening in browser to avoid GPU issues');
+        debugPrint('   File: $fileName');
+        debugPrint('   URL: $url');
+
+        if (url.isNotEmpty) {
+          // Open in browser (best compatibility)
+          _media.openUrlInBrowser(url);
+        } else {
+          // No URL available, try to open downloaded file
+          await _media.openFile(
+            cachedPath,
+            mimeTypeOverride: 'application/pdf',
+          );
+        }
       } else {
         // For non-PDF files, try opening with external app
         await _media.openFile(
@@ -3143,42 +3233,6 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
         _showDownloadFailedSheet(url, e.toString(), fileName: attachmentName);
       }
     }
-  }
-
-  /// Show PDF in full-screen Syncfusion viewer
-  void _showPdfViewer(String filePath, String fileName) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog.fullscreen(
-        child: Scaffold(
-          appBar: AppBar(
-            title: Text(
-              fileName,
-              overflow: TextOverflow.ellipsis,
-            ),
-            backgroundColor: AppTheme.primaryColor,
-            leading: IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(ctx),
-            ),
-          ),
-          body: SfPdfViewer.file(
-            File(filePath),
-            enableDocumentLinkAnnotation: true,
-            enableTextSelection: true,
-            interactionMode: PdfInteractionMode.selection,
-            onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
-              debugPrint('PDF load failed: ${details.error}');
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Failed to load PDF: ${details.error}')),
-                );
-              }
-            },
-          ),
-        ),
-      ),
-    );
   }
 
   void _showDownloadFailedSheet(String url, String error, {String? fileName}) {
@@ -3418,6 +3472,60 @@ class _DocumentBubbleState extends State<_DocumentBubble> {
         ),
       ),
     );
+  }
+
+  /// Build a single error point bullet
+  Widget _buildErrorPoint(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(fontSize: 16)),
+          Expanded(
+            child: Text(text, style: const TextStyle(fontSize: 14)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build a detail row for file info
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Format bytes to human readable size
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB'];
+    int i = (bytes.toString().length / 3).ceil();
+    if (i == 0) i = 1;
+    double size = bytes / (1024 * (i - 1).toDouble());
+    return '${size.toStringAsFixed(2)} ${suffixes[i - 1]}';
   }
 }
 

@@ -192,9 +192,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await _loadCachedAttendanceState();
       await _loadPersistedReadIds();
 
-      // Then load all API data in parallel
+      // Load attendance separately using dedicated method
+      await _loadTodayAttendance();
+
+      // Then load dashboard stats data in parallel (NOT attendance, already loaded above)
       final results = await Future.wait([
-        AttendanceService.getTodayAttendance(token: widget.token!),
         AttendanceService.getDashboardStats(token: widget.token!),
         ApiNotificationService.getUnreadCount(authToken: widget.token!, userId: widget.user!.id),
         AnnouncementService.getAnnouncements(token: widget.token!),
@@ -202,48 +204,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (mounted) {
         // Process results with proper casting
-        dynamic todayAttendanceResult = results[0];
-        dynamic dashboardDataResult = results[1];
-        dynamic unreadCountResult = results[2];
-        dynamic announcementsResult = results[3];
+        dynamic dashboardDataResult = results[0];
+        dynamic unreadCountResult = results[1];
+        dynamic announcementsResult = results[2];
 
         // Update state with all loaded data at once
         setState(() {
-          // Set attendance data from API
-          if (todayAttendanceResult is! Exception &&
-              todayAttendanceResult != null &&
-              todayAttendanceResult.data != null) {
-            try {
-              // Use same logic as Attendance Screen: checked-in only if checked in AND not checked out
-              final hasCheckedIn =
-                  todayAttendanceResult.data.hasCheckedIn ||
-                  (todayAttendanceResult.data.checkIn?.time != null);
-              final hasCheckedOut =
-                  todayAttendanceResult.data.hasCheckedOut ||
-                  (todayAttendanceResult.data.checkOut?.time != null);
-              _isCheckedIn = hasCheckedIn && !hasCheckedOut;
-
-              if (todayAttendanceResult.data.checkInTime != null) {
-                _checkInTime =
-                    DateTime.parse(todayAttendanceResult.data.checkInTime);
-              }
-              if (todayAttendanceResult.data.checkOutTime != null) {
-                _checkOutTime =
-                    DateTime.parse(todayAttendanceResult.data.checkOutTime);
-              }
-            } catch (e) {
-              print('Error processing attendance data: $e');
-            }
-          } else {
-            // No attendance record from server → user has NOT checked in today.
-            // Clear any stale cached state so Dashboard shows "Check In" correctly.
-            _isCheckedIn = false;
-            _checkInTime = null;
-            _checkOutTime = null;
-            _checkInLocation = null;
-            _checkOutLocation = null;
-            _workedDuration = const Duration(hours: 0, minutes: 0);
-          }
+          // Remove attendance processing from here - it's now handled by _loadTodayAttendance()
+          print('✅ [DASHBOARD] Dashboard stats loaded');
 
           // Set dashboard stats from API
           if (dashboardDataResult is! Exception &&
@@ -285,6 +253,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           // Mark loading complete
           _isLoading = false;
+          print('📊 [DASHBOARD] Load complete - _isCheckedIn: $_isCheckedIn');
         });
 
         // After UI loads, start the timer and connect WebSocket for real-time updates
@@ -839,16 +808,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
         token: widget.token!,
       );
 
+      print('🔎 [API RESPONSE DEBUG]');
+      print('   response: $response');
+      print('   response != null: ${response != null}');
+      print('   response.data: ${response?.data}');
+      print('   response.data != null: ${response?.data != null}');
+
+      if (response?.data == null) {
+        print('   ⚠️ WARNING: response.data is NULL or empty!');
+      }
+
       print('API Response received: ${response != null}');
       if (response != null && response.data != null) {
         print(
-          'hasCheckedIn: ${response.data!.hasCheckedIn}, hasCheckedOut: ${response.data!.hasCheckedOut}',
+          '✅ [ATTENDANCE API] Response received:',
         );
-        print('data: ${response.data}');
+        print(
+          '   hasCheckedIn: ${response.data!.hasCheckedIn}, hasCheckedOut: ${response.data!.hasCheckedOut}',
+        );
+        print('   checkIn.time: ${response.data!.checkIn?.time}');
+        print('   checkOut.time: ${response.data!.checkOut?.time}');
+      } else {
+        print('   ❌ [ATTENDANCE API] Response is NULL or data is empty!');
       }
 
       if (response != null && response.data != null && mounted) {
+        print('🔧 [setState] About to call setState...');
         setState(() {
+          print('🔧 [setState] Inside setState callback');
           final attendanceData = response.data!;
           // Derive checked-in state: prefer model flags, fallback to
           // actual checkIn/checkOut time presence.
@@ -859,6 +846,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               attendanceData.hasCheckedOut ||
               (attendanceData.checkOut?.time != null);
           _isCheckedIn = hasCheckedIn && !hasCheckedOut;
+
+          print('🔍 [STATE DERIVATION]');
+          print('   hasCheckedIn flag: ${attendanceData.hasCheckedIn}');
+          print('   checkIn?.time exists: ${attendanceData.checkIn?.time != null}');
+          print('   → derived hasCheckedIn: $hasCheckedIn');
+          print('   hasCheckedOut flag: ${attendanceData.hasCheckedOut}');
+          print('   checkOut?.time exists: ${attendanceData.checkOut?.time != null}');
+          print('   → derived hasCheckedOut: $hasCheckedOut');
+          print('   → FINAL _isCheckedIn: $_isCheckedIn');
 
           try {
             print('Using attendance data from API');
@@ -981,13 +977,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         });
 
+        print('🔧 [setState] Completed - widget rebuild triggered');
+        print('🔧 [setState] Current key value: ${ValueKey<bool>(_isCheckedIn)}');
+
         // Save the loaded state to local storage
         await _saveAttendanceState();
       } else {
         print(
           'Response is null - no attendance for today, clearing stale state',
         );
+        print('🔎 [API DEBUG - CRITICAL]');
+        print('   response: $response');
+        print('   response == null: ${response == null}');
+        print('   response?.data == null: ${response?.data == null}');
+        print('   ⚠️⚠️⚠️ BACKEND DID NOT RETURN CHECK-IN DATA! ⚠️⚠️⚠️');
+        print('   POSSIBLE CAUSES:');
+        print('     1. Check-in API didn\'t actually save to database');
+        print('     2. Different database/table for today check-in');
+        print('     3. User context lost between requests');
+        print('     4. Backend returning cached old data');
+        print('   CHECK: Look at HRMS-Backend logs when user checks in');
+        print('   CHECK: Is /attendance/today returning your check-in?');
+        print('🔧 [setState] About to call setState (no attendance)...');
         setState(() {
+          print('🔧 [setState] Inside setState callback (no attendance)');
           // No record from server means user hasn't checked in today.
           // Clear any stale SharedPreferences data so "Day Complete" doesn't linger.
           _isCheckedIn = false;
@@ -997,11 +1010,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _checkOutLocation = null;
           _workedDuration = const Duration(hours: 0, minutes: 0);
         });
+        print('🔧 [setState] Completed (no attendance) - widget rebuild triggered');
+        print('🔧 [setState] Current key value: ${ValueKey<bool>(_isCheckedIn)}');
         await _saveAttendanceState();
       }
     } catch (e, stackTrace) {
       print('Error loading today attendance: $e');
       print('Stack trace: $stackTrace');
+    }
+
+    // Final state summary for debugging
+    print('📊 [_loadTodayAttendance COMPLETE]');
+    print('   Final state:');
+    print('   _isCheckedIn: $_isCheckedIn');
+    print('   _checkInTime: $_checkInTime');
+    print('   _checkOutTime: $_checkOutTime');
+    print('   _checkInLocation: $_checkInLocation');
+    print('   _checkOutLocation: $_checkOutLocation');
+  }
+
+  /// Retry wrapper for _loadTodayAttendance()
+  /// Retries up to 3 times if no check-in data found
+  /// Waits progressively longer between retries
+  Future<void> _loadTodayAttendanceWithRetry() async {
+    int maxRetries = 3;
+    int attempt = 0;
+
+    while (attempt < maxRetries) {
+      attempt++;
+      print('🔄 [RETRY ATTENDANCE] Attempt $attempt of $maxRetries');
+
+      // Load attendance data
+      await _loadTodayAttendance();
+
+      // Check if we got the data
+      if (_isCheckedIn) {
+        print('✅ [RETRY ATTENDANCE] Success! Check-in data received on attempt $attempt');
+        return; // Got data, stop retrying
+      }
+
+      // No data yet, check if this was the last attempt
+      if (attempt < maxRetries) {
+        // Wait longer with each retry: 3s, 4s, 5s
+        final waitSeconds = 2 + attempt;
+        print('⏳ [RETRY ATTENDANCE] No check-in found, waiting ${waitSeconds}s before retry...');
+        await Future.delayed(Duration(seconds: waitSeconds));
+      }
+    }
+
+    if (!_isCheckedIn) {
+      print('❌ [RETRY ATTENDANCE] Failed after $maxRetries attempts - check-in data not found');
+      // Show snackbar to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Check-in might not be saved yet. Pull down to refresh or try again.',
+            ),
+            duration: Duration(seconds: 5),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     }
   }
 
@@ -1525,6 +1595,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _handleCheckOut();
       }
     } else {
+      print('📍 [TOGGLE CHECK IN] Before navigation:');
+      print('   _isCheckedIn: $_isCheckedIn');
+      print('   _checkInTime: $_checkInTime');
+      print('   _checkOutTime: $_checkOutTime');
+
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -1532,9 +1607,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const AttendanceScreen(initialAction: 'checkIn'),
         ),
       );
-      
+
+      print('📍 [TOGGLE CHECK IN] Returned from AttendanceScreen');
+
       if (mounted) {
-        await _loadTodayAttendance();
+        print('📍 [TOGGLE CHECK IN] Waiting for backend (2s)...');
+        await Future.delayed(const Duration(seconds: 2));
+        print('📍 [TOGGLE CHECK IN] Reloading attendance data with retry...');
+
+        // Use retry method that waits for check-in data to be available
+        await _loadTodayAttendanceWithRetry();
+
+        print('📍 [TOGGLE CHECK IN] After reload:');
+        print('   _isCheckedIn: $_isCheckedIn');
+        print('   _checkInTime: $_checkInTime');
+        print('   _checkOutTime: $_checkOutTime');
+
+        // Force a complete rebuild of the page
+        if (mounted) {
+          print('🔄 [FORCE REBUILD] Triggering complete page rebuild...');
+          setState(() {
+            print('🔄 [FORCE REBUILD] setState called to rebuild entire page');
+          });
+        }
       }
     }
   }
@@ -2158,6 +2253,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           // ── Welcome Card (Check-in/Check-out) ──
                           WelcomeCard(
+                            key: ValueKey<String>('${_isCheckedIn}_${_checkInTime?.toString() ?? "null"}'),  // Force rebuild on any state change
                             isCheckedIn: _isCheckedIn,
                             checkInTime: _checkInTime,
                             checkOutTime: _checkOutTime,
@@ -3798,6 +3894,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                             // Welcome Card (always visible after loading completes)
                             WelcomeCard(
+                              key: ValueKey<String>('${_isCheckedIn}_${_checkInTime?.toString() ?? "null"}'),  // Force rebuild on any state change
                               isCheckedIn: _isCheckedIn,
                               checkInTime: _checkInTime,
                               checkOutTime: _checkOutTime,

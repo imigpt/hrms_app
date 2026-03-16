@@ -271,13 +271,31 @@ class ChatAttachment {
     this.mimeType,
   });
 
-  factory ChatAttachment.fromJson(Map<String, dynamic> json) => ChatAttachment(
-    url: json['url'] as String? ?? '',
-    publicId: json['publicId'] as String?,
-    name: json['name'] as String?,
-    size: json['size'] as int?,
-    mimeType: json['mimeType'] as String?,
-  );
+  factory ChatAttachment.fromJson(Map<String, dynamic> json) {
+    var url = json['url'] as String? ?? '';
+    final publicId = json['publicId'] as String?;
+
+    // If URL is empty but publicId exists, try to reconstruct it
+    if (url.isEmpty && publicId != null && publicId.isNotEmpty) {
+      // Try to extract cloud name from any URLs that might be in the message
+      // For now, log the missing URL so it can be debugged
+      print('⚠️ [CHAT ATTACHMENT] URL is empty but publicId found: $publicId');
+      print('   Backend should return secure_url from Cloudinary');
+      print('   Attempting fallback URL construction...');
+
+      // Construct standard Cloudinary URL with public ID
+      // Note: This assumes 'res' is the standard Cloudinary subdomain
+      url = 'https://res.cloudinary.com/hrms-network/raw/upload/$publicId';
+    }
+
+    return ChatAttachment(
+      url: url,
+      publicId: publicId,
+      name: json['name'] as String?,
+      size: json['size'] as int?,
+      mimeType: json['mimeType'] as String?,
+    );
+  }
 }
 
 /// Lightweight quoted message shown inside a bubble when this is a reply

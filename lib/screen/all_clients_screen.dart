@@ -991,7 +991,6 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
     final clientId = client['_id']?.toString() ?? '';
     final nameCtrl = TextEditingController(text: client['name'] ?? '');
     final emailCtrl = TextEditingController(text: client['email'] ?? '');
-    final passwordCtrl = TextEditingController();
     final phoneCtrl = TextEditingController(text: client['phone'] ?? '');
     final companyNameCtrl = TextEditingController(
       text: client['companyName'] ?? '',
@@ -1059,17 +1058,18 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(16),
         child: StatefulBuilder(
-          builder: (ctx, setS) => Container(
-            decoration: BoxDecoration(
-              color: _card,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _border.withOpacity(0.5)),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 24),
-              ],
-            ),
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Column(
+          builder: (ctx, setS) {
+            return Container(
+              decoration: BoxDecoration(
+                color: _card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _border.withOpacity(0.5)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 24),
+                ],
+              ),
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Header
@@ -1194,23 +1194,6 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                           keyboardType: TextInputType.emailAddress,
                         ),
                         const SizedBox(height: 16),
-                        // Password
-                        fieldLabel('New Password'),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Leave blank to keep current password',
-                          style: TextStyle(
-                            color: _textGrey.withOpacity(0.7),
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        inputBox(
-                          passwordCtrl,
-                          hint: 'Min 6 characters',
-                          obscure: true,
-                        ),
-                        const SizedBox(height: 16),
                         // Client Company Name
                         fieldLabel('Client\'s Own Company Name'),
                         const SizedBox(height: 8),
@@ -1297,11 +1280,7 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                                             name: nameCtrl.text.trim(),
                                             email: emailCtrl.text.trim(),
                                             phone: phoneCtrl.text.trim(),
-                                            companyName: companyNameCtrl.text
-                                                .trim(),
-                                            password: passwordCtrl.text.isEmpty
-                                                ? null
-                                                : passwordCtrl.text,
+                                            companyName: companyNameCtrl.text.trim(),
                                             clientNotes: notesCtrl.text.trim(),
                                           );
                                           if (mounted) {
@@ -1389,10 +1368,11 @@ class _AllClientsScreenState extends State<AllClientsScreen> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
+          );  // closes return Container(...);
+            },  // closes builder lambda function
+        ),  // closes StatefulBuilder
+      ),  // closes Dialog child property
+    );  // closes showDialog()
   }
 
   // Avatar

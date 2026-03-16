@@ -42,8 +42,14 @@ class WelcomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('🎨 [WELCOME CARD] Building with state:');
+    print('   isCheckedIn: $isCheckedIn');
+    print('   checkInTime: $checkInTime');
+    print('   checkOutTime: $checkOutTime');
+
     // If user has checked out, show Day Complete card
     if (checkOutTime != null && checkInTime != null) {
+      print('   → Showing: Day Complete Card');
       final String checkInTimeStr = DateFormat('hh:mm a').format(checkInTime!.toLocal());
       final String checkOutTimeStr = DateFormat('hh:mm a').format(checkOutTime!.toLocal());
 
@@ -252,6 +258,7 @@ class WelcomeCard extends StatelessWidget {
     }
     // Checked In State
     if (isCheckedIn) {
+      print('   → Showing: Checked In Card (Currently Working)');
       final String todayDate = DateFormat('EEEE, MMMM d, y').format(DateTime.now());
       final String timeString = checkInTime != null
           ? DateFormat('hh:mm a').format(checkInTime!)
@@ -486,6 +493,7 @@ class WelcomeCard extends StatelessWidget {
     }
 
     // Not Checked In State
+    print('   → Showing: Not Checked In Card (Take Selfie Button)');
     final String todayDate = DateFormat('EEEE, MMMM d, y').format(DateTime.now());
     final String userName = user?.name ?? 'User';
 

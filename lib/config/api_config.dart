@@ -2,8 +2,8 @@
 /// Easy switching between localhost and production environments
 class ApiConfig {
   // Change this to switch between environments
-  static const String _environment = 'localhost'; 
-  // static const String _environment = 'production';
+  // static const String _environment = 'localhost'; 
+  static const String _environment = 'production';
 
   // API Base URLs
   static const String _localhostApi = 'http://192.168.1.62:5000/api';
