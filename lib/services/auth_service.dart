@@ -161,6 +161,84 @@ class AuthService {
     }
   }
 
+  // ── HR: Get HR dashboard statistics ───────────────────────────────────────
+  /// Calls `GET /api/hr/dashboard`. Returns HR-specific stats (totalEmployees, presentToday, pendingLeaves, activeTasks).
+  Future<Map<String, dynamic>> getHRDashboardStats(String token) async {
+    final url = Uri.parse('$_baseUrl/hr/dashboard');
+    try {
+      final response = await _httpClient
+          .get(url, headers: _headers(token: token))
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = body['data'];
+
+        print('🔍 [DEBUG] getHRDashboardStats response data type: ${data.runtimeType}');
+        print('   Raw data: $data');
+
+        // Handle response format
+        if (data is Map<String, dynamic>) {
+          print('✅ HR Dashboard Stats received as Map');
+          return data; // Returns HR-specific stats with presentToday, pendingLeaves, etc.
+        } else {
+          print('⚠️ HR Dashboard Stats format unexpected, returning empty');
+          return {};
+        }
+      }
+      throw Exception(_errorMessage(response, 'Failed to load HR dashboard'));
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
+  // ── HR: Get department statistics ────────────────────────────────────────
+  /// Calls `GET /api/hr/departments/stats`. Returns department count and breakdown.
+  Future<Map<String, dynamic>> getHRDepartmentStats(String token) async {
+    final url = Uri.parse('$_baseUrl/hr/departments/stats');
+    try {
+      final response = await _httpClient
+          .get(url, headers: _headers(token: token))
+          .timeout(const Duration(seconds: 12));
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = body['data'];
+
+        print('🔍 [DEBUG] getHRDepartmentStats response data type: ${data.runtimeType}');
+        print('   Raw data: $data');
+
+        // Handle two response formats:
+        // Format 1: Object with totalDepartments field
+        if (data is Map<String, dynamic>) {
+          print('✅ Format 1: Map response - contains totalDepartments');
+          return data;
+        }
+        // Format 2: Array of departments
+        else if (data is List) {
+          print('✅ Format 2: List response - deriving totalDepartments from length');
+          return {
+            'totalDepartments': data.length,
+            'departments': data,
+          };
+        }
+        // Format 3: Empty/null
+        else {
+          print('⚠️ Format 3: Unknown format - returning empty map');
+          return {
+            'totalDepartments': 0,
+            'departments': [],
+          };
+        }
+      }
+      throw Exception(_errorMessage(response, 'Failed to load department stats'));
+    } on Exception {
+      rethrow;
+    } catch (e) {
+      throw Exception('Connection error: $e');
+    }
+  }
+
   // ── Admin: Get recent activity ─────────────────────────────────────────────
   /// Calls `GET /api/admin/activity`. Returns the list of activity items.
   Future<List<Map<String, dynamic>>> getAdminRecentActivity(

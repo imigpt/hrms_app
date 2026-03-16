@@ -45,6 +45,11 @@ class _AdminUserCredentialsScreenState
   Future<void> _load() async {
     if (!mounted) return;
     setState(() => _loading = true);
+    print('📡 [USER CREDENTIALS] Loading with filters:');
+    print('   Role Filter: $_roleFilter');
+    print('   Search: ${_searchCtrl.text.isEmpty ? "none" : _searchCtrl.text}');
+    print('   Page: $_page');
+
     try {
       final res = await SettingsService.getUserCredentials(
         widget.token ?? '',
@@ -54,6 +59,12 @@ class _AdminUserCredentialsScreenState
         limit: 10,
       );
       final data = res['data'];
+
+      print('✅ [USER CREDENTIALS] Response received');
+      print('   Total Users: ${res["total"] ?? 0}');
+      print('   Total Pages: ${res["totalPages"] ?? 1}');
+      print('   Users in response: ${data is List ? (data as List).length : (data is Map ? (data["users"] as List?)?.length ?? 0 : 0)}');
+
       if (data is List) {
         setState(() {
           _users = data.cast<Map<String, dynamic>>();
@@ -68,7 +79,11 @@ class _AdminUserCredentialsScreenState
           _total = res['total'] ?? _users.length;
         });
       }
-    } catch (_) {}
+
+      print('   Loaded ${_users.length} users on page $_page');
+    } catch (e) {
+      print('❌ [USER CREDENTIALS] Error loading: $e');
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -374,8 +389,13 @@ class _AdminUserCredentialsScreenState
                             value: 'employee',
                             child: Text('Employee'),
                           ),
+                          DropdownMenuItem(
+                            value: 'client',
+                            child: Text('Client'),
+                          ),
                         ],
                         onChanged: (v) {
+                          print('🔍 [ROLE FILTER] Changed to: $v');
                           setState(() {
                             _roleFilter = v!;
                             _page = 1;

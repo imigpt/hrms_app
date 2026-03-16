@@ -19,8 +19,7 @@ class PoliciesScreen extends StatefulWidget {
 
 class _PoliciesScreenState extends State<PoliciesScreen> {
   bool get _isAdmin =>
-      widget.role?.toLowerCase() == 'admin' ||
-      widget.role?.toLowerCase() == 'hr';
+      widget.role?.toLowerCase() == 'admin';
 
   String? _token;
   List<CompanyPolicy> _policies = [];

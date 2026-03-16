@@ -45,7 +45,7 @@ void main() {
 }
 
 class LeaveScreen extends StatefulWidget {
-  const LeaveScreen({super.key});
+  const LeaveScreen({super.key, String? token});
 
   @override
   State<LeaveScreen> createState() => _LeaveScreenState();

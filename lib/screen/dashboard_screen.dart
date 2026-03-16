@@ -8,6 +8,8 @@ import 'package:hrms_app/models/dashboard_stats_model.dart';
 import 'package:hrms_app/services/attendance_service.dart';
 import 'package:hrms_app/services/announcement_service.dart';
 import 'package:hrms_app/services/announcement_websocket_service.dart';
+import 'package:hrms_app/services/api_notification_service.dart';
+import 'package:hrms_app/services/notification_socket_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hrms_app/services/expense_service.dart';
 import 'package:hrms_app/services/leave_service.dart';
@@ -33,6 +35,7 @@ import 'notifications_screen.dart';
 import 'chat_screen.dart';
 import 'expenses_screen.dart';
 import 'tasks_screen.dart';
+import 'leave_management_screen.dart';
 // import 'employee_api_test_screen.dart';
 import 'apply_leave_screen.dart';
 import 'attendance_screen.dart';
@@ -66,8 +69,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _checkOutLocation;
   Duration _workedDuration = const Duration(hours: 0, minutes: 0);
   Timer? _timer;
+  Timer? _notificationRefreshTimer;
   List<Announcement> _announcements = [];
-  int _unreadAnnouncementsCount = 0;
+  int _unreadNotificationsCount = 0;
   int _unreadChatCount = 0; // Unread chat messages count
 
   // Dashboard stats
@@ -84,6 +88,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final AnnouncementWebSocketService _wsService =
       AnnouncementWebSocketService();
   StreamSubscription<List<Announcement>>? _announcementsSubscription;
+
+  // Socket service for real-time notifications
+  final NotificationSocketService _notificationSocket =
+      NotificationSocketService();
+  StreamSubscription<NotificationCountEvent>? _notificationCountSubscription;
 
   // Full profile (fetched fresh on load to get phone/address/dob etc.)
   ProfileUser? _dashboardUser;
@@ -126,6 +135,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Load unread chat count for both admin and employee
     _loadUnreadChatCount();
+
+    // Start periodic notification badge refresh (every 45 seconds)
+    _startNotificationRefreshTimer();
+
+    // Connect to notification socket for real-time updates (if token available)
+    _initNotificationSocket();
 
     if (_userRole == 'admin') {
       // Load admin dashboard data - all at once
@@ -181,7 +196,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final results = await Future.wait([
         AttendanceService.getTodayAttendance(token: widget.token!),
         AttendanceService.getDashboardStats(token: widget.token!),
-        AnnouncementService.getUnreadCount(token: widget.token!),
+        ApiNotificationService.getUnreadCount(authToken: widget.token!, userId: widget.user!.id),
         AnnouncementService.getAnnouncements(token: widget.token!),
       ], eagerError: false);
 
@@ -256,7 +271,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           if (unreadCountResult is! Exception &&
               unreadCountResult is int) {
-            _unreadAnnouncementsCount = unreadCountResult;
+            _unreadNotificationsCount = unreadCountResult;
           }
 
           // Calculate worked duration if checked in
@@ -320,7 +335,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final results = await Future.wait([
         authService.getAdminDashboardStats(widget.token!),
         authService.getAdminRecentActivity(widget.token!, limit: 8),
-        AnnouncementService.getUnreadCount(token: widget.token!),
+        ApiNotificationService.getUnreadCount(authToken: widget.token!, userId: widget.user!.id),
         AnnouncementService.getAnnouncements(token: widget.token!),
       ], eagerError: false);
 
@@ -394,7 +409,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           if (unreadCountResult is! Exception &&
               unreadCountResult is int) {
-            _unreadAnnouncementsCount = unreadCountResult;
+            _unreadNotificationsCount = unreadCountResult;
           }
 
           // Set announcements data
@@ -431,7 +446,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ── CONSOLIDATED HR DASHBOARD LOADING ──────────────────────────────────────
   /// Load all HR dashboard data at once before showing UI
   Future<void> _loadHRDashboardData() async {
+    print('🔵 [HR DASHBOARD] _loadHRDashboardData() STARTED');
+    print('   User Role: $_userRole');
+    print('   Token Present: ${widget.token != null && widget.token!.isNotEmpty}');
+    print('   Token Length: ${widget.token?.length ?? 0}');
+
     if (widget.token == null || widget.token!.isEmpty) {
+      print('❌ [HR DASHBOARD] Token missing or empty!');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -449,44 +470,113 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
 
+      print('⏳ [HR DASHBOARD] Loading persisted read IDs...');
       // Load cached data first
       await _loadPersistedReadIds();
 
+      print('📡 [HR DASHBOARD] Starting 6 parallel API calls...');
+      print('   1. getHRDashboardStats (GET /api/hr/dashboard)');
+      print('   2. getHRDepartmentStats (GET /api/hr/departments/stats)');
+      print('   3. getAdminLeaves (GET /api/leave?status=pending)');
+      print('   4. getExpenses (GET /api/expenses)');
+      print('   5. getUnreadCount (GET /api/notifications/unread-count)');
+      print('   6. getAnnouncements (GET /api/announcements)');
+
       // Load all HR API data in parallel
       final results = await Future.wait([
-        AuthService().getAdminDashboardStats(widget.token!),
+        AuthService().getHRDashboardStats(widget.token!),
+        AuthService().getHRDepartmentStats(widget.token!),
         LeaveService.getAdminLeaves(
           token: widget.token!,
           status: 'pending',
         ),
         ExpenseService.getExpenses(token: widget.token!),
-        AnnouncementService.getUnreadCount(token: widget.token!),
+        ApiNotificationService.getUnreadCount(authToken: widget.token!, userId: widget.user!.id),
         AnnouncementService.getAnnouncements(token: widget.token!),
       ], eagerError: false);
+
+      print('✅ [HR DASHBOARD] All 6 API calls completed');
+      print('   Results types: ${results.map((r) => r.runtimeType).toList()}');
 
       if (mounted) {
         // Process results with proper type checks
         dynamic statsResult = results[0];
-        dynamic leavesResult = results[1];
-        dynamic expensesResult = results[2];
-        dynamic unreadCountResult = results[3];
-        dynamic announcementsResult = results[4];
+        dynamic deptStatsResult = results[1];
+        dynamic leavesResult = results[2];
+        dynamic expensesResult = results[3];
+        dynamic unreadCountResult = results[4];
+        dynamic announcementsResult = results[5];
+
+        print('🔍 [HR DASHBOARD] Processing API Responses:');
+        print('   [1] statsResult type: ${statsResult.runtimeType}');
+        print('       Is Exception: ${statsResult is Exception}');
+        print('       Is Map: ${statsResult is Map<String, dynamic>}');
+
+        print('   [2] deptStatsResult type: ${deptStatsResult.runtimeType}');
+        print('       Is Exception: ${deptStatsResult is Exception}');
+
+        print('   [3] leavesResult type: ${leavesResult.runtimeType}');
+        print('       Is Exception: ${leavesResult is Exception}');
+
+        print('   [4] expensesResult type: ${expensesResult.runtimeType}');
+        print('       Is Exception: ${expensesResult is Exception}');
+
+        print('   [5] unreadCountResult type: ${unreadCountResult.runtimeType}');
+        print('       Is Exception: ${unreadCountResult is Exception}');
+
+        print('   [6] announcementsResult type: ${announcementsResult.runtimeType}');
+        print('       Is Exception: ${announcementsResult is Exception}');
 
         setState(() {
-          // Set HR dashboard stats
+          // Set HR dashboard stats from HR-specific endpoint
           if (statsResult is! Exception &&
               statsResult is Map<String, dynamic>) {
+            // Handle both response structures: with and without 'stats' wrapper
+            final stats = (statsResult['stats'] as Map<String, dynamic>?) ?? statsResult;
+
+            print('✅ [HR DASHBOARD STATS] Successfully processed');
+            print('   Raw statsResult: $statsResult');
+            print('   Extracted stats: $stats');
+
             _hrDashboard = {
-              'totalEmployees': statsResult['totalEmployees'] ?? 0,
-              'totalDepartments': statsResult['totalDepartments'] ?? 0,
-              'activeTasks': statsResult['activeTasks'] ?? 0,
+              'totalEmployees': stats['totalEmployees'] ?? 0,
+              'presentToday': stats['presentToday'] ?? 0,
+              'pendingLeaves': stats['pendingLeaves'] ?? 0,
+              'activeTasks': stats['activeTasks'] ?? 0,
+              'totalDepartments': (deptStatsResult is Map<String, dynamic> && deptStatsResult is! Exception)
+                  ? deptStatsResult['totalDepartments'] ?? deptStatsResult['departments']?.length ?? 0
+                  : 0,
             };
+
+            print('✅ [HR DASHBOARD STATE] Updated:');
+            print('   totalEmployees: ${_hrDashboard['totalEmployees']}');
+            print('   presentToday: ${_hrDashboard['presentToday']}');
+            print('   pendingLeaves: ${_hrDashboard['pendingLeaves']}');
+            print('   activeTasks: ${_hrDashboard['activeTasks']}');
+            print('   totalDepartments: ${_hrDashboard['totalDepartments']}');
+            print('   Full _hrDashboard: ${_hrDashboard}');
+          } else {
+            print('❌ [HR DASHBOARD STATS] Failed to process');
+            print('   statsResult is Exception: ${statsResult is Exception}');
+            print('   statsResult type: ${statsResult.runtimeType}');
+            print('   statsResult: $statsResult');
+            _hrDashboard = {};
           }
 
           // Process pending leaves
           if (leavesResult is! Exception &&
               leavesResult is AdminLeavesResponse) {
             _pendingLeaves = leavesResult.data;
+            print('✅ [PENDING LEAVES] Loaded ${_pendingLeaves.length} pending leaves');
+            print('   Leave IDs: ${_pendingLeaves.map((l) => l.id).toList()}');
+          } else {
+            print('❌ [PENDING LEAVES] Failed to process');
+            print('   Is Exception: ${leavesResult is Exception}');
+            print('   Type: ${leavesResult.runtimeType}');
+            if (leavesResult is Exception) {
+              print('   Error: ${leavesResult.toString()}');
+            }
+            _pendingLeaves = [];
           }
 
           // Process pending expenses (filter for pending status)
@@ -495,11 +585,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _pendingExpenses = expensesResult.data
                 .where((e) => e.status.toLowerCase() == 'pending')
                 .toList();
+            print('✅ [PENDING EXPENSES] Processed ${_pendingExpenses.length} pending expenses');
+            print('   Total expenses in response: ${expensesResult.data.length}');
+            print('   Pending expenses: ${_pendingExpenses.length}');
+            print('   Expense statuses: ${expensesResult.data.map((e) => e.status).toSet().toList()}');
+          } else {
+            print('❌ [PENDING EXPENSES] Failed to process');
+            print('   Is Exception: ${expensesResult is Exception}');
+            print('   Type: ${expensesResult.runtimeType}');
+            if (expensesResult is Exception) {
+              print('   Error: ${expensesResult.toString()}');
+            }
+            _pendingExpenses = [];
           }
 
           if (unreadCountResult is! Exception &&
               unreadCountResult is int) {
-            _unreadAnnouncementsCount = unreadCountResult;
+            _unreadNotificationsCount = unreadCountResult;
+            print('✅ [UNREAD NOTIFICATIONS] Count: $_unreadNotificationsCount');
+          } else {
+            print('⚠️ [UNREAD NOTIFICATIONS] Failed - Type: ${unreadCountResult.runtimeType}');
+            _unreadNotificationsCount = 0;
           }
 
           // Set announcements data
@@ -508,22 +614,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             try {
               if (announcementsResult.data != null) {
                 _announcements = announcementsResult.data;
+                print('✅ [ANNOUNCEMENTS] Loaded ${_announcements.length} announcements');
               }
             } catch (e) {
-              print('Error processing announcements: $e');
+              print('❌ [ANNOUNCEMENTS] Error processing: $e');
             }
+          } else {
+            print('⚠️ [ANNOUNCEMENTS] Failed - Type: ${announcementsResult.runtimeType}');
           }
 
           // Mark loading complete
           _isLoading = false;
+          print('✅ [HR DASHBOARD] Loading complete - setstate() triggered');
+          print('   _isLoading: $_isLoading');
+          print('   _hrDashboard populated: ${_hrDashboard.isNotEmpty}');
         });
 
         // Connect WebSocket for real-time announcements after UI loads
         _connectToAnnouncementsWebSocket();
       }
     } catch (e, stackTrace) {
-      print('Error loading HR dashboard: $e');
-      print('Stack trace: $stackTrace');
+      print('❌ [HR DASHBOARD] ERROR loading: $e');
+      print('   Stack trace: $stackTrace');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -561,7 +673,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final results = await Future.wait([
         ChatService.getChatRooms(token: widget.token!),
         ChatService.getUnreadCount(token: widget.token!),
-        AnnouncementService.getUnreadCount(token: widget.token!),
+        ApiNotificationService.getUnreadCount(authToken: widget.token!, userId: widget.user!.id),
         AnnouncementService.getAnnouncements(token: widget.token!),
       ], eagerError: false);
 
@@ -596,7 +708,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
           if (unreadCountResult is! Exception &&
               unreadCountResult is int) {
-            _unreadAnnouncementsCount = unreadCountResult;
+            _unreadNotificationsCount = unreadCountResult;
           }
 
           // Set announcements data
@@ -907,17 +1019,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _announcementsSubscription = _wsService.announcementsStream.listen(
         (announcements) {
           if (mounted) {
-            final previousCount = _unreadAnnouncementsCount;
+            final previousCount = _unreadNotificationsCount;
             setState(() {
               _announcements = announcements;
-              _unreadAnnouncementsCount = _calculateUnreadCount(announcements);
+              // Unread count now comes from API, not announcements list
             });
+            // Refresh unread notification count from API in parallel
+            _refreshUnreadNotificationCount();
             print(
-              'Announcements updated via WebSocket: ${announcements.length} items (${_unreadAnnouncementsCount} unread)',
+              'Announcements updated via WebSocket: ${announcements.length} items (${_unreadNotificationsCount} unread)',
             );
-            if (previousCount != _unreadAnnouncementsCount) {
+            if (previousCount != _unreadNotificationsCount) {
               print(
-                'Badge count changed: $previousCount -> $_unreadAnnouncementsCount',
+                'Badge count changed: $previousCount -> $_unreadNotificationsCount',
               );
             }
           }
@@ -983,6 +1097,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // Refresh unread notification count from API
+  Future<void> _refreshUnreadNotificationCount() async {
+    if (widget.token == null || widget.user == null) return;
+    try {
+      final count = await ApiNotificationService.getUnreadCount(
+        authToken: widget.token!,
+        userId: widget.user!.id,
+      );
+      if (mounted) {
+        setState(() {
+          _unreadNotificationsCount = count;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to refresh notification count: $e');
+    }
+  }
+
+  // Start periodic notification count refresh timer (every 45 seconds)
+  void _startNotificationRefreshTimer() {
+    _notificationRefreshTimer = Timer.periodic(
+      const Duration(seconds: 45),
+      (_) => _refreshUnreadNotificationCount(),
+    );
+  }
+
   // ── LOAD ADMIN DASHBOARD ────────────────────────────────────────────────────
 
   // ── Notification icon + popup ────────────────────────────────────────────
@@ -998,9 +1138,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _showNotificationPopup(context);
         }
       },
-      icon: _unreadAnnouncementsCount > 0
+      icon: _unreadNotificationsCount > 0
           ? Badge(
-              label: Text(_unreadAnnouncementsCount.toString()),
+              label: Text(_unreadNotificationsCount.toString()),
               backgroundColor: Colors.red,
               child: Icon(Icons.notifications_outlined, size: iconSize),
             )
@@ -1097,8 +1237,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    _unreadAnnouncementsCount > 0
-                        ? '$_unreadAnnouncementsCount unread'
+                    _unreadNotificationsCount > 0
+                        ? '$_unreadNotificationsCount unread'
                         : 'All caught up!',
                     style: TextStyle(color: Colors.grey[500], fontSize: 12),
                   ),
@@ -1307,9 +1447,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Optimistically update badge count immediately (decrement by 1)
     setState(() {
       _readAnnouncementIds.add(announcementId);
-      if (_unreadAnnouncementsCount > 0) {
-        _unreadAnnouncementsCount--;
-      }
+      // Unread count is now fetched from API, no local decrement
     });
 
     // Persist to local storage so read state survives app restarts
@@ -1322,7 +1460,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _notificationRefreshTimer?.cancel();
     _announcementsSubscription?.cancel();
+    _notificationCountSubscription?.cancel();
+    _notificationSocket.dispose();
     _wsService.dispose();
     super.dispose();
   }
@@ -1336,6 +1477,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
     });
+  }
+
+  // Periodic refresh for notification badge count (every 45 seconds)
+
+  // Initialize real-time notification socket connection
+  Future<void> _initNotificationSocket() async {
+    if (widget.token == null) return;
+    try {
+      // Connect to notification socket
+      await _notificationSocket.connect(widget.token!);
+
+      // Listen for real-time unread count updates
+      _notificationCountSubscription =
+          _notificationSocket.onCountUpdated.listen(
+        (event) {
+          if (mounted) {
+            setState(() {
+              _unreadNotificationsCount = event.unreadCount;
+              print('📊 Notification badge updated via socket: ${event.unreadCount}');
+            });
+          }
+        },
+        onError: (error) {
+          print('Error in notification count stream: $error');
+        },
+      );
+    } catch (e) {
+      print('Failed to initialize notification socket: $e');
+      // Not critical - fallback to periodic refresh timer
+    }
   }
 
   // Toggle Check-In / Check-Out
@@ -1947,7 +2118,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? null
           : AppBar(
               title: Text(
-                "HR Panel",
+                "HR Dashboard",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: titleFontSize,
@@ -2044,14 +2215,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               _buildHRQuickStatCard(
                                 'Employees on Leave',
-                                '0',
+                                '${_hrDashboard['pendingLeaves'] ?? 0}',
                                 Icons.calendar_today,
                                 Colors.amber,
                                 isMobile: isMobile,
                               ),
                               _buildHRQuickStatCard(
                                 'Pending Approvals',
-                                '0',
+                                '${_pendingLeaves.length + _pendingExpenses.length + ((_hrDashboard['activeTasks'] as num? ?? 0).toInt())}',
                                 Icons.assignment,
                                 Colors.redAccent,
                                 isMobile: isMobile,
@@ -2184,6 +2355,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ── HR Stats Card ──
   Widget _buildHRStatsCard(bool isMobile) {
+    print('🎨 [UI RENDER] _buildHRStatsCard() called');
+    print('   _hrDashboard: $_hrDashboard');
+    print('   _hrDashboard empty: ${_hrDashboard.isEmpty}');
+    print('   totalEmployees: ${_hrDashboard['totalEmployees'] ?? 'NULL'}');
+    print('   presentToday: ${_hrDashboard['presentToday'] ?? 'NULL'}');
+    print('   pendingLeaves: ${_hrDashboard['pendingLeaves'] ?? 'NULL'}');
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -2228,19 +2406,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 12),
           _buildHRStatRow(
             'Present Today',
-            '0',
+            '${_hrDashboard['presentToday'] ?? 0}',
             _accentGreen,
           ),
           const SizedBox(height: 12),
           _buildHRStatRow(
             'On Leave',
-            '0',
+            '${_hrDashboard['pendingLeaves'] ?? 0}',
             Colors.amber,
           ),
           const SizedBox(height: 12),
           _buildHRStatRow(
             'Absent',
-            '0',
+            '${((_hrDashboard['totalEmployees'] ?? 0) - (_hrDashboard['presentToday'] ?? 0) - (_hrDashboard['pendingLeaves'] ?? 0))}',
             Colors.redAccent,
           ),
         ],
@@ -2278,6 +2456,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final expenseCount = _pendingExpenses.length;
     final taskCount = (_hrDashboard['activeTasks'] as num? ?? 0).toInt();
     final totalPending = leaveCount + expenseCount + taskCount;
+
+    print('🎨 [UI RENDER] _buildPendingApprovalsCard() called');
+    print('   leaveCount: $leaveCount');
+    print('   expenseCount: $expenseCount');
+    print('   taskCount: $taskCount');
+    print('   totalPending: $totalPending');
+    print('   _pendingLeaves length: ${_pendingLeaves.length}');
+    print('   _pendingExpenses length: ${_pendingExpenses.length}');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2421,33 +2607,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ── Navigation Methods for Pending Items ──
-  
-  /// Navigate to pending leaves screen
+
+  /// Navigate to pending leaves screen (Employee Leaves - all employees)
   void _navigateToPendingLeaves(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const LeaveScreen(),
+        builder: (context) => LeaveManagementScreen(token: widget.token),
       ),
     );
   }
 
   /// Navigate to pending expenses screen
   void _navigateToPendingExpenses(BuildContext context) {
+    print('📍 [NAVIGATION] _navigateToPendingExpenses() called');
+    print('   Current user role: $_userRole');
+
+    // For HR users, pass 'hr' role so they can CREATE expenses
+    // The ExpensesScreen treats both 'admin' and 'hr' roles equally for viewing all expenses
+    // But the create button only shows for 'employee' and 'hr' roles
+    final roleToPass = _userRole;
+    print('   Navigating with role: $roleToPass');
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ExpensesScreen(role: _userRole),
+        builder: (context) => ExpensesScreen(role: roleToPass),
       ),
     );
   }
 
-  /// Navigate to pending tasks screen
+  /// Navigate to pending tasks screen (Employee Tasks - admin view)
   void _navigateToPendingTasks(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TasksScreen(token: widget.token, role: _userRole),
+        builder: (context) => TasksScreen(token: widget.token, role: 'admin'),
       ),
     );
   }

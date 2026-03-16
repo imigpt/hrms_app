@@ -252,23 +252,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           page: 1,
           limit: 30,
         );
-        if (page.items.isNotEmpty) {
-          final items = page.items.map((item) {
-            final n = _AppNotif.fromBackend(item);
-            if (readIds.contains(item.id)) n.read = true;
-            return n;
-          }).toList();
-          _usingBackend = true;
-          _hasMore = page.pagination.hasMore;
-          if (mounted)
-            setState(() {
-              _all = items;
-              _isLoading = false;
-            });
-          return;
-        }
+        // Backend API call succeeded - use it even if empty (success case)
+        final items = page.items.map((item) {
+          final n = _AppNotif.fromBackend(item);
+          if (readIds.contains(item.id)) n.read = true;
+          return n;
+        }).toList();
+        _usingBackend = true;
+        _hasMore = page.pagination.hasMore;
+        if (mounted)
+          setState(() {
+            _all = items;
+            _isLoading = false;
+          });
+        return;
       } catch (e) {
-        debugPrint('Backend notification API: $e');
+        debugPrint('⚠️ Backend notification API failed: $e');
+        // Only fallback if API call actually failed (network error, auth error, etc)
       }
 
       // Fallback: aggregate from services

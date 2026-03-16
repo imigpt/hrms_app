@@ -6848,7 +6848,7 @@ class _TasksScreenState extends State<TasksScreen> {
     final isCompleted = status == 'completed';
     final overdue = _isOverdue(task);
 
-    final canDelete = task['isDeletableByEmployee'] == true;
+    final canDelete = task['isDeletableByEmployee'] == true && _isAdmin;
 
     return Dismissible(
       key: Key(task['_id']?.toString() ?? UniqueKey().toString()),

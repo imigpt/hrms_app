@@ -867,45 +867,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             fontSize: 18,
           ),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'TEST',
-                  style: TextStyle(
-                    color: _testModeEnabled ? Colors.orange : Colors.grey,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                Switch(
-                  value: _testModeEnabled,
-                  onChanged: (v) {
-                    setState(() => _testModeEnabled = v);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          v
-                              ? '🔓 Test mode ON — unlimited check-in/out enabled'
-                              : '🔒 Test mode OFF',
-                        ),
-                        backgroundColor: v ? Colors.orange : Colors.grey[700],
-                        duration: const Duration(seconds: 2),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  activeColor: Colors.orange,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ],
-            ),
-          ),
-        ],
+        // 
         // actions: [
         //   Tooltip(
         //     message: 'API Tests',

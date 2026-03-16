@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hrms_app/models/profile_model.dart';
 import 'package:hrms_app/screen/announcements_screen.dart';
+import 'package:hrms_app/screen/apply_leave_screen.dart';
 import 'package:hrms_app/screen/notifications_screen.dart';
 import 'package:hrms_app/screen/attendance_screen.dart';
 import 'package:hrms_app/screen/expenses_screen.dart';
@@ -42,6 +43,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
   bool _payrollExpanded = false;
   bool _leavesExpanded = false;
   bool _attendanceExpanded = false;
+  bool _tasksExpanded = false;
   late String _userRole;
 
   @override
@@ -73,6 +75,28 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Settings", "icon": Icons.settings_rounded},
   ];
 
+  // late final List<Map<String, dynamic>> _adminMenuItems = [
+  //   {"title": "Dashboard", "icon": Icons.grid_view_rounded},
+  //   {"title": "HR Accounts", "icon": Icons.manage_accounts_rounded},
+  //   {"title": "Employees", "icon": Icons.people_rounded},
+  //   {"title": "Clients", "icon": Icons.people_outline_rounded},
+  //   {"title": "Attendance", "icon": Icons.schedule_rounded, "hasSubmenu": true},
+  //   {
+  //     "title": "Leaves",
+  //     "icon": Icons.calendar_month_rounded,
+  //     "hasSubmenu": true,
+  //   },
+  //   {"title": "Tasks", "icon": Icons.task_alt_rounded},
+  //   {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
+  //   {"title": "Chat", "icon": Icons.chat_bubble_rounded},
+  //   {"title": "Announcements", "icon": Icons.campaign_rounded},
+  //   {"title": "Company Policy", "icon": Icons.policy_rounded},
+  //   {"title": "Payroll", "icon": Icons.payments_rounded, "hasSubmenu": true},
+  //   {"title": "Settings", "icon": Icons.settings_rounded},
+  // ];
+
+
+
   late final List<Map<String, dynamic>> _adminMenuItems = [
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
     {"title": "HR Accounts", "icon": Icons.manage_accounts_rounded},
@@ -93,26 +117,29 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Settings", "icon": Icons.settings_rounded},
   ];
 
+
   late final List<Map<String, dynamic>> _hrMenuItems = [
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
     {"title": "My Profile", "icon": Icons.person_rounded},
     {"title": "Employees", "icon": Icons.people_rounded},
     {"title": "Clients", "icon": Icons.people_outline_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded, "hasSubmenu": true},
-    {
-      "title": "Leaves",
-      "icon": Icons.calendar_month_rounded,
-      "hasSubmenu": true,
-    },
-    {"title": "Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "Leaves", "icon": Icons.calendar_month_rounded, "hasSubmenu": true},
+    {"title": "Tasks", "icon": Icons.task_alt_rounded, "hasSubmenu": true},
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
     {"title": "Announcements", "icon": Icons.campaign_rounded},
-    // {"title": "Notifications", "icon": Icons.notifications_rounded},
+    {"title": "Company Policy", "icon": Icons.policy_rounded},
+    {"title": "Payroll", "icon": Icons.payments_rounded, "hasSubmenu": true},
     {"title": "Settings", "icon": Icons.settings_rounded},
   ];
 
   late final List<Map<String, dynamic>> _attendanceSubItems = [
+    {"title": "Attendance", "icon": Icons.schedule_rounded},
+    {"title": "Edit Requests", "icon": Icons.description_rounded},
+  ];
+
+  late final List<Map<String, dynamic>> _hrAttendanceSubItems = [
     {"title": "Attendance", "icon": Icons.schedule_rounded},
     {"title": "My Attendance", "icon": Icons.assignment_rounded},
     {"title": "Edit Requests", "icon": Icons.description_rounded},
@@ -127,8 +154,18 @@ class _SidebarMenuState extends State<SidebarMenu> {
   ];
 
   late final List<Map<String, dynamic>> _leavesSubItems = [
+    {"title": "Employee Leaves", "icon": Icons.calendar_month_rounded},
+    {"title": "My Leaves", "icon": Icons.assignment_rounded},
+  ];
+
+  late final List<Map<String, dynamic>> _adminLeavesSubItems = [
     {"title": "Leaves", "icon": Icons.calendar_month_rounded},
-    {"title": "Leave Management", "icon": Icons.assignment_rounded},
+    {"title": "Leaves Management", "icon": Icons.assignment_rounded},
+  ];
+
+  late final List<Map<String, dynamic>> _hrTasksSubItems = [
+    {"title": "Employee Tasks", "icon": Icons.assignment_rounded},
+    {"title": "My Tasks", "icon": Icons.task_alt_rounded},
   ];
 
   /// Get payroll sub items based on user role
@@ -185,6 +222,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   if (menuItem['title'] == 'Attendance' &&
                       menuItem['hasSubmenu'] == true &&
                       (_userRole == 'admin' || _userRole == 'hr')) {
+                    final subItems = _userRole == 'hr' ? _hrAttendanceSubItems : _attendanceSubItems;
                     return Column(
                       children: [
                         _buildMenuItemWithSubmenu(
@@ -196,9 +234,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
                         ),
                         // Insert submenu items right after Attendance
                         if (_attendanceExpanded)
-                          ..._attendanceSubItems.asMap().entries.map((subEntry) {
+                          ...subItems.asMap().entries.map((subEntry) {
                             int subIdx = subEntry.key;
-                            return _buildAttendanceSubMenuItem(context, subIdx);
+                            return _buildAttendanceSubMenuItem(context, subIdx, subItems);
                           }).toList(),
                       ],
                     );
@@ -229,6 +267,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   // If this is Leaves with submenu
                   if (menuItem['title'] == 'Leaves' &&
                       menuItem['hasSubmenu'] == true) {
+                    final subItems = _userRole == 'admin' ? _adminLeavesSubItems : _leavesSubItems;
                     return Column(
                       children: [
                         _buildMenuItemWithSubmenu(
@@ -240,9 +279,32 @@ class _SidebarMenuState extends State<SidebarMenu> {
                         ),
                         // Insert submenu items right after Leaves
                         if (_leavesExpanded)
-                          ..._leavesSubItems.asMap().entries.map((subEntry) {
+                          ...subItems.asMap().entries.map((subEntry) {
                             int subIdx = subEntry.key;
-                            return _buildLeavesSubMenuItem(context, subIdx);
+                            return _buildLeavesSubMenuItem(context, subIdx, subItems);
+                          }).toList(),
+                      ],
+                    );
+                  }
+
+                  // If this is Tasks with submenu (HR only)
+                  if (menuItem['title'] == 'Tasks' &&
+                      menuItem['hasSubmenu'] == true &&
+                      _userRole == 'hr') {
+                    return Column(
+                      children: [
+                        _buildMenuItemWithSubmenu(
+                          context,
+                          index: idx,
+                          title: menuItem['title'],
+                          icon: menuItem['icon'],
+                          isExpanded: _tasksExpanded,
+                        ),
+                        // Insert submenu items right after Tasks
+                        if (_tasksExpanded)
+                          ..._hrTasksSubItems.asMap().entries.map((subEntry) {
+                            int subIdx = subEntry.key;
+                            return _buildTasksSubMenuItem(context, subIdx);
                           }).toList(),
                       ],
                     );
@@ -319,6 +381,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
                 _leavesExpanded = !_leavesExpanded;
               } else if (title == 'Attendance') {
                 _attendanceExpanded = !_attendanceExpanded;
+              } else if (title == 'Tasks') {
+                _tasksExpanded = !_tasksExpanded;
               }
             });
           },
@@ -428,8 +492,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
     );
   }
 
-  Widget _buildLeavesSubMenuItem(BuildContext context, int index) {
-    final subItem = _leavesSubItems[index];
+  Widget _buildLeavesSubMenuItem(BuildContext context, int index, List<Map<String, dynamic>> subItems) {
+    final subItem = subItems[index];
     Color primaryColor = Theme.of(context).primaryColor;
 
     return Padding(
@@ -478,8 +542,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
     );
   }
 
-  Widget _buildAttendanceSubMenuItem(BuildContext context, int index) {
-    final subItem = _attendanceSubItems[index];
+  Widget _buildAttendanceSubMenuItem(BuildContext context, int index, List<Map<String, dynamic>> subItems) {
+    final subItem = subItems[index];
     Color primaryColor = Theme.of(context).primaryColor;
 
     return Padding(
@@ -488,6 +552,56 @@ class _SidebarMenuState extends State<SidebarMenu> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _handleAttendanceSubMenuClick(context, subItem['title']),
+          borderRadius: BorderRadius.circular(10),
+          hoverColor: Colors.white.withOpacity(0.03),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(subItem['icon'], color: Colors.grey[500], size: 18),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    subItem['title'],
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTasksSubMenuItem(BuildContext context, int index) {
+    final subItem = _hrTasksSubItems[index];
+    Color primaryColor = Theme.of(context).primaryColor;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0, left: 16.0),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _handleTasksSubMenuClick(context, subItem['title']),
           borderRadius: BorderRadius.circular(10),
           hoverColor: Colors.white.withOpacity(0.03),
           child: Container(
@@ -804,7 +918,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
       case "Expenses":
         Navigator.of(
           context,
-        ).push(_createSmoothRoute(ExpensesScreen(role: _userRole)));
+        ).push(_createSmoothRoute(ExpensesScreen(
+          role: _userRole,  // Pass user's actual role: 'hr', 'employee', or 'admin'
+        )));
         break;
 
       case "Chat":
@@ -889,24 +1005,30 @@ class _SidebarMenuState extends State<SidebarMenu> {
 
     // Navigate to appropriate attendance subscreen
     if (title == "Attendance") {
-      // View all employees' attendance (Admin/HR view)
+      // For admin, view all employees' attendance; for HR, view all
       Navigator.of(context).push(
         _createSmoothRoute(AdminAttendanceScreen(token: widget.token)),
       );
     } else if (title == "My Attendance") {
-      // View own attendance
+      // View own attendance (HR only)
       Navigator.of(context).push(
         _createSmoothRoute(AttendanceScreen(token: widget.token)),
       );
     } else if (title == "Edit Requests") {
       // View all employees' edit requests
       Navigator.of(context).push(
-        _createSmoothRoute(EditRequestsScreen(token: widget.token)),
+        _createSmoothRoute(EditRequestsScreen(
+          token: widget.token,
+          showOnlyCurrentUser: false,
+        )),
       );
     } else if (title == "My Edit Requests") {
-      // View own edit requests
+      // View own edit requests (HR personal view)
       Navigator.of(context).push(
-        _createSmoothRoute(EditRequestsScreen(token: widget.token)),
+        _createSmoothRoute(EditRequestsScreen(
+          token: widget.token,
+          showOnlyCurrentUser: true,
+        )),
       );
     }
   }
@@ -944,14 +1066,41 @@ class _SidebarMenuState extends State<SidebarMenu> {
     }
 
     // Navigate to appropriate leaves subscreen
-    if (title == "Leave Management") {
+    if (title == "Leaves" || title == "Leaves Management") {
+      // Leaves Management (Admin)
       Navigator.of(
         context,
       ).push(_createSmoothRoute(LeaveBalanceScreen(token: widget.token)));
-    } else if (title == "Leaves") {
+    } else if (title == "Employee Leaves") {
+      // Employee Leaves (HR)
       Navigator.of(
         context,
       ).push(_createSmoothRoute(LeaveManagementScreen(token: widget.token)));
+    } else if (title == "My Leaves") {
+      // My Leaves (HR)
+      Navigator.of(
+        context,
+      ).push(_createSmoothRoute(LeaveScreen(token: widget.token)));
+    }
+  }
+
+  void _handleTasksSubMenuClick(BuildContext context, String title) {
+    // Close Drawer if open (Mobile)
+    if (Scaffold.of(context).hasDrawer && Scaffold.of(context).isDrawerOpen) {
+      Navigator.pop(context);
+    }
+
+    // Navigate to appropriate tasks subscreen
+    if (title == "Employee Tasks") {
+      // View all employees' tasks (admin view)
+      Navigator.of(context).push(
+        _createSmoothRoute(TasksScreen(token: widget.token, role: 'admin')),
+      );
+    } else if (title == "My Tasks") {
+      // View own tasks (personal HR view like employee panel)
+      Navigator.of(context).push(
+        _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole)),
+      );
     }
   }
 

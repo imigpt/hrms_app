@@ -300,7 +300,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               //     ),
               //   ),
               // ),
-              if (!isMobile && widget.role?.toLowerCase() != 'admin')
+              // Add Expense Button (Desktop)
+              if (!isMobile && (widget.role?.toLowerCase() == 'employee' || widget.role?.toLowerCase() == 'hr'))
                 ElevatedButton.icon(
                   onPressed: () => _handleCreateExpense(context),
                   icon: const Icon(Icons.add, size: 18),
@@ -376,7 +377,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
             ),
 
-            if (isMobile && widget.role?.toLowerCase() != 'admin') ...[
+            // Add Button (Mobile) - Show for employees and HR users
+            if (isMobile && (widget.role?.toLowerCase() == 'employee' || widget.role?.toLowerCase() == 'hr')) ...[
               const SizedBox(width: 10),
               IconButton(
                 onPressed: () => _handleCreateExpense(context),

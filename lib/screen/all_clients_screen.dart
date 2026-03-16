@@ -1729,17 +1729,24 @@ class _AddClientDialogState extends State<_AddClientDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = context.responsive;
+    final isMobileView = context.isMobile;
+    final maxHeight = responsive.bottomSheetMaxHeight;
+    final horizontalPadding = responsive.horizontalPadding;
+    final verticalSpacing = responsive.spacing;
+
     return Container(
+      constraints: BoxConstraints(maxHeight: maxHeight),
       decoration: BoxDecoration(
         color: _card,
-        borderRadius: BorderRadius.vertical(top: const Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            padding: EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1751,14 +1758,17 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                         'Add New Client',
                         style: TextStyle(
                           color: AppTheme.onSurface,
-                          fontSize: 18,
+                          fontSize: responsive.headingFontSize,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Create a client account. They will have access to the chat panel only.',
-                        style: TextStyle(color: _textGrey, fontSize: 12),
+                        style: TextStyle(
+                          color: _textGrey,
+                          fontSize: responsive.captionFontSize,
+                        ),
                       ),
                     ],
                   ),
@@ -1777,34 +1787,51 @@ class _AddClientDialogState extends State<_AddClientDialog> {
           Expanded(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(horizontalPadding),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Full Name & Phone row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildTextField(
-                              label: 'Full Name',
-                              hint: 'John Smith',
-                              isRequired: true,
-                              onChanged: (v) => _fullName = v,
+                      // Full Name & Phone row (Stack on mobile)
+                      isMobileView
+                          ? Column(
+                              children: [
+                                _buildTextField(
+                                  label: 'Full Name',
+                                  hint: 'John Smith',
+                                  isRequired: true,
+                                  onChanged: (v) => _fullName = v,
+                                ),
+                                SizedBox(height: verticalSpacing),
+                                _buildTextField(
+                                  label: 'Phone',
+                                  hint: '+1 234 567 890',
+                                  onChanged: (v) => _phone = v,
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                Expanded(
+                                  child: _buildTextField(
+                                    label: 'Full Name',
+                                    hint: 'John Smith',
+                                    isRequired: true,
+                                    onChanged: (v) => _fullName = v,
+                                  ),
+                                ),
+                                SizedBox(width: responsive.smallSpacing),
+                                Expanded(
+                                  child: _buildTextField(
+                                    label: 'Phone',
+                                    hint: '+1 234 567 890',
+                                    onChanged: (v) => _phone = v,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildTextField(
-                              label: 'Phone',
-                              hint: '+1 234 567 890',
-                              onChanged: (v) => _phone = v,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: verticalSpacing),
 
                       // Email Address
                       _buildTextField(
@@ -1814,7 +1841,7 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                         isEmail: true,
                         onChanged: (v) => _email = v,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: verticalSpacing),
 
                       // Password
                       _buildTextField(
@@ -1825,11 +1852,11 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                         minLength: 6,
                         onChanged: (v) => _password = v,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: verticalSpacing),
 
                       // Assign to HRMS Company
                       _buildCompanyDropdown(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: verticalSpacing),
 
                       // Client's Own Company Name
                       _buildTextField(
@@ -1838,7 +1865,7 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                         isRequired: true,
                         onChanged: (v) => _clientCompanyName = v,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: verticalSpacing),
 
                       // Notes
                       _buildTextAreaField(
@@ -1846,82 +1873,149 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                         hint: 'Any relevant notes about this client',
                         onChanged: (v) => _notes = v,
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: verticalSpacing + 4),
 
                       // Error message
                       if (_errorMessage != null)
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: _red.withOpacity(0.1),
+                            color: AppTheme.errorColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: _red.withOpacity(0.5)),
+                            border: Border.all(
+                              color: AppTheme.errorColor.withOpacity(0.5),
+                            ),
                           ),
                           child: Text(
                             _errorMessage!,
-                            style: const TextStyle(color: _red, fontSize: 12),
+                            style: TextStyle(
+                              color: AppTheme.errorColor,
+                              fontSize: responsive.captionFontSize,
+                            ),
                           ),
                         ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: verticalSpacing + 4),
 
                       // Buttons
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _isSubmitting
-                                  ? null
-                                  : () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                side: const BorderSide(color: _border),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: const Text('Cancel'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _isSubmitting ? null : _submitForm,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _pink,
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                disabledBackgroundColor: _textGrey,
-                              ),
-                              icon: _isSubmitting
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation(
-                                          Colors.black,
-                                        ),
+                      isMobileView
+                          ? Column(
+                              children: [
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: responsive.buttonHeight,
+                                  child: OutlinedButton(
+                                    onPressed: _isSubmitting
+                                        ? null
+                                        : () => Navigator.pop(context),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppTheme.onSurface,
+                                      side: const BorderSide(color: _border),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
-                                    )
-                                  : const Icon(Icons.check, size: 18),
-                              label: Text(
-                                _isSubmitting ? 'Creating...' : 'Create Client',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                    ),
+                                    child: const Text('Cancel'),
+                                  ),
                                 ),
-                              ),
+                                SizedBox(height: responsive.smallSpacing),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: responsive.buttonHeight,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isSubmitting ? null : _submitForm,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryColor,
+                                      foregroundColor: Colors.black,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      disabledBackgroundColor: _textGrey,
+                                    ),
+                                    icon: _isSubmitting
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation(
+                                                Colors.black,
+                                              ),
+                                            ),
+                                          )
+                                        : const Icon(Icons.check, size: 18),
+                                    label: Text(
+                                      _isSubmitting
+                                          ? 'Creating...'
+                                          : 'Create Client',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: _isSubmitting
+                                        ? null
+                                        : () => Navigator.pop(context),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppTheme.onSurface,
+                                      side: const BorderSide(color: _border),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    child: const Text('Cancel'),
+                                  ),
+                                ),
+                                SizedBox(width: responsive.smallSpacing),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: _isSubmitting ? null : _submitForm,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryColor,
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      disabledBackgroundColor: _textGrey,
+                                    ),
+                                    icon: _isSubmitting
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                                  AlwaysStoppedAnimation(
+                                                Colors.black,
+                                              ),
+                                            ),
+                                          )
+                                        : const Icon(Icons.check, size: 18),
+                                    label: Text(
+                                      _isSubmitting
+                                          ? 'Creating...'
+                                          : 'Create Client',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 12),
                     ],
                   ),
@@ -1943,6 +2037,8 @@ class _AddClientDialogState extends State<_AddClientDialog> {
     int minLength = 0,
     required Function(String) onChanged,
   }) {
+    final responsive = ResponsiveUtils(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1950,31 +2046,49 @@ class _AddClientDialogState extends State<_AddClientDialog> {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
+              style: TextStyle(
+                color: AppTheme.onSurface,
+                fontSize: responsive.captionFontSize + 2,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (isRequired) const Text(' *', style: TextStyle(color: _red)),
+            if (isRequired)
+              Text(
+                ' *',
+                style: TextStyle(
+                  color: AppTheme.errorColor,
+                  fontSize: responsive.captionFontSize + 2,
+                ),
+              ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: responsive.smallSpacing),
         Container(
           height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: responsive.horizontalPadding / 2,
+          ),
           decoration: BoxDecoration(
             color: AppTheme.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppTheme.outline),
           ),
           child: TextFormField(
-            style: TextStyle(color: AppTheme.onSurface, fontSize: 14),
+            style: TextStyle(
+              color: AppTheme.onSurface,
+              fontSize: responsive.bodyFontSize,
+            ),
             obscureText: isPassword,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(color: AppTheme.onSurface.withOpacity(0.6)),
+              hintStyle: TextStyle(
+                color: AppTheme.onSurface.withOpacity(0.6),
+                fontSize: responsive.bodyFontSize,
+              ),
               border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(
+                vertical: responsive.smallSpacing,
+              ),
             ),
             onChanged: onChanged,
             validator: (v) {
@@ -2002,32 +2116,43 @@ class _AddClientDialogState extends State<_AddClientDialog> {
     required String hint,
     required Function(String) onChanged,
   }) {
+    final responsive = ResponsiveUtils(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
+          style: TextStyle(
+            color: AppTheme.onSurface,
+            fontSize: responsive.captionFontSize + 2,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: responsive.smallSpacing),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: responsive.horizontalPadding / 2,
+            vertical: responsive.smallSpacing,
+          ),
           decoration: BoxDecoration(
             color: AppTheme.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppTheme.outline),
           ),
           child: TextFormField(
-            style: TextStyle(color: AppTheme.onSurface, fontSize: 14),
+            style: TextStyle(
+              color: AppTheme.onSurface,
+              fontSize: responsive.bodyFontSize,
+            ),
             maxLines: 4,
             minLines: 3,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(color: AppTheme.onSurface.withOpacity(0.6)),
+              hintStyle: TextStyle(
+                color: AppTheme.onSurface.withOpacity(0.6),
+                fontSize: responsive.bodyFontSize,
+              ),
               border: InputBorder.none,
             ),
             onChanged: onChanged,
@@ -2038,32 +2163,39 @@ class _AddClientDialogState extends State<_AddClientDialog> {
   }
 
   Widget _buildCompanyDropdown() {
+    final responsive = ResponsiveUtils(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Assign to HRMS Company',
           style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
+            color: AppTheme.onSurface,
+            fontSize: responsive.captionFontSize + 2,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: responsive.smallSpacing),
         Container(
           height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: responsive.horizontalPadding / 2,
+          ),
           decoration: BoxDecoration(
-            color: _input,
+            color: AppTheme.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _border),
+            border: Border.all(color: AppTheme.outline),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _assignedCompanyId.isEmpty ? null : _assignedCompanyId,
-              hint: const Text(
+              hint: Text(
                 'Select company (optional)',
-                style: TextStyle(color: _textGrey),
+                style: TextStyle(
+                  color: AppTheme.onSurface.withOpacity(0.6),
+                  fontSize: responsive.bodyFontSize,
+                ),
               ),
               items: _companies.map((c) {
                 final id = c['_id']?.toString() ?? '';
@@ -2072,15 +2204,21 @@ class _AddClientDialogState extends State<_AddClientDialog> {
                   value: id,
                   child: Text(
                     name,
-                    style: const TextStyle(color: _textLight, fontSize: 14),
+                    style: TextStyle(
+                      color: AppTheme.onSurface,
+                      fontSize: responsive.bodyFontSize,
+                    ),
                   ),
                 );
               }).toList(),
               onChanged: (v) {
                 setState(() => _assignedCompanyId = v ?? '');
               },
-              dropdownColor: const Color(0xFF1E1E1E),
-              style: const TextStyle(color: _textLight, fontSize: 14),
+              dropdownColor: AppTheme.surfaceVariant,
+              style: TextStyle(
+                color: AppTheme.onSurface,
+                fontSize: responsive.bodyFontSize,
+              ),
               isExpanded: true,
             ),
           ),

@@ -1272,6 +1272,7 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
   String _selectedDepartment = '';
   String _position = '';
   String _joinDate = '';
+  bool _showPassword = false;
 
   bool _isSubmitting = false;
   String? _errorMessage;
@@ -1396,6 +1397,7 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
                           isRequired: true,
                           isPassword: true,
                           onChanged: (v) => _password = v,
+                          onPasswordToggle: () => setState(() => _showPassword = !_showPassword),
                         ),
                       ],
                     ),
@@ -1758,6 +1760,7 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
     bool isPassword = false,
     bool isEmail = false,
     required Function(String) onChanged,
+    VoidCallback? onPasswordToggle,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1793,7 +1796,7 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
           ),
           child: TextFormField(
             style: const TextStyle(color: Colors.white, fontSize: 13),
-            obscureText: isPassword,
+            obscureText: isPassword && !_showPassword,
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
@@ -1806,10 +1809,15 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
                   ? Icon(icon, color: _textGrey, size: 16)
                   : const SizedBox(width: 12),
               suffixIcon: isPassword
-                  ? const Icon(
-                      Icons.visibility_off_outlined,
-                      color: _textGrey,
-                      size: 16,
+                  ? IconButton(
+                      icon: Icon(
+                        _showPassword
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_outlined,
+                        color: _textGrey,
+                        size: 16,
+                      ),
+                      onPressed: onPasswordToggle,
                     )
                   : null,
             ),

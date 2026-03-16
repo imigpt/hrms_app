@@ -8,8 +8,13 @@ import '../theme/app_theme.dart';
 
 class EditRequestsScreen extends StatefulWidget {
   final String? token;
+  final bool showOnlyCurrentUser;
 
-  const EditRequestsScreen({super.key, this.token});
+  const EditRequestsScreen({
+    super.key,
+    this.token,
+    this.showOnlyCurrentUser = false,
+  });
 
   @override
   State<EditRequestsScreen> createState() => _EditRequestsScreenState();
@@ -100,25 +105,8 @@ class _EditRequestsScreenState extends State<EditRequestsScreen>
       final tok = _resolvedToken;
       if (tok == null) throw Exception('No token. Please login again.');
 
-      try {
-        final pending = await AttendanceService.getPendingAdminEditRequests(
-          token: tok,
-        );
-        final allRaw = await AttendanceService.getAllAdminEditRequests(
-          token: tok,
-        );
-        if (!mounted) return;
-        final pendingIds = pending.data.map((e) => e.id).toSet();
-        final combined = [
-          ...pending.data,
-          ...allRaw.where((e) => !pendingIds.contains(e.id)),
-        ];
-        setState(() {
-          _allRequests = combined;
-          _isLoading = false;
-        });
-      } catch (_) {
-        // fallback for employee role
+      if (widget.showOnlyCurrentUser == true) {
+        // User-specific view: fetch only current user's edit requests
         final fb = await AttendanceService.getEditRequests(token: tok);
         if (!mounted) return;
         setState(() {
@@ -141,6 +129,50 @@ class _EditRequestsScreenState extends State<EditRequestsScreen>
               .toList();
           _isLoading = false;
         });
+      } else {
+        // Admin view: fetch all employees' edit requests
+        try {
+          final pending = await AttendanceService.getPendingAdminEditRequests(
+            token: tok,
+          );
+          final allRaw = await AttendanceService.getAllAdminEditRequests(
+            token: tok,
+          );
+          if (!mounted) return;
+          final pendingIds = pending.data.map((e) => e.id).toSet();
+          final combined = [
+            ...pending.data,
+            ...allRaw.where((e) => !pendingIds.contains(e.id)),
+          ];
+          setState(() {
+            _allRequests = combined;
+            _isLoading = false;
+          });
+        } catch (_) {
+          // fallback for employee role
+          final fb = await AttendanceService.getEditRequests(token: tok);
+          if (!mounted) return;
+          setState(() {
+            _allRequests = fb.data
+                .map(
+                  (d) => AdminEditRequestData(
+                    id: d.id,
+                    attendanceId: d.attendance,
+                    date: d.date,
+                    originalCheckIn: d.originalCheckIn,
+                    originalCheckOut: d.originalCheckOut,
+                    requestedCheckIn: d.requestedCheckIn,
+                    requestedCheckOut: d.requestedCheckOut,
+                    reason: d.reason,
+                    status: d.status,
+                    createdAt: d.createdAt,
+                    updatedAt: d.updatedAt,
+                  ),
+                )
+                .toList();
+            _isLoading = false;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
