@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import '../services/admin_employees_service.dart';
-import '../services/chat_service.dart';
-import '../services/token_storage_service.dart';
-import '../models/chat_room_model.dart';
-import '../utils/responsive_utils.dart';
-import 'package:hrms_app/theme/app_theme.dart';
+import 'package:hrms_app/features/admin/data/services/admin_employees_service.dart';
+import 'package:hrms_app/features/chat/data/services/chat_service.dart';
+import 'package:hrms_app/shared/services/core/token_storage_service.dart';
+import 'package:hrms_app/features/chat/data/models/chat_room_model.dart';
+import 'package:hrms_app/core/utils/responsive_utils.dart';
+import 'package:hrms_app/shared/theme/app_theme.dart';
 import 'chat_screen.dart';
 import 'task_detail_sheet.dart';
 

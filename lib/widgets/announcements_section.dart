@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../screen/announcements_screen.dart';
-import '../models/announcement_model.dart';
+import 'package:hrms_app/features/announcements/data/models/announcement_model.dart';
 
 class AnnouncementsSection extends StatelessWidget {
   // Accepts a list of announcements from the API

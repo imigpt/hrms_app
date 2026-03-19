@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
-import '../models/announcement_model.dart';
+import 'package:hrms_app/features/announcements/data/models/announcement_model.dart';
 import 'announcement_service.dart';
 import 'notification_service.dart';
 import 'token_storage_service.dart';
-import '../config/api_config.dart';
+import 'package:hrms_app/core/config/api_config.dart';
 
 class AnnouncementWebSocketService {
   // WebSocket host based on environment

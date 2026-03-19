@@ -6,13 +6,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
-import '../theme/app_theme.dart';
-import '../models/chat_room_model.dart';
-import '../services/chat_service.dart';
-import '../services/chat_socket_service.dart';
-import '../services/token_storage_service.dart';
-import '../services/notification_service.dart';
-import '../services/chat_media_service.dart';
+import 'package:hrms_app/shared/theme/app_theme.dart';
+import 'package:hrms_app/features/chat/data/models/chat_room_model.dart';
+import 'package:hrms_app/features/chat/data/services/chat_service.dart';
+import 'package:hrms_app/shared/services/communication/chat_socket_service.dart';
+import 'package:hrms_app/shared/services/core/token_storage_service.dart';
+import 'package:hrms_app/shared/services/communication/notification_service.dart';
+import 'package:hrms_app/services/chat_media_service.dart';
 // import 'chat_api_test_screen.dart';
 
 // ─── Chat List Screen ─────────────────────────────────────────────────────────

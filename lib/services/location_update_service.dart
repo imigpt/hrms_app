@@ -3,7 +3,7 @@
 import 'package:geolocator/geolocator.dart';
 import '../services/auth_service.dart';
 import '../services/token_storage_service.dart';
-import '../models/update_location_model.dart';
+import 'package:hrms_app/features/attendance/data/models/update_location_model.dart';
 
 class LocationUpdateService {
   final AuthService _authService = AuthService();

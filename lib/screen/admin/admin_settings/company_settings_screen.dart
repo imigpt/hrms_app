@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hrms_app/services/settings_service.dart';
-import 'package:hrms_app/theme/app_theme.dart';
+import 'package:hrms_app/shared/services/core/settings_service.dart';
+import 'package:hrms_app/shared/theme/app_theme.dart';
 import 'shared.dart';
 
 class AdminCompanySettingsScreen extends StatefulWidget {

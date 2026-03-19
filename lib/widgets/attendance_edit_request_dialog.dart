@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../services/attendance_service.dart';
 import '../services/token_storage_service.dart';
-import '../theme/app_theme.dart';
+import 'package:hrms_app/shared/theme/app_theme.dart';
 
 class AttendanceEditRequestDialog extends StatefulWidget {
   final String date;

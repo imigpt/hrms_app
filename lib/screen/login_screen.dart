@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:hrms_app/models/profile_model.dart';
-import 'package:hrms_app/screen/dashboard_screen.dart';
-import 'package:hrms_app/screen/forgot_password_screen.dart';
-import 'package:hrms_app/services/auth_service.dart';
-import 'package:hrms_app/services/notification_service.dart';
-import 'package:hrms_app/services/profile_service.dart';
-import 'package:hrms_app/services/token_storage_service.dart';
+import 'package:hrms_app/features/profile/data/models/profile_model.dart';
+import 'package:hrms_app/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:hrms_app/features/auth/presentation/screens/forgot_password_screen.dart';
+import 'package:hrms_app/features/auth/data/services/auth_service.dart';
+import 'package:hrms_app/shared/services/communication/notification_service.dart';
+import 'package:hrms_app/features/profile/data/services/profile_service.dart';
+import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 
 void main() {
   runApp(

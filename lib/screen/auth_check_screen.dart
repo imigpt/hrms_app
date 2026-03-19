@@ -1,12 +1,12 @@
 // lib/screen/auth_check_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:hrms_app/screen/dashboard_screen.dart';
-import 'package:hrms_app/screen/login_screen.dart';
-import 'package:hrms_app/services/notification_service.dart';
-import 'package:hrms_app/services/profile_service.dart';
-import 'package:hrms_app/services/token_storage_service.dart';
-import 'package:hrms_app/models/profile_model.dart';
+import 'package:hrms_app/features/dashboard/presentation/screens/dashboard_screen.dart';
+import 'package:hrms_app/features/auth/presentation/screens/login_screen.dart';
+import 'package:hrms_app/shared/services/communication/notification_service.dart';
+import 'package:hrms_app/features/profile/data/services/profile_service.dart';
+import 'package:hrms_app/shared/services/core/token_storage_service.dart';
+import 'package:hrms_app/features/profile/data/models/profile_model.dart';
 
 class AuthCheckScreen extends StatefulWidget {
   const AuthCheckScreen({super.key});

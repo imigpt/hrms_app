@@ -3,20 +3,23 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:hrms_app/screen/announcements_screen.dart';
-import 'package:hrms_app/screen/attendance_screen.dart';
-import 'package:hrms_app/screen/auth_check_screen.dart';
-import 'package:hrms_app/screen/chat_screen.dart';
-import 'package:hrms_app/screen/expenses_screen.dart';
-import 'package:hrms_app/screen/leave_management_screen.dart';
-import 'package:hrms_app/screen/notifications_screen.dart';
-import 'package:hrms_app/screen/payroll_screen.dart';
-import 'package:hrms_app/screen/tasks_screen.dart';
-import 'package:hrms_app/services/chat_media_service.dart';
-import 'package:hrms_app/services/notification_service.dart';
-import 'package:hrms_app/services/token_storage_service.dart';
+import 'package:provider/provider.dart';
+import 'package:hrms_app/features/announcements/presentation/screens/announcements_screen.dart';
+import 'package:hrms_app/features/attendance/presentation/screens/attendance_screen.dart';
+import 'package:hrms_app/features/auth/presentation/screens/auth_check_screen.dart';
+import 'package:hrms_app/features/auth/presentation/providers/auth_notifier.dart';
+import 'package:hrms_app/features/auth/data/services/auth_service.dart';
+import 'package:hrms_app/features/chat/presentation/screens/chat_screen.dart';
+import 'package:hrms_app/features/expenses/presentation/screens/expenses_screen.dart';
+import 'package:hrms_app/features/leave/presentation/screens/leave_management_screen.dart';
+import 'package:hrms_app/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:hrms_app/features/payroll/presentation/screens/payroll_screen.dart';
+import 'package:hrms_app/features/tasks/presentation/screens/tasks_screen.dart';
+import 'package:hrms_app/features/chat/data/services/chat_media_service.dart';
+import 'package:hrms_app/shared/services/communication/notification_service.dart';
+import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'firebase_options.dart';
-import 'theme/app_theme.dart';
+import 'package:hrms_app/shared/theme/app_theme.dart';
 
 Future<void> main() async {
   // 1. Ensure bindings are initialized before calling native code
@@ -230,14 +233,33 @@ class _HrmsAppState extends State<HrmsApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Aselea HRMS',
-      theme: AppTheme.darkTheme,
-      // Wire global navigatorKey so FCM taps can navigate from outside the widget tree
-      navigatorKey: NotificationService.navigatorKey,
-      // AuthCheckScreen determines whether to show login or dashboard
-      home: const AuthCheckScreen(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthNotifier>(
+          create: (_) => AuthNotifier(
+            AuthService(),
+            TokenStorageService(),
+          ),
+        ),
+      ],
+      child: Builder(
+        builder: (context) {
+          // Initialize auth state on first build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.read<AuthNotifier>().restoreAuthFromStorage();
+          });
+
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Aselea HRMS',
+            theme: AppTheme.darkTheme,
+            // Wire global navigatorKey so FCM taps can navigate from outside the widget tree
+            navigatorKey: NotificationService.navigatorKey,
+            // AuthCheckScreen determines whether to show login or dashboard
+            home: const AuthCheckScreen(),
+          );
+        },
+      ),
     );
   }
 }

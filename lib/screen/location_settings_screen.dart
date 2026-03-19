@@ -2,9 +2,9 @@
 // Example screen showing how to use location update functionality
 
 import 'package:flutter/material.dart';
-import '../services/location_update_service.dart';
+import 'package:hrms_app/features/attendance/data/services/location_update_service.dart';
 import '../utils/location_update_mixin.dart';
-import '../models/update_location_model.dart';
+import 'package:hrms_app/features/attendance/data/models/update_location_model.dart';
 
 class LocationSettingsScreen extends StatefulWidget {
   const LocationSettingsScreen({super.key});

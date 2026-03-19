@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hrms_app/models/profile_model.dart';
-import 'package:hrms_app/services/admin_service.dart';
-import 'package:hrms_app/services/profile_service.dart';
-import 'package:hrms_app/services/settings_service.dart';
-import 'package:hrms_app/services/token_storage_service.dart';
-import 'package:hrms_app/theme/app_theme.dart';
+import 'package:hrms_app/features/profile/data/models/profile_model.dart';
+import 'package:hrms_app/features/admin/data/services/admin_service.dart';
+import 'package:hrms_app/features/profile/data/services/profile_service.dart';
+import 'package:hrms_app/shared/services/core/settings_service.dart';
+import 'package:hrms_app/shared/services/core/token_storage_service.dart';
+import 'package:hrms_app/shared/theme/app_theme.dart';
 import 'admin/admin_settings/company_settings_screen.dart';
 import 'admin/admin_settings/currencies_screen.dart';
 import 'admin/admin_settings/email_settings_screen.dart';

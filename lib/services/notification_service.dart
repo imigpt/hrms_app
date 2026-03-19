@@ -190,7 +190,7 @@ Future<void> _showBgNotification(RemoteMessage message) async {
 // This runs in its own isolate when the app is killed / in background.
 // It must be a top-level function (not a class method).
 @pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // IMPORTANT: Use print() not debugPrint() — debugPrint won't show in background!
   print('═══════════════════════════════════════════════════════════');
   print('🔥 FCM BACKGROUND/TERMINATED MESSAGE RECEIVED 🔥');
@@ -203,23 +203,45 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
                 message.data['body']?.toString() ??
                 message.data['message']?.toString() ?? '';
   final refId = message.data['referenceId']?.toString() ?? '';
+  final notifId = message.messageId ?? '${message.sentTime}';
 
   print('[DATA] Type: $type');
   print('[DATA] ReferenceId: $refId');
   print('[NOTIFICATION] Title: $title');
   print('[NOTIFICATION] Body: $body');
+  print('[NOTIFICATION_ID] $notifId');
 
-  // ── Display notification in system tray ─────────────────────────────────
-  // We always call _showBgNotification so that:
-  //  • data-only messages (no 'notification' field) are shown in the tray.
-  //  • regular messages are shown on the CORRECT typed channel instead of
-  //    the generic 'hrms_notifications' fallback.
+  // ── Mark notification as displayed (PERSISTENT DEDUP) ─────────────────
+  // Save to SharedPreferences so when app opens, it recognizes this notification
+  // and won't display it again (prevents duplicate in foreground)
   try {
-    await _showBgNotification(message);
-    print('✅ Background notification displayed (type=$type, channel=${_channelForType(type)})');
+    final prefs = await SharedPreferences.getInstance();
+    final cachedIds = prefs.getStringList('recent_notification_ids') ?? [];
+    final cachedTimes = prefs.getStringList('recent_notification_timestamps') ?? [];
+    
+    // Add current notification to cache
+    cachedIds.add(notifId);
+    cachedTimes.add(DateTime.now().millisecondsSinceEpoch.toString());
+    
+    // Keep only last 20 notifications to avoid cache bloat
+    if (cachedIds.length > 20) {
+      cachedIds.removeAt(0);
+      cachedTimes.removeAt(0);
+    }
+    
+    await prefs.setStringList('recent_notification_ids', cachedIds);
+    await prefs.setStringList('recent_notification_timestamps', cachedTimes);
+    
+    print('✅ [BACKGROUND] Marked notification as displayed (dedup ID: $notifId)');
   } catch (e) {
-    print('⚠️ _showBgNotification error: $e');
+    print('⚠️ [BACKGROUND] Error saving to dedup cache: $e');
   }
+
+  // ── Firebase Auto-Display ──────────────────────────────────────────────
+  // When app is in background or closed, Firebase automatically displays
+  // the notification in the system tray. We do NOT manually show it here.
+  print('✅ Notification will be auto-displayed by Firebase in system tray');
+  print('   Type: $type | Channel: ${_channelForType(type)}');
 
   print('═══════════════════════════════════════════════════════════');
 }
@@ -232,10 +254,18 @@ class NotificationService {
 
   bool _isInitialized = false;
   bool _isInitializing = false; // Prevent concurrent initialization
+  bool _fcmHandlersSetup = false; // Prevent duplicate FCM handler setup
   
-  // Notification deduplication: track recently displayed notifications
+  // Store Subscriptions for FCM handlers so we can cancel them if needed
+  StreamSubscription<RemoteMessage>? _onMessageOpenedAppSub;
+  StreamSubscription<RemoteMessage>? _onMessageSub;
+  
+  // PERSISTENT deduplication: track recently displayed notifications across app restarts
+  // Uses SharedPreferences to survive app closure
   final Set<String> _recentNotificationIds = {};
-  static const int _dedupeWindowMs = 5000; // 5 second window
+  static const int _dedupeWindowMs = 30000; // 30 second window (increased for closed-app scenario)
+  static const String _dedupeCacheKey = 'recent_notification_ids';
+  static const String _dedupeCacheTimeKey = 'recent_notification_timestamps';
   
   // FCM token registration retry config
   static const int _maxTokenRetries = 3;
@@ -250,7 +280,84 @@ class NotificationService {
   static final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
 
-  /// Register a handler here (e.g. from main.dart / HrmsApp) to perform
+  /// Check if notification was recently displayed (within dedup window).
+  /// Uses persistent cache to survive app restarts.
+  Future<bool> _isNotificationDuplicate(String notificationId) async {
+    if (notificationId.isEmpty) return false;
+    
+    // Check in-memory cache first (fast)
+    if (_recentNotificationIds.contains(notificationId)) {
+      print('⚠️ [DEDUP] Notification is in memory cache: $notificationId');
+      return true;
+    }
+    
+    // Check persistent cache (SharedPreferences)
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedIds = prefs.getStringList(_dedupeCacheKey) ?? [];
+      final cachedTimes = prefs.getStringList(_dedupeCacheTimeKey) ?? [];
+      
+      final now = DateTime.now().millisecondsSinceEpoch;
+      bool isDuplicate = false;
+      
+      // Check if notification ID is in cache and within dedup window
+      for (int i = 0; i < cachedIds.length; i++) {
+        if (cachedIds[i] == notificationId) {
+          final storedTime = int.tryParse(cachedTimes.isNotEmpty && i < cachedTimes.length ? cachedTimes[i] : '0') ?? 0;
+          final age = now - storedTime;
+          
+          if (age < _dedupeWindowMs) {
+            print('⚠️ [DEDUP] Notification is in persistent cache: $notificationId (age: ${age}ms)');
+            isDuplicate = true;
+          }
+        }
+      }
+      
+      // Clean up old entries while we're at it
+      final validIds = <String>[];
+      final validTimes = <String>[];
+      for (int i = 0; i < cachedIds.length; i++) {
+        final storedTime = int.tryParse(cachedTimes.isNotEmpty && i < cachedTimes.length ? cachedTimes[i] : '0') ?? 0;
+        final age = now - storedTime;
+        if (age < _dedupeWindowMs) {
+          validIds.add(cachedIds[i]);
+          validTimes.add(cachedTimes[i]);
+        }
+      }
+      await prefs.setStringList(_dedupeCacheKey, validIds);
+      await prefs.setStringList(_dedupeCacheTimeKey, validTimes);
+      
+      return isDuplicate;
+    } catch (e) {
+      print('⚠️ [DEDUP] Error checking persistent cache: $e');
+      return false;
+    }
+  }
+  
+  /// Mark notification as displayed (add to persistent cache).
+  Future<void> _markNotificationDisplayed(String notificationId) async {
+    if (notificationId.isEmpty) return;
+    
+    // Add to in-memory cache
+    _recentNotificationIds.add(notificationId);
+    
+    // Add to persistent cache
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedIds = prefs.getStringList(_dedupeCacheKey) ?? [];
+      final cachedTimes = prefs.getStringList(_dedupeCacheTimeKey) ?? [];
+      
+      cachedIds.add(notificationId);
+      cachedTimes.add(DateTime.now().millisecondsSinceEpoch.toString());
+      
+      await prefs.setStringList(_dedupeCacheKey, cachedIds);
+      await prefs.setStringList(_dedupeCacheTimeKey, cachedTimes);
+      
+      print('✅ [DEDUP] Marked notification as displayed: $notificationId');
+    } catch (e) {
+      print('⚠️ [DEDUP] Error saving to persistent cache: $e');
+    }
+  }
   /// the actual screen navigation when a notification is tapped.
   /// Signature: (type, referenceId) where type matches the backend types
   /// (chat, leave, task_assigned, etc.) and referenceId is the entity ID.
@@ -788,6 +895,13 @@ class NotificationService {
   /// Call once after Firebase.initializeApp().
   /// This handles notifications from both HRMS system and external apps.
   Future<void> setupFcmHandlers() async {
+    // GUARD: Prevent duplicate handler setup
+    if (_fcmHandlersSetup) {
+      debugPrint('⚠️ FCM handlers already set up, skipping...');
+      return;
+    }
+    _fcmHandlersSetup = true;
+    
     debugPrint('🔧 Setting up FCM handlers for notifications...');
 
     // Background handler is registered in main.dart via:
@@ -831,10 +945,17 @@ class NotificationService {
 
     // ── Background-state tap ───────────────────────────────────────────────
     // App was running in background; user tapped the system notification.
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    // Cancel old subscription if it exists to prevent duplicate listeners
+    _onMessageOpenedAppSub?.cancel();
+    
+    _onMessageOpenedAppSub = FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
       print('🔔 FCM background tap: ${message.notification?.title}');
       print('   Notification: ${message.notification?.body}');
       print('   Data: ${message.data}');
+      
+      final notifId = message.messageId ?? '${message.sentTime}';
+      // Mark as displayed to prevent duplicate
+      await _markNotificationDisplayed(notifId);
       
       // Extract type and referenceId for navigation
       final type = message.data['type']?.toString() ?? 'general';
@@ -851,7 +972,10 @@ class NotificationService {
     // We use flutter_local_notifications purely as a DISPLAY mechanism — the
     // trigger is still FCM. This mirrors the system notification you'd see
     // when the app is closed.
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    // Cancel old subscription if it exists to prevent duplicate listeners
+    _onMessageSub?.cancel();
+    
+    _onMessageSub = FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       try {
         print('═════════════════════════════════════════════════════════════════');
         print('🔔 FCM FOREGROUND MESSAGE (App is OPEN)');
@@ -890,16 +1014,13 @@ class NotificationService {
           return;
         }
 
-        // DEDUPLICATION CHECK: Skip if we just showed this notification
-        if (_recentNotificationIds.contains(notificationId)) {
+        // DEDUPLICATION CHECK: Skip if we just showed this notification (with persistent cache)
+        final isDuplicate = await _isNotificationDuplicate(notificationId);
+        if (isDuplicate) {
           print('⚠️ Notification already shown recently (dedup), skipping duplicate');
           return;
         }
-        _recentNotificationIds.add(notificationId);
-        // Clear dedup cache after window expires
-        Future.delayed(Duration(milliseconds: _dedupeWindowMs), () {
-          _recentNotificationIds.remove(notificationId);
-        });
+        await _markNotificationDisplayed(notificationId);
 
         // Identify notification type and log extra fields from backend
         if (type == 'chat') {
