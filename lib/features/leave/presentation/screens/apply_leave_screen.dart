@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:hrms_app/features/leave/data/services/leave_service.dart';
+import 'package:hrms_app/features/leave/presentation/providers/leave_notifier.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
-import 'package:hrms_app/shared/services/communication/notification_service.dart';
 import 'package:hrms_app/core/utils/responsive_utils.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
-// import 'leave_api_test_screen.dart';
 
 // --- MODELS ---
 class LeaveRequest {
@@ -38,12 +38,6 @@ class LeaveBalance {
   });
 }
 
-void main() {
-  runApp(
-    const MaterialApp(debugShowCheckedModeBanner: false, home: LeaveScreen()),
-  );
-}
-
 class LeaveScreen extends StatefulWidget {
   const LeaveScreen({super.key, String? token});
 
@@ -52,24 +46,6 @@ class LeaveScreen extends StatefulWidget {
 }
 
 class _LeaveScreenState extends State<LeaveScreen> {
-  // --- DATA ---
-  List<LeaveBalance> _leaveBalances = [];
-  bool _isLoadingBalance = false;
-
-  final List<LeaveRequest> _leaveRequests = [];
-  bool _isLoadingRequests = false;
-
-  String _selectedFilter = 'All';
-  final List<String> _filterOptions = [
-    'All',
-    'Pending',
-    'Approved',
-    'Rejected',
-  ];
-
-  // Track which leave IDs have been notified for status changes
-  final Set<String> _notifiedLeaveIds = {};
-
   // --- COLORS ---
   Color get kBackground => AppTheme.background;
   Color get kCardColor => AppTheme.cardColor;
@@ -79,132 +55,22 @@ class _LeaveScreenState extends State<LeaveScreen> {
   Color get kTextGrey => Colors.grey;
   Color get kBorderGrey => AppTheme.outline;
 
+  final List<String> _filterOptions = [
+    'All',
+    'Pending',
+    'Approved',
+    'Rejected',
+  ];
+
   @override
   void initState() {
     super.initState();
-    _loadLeaveBalance();
-    _loadLeaveRequests();
-  }
-
-  Future<void> _loadLeaveBalance() async {
-    setState(() => _isLoadingBalance = true);
-    try {
-      final storage = TokenStorageService();
-      final token = await storage.getToken();
-      if (token == null) {
-        throw Exception('Authentication data not found');
-      }
-
-      final response = await LeaveService.getLeaveBalance(token: token);
-
-      if (response.success && response.data != null) {
-        final d = response.data!;
-        setState(() {
-          _leaveBalances = [
-            LeaveBalance(
-              type: 'Paid',
-              remaining: d.paid,
-              used: d.usedPaid,
-              total: d.paid + d.usedPaid,
-            ),
-            LeaveBalance(
-              type: 'Sick',
-              remaining: d.sick,
-              used: d.usedSick,
-              total: d.sick + d.usedSick,
-            ),
-            LeaveBalance(
-              type: 'Unpaid',
-              remaining: d.unpaid,
-              used: d.usedUnpaid,
-              total: d.unpaid + d.usedUnpaid,
-            ),
-          ];
-        });
-      }
-    } catch (e) {
-      print('Error loading leave balance: $e');
-    } finally {
-      if (mounted) setState(() => _isLoadingBalance = false);
-    }
-  }
-
-  Future<void> _loadLeaveRequests() async {
-    setState(() {
-      _isLoadingRequests = true;
+    // Load data using Provider
+    Future.microtask(() {
+      final notifier = context.read<LeaveNotifier>();
+      notifier.loadLeaveBalance();
+      notifier.loadLeaveRequests();
     });
-
-    try {
-      final token = await TokenStorageService().getToken();
-      if (token == null) {
-        throw Exception('Authentication token not found');
-      }
-
-      final response = await LeaveService.getMyLeaves(token: token);
-
-      if (response['success'] == true && response['data'] != null) {
-        final List<dynamic> leavesData = response['data'];
-
-        setState(() {
-          _leaveRequests.clear();
-          for (var leave in leavesData) {
-            String leaveType = leave['leaveType'] ?? 'unknown';
-            // Capitalize first letter
-            leaveType = leaveType[0].toUpperCase() + leaveType.substring(1);
-
-            final leaveId = '${leave['id'] ?? leave['_id']}';
-            final status = _capitalizeStatus(leave['status'] ?? 'Pending');
-
-            _leaveRequests.add(
-              LeaveRequest(
-                type: '$leaveType Leave',
-                fromDate: DateTime.parse(leave['startDate']),
-                toDate: DateTime.parse(leave['endDate']),
-                reason: leave['reason'] ?? '',
-                status: status,
-              ),
-            );
-          }
-        });
-
-        // Show notifications outside of setState
-        for (var leave in leavesData) {
-          final leaveId = '${leave['id'] ?? leave['_id']}';
-          final status = _capitalizeStatus(leave['status'] ?? 'Pending');
-          String leaveType = leave['leaveType'] ?? 'unknown';
-          leaveType = leaveType[0].toUpperCase() + leaveType.substring(1);
-
-          if (!_notifiedLeaveIds.contains(leaveId)) {
-            if (status == 'Approved') {
-              await NotificationService().showLeaveApprovedNotification(
-                employeeName: 'Your',
-                leaveType: leaveType,
-                startDate: DateFormat(
-                  'MMM dd',
-                ).format(DateTime.parse(leave['startDate'])),
-                endDate: DateFormat(
-                  'MMM dd',
-                ).format(DateTime.parse(leave['endDate'])),
-              );
-              _notifiedLeaveIds.add(leaveId);
-            } else if (status == 'Rejected') {
-              await NotificationService().showLeaveRejectedNotification(
-                employeeName: 'Your',
-                leaveType: leaveType,
-                reason: leave['reviewNote'] ?? 'No reason provided',
-              );
-              _notifiedLeaveIds.add(leaveId);
-            }
-          }
-        }
-      }
-    } catch (e) {
-      print('Error loading leave requests: $e');
-    } finally {
-      setState(() {
-        _isLoadingRequests = false;
-      });
-    }
   }
 
   String _capitalizeStatus(String status) {
@@ -212,49 +78,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
     return status[0].toUpperCase() + status.substring(1).toLowerCase();
   }
 
-  // --- DIALOG ---
-  void _openApplyLeaveDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return ApplyLeaveDialog(
-          onSubmit: (LeaveRequest newRequest) {
-            setState(() {
-              _leaveRequests.insert(0, newRequest);
-            });
-            // Optionally reload from server to get updated data
-            _loadLeaveRequests();
-          },
-        );
-      },
-    );
-  }
-
-  void _openApplyHalfDayDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return ApplyHalfDayDialog(
-          onSubmit: (LeaveRequest newRequest) {
-            setState(() {
-              _leaveRequests.insert(0, newRequest);
-            });
-            // Optionally reload from server to get updated data
-            _loadLeaveRequests();
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final responsive = ResponsiveUtils(context);
-
-    List<LeaveRequest> filteredRequests = _leaveRequests.where((request) {
-      if (_selectedFilter == 'All') return true;
-      return request.status == _selectedFilter;
-    }).toList();
 
     return Scaffold(
       backgroundColor: kBackground,
@@ -278,166 +104,203 @@ class _LeaveScreenState extends State<LeaveScreen> {
           ),
         ),
         centerTitle: false,
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.api_outlined, color: Colors.pinkAccent),
-        //     onPressed: () => Navigator.push(
-        //       context,
-        //       MaterialPageRoute(builder: (_) => const LeaveApiTestScreen()),
-        //     ),
-        //     tooltip: 'Leave API Tests',
-        //   ),
-        // ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.wait([_loadLeaveBalance(), _loadLeaveRequests()]);
-        },
-        color: kPinkAccent,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.all(responsive.horizontalPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Leave Balances Grid (Responsive layout)
-              if (_isLoadingBalance)
-                Container(
-                  height: 120,
-                  alignment: Alignment.center,
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(kPinkAccent),
-                  ),
-                )
-              else if (_leaveBalances.isEmpty)
-                Container(
-                  height: 80,
-                  alignment: Alignment.center,
-                  child: Text(
-                    'Balance not available',
-                    style: TextStyle(color: kTextGrey, fontSize: 14),
-                  ),
-                )
-              else if (responsive.isDesktopDevice)
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    childAspectRatio: 2.5,
-                    crossAxisSpacing: responsive.spacing,
-                    mainAxisSpacing: responsive.spacing,
-                  ),
-                  itemCount: _leaveBalances.length,
-                  itemBuilder: (ctx, index) {
-                    return _buildLeaveBalanceCard(
-                      _leaveBalances[index],
-                      responsive,
-                    );
-                  },
-                )
-              else
-                SizedBox(
-                  height: responsive.scaledSize(120),
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _leaveBalances.length,
-                    separatorBuilder: (ctx, i) =>
-                        SizedBox(width: responsive.spacing),
-                    itemBuilder: (ctx, index) {
-                      return _buildLeaveBalanceCard(
-                        _leaveBalances[index],
-                        responsive,
-                      );
-                    },
-                  ),
-                ),
+      body: Consumer<LeaveNotifier>(
+        builder: (context, leaveNotifier, _) {
+          final state = leaveNotifier.state;
 
-              SizedBox(height: responsive.spacing * 1.5),
+          // Filter leaves based on selected filter
+          List<LeaveRequest> filteredLeaves = state.leaves
+              .where((leave) {
+            if (state.selectedFilter == 'All') return true;
+            return leave.status == state.selectedFilter;
+          })
+              .map((leave) => LeaveRequest(
+                    type: '${leave.leaveType} Leave',
+                    fromDate: leave.startDate,
+                    toDate: leave.endDate,
+                    reason: leave.reason,
+                    status: _capitalizeStatus(leave.status),
+                  ))
+              .toList();
 
-              // 2. Section Header
-              Row(
+          return RefreshIndicator(
+            onRefresh: () async {
+              await Future.wait([
+                leaveNotifier.loadLeaveBalance(),
+                leaveNotifier.loadLeaveRequests(),
+              ]);
+            },
+            color: kPinkAccent,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.all(responsive.horizontalPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.calendar_month_outlined,
-                    color: kPinkAccent,
-                    size: responsive.iconSize,
+                  // 1. Leave Balances Display
+                  if (state.isLoadingBalance)
+                    Container(
+                      height: 120,
+                      alignment: Alignment.center,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(kPinkAccent),
+                      ),
+                    )
+                  else if (state.userBalance == null)
+                    Container(
+                      height: 80,
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Balance not available',
+                        style: TextStyle(color: kTextGrey, fontSize: 14),
+                      ),
+                    )
+                  else
+                    // Build balance cards from userBalance map
+                    SizedBox(
+                      height: responsive.scaledSize(120),
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: 3, // Fixed 3 types: Paid, Sick, Unpaid
+                        separatorBuilder: (ctx, i) =>
+                            SizedBox(width: responsive.spacing),
+                        itemBuilder: (ctx, index) {
+                          final balance = state.userBalance!;
+                          final leaveTypes = [
+                            ('Paid', balance['paid'] as int,
+                                balance['usedPaid'] as int),
+                            ('Sick', balance['sick'] as int,
+                                balance['usedSick'] as int),
+                            ('Unpaid', balance['unpaid'] as int,
+                                balance['usedUnpaid'] as int),
+                          ];
+                          final type = leaveTypes[index];
+
+                          return _buildLeaveBalanceCard(
+                            LeaveBalance(
+                              type: type.$1,
+                              remaining: type.$2,
+                              used: type.$3,
+                              total: type.$2 + type.$3,
+                            ),
+                            responsive,
+                          );
+                        },
+                      ),
+                    ),
+
+                  SizedBox(height: responsive.spacing * 1.5),
+
+                  // 2. Section Header
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_month_outlined,
+                        color: kPinkAccent,
+                        size: responsive.iconSize,
+                      ),
+                      SizedBox(width: responsive.smallSpacing),
+                      Text(
+                        'Leave Requests',
+                        style: TextStyle(
+                          color: kTextWhite,
+                          fontSize: responsive.headingFontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: responsive.smallSpacing),
+                  SizedBox(height: responsive.smallSpacing / 2),
                   Text(
-                    'Leave Requests',
+                    'Your leave request history',
                     style: TextStyle(
-                      color: kTextWhite,
-                      fontSize: responsive.headingFontSize,
-                      fontWeight: FontWeight.bold,
+                      color: kTextGrey,
+                      fontSize: responsive.captionFontSize,
                     ),
                   ),
-                ],
-              ),
-              SizedBox(height: responsive.smallSpacing / 2),
-              Text(
-                'Your leave request history',
-                style: TextStyle(
-                  color: kTextGrey,
-                  fontSize: responsive.captionFontSize,
-                ),
-              ),
 
-              SizedBox(height: responsive.spacing),
+                  SizedBox(height: responsive.spacing),
 
-              // Filter and Apply Button Row (Responsive)
-              responsive.isDesktopDevice
-                  ? Row(
-                      children: [
-                        SizedBox(
-                          width: 200,
-                          child: _buildFilterDropdown(responsive),
-                        ),
-                        SizedBox(width: responsive.spacing),
-                        SizedBox(
-                          width: 140,
-                          child: _buildApplyButton(responsive),
-                        ),
-                        SizedBox(width: responsive.smallSpacing),
-                        SizedBox(
-                          width: 160,
-                          child: _buildApplyHalfDayButton(responsive),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        // Filter Dropdown
-                        _buildFilterDropdown(responsive),
-
-                        SizedBox(height: responsive.smallSpacing),
-
-                        // Apply Buttons Row
-                        Row(
+                  // Filter and Apply Button Row (Responsive)
+                  responsive.isDesktopDevice
+                      ? Row(
                           children: [
-                            Expanded(child: _buildApplyButton(responsive)),
+                            SizedBox(
+                              width: 200,
+                              child: _buildFilterDropdown(responsive, leaveNotifier),
+                            ),
+                            SizedBox(width: responsive.spacing),
+                            SizedBox(
+                              width: 140,
+                              child: _buildApplyButton(responsive),
+                            ),
                             SizedBox(width: responsive.smallSpacing),
-                            Expanded(
+                            SizedBox(
+                              width: 160,
                               child: _buildApplyHalfDayButton(responsive),
                             ),
                           ],
+                        )
+                      : Column(
+                          children: [
+                            // Filter Dropdown
+                            _buildFilterDropdown(responsive, leaveNotifier),
+
+                            SizedBox(height: responsive.smallSpacing),
+
+                            // Apply Buttons Row
+                            Row(
+                              children: [
+                                Expanded(child: _buildApplyButton(responsive)),
+                                SizedBox(width: responsive.smallSpacing),
+                                Expanded(
+                                  child: _buildApplyHalfDayButton(responsive),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
 
-              SizedBox(height: responsive.spacing * 1.5),
+                  SizedBox(height: responsive.spacing * 1.5),
 
-              // 3. Leave Request History List
-              _isLoadingRequests
-                  ? Container(
+                  // 3. Leave Request History List
+                  if (state.errorMessage != null && state.errorType == 'leaves')
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 60,
+                        horizontal: 24,
+                      ),
+                      alignment: Alignment.center,
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: kTextRed.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error loading leaves',
+                            style: TextStyle(
+                              color: kTextRed,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (state.isLoading)
+                    Container(
                       padding: const EdgeInsets.symmetric(vertical: 60),
                       alignment: Alignment.center,
                       child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(kPinkAccent),
                       ),
                     )
-                  : filteredRequests.isEmpty
-                  ? Container(
+                  else if (filteredLeaves.isEmpty)
+                    Container(
                       padding: const EdgeInsets.symmetric(
                         vertical: 60,
                         horizontal: 24,
@@ -448,7 +311,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                           Icon(
                             Icons.inbox_outlined,
                             size: 64,
-                            color: kTextGrey.withOpacity(0.5),
+                            color: kTextGrey.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -463,30 +326,62 @@ class _LeaveScreenState extends State<LeaveScreen> {
                           Text(
                             "Your leave requests will appear here",
                             style: TextStyle(
-                              color: kTextGrey.withOpacity(0.7),
+                              color: kTextGrey.withValues(alpha: 0.7),
                               fontSize: 13,
                             ),
                           ),
                         ],
                       ),
                     )
-                  : ListView.builder(
+                  else
+                    ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: filteredRequests.length,
+                      itemCount: filteredLeaves.length,
                       itemBuilder: (context, index) {
-                        return _buildLeaveRequestRow(filteredRequests[index]);
+                        return _buildLeaveRequestRow(filteredLeaves[index]);
                       },
                     ),
-            ],
-          ),
-        ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
   // --- WIDGETS ---
 
-  Widget _buildFilterDropdown(ResponsiveUtils responsive) {
+  void _openApplyLeaveDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ApplyLeaveDialog(
+          onSubmit: () {
+            context.read<LeaveNotifier>().loadLeaveRequests();
+          },
+        );
+      },
+    );
+  }
+
+  void _openApplyHalfDayDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ApplyHalfDayDialog(
+          onSubmit: () {
+            context.read<LeaveNotifier>().loadLeaveRequests();
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterDropdown(
+    ResponsiveUtils responsive,
+    LeaveNotifier notifier,
+  ) {
     return Container(
       height: responsive.buttonHeight,
       padding: EdgeInsets.symmetric(horizontal: responsive.spacing),
@@ -498,7 +393,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           dropdownColor: kCardColor,
-          value: _selectedFilter,
+          value: notifier.state.selectedFilter,
           icon: Icon(Icons.keyboard_arrow_down, color: kTextGrey),
           style: TextStyle(
             color: kTextWhite,
@@ -506,9 +401,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
           ),
           isExpanded: true,
           onChanged: (String? newValue) {
-            setState(() {
-              _selectedFilter = newValue!;
-            });
+            notifier.loadLeaveRequests(filter: newValue);
           },
           items: _filterOptions.map<DropdownMenuItem<String>>((String value) {
             return DropdownMenuItem<String>(value: value, child: Text(value));
@@ -769,7 +662,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
 
 // --- APPLY LEAVE DIALOG ---
 class ApplyLeaveDialog extends StatefulWidget {
-  final Function(LeaveRequest) onSubmit;
+  final Function() onSubmit;
 
   const ApplyLeaveDialog({super.key, required this.onSubmit});
 
@@ -813,18 +706,18 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
       },
     );
     if (picked != null) {
-      print('📅 [DatePicker] Picked date: $picked (isFromDate=$isFromDate)');
+      debugPrint('📅 [DatePicker] Picked date: $picked (isFromDate=$isFromDate)');
       setState(() {
         if (isFromDate) {
           _fromDate = picked;
-          print('📅 [DatePicker] _fromDate set to: $_fromDate');
+          debugPrint('📅 [DatePicker] _fromDate set to: $_fromDate');
         } else {
           _toDate = picked;
-          print('📅 [DatePicker] _toDate set to: $_toDate');
+          debugPrint('📅 [DatePicker] _toDate set to: $_toDate');
         }
       });
     } else {
-      print('📅 [DatePicker] No date picked (user cancelled)');
+      debugPrint('📅 [DatePicker] No date picked (user cancelled)');
     }
   }
 
@@ -1057,37 +950,41 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
   }
 
   Future<void> _submitLeaveRequest() async {
-    print('🔴 [Dialog] _submitLeaveRequest called');
-    print('🔴 [Dialog] _fromDate: $_fromDate');
-    print('🔴 [Dialog] _toDate: $_toDate');
-    print('🔴 [Dialog] _reasonController.text: ${_reasonController.text}');
+    debugPrint('🔴 [Dialog] _submitLeaveRequest called');
+    debugPrint('🔴 [Dialog] _fromDate: $_fromDate');
+    debugPrint('🔴 [Dialog] _toDate: $_toDate');
+    debugPrint('🔴 [Dialog] _reasonController.text: ${_reasonController.text}');
 
     // Validate form and dates
     if (!_formKey.currentState!.validate()) {
-      print('❌ [Dialog] Form validation failed');
+      debugPrint('❌ [Dialog] Form validation failed');
       return;
     }
 
     if (_fromDate == null || _toDate == null) {
-      print(
+      debugPrint(
         '❌ [Dialog] Dates are null - _fromDate=$_fromDate, _toDate=$_toDate',
       );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select both dates')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select both dates')),
+        );
+      }
       return;
     }
 
     // Check date logic
     if (_toDate!.isBefore(_fromDate!)) {
-      print('❌ [Dialog] End date is before start date');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('End date must be after start date')),
-      );
+      debugPrint('❌ [Dialog] End date is before start date');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('End date must be after start date')),
+        );
+      }
       return;
     }
 
-    print('✅ [Dialog] All validation passed, submitting...');
+    debugPrint('✅ [Dialog] All validation passed, submitting...');
 
     setState(() {
       _isSubmitting = true;
@@ -1095,7 +992,8 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
 
     try {
       // Get token
-      final token = await TokenStorageService().getToken();
+      final storage = TokenStorageService();
+      final token = await storage.getToken();
       if (token == null) {
         throw Exception('Authentication token not found');
       }
@@ -1111,23 +1009,8 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
 
       if (!mounted) return;
 
-      // Capitalize status for consistency (API returns lowercase)
-      String capitalizedStatus = response.data.status.isEmpty
-          ? 'Pending'
-          : response.data.status[0].toUpperCase() +
-                response.data.status.substring(1).toLowerCase();
-
-      // Success - add to local list and close dialog
-      widget.onSubmit(
-        LeaveRequest(
-          type: _selectedLeaveType,
-          fromDate: _fromDate!,
-          toDate: _toDate!,
-          reason: _reasonController.text,
-          status: capitalizedStatus,
-        ),
-      );
-
+      // Success - reload and close dialog
+      widget.onSubmit();
       Navigator.pop(context);
 
       // Show success message
@@ -1141,7 +1024,7 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
     } catch (e) {
       if (!mounted) return;
 
-      print('❌ [Dialog] Submit error: $e');
+      debugPrint('❌ [Dialog] Submit error: $e');
 
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1163,7 +1046,7 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
 
 // --- APPLY HALF DAY DIALOG ---
 class ApplyHalfDayDialog extends StatefulWidget {
-  final Function(LeaveRequest) onSubmit;
+  final Function() onSubmit;
 
   const ApplyHalfDayDialog({super.key, required this.onSubmit});
 
@@ -1690,24 +1573,28 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
   Future<void> _submitHalfDayRequest() async {
     // Validate form and date
     if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Please fill all required fields'),
-          backgroundColor: AppTheme.errorColor,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Please fill all required fields'),
+            backgroundColor: AppTheme.errorColor,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
       return;
     }
 
     if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Please select a date for the half-day leave'),
-          backgroundColor: AppTheme.errorColor,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Please select a date for the half-day leave'),
+            backgroundColor: AppTheme.errorColor,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
       return;
     }
 
@@ -1739,23 +1626,8 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
 
       if (!mounted) return;
 
-      // Capitalize status for consistency
-      String capitalizedStatus = response.data.status.isEmpty
-          ? 'Pending'
-          : response.data.status[0].toUpperCase() +
-                response.data.status.substring(1).toLowerCase();
-
-      // Success - add to local list and close dialog
-      widget.onSubmit(
-        LeaveRequest(
-          type: 'Half Day',
-          fromDate: _selectedDate!,
-          toDate: _selectedDate!,
-          reason: _reasonController.text,
-          status: capitalizedStatus,
-        ),
-      );
-
+      // Success - reload and close dialog
+      widget.onSubmit();
       Navigator.pop(context);
 
       // Show success message

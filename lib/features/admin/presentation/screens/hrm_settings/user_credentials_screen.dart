@@ -63,7 +63,7 @@ class _AdminUserCredentialsScreenState
       print('✅ [USER CREDENTIALS] Response received');
       print('   Total Users: ${res["total"] ?? 0}');
       print('   Total Pages: ${res["totalPages"] ?? 1}');
-      print('   Users in response: ${data is List ? (data as List).length : (data is Map ? (data["users"] as List?)?.length ?? 0 : 0)}');
+      debugPrint('   Users in response: ${data is List ? (data as List).length : (data is Map ? (data["users"] as List?)?.length ?? 0 : 0)}');
 
       if (data is List) {
         setState(() {

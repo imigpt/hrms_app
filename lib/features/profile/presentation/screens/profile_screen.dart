@@ -1,8 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import 'package:hrms_app/features/profile/data/models/profile_model.dart';
 import 'package:hrms_app/features/profile/data/services/profile_service.dart';
+import 'package:hrms_app/features/profile/presentation/providers/profile_notifier.dart';
+import 'package:hrms_app/features/profile/presentation/providers/profile_providers.dart';
 import 'package:hrms_app/core/utils/responsive_utils.dart';
 // import 'employee_api_test_screen.dart';
 
@@ -23,11 +26,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Toggle State
-  bool _isEditing = false;
-  bool _isSaving = false;
-
-  // -- Controllers --
+  // -- Controllers (LOCAL STATE - NOT IN PROVIDER) --
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
@@ -37,19 +36,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _emergencyPhoneController;
   late TextEditingController _dobController;
 
-  // -- Data State --
-  String _profileImage = "";
-  String _initials = "RG";
-  String _dob = "-";
-  Map<String, String> _employmentData = {};
-  ProfileUser? _currentUser;
   final ProfileService _profileService = ProfileService();
 
   @override
   void initState() {
     super.initState();
     final user = widget.user;
-    _currentUser = user;
     
     // Debug: Log initial user data
     debugPrint('🔍 ProfileScreen InitState:');
@@ -57,7 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     debugPrint('  User: ${user?.name ?? "NULL"}');
     debugPrint('  Role: ${widget.role}');
     
-    // Create controllers once
+    // Create controllers once (kept as LOCAL state for form fields)
     _nameController = TextEditingController(text: user?.name ?? "");
     _emailController = TextEditingController(text: user?.email ?? "");
     _phoneController = TextEditingController(text: user?.phone ?? "");
@@ -68,87 +60,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _dobController = TextEditingController(
       text: _formatDate(user?.dateOfBirth) ?? "",
     );
-    _profileImage = user?.profilePhotoUrl ?? "";
-    _initials = _buildInitials(user?.name ?? "");
-    _dob = _formatDate(user?.dateOfBirth) ?? "";
-    _employmentData = {
-      "Employee ID": user?.employeeId ?? "",
-      "Department": _titleCase(user?.department) ?? "",
-      "Position": user?.position ?? "",
-      "Role": _titleCase(user?.role) ?? "",
-      "Status": _titleCase(user?.status) ?? "",
-      "Join Date": _formatDate(user?.joinDate) ?? "",
-    };
     
     debugPrint('  Initial Name: ${_nameController.text}');
     debugPrint('  Initial Phone: ${_phoneController.text}');
     debugPrint('  Initial Email: ${_emailController.text}');
     
-    // Fetch fresh data from API (shows latest saved values even after back+return)
-    _fetchFreshProfile();
+    // Initialize Provider state & fetch fresh profile
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final profileNotifier = context.read<ProfileNotifier>();
+      
+      // Initialize with passed user
+      if (user != null) {
+        profileNotifier.initializeProfile(user);
+      }
+      
+      // Fetch fresh data from API
+      if (widget.token != null && widget.token!.isNotEmpty) {
+        profileNotifier.fetchProfile(widget.token!, role: widget.role);
+      }
+    });
   }
 
-  /// Refreshes UI from a ProfileUser without recreating controllers.
-  void _applyUser(ProfileUser u) {
-    debugPrint('🔄 ProfileScreen: Applying user data to UI');
-    _currentUser = u;
+  /// Apply notifier state to UI controllers
+  void _applyUserToControllers(ProfileUser u) {
+    debugPrint('🔄 ProfileScreen: Syncing user data to form controllers');
     _nameController.text = u.name;
     _emailController.text = u.email;
     _phoneController.text = u.phone;
     _addressController.text = u.address;
     _dobController.text = _formatDate(u.dateOfBirth) ?? "";
-    _profileImage = u.profilePhotoUrl;
-    _initials = _buildInitials(u.name);
-    _dob = _formatDate(u.dateOfBirth) ?? "";
-    _employmentData = {
-      "Employee ID": u.employeeId,
-      "Department": _titleCase(u.department) ?? "",
-      "Position": u.position,
-      "Role": _titleCase(u.role) ?? "",
-      "Status": _titleCase(u.status) ?? "",
-      "Join Date": _formatDate(u.joinDate) ?? "",
-    };
     
     debugPrint('  Updated Name: ${_nameController.text}');
-    debugPrint('  Updated Phone: ${_phoneController.text}');
     debugPrint('  Updated Email: ${_emailController.text}');
-    debugPrint('  Updated Department: ${_employmentData["Department"]}');
   }
 
-  Future<void> _fetchFreshProfile() async {
+  Future<void> _saveProfile(ProfileNotifier notifier) async {
     if (widget.token == null || widget.token!.isEmpty) {
-      debugPrint('⚠️ ProfileScreen: Missing token, cannot fetch profile');
-      return;
-    }
-    
-    try {
-      debugPrint('📡 ProfileScreen: Fetching fresh profile from API...');
-      final freshUser = await _profileService.fetchProfile(
-        widget.token!,
-        role: widget.role,
-      );
-      
-      if (freshUser != null) {
-        debugPrint('✅ ProfileScreen: Profile loaded successfully');
-        debugPrint('  Name: ${freshUser.name}');
-        debugPrint('  Email: ${freshUser.email}');
-        debugPrint('  Department: ${freshUser.department}');
-        debugPrint('  ProfilePhoto: ${freshUser.profilePhotoUrl}');
-        
-        if (mounted) {
-          setState(() => _applyUser(freshUser));
-        }
-      } else {
-        debugPrint('⚠️ ProfileScreen: API returned null user');
-      }
-    } catch (e) {
-      debugPrint('❌ ProfileScreen: Error fetching profile: $e');
-      // Fall back to widget.user already shown
-    }
-  }
-
-  Future<void> _saveProfile() async {
-    if (_currentUser == null || widget.token == null || widget.token!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Unable to save profile right now."),
@@ -158,56 +105,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
-    setState(() => _isSaving = true);
-
-    // Build only the fields the backend allows employees to update
-    // Only include fields that are non-empty to avoid validation errors
-    final Map<String, dynamic> payload = {};
-
-    final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
-    final address = _addressController.text.trim();
-    if (name.isNotEmpty) payload['name'] = name;
-    if (phone.isNotEmpty) payload['phone'] = phone;
-    if (address.isNotEmpty) payload['address'] = address;
-
-    // Only include dateOfBirth when it has actually been selected/set
-    if (_currentUser!.dateOfBirth != null) {
-      payload['dateOfBirth'] = _currentUser!.dateOfBirth!.toIso8601String();
-    }
-
-    if (payload.isEmpty) {
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No changes to save.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final result = await _profileService.updateProfile(
+    final success = await notifier.saveProfile(
       token: widget.token!,
-      userId: _currentUser!.id,
-      payload: payload,
+      name: _nameController.text,
+      phone: _phoneController.text,
+      address: _addressController.text,
+      dateOfBirth: notifier.state.currentUser?.dateOfBirth,
     );
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
-    setState(() {
-      _isSaving = false;
-    });
-
-    if (result['success'] == true) {
-      final saved = result['user'] as ProfileUser;
-      setState(() {
-        _applyUser(saved);
-        _isEditing = false;
-      });
-
+    if (success) {
+      // Sync notifier state back to controllers
+      if (notifier.state.currentUser != null) {
+        _applyUserToControllers(notifier.state.currentUser!);
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text(
@@ -219,10 +132,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     } else {
-      final errorMessage = result['message'] ?? 'Profile update failed.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(errorMessage),
+          content: Text(
+            notifier.state.errorMessage ?? 'Profile update failed',
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 4),
@@ -231,11 +145,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helper Methods (LOCAL - Screen Utilities)
+  // ─────────────────────────────────────────────────────────────────────────
+
   String _buildInitials(String name) {
     final parts = name.trim().split(RegExp(r"\s+"));
-    if (parts.isEmpty) {
-      return "?";
-    }
+    if (parts.isEmpty) return "?";
     final first = parts[0].isNotEmpty ? parts[0][0] : "";
     final last = parts.length > 1 && parts[1].isNotEmpty ? parts[1][0] : "";
     final initials = (first + last).toUpperCase();
@@ -243,50 +159,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String? _formatDate(DateTime? date) {
-    if (date == null) {
-      return null;
-    }
+    if (date == null) return null;
     const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
     final month = months[date.month - 1];
     return "$month ${date.day}, ${date.year}";
   }
 
   String? _titleCase(String? value) {
-    if (value == null || value.isEmpty) {
-      return null;
-    }
+    if (value == null || value.isEmpty) return null;
     final cleaned = value.replaceAll(RegExp(r"[_-]+"), " ").trim();
-    if (cleaned.isEmpty) {
-      return null;
-    }
+    if (cleaned.isEmpty) return null;
     return cleaned
         .split(RegExp(r"\s+"))
-        .map(
-          (part) => part.isEmpty
-              ? part
-              : part[0].toUpperCase() + part.substring(1).toLowerCase(),
-        )
+        .map((part) => part.isEmpty
+            ? part
+            : part[0].toUpperCase() + part.substring(1).toLowerCase())
         .join(" ");
   }
 
   Future<void> _selectDate() async {
+    final profileNotifier = context.read<ProfileNotifier>();
+    final currentUser = profileNotifier.state.currentUser;
+
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate:
-          _currentUser?.dateOfBirth ??
+      initialDate: currentUser?.dateOfBirth ??
           DateTime.now().subtract(const Duration(days: 365 * 25)),
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
@@ -306,29 +206,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (picked != null && mounted) {
-      setState(() {
-        // Update the current user's date of birth
-        if (_currentUser != null) {
-          _currentUser = ProfileUser(
-            id: _currentUser!.id,
-            employeeId: _currentUser!.employeeId,
-            name: _currentUser!.name,
-            email: _currentUser!.email,
-            phone: _currentUser!.phone,
-            dateOfBirth: picked,
-            address: _currentUser!.address,
-            role: _currentUser!.role,
-            department: _currentUser!.department,
-            position: _currentUser!.position,
-            joinDate: _currentUser!.joinDate,
-            status: _currentUser!.status,
-            profilePhoto: _currentUser!.profilePhoto,
-            leaveBalance: _currentUser!.leaveBalance,
-          );
-        }
-        _dobController.text = _formatDate(picked) ?? "-";
-        _dob = _formatDate(picked) ?? "-";
-      });
+      // Update notifier state
+      profileNotifier.updateDob(picked);
+      // Update local controller
+      _dobController.text = _formatDate(picked) ?? "-";
     }
   }
 
@@ -343,10 +224,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _emergencyPhoneController.dispose();
     _dobController.dispose();
     super.dispose();
-  }
-
-  void _toggleEdit() {
-    setState(() => _isEditing = !_isEditing);
   }
 
   Future<void> _pickProfileImage() async {
@@ -407,7 +284,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }
                   },
                 ),
-                if (_profileImage.isNotEmpty)
+                if (context.read<ProfileNotifier>().state.profileImage.isNotEmpty)
                   ListTile(
                     leading: const Icon(
                       Icons.delete_outline,
@@ -419,9 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     onTap: () {
                       Navigator.pop(context);
-                      setState(() {
-                        _profileImage = "";
-                      });
+                      // Note: Profile photo removal would require additional service method
                     },
                   ),
               ],
@@ -451,16 +326,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (result['success'] == true) {
       final updatedUser = result['user'] as ProfileUser?;
       if (updatedUser != null) {
-        setState(() {
-          _currentUser = updatedUser;
-          _profileImage = updatedUser.profilePhotoUrl.isNotEmpty
-              ? updatedUser.profilePhotoUrl
-              : imagePath;
-        });
-      } else {
-        setState(() {
-          _profileImage = imagePath;
-        });
+        // Update controllers from cloud response
+        _applyUserToControllers(updatedUser);
       }
 
       if (mounted) {
@@ -486,48 +353,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
     final responsive = ResponsiveUtils(context);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF050505), // Deep Black
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          "My Profile",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: responsive.headingFontSize,
-          ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            size: responsive.smallIconSize,
-            color: Colors.white,
+    return Consumer<ProfileNotifier>(
+      builder: (context, profileNotifier, _) {
+        final profileState = profileNotifier.state;
+        
+        return Scaffold(
+          backgroundColor: const Color(0xFF050505), // Deep Black
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Text(
+              "My Profile",
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: responsive.headingFontSize,
+              ),
+            ),
+            centerTitle: true,
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back_ios_new,
+                size: responsive.smallIconSize,
+                color: Colors.white,
           ),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // API Test Button
-          // IconButton(
-          //   icon: const Icon(Icons.api_outlined, color: Colors.pinkAccent),
-          //   onPressed: () => Navigator.push(
-          //     context,
-          //     MaterialPageRoute(builder: (_) => const EmployeeApiTestScreen()),
-          //   ),
-          //   tooltip: 'Employee API Tests',
-          // ),
-          // Edit/Save Button in AppBar for easier access
           Padding(
             padding: EdgeInsets.only(right: responsive.spacing),
-            child: _isEditing
+            child: profileState.isEditing
                 ? TextButton(
-                    onPressed: _isSaving ? null : _saveProfile,
-                    child: _isSaving
+                    onPressed: profileState.isSaving
+                        ? null
+                        : () => _saveProfile(profileNotifier),
+                    child: profileState.isSaving
                         ? SizedBox(
                             height: responsive.smallIconSize,
                             width: responsive.smallIconSize,
@@ -550,7 +414,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: Colors.white,
                       size: responsive.iconSize,
                     ),
-                    onPressed: _toggleEdit,
+                    onPressed: () => profileNotifier.toggleEditMode(),
                     tooltip: "Edit Profile",
                   ),
           ),
@@ -558,65 +422,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
-          horizontal: responsive.isDesktopDevice
-              ? 60
-              : responsive.horizontalPadding,
+          horizontal: responsive.isDesktopDevice ? 60 : responsive.horizontalPadding,
           vertical: responsive.verticalPadding,
         ),
         child: responsive.isDesktopDevice
-            ? _buildDesktopLayout(primaryColor)
-            : _buildMobileLayout(primaryColor),
+            ? _buildDesktopLayout(primaryColor, profileState)
+            : _buildMobileLayout(primaryColor, profileState),
       ),
+    );
+      },
     );
   }
 
   // --- LAYOUTS ---
 
-  Widget _buildMobileLayout(Color primaryColor) {
+  Widget _buildMobileLayout(Color primaryColor, ProfileState profileState) {
     return Column(
       children: [
-        _buildProfileHeader(primaryColor),
-        if (_isEditing || _bioController.text.isNotEmpty) ...[
+        _buildProfileHeader(primaryColor, profileState),
+        if (profileState.isEditing || _bioController.text.isNotEmpty) ...[
           const SizedBox(height: 20),
-          _buildBioCard(),
+          _buildBioCard(profileState),
         ],
         const SizedBox(height: 30),
-        _buildPersonalInfoSection(),
+        _buildPersonalInfoSection(profileState),
         const SizedBox(height: 20),
-        _buildEmploymentSection(),
+        _buildEmploymentSection(profileState),
         const SizedBox(height: 20),
-        _buildEmergencySection(),
+        _buildEmergencySection(profileState),
       ],
     );
   }
 
-  Widget _buildDesktopLayout(Color primaryColor) {
+  Widget _buildDesktopLayout(Color primaryColor, ProfileState profileState) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left Column: Sticky-like Header
         Expanded(
           flex: 3,
           child: Column(
             children: [
-              _buildProfileHeader(primaryColor),
+              _buildProfileHeader(primaryColor, profileState),
               const SizedBox(height: 20),
-              // Bio moved to left column on Desktop
-              if (_isEditing || _bioController.text.isNotEmpty) _buildBioCard(),
+              if (profileState.isEditing || _bioController.text.isNotEmpty)
+                _buildBioCard(profileState),
             ],
           ),
         ),
         const SizedBox(width: 40),
-        // Right Column: Details
         Expanded(
           flex: 5,
           child: Column(
             children: [
-              _buildPersonalInfoSection(),
+              _buildPersonalInfoSection(profileState),
               const SizedBox(height: 20),
-              _buildEmploymentSection(),
+              _buildEmploymentSection(profileState),
               const SizedBox(height: 20),
-              _buildEmergencySection(),
+              _buildEmergencySection(profileState),
             ],
           ),
         ),
@@ -626,7 +488,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // --- COMPONENT SECTIONS ---
 
-  Widget _buildProfileHeader(Color primaryColor) {
+  Widget _buildProfileHeader(Color primaryColor, ProfileState profileState) {
+    final user = profileState.currentUser;
+    if (user == null) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(30),
@@ -641,7 +511,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          // Avatar
           Stack(
             alignment: Alignment.center,
             children: [
@@ -659,14 +528,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: CircleAvatar(
                   radius: 50,
                   backgroundColor: const Color(0xFF2A2A2A),
-                  backgroundImage: _profileImage.isNotEmpty
-                      ? (_profileImage.startsWith('http')
-                            ? NetworkImage(_profileImage)
-                            : FileImage(File(_profileImage)) as ImageProvider)
+                  backgroundImage: profileState.profileImage.isNotEmpty
+                      ? (profileState.profileImage.startsWith('http')
+                          ? NetworkImage(profileState.profileImage)
+                          : FileImage(File(profileState.profileImage))
+                              as ImageProvider)
                       : null,
-                  child: _profileImage.isEmpty
+                  child: profileState.profileImage.isEmpty
                       ? Text(
-                          _initials,
+                          _buildInitials(user.name),
                           style: TextStyle(
                             fontSize: 32,
                             color: primaryColor,
@@ -676,7 +546,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : null,
                 ),
               ),
-              if (_isEditing)
+              if (profileState.isEditing)
                 Positioned(
                   bottom: 0,
                   right: 0,
@@ -700,43 +570,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 20),
-
-          // Name (Non-editable)
           Text(
-            _nameController.text,
+            user.name,
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
-
           const SizedBox(height: 6),
           Text(
-            _employmentData["Position"] ?? "Employee",
+            profileState.employmentData["Position"] ?? "Employee",
             style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
-
           const SizedBox(height: 20),
-
-          // Chips
           Wrap(
             spacing: 8,
             runSpacing: 8,
             alignment: WrapAlignment.center,
             children: [
               _buildStatusChip(
-                _employmentData["Status"] ?? "Active",
+                profileState.employmentData["Status"] ?? "Active",
                 Colors.greenAccent.withOpacity(0.1),
                 Colors.greenAccent,
               ),
               _buildStatusChip(
-                _employmentData["Department"] ?? "Engineering",
+                profileState.employmentData["Department"] ?? "Engineering",
                 Colors.blueAccent.withOpacity(0.1),
                 Colors.blueAccent,
               ),
               _buildStatusChip(
-                "ID: ${_employmentData['Employee ID']}",
+                "ID: ${profileState.employmentData['Employee ID']}",
                 Colors.white.withOpacity(0.05),
                 Colors.grey,
               ),
@@ -747,7 +611,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildBioCard() {
+  Widget _buildBioCard(ProfileState profileState) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -765,18 +629,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 10),
           TextField(
             controller: _bioController,
-            enabled: _isEditing,
+            enabled: profileState.isEditing,
             maxLines: 4,
             style: const TextStyle(color: Colors.grey, fontSize: 13),
             decoration: InputDecoration(
-              filled: _isEditing,
+              filled: profileState.isEditing,
               fillColor: Colors.black,
               hintText: "Write something about yourself...",
               hintStyle: const TextStyle(color: Colors.grey),
-              border: _isEditing
+              border: profileState.isEditing
                   ? OutlineInputBorder(borderRadius: BorderRadius.circular(8))
                   : InputBorder.none,
-              contentPadding: _isEditing
+              contentPadding: profileState.isEditing
                   ? const EdgeInsets.all(12)
                   : EdgeInsets.zero,
             ),
@@ -786,50 +650,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildPersonalInfoSection() {
+  Widget _buildPersonalInfoSection(ProfileState profileState) {
     return _buildSectionCard(
       title: "Personal Information",
       icon: Icons.person_outline_rounded,
       children: [
-        _buildFieldRow("Full Name", _nameController, isEditable: true),
-        _buildFieldRow("Email", _emailController, isEditable: false),
-        _buildFieldRow("Phone", _phoneController, isEditable: true),
-        _buildFieldRow(
-          "Address",
-          _addressController,
-          isEditable: true,
-          maxLines: 2,
-        ),
-        _buildDateFieldRow("Date of Birth", _dobController),
+        _buildFieldRow("Full Name", _nameController,
+            isEditable: true, isEditing: profileState.isEditing),
+        _buildFieldRow("Email", _emailController,
+            isEditable: false, isEditing: profileState.isEditing),
+        _buildFieldRow("Phone", _phoneController,
+            isEditable: true, isEditing: profileState.isEditing),
+        _buildFieldRow("Address", _addressController,
+            isEditable: true, maxLines: 2, isEditing: profileState.isEditing),
+        _buildDateFieldRow("Date of Birth", _dobController,
+            isEditing: profileState.isEditing),
       ],
     );
   }
 
-  Widget _buildEmploymentSection() {
+  Widget _buildEmploymentSection(ProfileState profileState) {
     return _buildSectionCard(
       title: "Employment Details",
       icon: Icons.badge_outlined,
-      children: _employmentData.entries
+      children: profileState.employmentData.entries
           .map((e) => _buildStaticRow(e.key, e.value, null))
           .toList(),
     );
   }
 
-  Widget _buildEmergencySection() {
+  Widget _buildEmergencySection(ProfileState profileState) {
     return _buildSectionCard(
       title: "Emergency Contact",
       icon: Icons.phone_callback_outlined,
       children: [
-        _buildFieldRow(
-          "Contact Name",
-          _emergencyNameController,
-          isEditable: true,
-        ),
-        _buildFieldRow(
-          "Contact Number",
-          _emergencyPhoneController,
-          isEditable: true,
-        ),
+        _buildFieldRow("Contact Name", _emergencyNameController,
+            isEditable: true, isEditing: profileState.isEditing),
+        _buildFieldRow("Contact Number", _emergencyPhoneController,
+            isEditable: true, isEditing: profileState.isEditing),
       ],
     );
   }
@@ -853,7 +711,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, color: Theme.of(context).primaryColor, size: 22),
+              Icon(Icons.badge_outlined, color: Theme.of(context).primaryColor, size: 22),
               const SizedBox(width: 12),
               Text(
                 title,
@@ -877,6 +735,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     TextEditingController controller, {
     bool isEditable = false,
     int maxLines = 1,
+    required bool isEditing,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -899,11 +758,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     Expanded(
-                      child: _buildInputOrText(
-                        controller,
-                        isEditable,
-                        maxLines,
-                      ),
+                      child: _buildInputOrText(controller, isEditing && isEditable, maxLines),
                     ),
                   ],
                 )
@@ -919,7 +774,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    _buildInputOrText(controller, isEditable, maxLines),
+                    _buildInputOrText(controller, isEditing && isEditable, maxLines),
                   ],
                 );
         },
@@ -969,7 +824,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDateFieldRow(String label, TextEditingController controller) {
+  Widget _buildDateFieldRow(
+    String label,
+    TextEditingController controller, {
+    required bool isEditing,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: LayoutBuilder(
@@ -1002,7 +861,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ],
                       ),
                     ),
-                    Expanded(child: _buildDateInput(controller)),
+                    Expanded(child: _buildDateInput(controller, isEditing)),
                   ],
                 )
               : Column(
@@ -1027,7 +886,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    _buildDateInput(controller),
+                    _buildDateInput(controller, isEditing),
                   ],
                 );
         },
@@ -1035,8 +894,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDateInput(TextEditingController controller) {
-    if (_isEditing) {
+  Widget _buildDateInput(TextEditingController controller, bool isEditing) {
+    if (isEditing) {
       return GestureDetector(
         onTap: _selectDate,
         child: Container(
@@ -1079,7 +938,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     bool isEditable,
     int maxLines,
   ) {
-    if (_isEditing && isEditable) {
+    if (isEditable) {
       return TextField(
         controller: controller,
         maxLines: maxLines,

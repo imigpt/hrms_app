@@ -1,19 +1,17 @@
 import 'package:provider/provider.dart';
-import 'package:hrms_app/features/auth/data/services/auth_service.dart';
-import 'package:hrms_app/features/auth/presentation/providers/auth_notifier.dart';
-import 'package:hrms_app/shared/services/core/token_storage_service.dart';
+import 'package:hrms_app/features/profile/data/services/profile_service.dart';
+import 'package:hrms_app/features/profile/presentation/providers/profile_notifier.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Service Instances
 // ═══════════════════════════════════════════════════════════════════════════
 
-final authService = AuthService();
-final tokenStorageService = TokenStorageService();
+final profileService = ProfileService();
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Main Auth State Provider
+// Profile State Provider
 // ═══════════════════════════════════════════════════════════════════════════
 
-final authNotifierProvider = ChangeNotifierProvider<AuthNotifier>(
-  create: (context) => AuthNotifier(authService, tokenStorageService),
+final profileNotifierProvider = ChangeNotifierProvider<ProfileNotifier>(
+  create: (context) => ProfileNotifier(profileService),
 );

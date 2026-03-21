@@ -13,6 +13,8 @@ import 'package:hrms_app/shared/services/communication/chat_socket_service.dart'
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
 import 'package:hrms_app/services/chat_media_service.dart';
+import 'package:hrms_app/features/chat/presentation/widgets/voice_recorder_dialog.dart';
+import 'package:hrms_app/features/chat/presentation/widgets/voice_bubble.dart';
 // import 'chat_api_test_screen.dart';
 
 // ─── Chat List Screen ─────────────────────────────────────────────────────────
@@ -1048,9 +1050,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   // ── Send media ──────────────────────────────────────────────────────────
   Future<void> _sendMedia(File file, String messageType) async {
+    if (_token == null || !mounted) return;
+    
+    setState(() => _isSendingText = true);
+
+    // 📤 Log upload details (matching ChatModule pattern)
+    debugPrint('📤 Uploading file: {');
+    debugPrint('  name: ${file.path.split('/').last},');
+    debugPrint('  size: ${file.lengthSync()} bytes,');
+    debugPrint('  type: $messageType,');
+    debugPrint('  roomId: ${widget.room.id}');
+    debugPrint('}');
+
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
     final ext = file.path.split('.').last.toLowerCase();
-    // Jab media optimistic banate hain (baaki upar ka same rakhein)
+    
+    // Optimistic update: show message immediately
     final optimistic = ChatMessage(
       id: tempId,
       chatRoom: widget.room.id,
@@ -1060,7 +1075,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       updatedAt: DateTime.now(),
       tempId: tempId,
     );
-    // FIX: insert use karein
+    
     setState(() => _messages.insert(0, optimistic));
     _scrollToBottom();
 
@@ -1072,19 +1087,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         messageType: messageType,
         content: '[$ext file]',
       );
+      
       if (!mounted) return;
+      
       if (res.success && res.data != null) {
+        // ✅ Replace optimistic message with actual server response
         setState(() {
           final idx = _messages.indexWhere((m) => m.tempId == tempId);
-          if (idx != -1) _messages[idx] = res.data!;
+          if (idx != -1) {
+            _messages[idx] = res.data!;
+            debugPrint('✅ ${messageType.toUpperCase()} message sent successfully');
+          }
         });
+      } else {
+        throw Exception('Failed to send $messageType');
       }
     } catch (e) {
       if (!mounted) return;
+      
+      // ❌ Remove failed message
       setState(() => _messages.removeWhere((m) => m.tempId == tempId));
-      _showSnack(
-        'Failed to send: ${e.toString().replaceFirst('Exception: ', '')}',
-      );
+      
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
+      debugPrint('❌ Error uploading $messageType: $errorMsg');
+      _showSnack('Failed to send $messageType: $errorMsg');
+    } finally {
+      if (mounted) setState(() => _isSendingText = false);
     }
   }
 
@@ -1108,11 +1136,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 color: Colors.blueAccent,
                 onTap: () async {
                   Navigator.pop(context);
-                  final xf = await _imagePicker.pickImage(
-                    source: ImageSource.camera,
-                    imageQuality: 80,
-                  );
-                  if (xf != null) await _sendMedia(File(xf.path), 'image');
+                  try {
+                    debugPrint('📷 Opening camera...');
+                    final xf = await _imagePicker.pickImage(
+                      source: ImageSource.camera,
+                      imageQuality: 80,
+                    );
+                    if (xf != null) {
+                      debugPrint('📷 Photo captured: ${xf.name}');
+                      await _sendMedia(File(xf.path), 'image');
+                    } else {
+                      debugPrint('📷 Camera cancelled');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      _showSnack('Error opening camera: ${e.toString()}');
+                      debugPrint('❌ Error in camera: $e');
+                    }
+                  }
                 },
               ),
               _MediaOption(
@@ -1121,11 +1162,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 color: Colors.greenAccent,
                 onTap: () async {
                   Navigator.pop(context);
-                  final xf = await _imagePicker.pickImage(
-                    source: ImageSource.gallery,
-                    imageQuality: 80,
-                  );
-                  if (xf != null) await _sendMedia(File(xf.path), 'image');
+                  try {
+                    debugPrint('🖼️ Opening gallery...');
+                    final xf = await _imagePicker.pickImage(
+                      source: ImageSource.gallery,
+                      imageQuality: 80,
+                    );
+                    if (xf != null) {
+                      debugPrint('🖼️ Image selected: ${xf.name}');
+                      await _sendMedia(File(xf.path), 'image');
+                    } else {
+                      debugPrint('🖼️ Gallery selection cancelled');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      _showSnack('Error opening gallery: ${e.toString()}');
+                      debugPrint('❌ Error in gallery: $e');
+                    }
+                  }
                 },
               ),
               _MediaOption(
@@ -1134,10 +1188,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                 color: Colors.orangeAccent,
                 onTap: () async {
                   Navigator.pop(context);
-                  final xf = await _imagePicker.pickVideo(
-                    source: ImageSource.gallery,
-                  );
-                  if (xf != null) await _sendMedia(File(xf.path), 'video');
+                  try {
+                    debugPrint('📹 Opening video picker...');
+                    final xf = await _imagePicker.pickVideo(
+                      source: ImageSource.gallery,
+                    );
+                    if (xf != null) {
+                      debugPrint('📹 Video selected: ${xf.name}');
+                      await _sendMedia(File(xf.path), 'video');
+                    } else {
+                      debugPrint('📹 Video selection cancelled');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      _showSnack('Error opening video picker: ${e.toString()}');
+                      debugPrint('❌ Error in video picker: $e');
+                    }
+                  }
+                },
+              ),
+              _MediaOption(
+                icon: Icons.mic_rounded,
+                label: 'Voice',
+                color: Colors.purpleAccent,
+                onTap: () async {
+                  Navigator.pop(context);
+                  _recordVoiceMessage();
                 },
               ),
               _MediaOption(
@@ -1148,14 +1224,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   Navigator.pop(context);
                   PlatformFile? picked;
                   try {
+                    debugPrint('📄 Opening file picker...');
                     final result = await FilePicker.platform.pickFiles(
                       withData: true,
                     );
                     if (result != null && result.files.isNotEmpty) {
                       picked = result.files.single;
+                      debugPrint('📄 File selected: ${picked.name}');
+                    } else {
+                      debugPrint('📄 File selection cancelled');
                     }
                   } catch (e) {
-                    if (mounted) _showSnack('Could not open file picker');
+                    if (mounted) {
+                      _showSnack('Could not open file picker');
+                      debugPrint('❌ Error in file picker: $e');
+                    }
                     return;
                   }
                   if (picked == null) return;
@@ -1164,8 +1247,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                   if (picked.path != null) {
                     fileToSend = File(picked.path!);
                   } else if (picked.bytes != null) {
-                    // Cloud-based file (Google Drive, iCloud, etc.) has no
-                    // local path — write bytes to a temp file before sending.
                     try {
                       final tmpDir = await getTemporaryDirectory();
                       final safeName = picked.name
@@ -1178,6 +1259,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                         _showSnack(
                           'Could not read file. Please pick a local file.',
                         );
+                        debugPrint('❌ Error reading file: $e');
                       }
                       return;
                     }
@@ -1198,6 +1280,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Record a voice message
+  void _recordVoiceMessage() {
+    showDialog(
+      context: context,
+      builder: (_) => VoiceRecorderDialog(
+        onRecordingComplete: (File voiceFile) async {
+          await _sendMedia(voiceFile, 'voice');
+        },
       ),
     );
   }
@@ -2105,6 +2199,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
                             msg.attachment != null)
                           _DocumentBubble(
                             attachment: msg.attachment!,
+                            isMine: isMine,
+                          )
+                        else if (msg.messageType == 'voice' &&
+                            msg.attachment?.url != null)
+                          VoiceBubble(
+                            url: msg.attachment!.url,
                             isMine: isMine,
                           )
                         else if (msg.messageType == 'video' &&

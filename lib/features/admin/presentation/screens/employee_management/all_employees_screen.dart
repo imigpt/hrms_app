@@ -4027,7 +4027,7 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
 
   static String _empPhotoUrl(Map<String, dynamic> emp) {
     final raw = emp['profilePhoto'];
-    if (raw is String && (raw as String).isNotEmpty) return raw;
+    if (raw is String && raw.isNotEmpty) return raw;
     if (raw is Map<String, dynamic>) {
       return (raw as Map<String, dynamic>)['url']?.toString() ?? '';
     }

@@ -15,6 +15,9 @@ import 'package:hrms_app/features/leave/presentation/screens/leave_management_sc
 import 'package:hrms_app/features/notifications/presentation/screens/notifications_screen.dart';
 import 'package:hrms_app/features/payroll/presentation/screens/payroll_screen.dart';
 import 'package:hrms_app/features/tasks/presentation/screens/tasks_screen.dart';
+import 'package:hrms_app/features/profile/presentation/providers/profile_notifier.dart';
+import 'package:hrms_app/features/profile/data/services/profile_service.dart';
+import 'package:hrms_app/features/leave/presentation/providers/leave_notifier.dart';
 import 'package:hrms_app/features/chat/data/services/chat_media_service.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
@@ -88,7 +91,7 @@ Future<void> _retrieveFCMToken() async {
     // Get FCM token (Firebase.initializeApp must have completed already)
     String? token = await FirebaseMessaging.instance.getToken();
     if (token != null && token.isNotEmpty) {
-      debugPrint('🔥 FCM token retrieved at startup (${token.length} chars): ${token.substring(0, token.length.clamp(0, 20))}...');
+      debugPrint('🔥 FCM token retrieved at startup: $token');
       debugPrint('💡 Token will be saved to backend after user login via registerFcmToken()');
     } else {
       debugPrint('⚠️ FCM token is null at startup — will retry after login via registerFcmToken()');
@@ -240,6 +243,12 @@ class _HrmsAppState extends State<HrmsApp> {
             AuthService(),
             TokenStorageService(),
           ),
+        ),
+        ChangeNotifierProvider<ProfileNotifier>(
+          create: (_) => ProfileNotifier(ProfileService()),
+        ),
+        ChangeNotifierProvider<LeaveNotifier>(
+          create: (_) => LeaveNotifier(),
         ),
       ],
       child: Builder(

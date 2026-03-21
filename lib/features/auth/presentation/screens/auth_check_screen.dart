@@ -55,7 +55,7 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
 
               // Start background profile fetch for non-admins
               if (authState.currentUser!.role.toLowerCase() != 'admin') {
-                ProfileService().fetchProfile(token).catchError((_) {});
+                ProfileService().fetchProfile(token).catchError((_) => null);
               }
 
               // Navigate to Dashboard

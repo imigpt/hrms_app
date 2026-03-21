@@ -3,6 +3,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:hrms_app/core/config/api_config.dart';
 
@@ -27,11 +28,15 @@ class AdminEmployeesService {
   }) async {
     try {
       final queryParams = <String, String>{};
-      if (company != null && company.isNotEmpty)
+      if (company != null && company.isNotEmpty) {
         queryParams['company'] = company;
-      if (department != null && department.isNotEmpty)
+      }
+      if (department != null && department.isNotEmpty) {
         queryParams['department'] = department;
-      if (status != null && status.isNotEmpty) queryParams['status'] = status;
+      }
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
+      }
 
       // Use role-based endpoint selection
       final endpoint = (role.toLowerCase() == 'admin')
@@ -41,24 +46,24 @@ class AdminEmployeesService {
       final uri = Uri.parse('$_baseUrl$endpoint')
           .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-      print('📋 AdminEmployeesService.getAllEmployees: Role=$role, Endpoint=$endpoint');
+      debugPrint('📋 AdminEmployeesService.getAllEmployees: Role=$role, Endpoint=$endpoint');
 
       final response = await http
           .get(uri, headers: _headers(token))
           .timeout(const Duration(seconds: 30));
 
-      print('  Status: ${response.statusCode}');
+      debugPrint('  Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body) as Map<String, dynamic>;
         final count = (result['data'] as List?)?.length ?? 0;
-        print('  ✅ Loaded $count employees');
+        debugPrint('  ✅ Loaded $count employees');
         return result;
       } else if (response.statusCode == 401) {
-        print('  ❌ 401 Unauthorized - Invalid or expired token');
+        debugPrint('  ❌ 401 Unauthorized - Invalid or expired token');
         throw Exception('Unauthorized: Invalid or expired token');
       } else if (response.statusCode == 403) {
-        print('  ❌ 403 Forbidden - ${response.body}');
+        debugPrint('  ❌ 403 Forbidden - ${response.body}');
         final body = jsonDecode(response.body);
         throw Exception(
           body['message'] ??
@@ -186,21 +191,33 @@ class AdminEmployeesService {
       request.headers['Authorization'] = 'Bearer $token';
 
       // Add form fields (only if provided to avoid overwriting with null)
-      if (name != null && name.isNotEmpty) request.fields['name'] = name;
-      if (email != null && email.isNotEmpty) request.fields['email'] = email;
-      if (phone != null && phone.isNotEmpty) request.fields['phone'] = phone;
-      if (dateOfBirth != null && dateOfBirth.isNotEmpty)
+      if (name != null && name.isNotEmpty) {
+        request.fields['name'] = name;
+      }
+      if (email != null && email.isNotEmpty) {
+        request.fields['email'] = email;
+      }
+      if (phone != null && phone.isNotEmpty) {
+        request.fields['phone'] = phone;
+      }
+      if (dateOfBirth != null && dateOfBirth.isNotEmpty) {
         request.fields['dateOfBirth'] = dateOfBirth;
-      if (address != null && address.isNotEmpty)
+      }
+      if (address != null && address.isNotEmpty) {
         request.fields['address'] = address;
-      if (department != null && department.isNotEmpty)
+      }
+      if (department != null && department.isNotEmpty) {
         request.fields['department'] = department;
-      if (position != null && position.isNotEmpty)
+      }
+      if (position != null && position.isNotEmpty) {
         request.fields['position'] = position;
-      if (joinDate != null && joinDate.isNotEmpty)
+      }
+      if (joinDate != null && joinDate.isNotEmpty) {
         request.fields['joinDate'] = joinDate;
-      if (status != null && status.isNotEmpty)
+      }
+      if (status != null && status.isNotEmpty) {
         request.fields['status'] = status;
+      }
 
       // Add profile photo if available
       if (profilePhoto != null) {

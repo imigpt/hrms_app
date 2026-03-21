@@ -361,8 +361,15 @@ class ChatService {
       'pptx':
           'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'txt': 'text/plain',
+      // Audio formats
       'mp3': 'audio/mpeg',
       'wav': 'audio/wav',
+      'm4a': 'audio/mp4',
+      'm4b': 'audio/mp4',
+      'aac': 'audio/aac',
+      'webm': 'audio/webm',
+      'ogg': 'audio/ogg',
+      // Video formats
       'mp4': 'video/mp4',
       'mov': 'video/quicktime',
       'zip': 'application/zip',
@@ -384,8 +391,9 @@ class ChatService {
       Uri.parse('$_baseUrl/chat/rooms/$roomId/upload'),
     );
     request.headers['Authorization'] = 'Bearer $token';
-    request.fields['messageType'] = messageType;
-    if (content.isNotEmpty) request.fields['content'] = content;
+    
+    // Backend expects 'caption', not 'content'
+    if (content.isNotEmpty) request.fields['caption'] = content;
 
     // Get correct MIME type from file extension
     final mimeType = _getMimeType(file.path);

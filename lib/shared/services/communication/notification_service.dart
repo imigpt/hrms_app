@@ -16,6 +16,11 @@ final FlutterLocalNotificationsPlugin _bgPlugin =
 /// Whether the background plugin has been initialised in this isolate.
 bool _bgPluginReady = false;
 
+/// Background notification deduplication cache
+/// Prevents rapid-fire duplicate notifications when app is closed
+final Set<String> _bgRecentNotificationIds = {};
+const int _bgDedupeWindowMs = 5000; // 5 second window
+
 /// Initialise [_bgPlugin] once per background-isolate lifetime.
 Future<void> _initBgPlugin() async {
   if (_bgPluginReady) return;
@@ -153,6 +158,24 @@ Future<void> _showBgNotification(RemoteMessage message) async {
 
   if (title.isEmpty && body.isEmpty) return;
 
+  // ✅ DEDUPLICATION: Generate consistent notification ID for duplicate detection
+  final notificationId = (message.data['notificationId']?.toString().isNotEmpty == true)
+      ? message.data['notificationId']!
+      : message.messageId ??
+        (refId.isNotEmpty ? refId : '${message.sentTime}_${type}');
+
+  // ✅ Skip if we just showed this notification (prevents rapid duplicates)
+  if (_bgRecentNotificationIds.contains(notificationId)) {
+    print('⚠️ [BACKGROUND] Notification already shown recently (dedup), skipping duplicate: $notificationId');
+    return;
+  }
+  _bgRecentNotificationIds.add(notificationId);
+
+  // ✅ Clear dedup cache after window expires
+  Future.delayed(Duration(milliseconds: _bgDedupeWindowMs), () {
+    _bgRecentNotificationIds.remove(notificationId);
+  });
+
   final channelId = _channelForType(type);
 
   // Stable notification ID per reference (or random fallback)
@@ -169,6 +192,7 @@ Future<void> _showBgNotification(RemoteMessage message) async {
     playSound: true,
     icon: '@mipmap/launcher_icon',
     styleInformation: BigTextStyleInformation(body),
+    tag: notificationId, // ✅ Prevents Android system duplicate notifications
   );
 
   const iosDetails = DarwinNotificationDetails(
@@ -632,7 +656,7 @@ class NotificationService {
       debugPrint('📲 Permission status: ${settings.authorizationStatus} (granted: $permissionGranted)');
 
       final token = await _fcm.getToken();
-      debugPrint('🔑 FCM getToken() result: ${token == null ? 'NULL' : '${token.substring(0, token.length.clamp(0, 20))}...'}');
+      debugPrint('🔑 FCM getToken() result: ${token == null ? 'NULL' : token}');
       if (token != null && token.isNotEmpty) {
         final device = Platform.isIOS ? 'ios' : 'android';
         debugPrint('🔑 Got FCM token (${token.length} chars) for device: $device');
@@ -640,8 +664,11 @@ class NotificationService {
         // Deduplication guard: only send to backend if token changed
         final prefs = await SharedPreferences.getInstance();
         final lastSentToken = prefs.getString('last_sent_fcm_token');
+        debugPrint('📦 Stored token in SharedPrefs: $lastSentToken');
         if (lastSentToken == token) {
           debugPrint('⏭️ FCM token unchanged, skipping backend registration');
+          debugPrint('   Current token:  $token');
+          debugPrint('   Stored token:   $lastSentToken');
           // Still set up onTokenRefresh listener below
         } else {
         // Register token with retry logic
@@ -682,7 +709,7 @@ class NotificationService {
       _tokenRefreshSub = _fcm.onTokenRefresh.listen((newToken) async {
         if (newToken.isEmpty) return;
         final device = Platform.isIOS ? 'ios' : 'android';
-        debugPrint('🔄 FCM token refreshed: ${newToken.substring(0, newToken.length.clamp(0, 20))}...');
+        debugPrint('🔄 FCM token refreshed: $newToken');
 
         for (int attempt = 1; attempt <= _maxTokenRetries; attempt++) {
           try {

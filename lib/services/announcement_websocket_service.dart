@@ -4,7 +4,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import 'package:hrms_app/features/announcements/data/models/announcement_model.dart';
 import 'announcement_service.dart';
-import 'notification_service.dart';
+import 'package:hrms_app/shared/services/communication/notification_service.dart';
 import 'token_storage_service.dart';
 import 'package:hrms_app/core/config/api_config.dart';
 

@@ -98,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Start background profile fetch for non-admins
               if (authState.currentUser!.role.toLowerCase() != 'admin') {
-                _profileService.fetchProfile(token).catchError((_) {});
+                _profileService.fetchProfile(token).catchError((_) => null);
               }
 
               // Navigate to Dashboard with MaterialPageRoute

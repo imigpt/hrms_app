@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
+
 /// API Configuration
 /// Easy switching between localhost and production environments
 class ApiConfig {
   // Change this to switch between environments
-  // static const String _environment = 'localhost';
-  static const String _environment = 'production';
+  static const String _environment = 'localhost';
+  // static const String _environment = 'production';
 
   // API Base URLs
   static const String _localhostApi = 'http://192.168.1.62:5000/api';
@@ -31,10 +33,10 @@ class ApiConfig {
 
   /// Debugging: Print current configuration
   static void printConfig() {
-    print('═════════════════════════════════════════');
-    print('API Configuration:');
-    print('Environment: $environment');
-    print('Base URL: $baseUrl');
-    print('═════════════════════════════════════════');
+    debugPrint('═════════════════════════════════════════');
+    debugPrint('API Configuration:');
+    debugPrint('Environment: $environment');
+    debugPrint('Base URL: $baseUrl');
+    debugPrint('═════════════════════════════════════════');
   }
 }

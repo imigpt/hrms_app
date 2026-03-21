@@ -39,6 +39,8 @@ dependencies:
   provider: ^6.0.0
   equatable: ^2.0.5
   state_notifier: ^1.0.0
+  record: ^4.4.0
+  just_audio: ^0.9.36
 
 dev_dependencies:
   flutter_test:
