@@ -20,18 +20,22 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   String _leaveStartMonth = 'January';
   final _clockInCtrl = TextEditingController(text: '09:30');
   final _clockOutCtrl = TextEditingController(text: '18:00');
+  late TextEditingController _autoCheckoutTimeCtrl;
+  late TextEditingController _totalWorkingHoursCtrl;
   late TextEditingController _earlyClockInCtrl;
   late TextEditingController _allowClockOutTillCtrl;
-  late TextEditingController _lateMarkAfterCtrl;
+  late TextEditingController _gracePeriodCtrl;
   late TextEditingController _halfDayHoursCtrl;
   late TextEditingController _workingDaysPerWeekCtrl;
   int _earlyClockIn = 0;
   int _allowClockOutTill = 0;
-  int _lateMarkAfter = 30;
+  int _gracePeriod = 15;
   bool _selfClocking = true;
   bool _captureLocation = false;
-  int _halfDayHours = 4;
+  double _totalWorkingHours = 9.0;
+  double _halfDayHours = 4.5;
   int _workingDaysPerWeek = 5;
+  bool _overtimeEnabled = false;
   List<String> _weeklyOffDays = ['sunday'];
   List<String> _allowedIPs = [];
 
@@ -63,10 +67,12 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _autoCheckoutTimeCtrl = TextEditingController(text: '23:59');
+    _totalWorkingHoursCtrl = TextEditingController(text: '9');
     _earlyClockInCtrl = TextEditingController(text: '0');
     _allowClockOutTillCtrl = TextEditingController(text: '0');
-    _lateMarkAfterCtrl = TextEditingController(text: '30');
-    _halfDayHoursCtrl = TextEditingController(text: '4');
+    _gracePeriodCtrl = TextEditingController(text: '15');
+    _halfDayHoursCtrl = TextEditingController(text: '4.5');
     _workingDaysPerWeekCtrl = TextEditingController(text: '5');
     _load();
   }
@@ -81,18 +87,22 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
           _leaveStartMonth = d['leaveStartMonth'] ?? 'January';
           _clockInCtrl.text = (d['clockInTime'] ?? '09:30').substring(0, 5);
           _clockOutCtrl.text = (d['clockOutTime'] ?? '18:00').substring(0, 5);
+          _autoCheckoutTimeCtrl.text = (d['autoCheckoutTime'] ?? '23:59').substring(0, 5);
+          _totalWorkingHours = (d['totalWorkingHours'] ?? 9) as double;
+          _totalWorkingHoursCtrl.text = _totalWorkingHours.toString();
           _earlyClockIn = (d['earlyClockInMinutes'] ?? 0) as int;
           _allowClockOutTill = (d['allowClockOutTillMinutes'] ?? 0) as int;
-          _lateMarkAfter = (d['lateMarkAfterMinutes'] ?? 30) as int;
+          _gracePeriod = (d['gracePeriodMinutes'] ?? 15) as int;
           _earlyClockInCtrl.text = _earlyClockIn.toString();
           _allowClockOutTillCtrl.text = _allowClockOutTill.toString();
-          _lateMarkAfterCtrl.text = _lateMarkAfter.toString();
+          _gracePeriodCtrl.text = _gracePeriod.toString();
           _selfClocking = d['selfClocking'] ?? true;
           _captureLocation = d['captureLocation'] ?? false;
-          _halfDayHours = (d['halfDayHours'] ?? 4) as int;
-          _workingDaysPerWeek = (d['workingDaysPerWeek'] ?? 5) as int;
+          _halfDayHours = (d['halfDayHours'] ?? 4.5) as double;
           _halfDayHoursCtrl.text = _halfDayHours.toString();
+          _workingDaysPerWeek = (d['workingDaysPerWeek'] ?? 5) as int;
           _workingDaysPerWeekCtrl.text = _workingDaysPerWeek.toString();
+          _overtimeEnabled = d['overtimeEnabled'] ?? false;
           _weeklyOffDays = List<String>.from(d['weeklyOffDays'] ?? ['sunday']);
           _allowedIPs = List<String>.from(d['allowedIPs'] ?? []);
         });
@@ -102,24 +112,45 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   }
 
   Future<void> _save() async {
+    // Validation
+    if (_totalWorkingHours <= 0) {
+      showAdminSnack(context, 'Total working hours must be greater than 0', error: true);
+      return;
+    }
+    if (_halfDayHours <= 0 || _halfDayHours >= _totalWorkingHours) {
+      showAdminSnack(context, 'Half day hours must be > 0 and < total working hours', error: true);
+      return;
+    }
+    if (_gracePeriod < 0) {
+      showAdminSnack(context, 'Grace period must be 0 or more', error: true);
+      return;
+    }
+    if (!RegExp(r'^([01]\d|2[0-3]):([0-5]\d)').hasMatch(_autoCheckoutTimeCtrl.text)) {
+      showAdminSnack(context, 'Auto checkout time must be in HH:mm format', error: true);
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       await SettingsService.updateHRMSettings(widget.token ?? '', {
         'leaveStartMonth': _leaveStartMonth,
         'clockInTime': '${_clockInCtrl.text}:00',
         'clockOutTime': '${_clockOutCtrl.text}:00',
+        'autoCheckoutTime': '${_autoCheckoutTimeCtrl.text}:00',
+        'totalWorkingHours': _totalWorkingHours,
         'earlyClockInMinutes': _earlyClockIn,
         'allowClockOutTillMinutes': _allowClockOutTill,
-        'lateMarkAfterMinutes': _lateMarkAfter,
+        'gracePeriodMinutes': _gracePeriod,
         'selfClocking': _selfClocking,
         'captureLocation': _captureLocation,
         'halfDayHours': _halfDayHours,
+        'overtimeEnabled': _overtimeEnabled,
         'workingDaysPerWeek': _workingDaysPerWeek,
         'weeklyOffDays': _weeklyOffDays,
         'allowedIPs': _allowedIPs,
       });
       if (mounted) showAdminSnack(context, 'HRM settings updated');
-    } catch (_) {
+    } catch (e) {
       if (mounted) showAdminSnack(context, 'Failed to update', error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -130,9 +161,11 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   void dispose() {
     _clockInCtrl.dispose();
     _clockOutCtrl.dispose();
+    _autoCheckoutTimeCtrl.dispose();
+    _totalWorkingHoursCtrl.dispose();
     _earlyClockInCtrl.dispose();
     _allowClockOutTillCtrl.dispose();
-    _lateMarkAfterCtrl.dispose();
+    _gracePeriodCtrl.dispose();
     _halfDayHoursCtrl.dispose();
     _workingDaysPerWeekCtrl.dispose();
     super.dispose();
@@ -141,10 +174,12 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
   Widget _numInput(
     String label,
     TextEditingController controller,
-    ValueChanged<int> onChanged, {
+    Function(dynamic) onChanged, {
     String hint = '0',
     String? description,
     int? maxDigits,
+    bool isDecimal = false,
+    String suffix = 'min',
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,17 +198,31 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
-          keyboardType: TextInputType.number,
+          keyboardType: isDecimal 
+              ? TextInputType.numberWithOptions(decimal: true)
+              : TextInputType.number,
           inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
+            if (isDecimal)
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))
+            else
+              FilteringTextInputFormatter.digitsOnly,
             if (maxDigits != null) LengthLimitingTextInputFormatter(maxDigits),
           ],
           onChanged: (v) {
-            final parsed = int.tryParse(v);
-            if (parsed != null) {
-              onChanged(parsed);
-            } else if (v.isEmpty) {
-              onChanged(0);
+            if (isDecimal) {
+              final parsed = double.tryParse(v);
+              if (parsed != null) {
+                onChanged(parsed);
+              } else if (v.isEmpty) {
+                onChanged(0.0);
+              }
+            } else {
+              final parsed = int.tryParse(v);
+              if (parsed != null) {
+                onChanged(parsed);
+              } else if (v.isEmpty) {
+                onChanged(0);
+              }
             }
           },
           style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -194,7 +243,7 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
-            suffixText: 'min',
+            suffixText: suffix,
             suffixStyle: TextStyle(color: Colors.grey[600], fontSize: 12),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
@@ -328,10 +377,10 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
             ),
             const SizedBox(height: 14),
             _numInput(
-              'Late Mark After',
-              _lateMarkAfterCtrl,
-              (v) => setState(() => _lateMarkAfter = v),
-              description: 'Mark attendance as late if check-in is after this time',
+              'Grace Period',
+              _gracePeriodCtrl,
+              (v) => setState(() => _gracePeriod = v),
+              description: 'Minutes to consider for late mark (grace period)',
             ),
             const SizedBox(height: 14),
             AdminRow2(
@@ -361,14 +410,41 @@ class _AdminHRMSettingsScreenState extends State<AdminHRMSettingsScreen> {
           children: [
             AdminRow2(
               left: _numInput(
+                'Total Working Hours',
+                _totalWorkingHoursCtrl,
+                (v) => setState(() => _totalWorkingHours = v),
+                isDecimal: true,
+                description: 'Total hours per working day',
+                suffix: 'hrs',
+              ),
+              right: _numInput(
                 'Half Day Hours',
                 _halfDayHoursCtrl,
                 (v) => setState(() => _halfDayHours = v),
+                isDecimal: true,
+                description: 'Duration for half-day leave',
+                suffix: 'hrs',
               ),
-              right: _numInput(
+            ),
+            const SizedBox(height: 14),
+            AdminTextField(
+              label: 'Auto Checkout Time',
+              controller: _autoCheckoutTimeCtrl,
+              hint: '23:59',
+              keyboardType: TextInputType.datetime,
+            ),
+            const SizedBox(height: 14),
+            AdminRow2(
+              left: _numInput(
                 'Working Days / Week',
                 _workingDaysPerWeekCtrl,
                 (v) => setState(() => _workingDaysPerWeek = v.clamp(1, 7)),
+                description: 'Number of working days',
+              ),
+              right: AdminYesNoToggle(
+                label: 'Overtime Enabled',
+                value: _overtimeEnabled,
+                onChanged: (v) => setState(() => _overtimeEnabled = v),
               ),
             ),
             const SizedBox(height: 14),

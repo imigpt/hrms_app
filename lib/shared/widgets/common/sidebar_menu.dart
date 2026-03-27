@@ -27,6 +27,8 @@ import 'package:hrms_app/features/admin/presentation/screens/clients/all_clients
 import 'package:hrms_app/features/admin/presentation/screens/admin_attendance_screen.dart';
 import 'package:hrms_app/features/payroll/presentation/screens/admin_salary_screen.dart';
 import 'package:hrms_app/features/admin/presentation/screens/edit_requests_screen.dart';
+import 'package:hrms_app/features/admin/presentation/screens/company_management/all_companies_screen.dart';
+import 'package:hrms_app/features/admin/presentation/screens/calendar_screen/calendar_screen.dart';
 
 class SidebarMenu extends StatefulWidget {
   final ProfileUser? user;
@@ -75,32 +77,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Settings", "icon": Icons.settings_rounded},
   ];
 
-  // late final List<Map<String, dynamic>> _adminMenuItems = [
-  //   {"title": "Dashboard", "icon": Icons.grid_view_rounded},
-  //   {"title": "HR Accounts", "icon": Icons.manage_accounts_rounded},
-  //   {"title": "Employees", "icon": Icons.people_rounded},
-  //   {"title": "Clients", "icon": Icons.people_outline_rounded},
-  //   {"title": "Attendance", "icon": Icons.schedule_rounded, "hasSubmenu": true},
-  //   {
-  //     "title": "Leaves",
-  //     "icon": Icons.calendar_month_rounded,
-  //     "hasSubmenu": true,
-  //   },
-  //   {"title": "Tasks", "icon": Icons.task_alt_rounded},
-  //   {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
-  //   {"title": "Chat", "icon": Icons.chat_bubble_rounded},
-  //   {"title": "Announcements", "icon": Icons.campaign_rounded},
-  //   {"title": "Company Policy", "icon": Icons.policy_rounded},
-  //   {"title": "Payroll", "icon": Icons.payments_rounded, "hasSubmenu": true},
-  //   {"title": "Settings", "icon": Icons.settings_rounded},
-  // ];
-
-
-
   late final List<Map<String, dynamic>> _adminMenuItems = [
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
     {"title": "HR Accounts", "icon": Icons.manage_accounts_rounded},
     {"title": "Employees", "icon": Icons.people_rounded},
+    {"title": "Companies", "icon": Icons.apartment_rounded},
     {"title": "Clients", "icon": Icons.people_outline_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded, "hasSubmenu": true},
     {
@@ -108,6 +89,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
       "icon": Icons.calendar_month_rounded,
       "hasSubmenu": true,
     },
+    {"title": "Calendar", "icon": Icons.event_rounded},
     {"title": "Tasks", "icon": Icons.task_alt_rounded},
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
@@ -945,6 +927,12 @@ class _SidebarMenuState extends State<SidebarMenu> {
         ).push(_createSmoothRoute(EditRequestsScreen(token: widget.token)));
         break;
 
+      case "Companies":
+        Navigator.of(
+          context,
+        ).push(_createSmoothRoute(AllCompaniesScreen(token: widget.token)));
+        break;
+
       case "Clients":
         Navigator.of(
           context,
@@ -968,6 +956,16 @@ class _SidebarMenuState extends State<SidebarMenu> {
 
       case "Leaves":
         // This is now a submenu parent, do nothing on direct click
+        break;
+
+      case "Calendar":
+        Navigator.of(
+          context,
+        ).push(_createSmoothRoute(AdminCalendarScreen(
+          token: widget.token,
+          userId: widget.user?.id,
+          companyId: null, // Can be selected in calendar screen
+        )));
         break;
 
       default:

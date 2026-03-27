@@ -18,6 +18,23 @@ import 'package:hrms_app/features/tasks/presentation/screens/tasks_screen.dart';
 import 'package:hrms_app/features/profile/presentation/providers/profile_notifier.dart';
 import 'package:hrms_app/features/profile/data/services/profile_service.dart';
 import 'package:hrms_app/features/leave/presentation/providers/leave_notifier.dart';
+import 'package:hrms_app/features/admin/presentation/providers/calendar_notifier.dart';
+import 'package:hrms_app/features/admin/presentation/providers/company_notifier.dart';
+import 'package:hrms_app/features/notifications/presentation/providers/notifications_notifier.dart';
+import 'package:hrms_app/features/notifications/data/services/api_notification_service.dart';
+import 'package:hrms_app/features/dashboard/presentation/providers/dashboard_notifier.dart';
+import 'package:hrms_app/features/expenses/presentation/providers/expenses_notifier.dart';
+import 'package:hrms_app/features/expenses/data/services/expense_service.dart';
+import 'package:hrms_app/features/payroll/presentation/providers/payroll_notifier.dart';
+import 'package:hrms_app/features/payroll/data/services/payroll_service.dart';
+import 'package:hrms_app/features/attendance/presentation/providers/attendance_notifier.dart';
+import 'package:hrms_app/features/attendance/data/services/attendance_service.dart';
+import 'package:hrms_app/features/tasks/presentation/providers/tasks_notifier.dart';
+import 'package:hrms_app/features/tasks/data/services/task_service.dart';
+import 'package:hrms_app/features/announcements/presentation/providers/announcements_notifier.dart';
+import 'package:hrms_app/features/announcements/data/services/announcement_service.dart';
+import 'package:hrms_app/features/settings/presentation/providers/settings_notifier.dart';
+import 'package:hrms_app/features/chat/presentation/providers/chat_notifier.dart';
 import 'package:hrms_app/features/chat/data/services/chat_media_service.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
@@ -249,6 +266,46 @@ class _HrmsAppState extends State<HrmsApp> {
         ),
         ChangeNotifierProvider<LeaveNotifier>(
           create: (_) => LeaveNotifier(),
+        ),
+        ChangeNotifierProvider<CalendarNotifier>(
+          create: (_) => CalendarNotifier(),
+        ),
+        ChangeNotifierProvider<CompanyNotifier>(
+          create: (_) => CompanyNotifier(),
+        ),
+        ChangeNotifierProvider<NotificationsNotifier>(
+          create: (_) => NotificationsNotifier(ApiNotificationService()),
+        ),
+        ChangeNotifierProvider<DashboardNotifier>(
+          create: (_) => DashboardNotifier(
+            attendanceService: AttendanceService(),
+            announcementService: AnnouncementService(),
+          ),
+        ),
+        ChangeNotifierProvider<ExpensesNotifier>(
+          create: (_) => ExpensesNotifier(expenseService: ExpenseService()),
+        ),
+        ChangeNotifierProvider<PayrollNotifier>(
+          create: (_) => PayrollNotifier(payrollService: PayrollService()),
+        ),
+        ChangeNotifierProvider<AttendanceNotifier>(
+          create: (_) => AttendanceNotifier(
+            attendanceService: AttendanceService(),
+          ),
+        ),
+        ChangeNotifierProvider<TasksNotifier>(
+          create: (_) => TasksNotifier(taskService: TaskService()),
+        ),
+        ChangeNotifierProvider<AnnouncementsNotifier>(
+          create: (_) => AnnouncementsNotifier(
+            announcementService: AnnouncementService(),
+          ),
+        ),
+        ChangeNotifierProvider<SettingsNotifier>(
+          create: (_) => SettingsNotifier(),
+        ),
+        ChangeNotifierProvider<ChatNotifier>(
+          create: (_) => ChatNotifier(),
         ),
       ],
       child: Builder(
