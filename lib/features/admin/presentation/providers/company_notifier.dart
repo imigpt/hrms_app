@@ -132,14 +132,14 @@ class CompanyNotifier extends ChangeNotifier {
     }
   }
 
-  /// Approve a pending company
-  Future<bool> approveCompany(String id) async {
+  /// Update company status
+  Future<bool> updateCompanyStatus(String id, String status) async {
     _setState(_state.copyWith(isSaving: true, error: null));
     try {
-      await _service.approveCompany(id);
+      await _service.updateCompanyStatus(id, status);
       _setState(_state.copyWith(
         isSaving: false,
-        successMessage: 'Company approved successfully',
+        successMessage: 'Company status updated to $status',
       ));
       await fetchCompanies();
       return true;
@@ -152,24 +152,14 @@ class CompanyNotifier extends ChangeNotifier {
     }
   }
 
-  /// Reject a company
-  Future<bool> rejectCompany(String id, String reason) async {
-    _setState(_state.copyWith(isSaving: true, error: null));
-    try {
-      await _service.rejectCompany(id, reason);
-      _setState(_state.copyWith(
-        isSaving: false,
-        successMessage: 'Company rejected successfully',
-      ));
-      await fetchCompanies();
-      return true;
-    } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString(),
-        isSaving: false,
-      ));
-      return false;
-    }
+  /// Activate a company (change status to active)
+  Future<bool> activateCompany(String id) async {
+    return updateCompanyStatus(id, 'active');
+  }
+
+  /// Suspend a company (change status to suspended)
+  Future<bool> suspendCompany(String id) async {
+    return updateCompanyStatus(id, 'suspended');
   }
 
   /// Clear error message

@@ -731,20 +731,31 @@ class AttendanceService {
   }
 
   /// GET /api/attendance — Admin/HR: all company attendance records
-  /// Optional query params: startDate, endDate (yyyy-MM-dd)
+  /// Optional query params: startDate, endDate (yyyy-MM-dd), status, department
   static Future<Map<String, dynamic>> getAllAttendance(
     String token, {
     String? startDate,
     String? endDate,
+    String? status,
+    String? department,
   }) async {
     try {
       final params = <String, String>{};
       if (startDate != null) params['startDate'] = startDate;
       if (endDate != null) params['endDate'] = endDate;
+      if (status != null && status.isNotEmpty && status != 'all') {
+        params['status'] = status;
+      }
+      if (department != null && department.isNotEmpty && department != 'all') {
+        params['department'] = department;
+      }
 
       final uri = Uri.parse(
         '$baseUrl/attendance',
       ).replace(queryParameters: params.isNotEmpty ? params : null);
+
+      print('📊 [GET ALL ATTENDANCE] URL: $uri');
+      print('📊 [GET ALL ATTENDANCE] Query params: $params');
 
       final response = await http
           .get(
@@ -754,10 +765,13 @@ class AttendanceService {
               'Authorization': 'Bearer $token',
             },
           )
-          .timeout(const Duration(seconds: 15));
+          .timeout(const Duration(seconds: 30));
+
+      print('📊 [GET ALL ATTENDANCE] Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
+        print('📊 [GET ALL ATTENDANCE] Success - Found ${json['count'] ?? 0} records');
         return {
           'success': true,
           'data': json['data'] ?? [],
@@ -765,6 +779,7 @@ class AttendanceService {
         };
       } else {
         final err = jsonDecode(response.body);
+        print('📊 [GET ALL ATTENDANCE] Error: ${err['message']}');
         return {
           'success': false,
           'message': err['message'] ?? 'Failed to fetch attendance',
@@ -772,6 +787,7 @@ class AttendanceService {
         };
       }
     } catch (e) {
+      print('❌ [GET ALL ATTENDANCE] Exception: $e');
       return {'success': false, 'message': e.toString(), 'data': []};
     }
   }

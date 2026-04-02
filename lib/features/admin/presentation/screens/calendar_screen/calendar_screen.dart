@@ -22,20 +22,27 @@ class AdminCalendarScreen extends StatefulWidget {
   State<AdminCalendarScreen> createState() => _AdminCalendarScreenState();
 }
 
-class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
+class _AdminCalendarScreenState extends State<AdminCalendarScreen>
+    with SingleTickerProviderStateMixin {
   late DateTime _currentDate;
   DateTime? _selectedDate;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _currentDate = DateTime.now();
     _selectedDate = DateTime.now();
+    _tabController = TabController(length: 2, vsync: this);
     
     // Fetch calendar data
     Future.microtask(() {
       final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      print('[CALENDAR API] initState: Starting to fetch calendar data...');
+      print('[CALENDAR API] initState: Token: ${widget.token != null}, CompanyId: ${widget.companyId}, UserId: ${widget.userId}');
+      
       if (widget.token != null && widget.companyId != null) {
+        print('[CALENDAR API] Fetching holidays for company: ${widget.companyId}, Month: ${_currentDate.month}/${_currentDate.year}');
         notifier.fetchHolidays(
           widget.token!,
           widget.companyId!,
@@ -44,6 +51,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
         );
       }
       if (widget.token != null && widget.userId != null) {
+        print('[CALENDAR API] Fetching events for user: ${widget.userId}, From: ${_currentDate.month}/${_currentDate.year}');
         notifier.fetchEvents(
           widget.token!,
           widget.userId!,
@@ -54,7 +62,12 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
     });
   }
 
-  /// Get all days in the current month
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   List<DateTime> _getDaysInMonth(DateTime date) {
     final firstDay = DateTime(date.year, date.month, 1);
     final lastDay = DateTime(date.year, date.month + 1, 0);
@@ -83,12 +96,60 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
   void _previousMonth() {
     setState(() {
       _currentDate = DateTime(_currentDate.year, _currentDate.month - 1);
+      _selectedDate = null;
+      print('[CALENDAR] Month changed to: ${_currentDate.month}/${_currentDate.year}');
+    });
+    
+    // Fetch data for new month
+    Future.microtask(() {
+      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      if (widget.token != null && widget.companyId != null) {
+        print('[CALENDAR API] Fetching holidays for previous month: ${_currentDate.month}/${_currentDate.year}');
+        notifier.fetchHolidays(
+          widget.token!,
+          widget.companyId!,
+          _currentDate.year,
+          _currentDate.month,
+        );
+      }
+      if (widget.token != null && widget.userId != null) {
+        notifier.fetchEvents(
+          widget.token!,
+          widget.userId!,
+          _currentDate,
+          DateTime(_currentDate.year, _currentDate.month + 1, 0),
+        );
+      }
     });
   }
 
   void _nextMonth() {
     setState(() {
       _currentDate = DateTime(_currentDate.year, _currentDate.month + 1);
+      _selectedDate = null;
+      print('[CALENDAR] Month changed to: ${_currentDate.month}/${_currentDate.year}');
+    });
+    
+    // Fetch data for new month
+    Future.microtask(() {
+      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      if (widget.token != null && widget.companyId != null) {
+        print('[CALENDAR API] Fetching holidays for next month: ${_currentDate.month}/${_currentDate.year}');
+        notifier.fetchHolidays(
+          widget.token!,
+          widget.companyId!,
+          _currentDate.year,
+          _currentDate.month,
+        );
+      }
+      if (widget.token != null && widget.userId != null) {
+        notifier.fetchEvents(
+          widget.token!,
+          widget.userId!,
+          _currentDate,
+          DateTime(_currentDate.year, _currentDate.month + 1, 0),
+        );
+      }
     });
   }
 
@@ -96,242 +157,361 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
     setState(() {
       _currentDate = DateTime.now();
       _selectedDate = DateTime.now();
+      print('[CALENDAR] Navigated to today: ${DateTime.now().month}/${DateTime.now().year}');
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 768;
+    final isSmallMobile = MediaQuery.of(context).size.width < 480;
 
-    return Consumer<CalendarNotifier>(
-      builder: (context, calendarNotifier, _) {
-        final calendarState = calendarNotifier.state;
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        backgroundColor: AppTheme.background,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Calendar',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Manage events and schedules',
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: AppTheme.primaryColor,
+          labelColor: AppTheme.primaryColor,
+          unselectedLabelColor: Colors.grey[600],
+          tabs: const [
+            Tab(text: 'Calendar View', icon: Icon(Icons.calendar_month)),
+            Tab(text: 'Event List', icon: Icon(Icons.list)),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            // Tab 1: Calendar View
+            Consumer<CalendarNotifier>(
+              builder: (context, calendarNotifier, _) {
+                final calendarState = calendarNotifier.state;
+                final isLoading = calendarState.isLoading;
 
-        return Scaffold(
-          backgroundColor: AppTheme.background,
-          body: SafeArea(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Error message
-                    if (calendarState.error != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.errorColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.errorColor),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              color: AppTheme.errorColor,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                calendarState.error!,
-                                style: const TextStyle(
-                                  color: AppTheme.errorColor,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => calendarNotifier.clearError(),
-                              child: const Icon(
-                                Icons.close,
-                                color: AppTheme.errorColor,
-                                size: 18,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // Success message
-                    if (calendarState.successMessage != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.successColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.successColor),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.check_circle_outline,
-                              color: AppTheme.successColor,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                calendarState.successMessage!,
-                                style: const TextStyle(
-                                  color: AppTheme.successColor,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => calendarNotifier.clearSuccess(),
-                              child: const Icon(
-                                Icons.close,
-                                color: AppTheme.successColor,
-                                size: 18,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallMobile ? 12 : 20,
+                      vertical: 16,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Calendar',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineSmall
-                                    ?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Manage events and schedules',
-                                style: TextStyle(
-                                  color: Colors.grey[400],
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Today button
-                        ElevatedButton.icon(
-                          onPressed: _today,
-                          icon: const Icon(Icons.today_rounded, size: 16),
-                          label: const Text('Today'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
+                        // Loading indicator
+                        if (isLoading)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppTheme.primaryColor),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Calendar container
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.06),
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 20,
-                      ),
-                      child: Column(
-                        children: [
-                          // Month/Year header with navigation
-                          _buildMonthHeader(),
-                          const SizedBox(height: 24),
-
-                          // Weekday labels
-                          _buildWeekdayLabels(isMobile),
-                          const SizedBox(height: 12),
-
-                          // Calendar grid
-                          _buildCalendarGrid(isMobile, calendarState),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Selected date info
-                    if (_selectedDate != null)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceVariant,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.06),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                            child: Row(
                               children: [
-                                const Icon(
-                                  Icons.event_rounded,
-                                  color: AppTheme.primaryColor,
-                                  size: 20,
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      AppTheme.primaryColor,
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
-                                Text(
-                                  'Selected: ${DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate!)}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
+                                Expanded(
+                                  child: Text(
+                                    'Loading calendar data...',
+                                    style: TextStyle(
+                                      color: AppTheme.primaryColor,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            // Events on selected date
-                            ..._getEventsForDate(
-                              _selectedDate!,
-                              calendarState.events,
-                              calendarState.holidays,
+                          ),
+
+                        // Error message
+                        if (calendarState.error != null)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                          ],
+                            decoration: BoxDecoration(
+                              color: AppTheme.errorColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppTheme.errorColor),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.error_outline,
+                                  color: AppTheme.errorColor,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Error Loading Calendar',
+                                        style: TextStyle(
+                                          color: AppTheme.errorColor,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        calendarState.error!,
+                                        style: const TextStyle(
+                                          color: AppTheme.errorColor,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    print('[CALENDAR] Error dismissed by user');
+                                    calendarNotifier.clearError();
+                                  },
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: AppTheme.errorColor,
+                                    size: 18,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Main calendar card
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.06),
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 20,
+                          ),
+                          child: Column(
+                            children: [
+                              // Month/Year header with navigation
+                              _buildMonthHeader(),
+                              const SizedBox(height: 24),
+
+                              // Weekday labels
+                              _buildWeekdayLabels(isMobile),
+                              const SizedBox(height: 12),
+
+                              // Calendar grid
+                              _buildCalendarGrid(isMobile, calendarState),
+                            ],
+                          ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
+                        const SizedBox(height: 32),
+
+                        // Selected date info
+                        if (_selectedDate != null)
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.06),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.event_rounded,
+                                      color: AppTheme.primaryColor,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Selected: ${DateFormat('EEEE, MMMM d, yyyy').format(_selectedDate!)}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                // Events on selected date
+                                ..._getEventsForDate(
+                                  _selectedDate!,
+                                  calendarState.events,
+                                  calendarState.holidays,
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ),
-        );
-      },
+
+            // Tab 2: Event List View
+            Consumer<CalendarNotifier>(
+              builder: (context, calendarNotifier, _) {
+                final calendarState = calendarNotifier.state;
+                final allEvents = [
+                  ...calendarState.events,
+                  ...calendarState.holidays,
+                ];
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (allEvents.isEmpty)
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.event_note,
+                                  size: 64,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No events scheduled',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey[400],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: allEvents.length,
+                          itemBuilder: (context, index) {
+                            final event = allEvents[index];
+                            final isHoliday = event.type == 'holiday';
+
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              color: AppTheme.cardColor,
+                              child: ListTile(
+                                leading: Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: isHoliday
+                                        ? Colors.red
+                                        : AppTheme.primaryColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                title: Text(
+                                  event.title,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  DateFormat('MMM d, yyyy').format(event.date),
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                  ),
+                                ),
+                                trailing: _buildEventTypeChip(event.type ?? 'event'),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventTypeChip(String type) {
+    final colors = {
+      'holiday': (Colors.red, Colors.white),
+      'leave': (Colors.orange, Colors.white),
+      'event': (Colors.blue, Colors.white),
+      'meeting': (Colors.purple, Colors.white),
+    };
+
+    final (bgColor, textColor) = colors[type] ?? (Colors.grey, Colors.white);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: bgColor),
+      ),
+      child: Text(
+        type.toUpperCase(),
+        style: TextStyle(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -343,33 +523,29 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
         // Previous button
         IconButton(
           onPressed: _previousMonth,
-          icon: const Icon(Icons.chevron_left_rounded),
+          icon: const Icon(Icons.chevron_left_rounded, size: 20),
           color: AppTheme.primaryColor,
           tooltip: 'Previous month',
-          constraints: const BoxConstraints(
-            minWidth: 40,
-            minHeight: 40,
-          ),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           style: IconButton.styleFrom(
-            backgroundColor: AppTheme.surfaceVariant,
+            backgroundColor: AppTheme.surfaceVariant.withOpacity(0.6),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(
-                color: Colors.white.withOpacity(0.06),
-              ),
+              borderRadius: BorderRadius.circular(6),
             ),
+            padding: EdgeInsets.zero,
           ),
         ),
 
-        // Month/Year text
+        // Month/Year text - centered
         Expanded(
           child: Center(
             child: Text(
               DateFormat('MMMM yyyy').format(_currentDate),
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
               ),
             ),
           ),
@@ -378,21 +554,16 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
         // Next button
         IconButton(
           onPressed: _nextMonth,
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(Icons.chevron_right_rounded, size: 20),
           color: AppTheme.primaryColor,
           tooltip: 'Next month',
-          constraints: const BoxConstraints(
-            minWidth: 40,
-            minHeight: 40,
-          ),
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           style: IconButton.styleFrom(
-            backgroundColor: AppTheme.surfaceVariant,
+            backgroundColor: AppTheme.surfaceVariant.withOpacity(0.6),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(
-                color: Colors.white.withOpacity(0.06),
-              ),
+              borderRadius: BorderRadius.circular(6),
             ),
+            padding: EdgeInsets.zero,
           ),
         ),
       ],
@@ -407,8 +578,8 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: 1.2,
-        mainAxisSpacing: 8,
+        childAspectRatio: 1.5,
+        mainAxisSpacing: 0,
         crossAxisSpacing: 8,
       ),
       itemCount: 7,
@@ -417,9 +588,10 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
           child: Text(
             weekdays[index],
             style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: isMobile ? 12 : 13,
-              fontWeight: FontWeight.w500,
+              color: Colors.grey[400],
+              fontSize: isMobile ? 11 : 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
             ),
           ),
         );
@@ -435,7 +607,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: 1.1,
+        childAspectRatio: 1.0,
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
       ),
@@ -466,25 +638,35 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
             .toList();
 
         final totalEvents = eventsOnDay.length + holidaysOnDay.length;
+        final hasHoliday = holidaysOnDay.isNotEmpty;
 
         return GestureDetector(
           onTap: isCurrentMonth
-              ? () => setState(() => _selectedDate = day)
+              ? () {
+                  setState(() => _selectedDate = day);
+                  print('[CALENDAR] Date selected: ${day.day}/${day.month}/${day.year}');
+                  if (eventsOnDay.isNotEmpty || holidaysOnDay.isNotEmpty) {
+                    print('[CALENDAR] Selected date has ${eventsOnDay.length} events and ${holidaysOnDay.length} holidays');
+                  }
+                }
               : null,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
             decoration: BoxDecoration(
               color: isSelected
                   ? AppTheme.primaryColor
                   : isToday
-                      ? AppTheme.primaryColor.withOpacity(0.2)
-                      : Colors.transparent,
+                      ? AppTheme.primaryColor.withOpacity(0.12)
+                      : isCurrentMonth
+                          ? Colors.transparent
+                          : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: isToday && !isSelected
-                    ? AppTheme.primaryColor.withOpacity(0.5)
+                    ? AppTheme.primaryColor.withOpacity(0.3)
                     : Colors.transparent,
-                width: 1.5,
+                width: 1,
               ),
             ),
             child: Stack(
@@ -498,7 +680,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
                           ? Colors.white
                           : isCurrentMonth
                               ? Colors.white
-                              : Colors.grey[600],
+                              : Colors.grey[700],
                       fontSize: isMobile ? 13 : 14,
                       fontWeight: isToday || isSelected
                           ? FontWeight.w600
@@ -506,7 +688,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
                     ),
                   ),
                 ),
-                // Event indicators
+                // Event/Holiday indicators
                 if (totalEvents > 0)
                   Positioned(
                     bottom: 4,
@@ -514,13 +696,22 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
                     right: 0,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 4,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.7),
-                            shape: BoxShape.circle,
+                        ...List.generate(
+                          (totalEvents > 3 ? 3 : totalEvents),
+                          (i) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 1.5),
+                            child: Container(
+                              width: 3,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                color: hasHoliday
+                                    ? Colors.red.withOpacity(0.8)
+                                    : Colors.blue.withOpacity(0.8),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
                           ),
                         ),
                       ],
@@ -554,13 +745,29 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
             h.date.day == date.day)
         .toList();
 
+    print('[CALENDAR] Getting events for date: ${date.day}/${date.month}/${date.year} - Events: ${eventsOnDate.length}, Holidays: ${holidaysOnDate.length}');
+
     if (eventsOnDate.isEmpty && holidaysOnDate.isEmpty) {
       return [
-        Text(
-          'No events scheduled',
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 12,
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Icon(
+                Icons.event_busy,
+                color: Colors.grey[600],
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'No events scheduled',
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
           ),
         ),
       ];
@@ -570,74 +777,158 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen> {
       // Holidays
       ...holidaysOnDate.map((holiday) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 10),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
+              color: Colors.red.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(6),
               border: Border.all(color: Colors.red.withOpacity(0.3)),
             ),
             child: Row(
               children: [
                 const Icon(
-                  Icons.holiday_village,
+                  Icons.celebration_rounded,
                   size: 14,
                   color: Colors.red,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    holiday.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        holiday.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (holiday.description.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            holiday.description,
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         );
-      }),
+      }).toList(),
       // Events
       ...eventsOnDate.map((event) {
+        final eventColor = _getEventColor(event.type);
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: 10),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              color: eventColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: eventColor.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.event_note,
+                Icon(
+                  _getEventIcon(event.type),
                   size: 14,
-                  color: Colors.blue,
+                  color: eventColor,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    event.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (event.description.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            event.description,
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 10,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      if (event.allDay)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            'All day',
+                            style: TextStyle(
+                              color: eventColor.withOpacity(0.7),
+                              fontSize: 9,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
         );
-      }),
+      }).toList(),
     ];
   }
-}
 
+  /// Get event color based on type
+  Color _getEventColor(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'holiday':
+        return Colors.red;
+      case 'leave':
+        return Colors.orange;
+      case 'task':
+        return Colors.blue;
+      case 'meeting':
+      case 'event':
+        return Colors.purple;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  /// Get event icon based on type
+  IconData _getEventIcon(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'holiday':
+        return Icons.celebration_rounded;
+      case 'leave':
+        return Icons.beach_access_rounded;
+      case 'task':
+        return Icons.assignment_rounded;
+      case 'meeting':
+        return Icons.videocam_rounded;
+      case 'event':
+        return Icons.event_note_rounded;
+      default:
+        return Icons.event_rounded;
+    }
+  }
+}

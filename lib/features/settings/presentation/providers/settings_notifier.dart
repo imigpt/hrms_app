@@ -29,7 +29,7 @@ class SettingsNotifier extends ChangeNotifier {
         final data = response['data'] ?? response;
 
         _setState(_state.copyWith(
-          companySettings: data is Map ? data : {},
+          companySettings: data is Map<String, dynamic> ? data as Map<String, dynamic> : <String, dynamic>{},
           isLoading: false,
           lastUpdatedTimes: {
             ..._state.lastUpdatedTimes,
@@ -61,7 +61,7 @@ class SettingsNotifier extends ChangeNotifier {
         final data = response['data'] ?? response;
 
         _setState(_state.copyWith(
-          hrmSettings: data is Map ? data : {},
+          hrmSettings: data is Map<String, dynamic> ? data as Map<String, dynamic> : <String, dynamic>{},
           isLoading: false,
           lastUpdatedTimes: {
             ..._state.lastUpdatedTimes,
@@ -93,7 +93,7 @@ class SettingsNotifier extends ChangeNotifier {
         final data = response['data'] ?? response;
 
         _setState(_state.copyWith(
-          payrollSettings: data is Map ? data : {},
+          payrollSettings: data is Map<String, dynamic> ? data as Map<String, dynamic> : <String, dynamic>{},
           isLoading: false,
           lastUpdatedTimes: {
             ..._state.lastUpdatedTimes,
@@ -119,13 +119,13 @@ class SettingsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isLoading: true, error: null));
 
-      final response = await SettingsService.getTranslationSettings(token);
+      final response = await SettingsService.getLocalizationSettings(token);
 
       if (response['success'] == true) {
         final data = response['data'] ?? response;
 
         _setState(_state.copyWith(
-          translationSettings: data is Map ? data : {},
+          translationSettings: data is Map<String, dynamic> ? data as Map<String, dynamic> : <String, dynamic>{},
           isLoading: false,
           lastUpdatedTimes: {
             ..._state.lastUpdatedTimes,
@@ -313,7 +313,7 @@ class SettingsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isSaving: true, error: null));
 
-      final response = await SettingsService.updateTranslationSettings(
+      final response = await SettingsService.updateLocalizationSettings(
         token,
         updates,
       );

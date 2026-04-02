@@ -20,6 +20,10 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
   String? errorMessage;
   String? approvingId;
   String? rejectingId;
+  String? deletingCompanyId;
+  String? viewingCompanyId;
+  Map<String, dynamic>? companyStats;
+  bool isLoadingStats = false;
 
   // Form controllers
   late TextEditingController nameCtrl;
@@ -28,6 +32,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
   late TextEditingController addressCtrl;
   late TextEditingController websiteCtrl;
   late TextEditingController industryCtrl;
+  late TextEditingController sizeCtrl;
   late TextEditingController passwordCtrl;
   late TextEditingController companySizeCtrl;
   late TextEditingController rejectionReasonCtrl;
@@ -52,6 +57,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     addressCtrl = TextEditingController();
     websiteCtrl = TextEditingController();
     industryCtrl = TextEditingController();
+    sizeCtrl = TextEditingController();
     passwordCtrl = TextEditingController();
     companySizeCtrl = TextEditingController();
     rejectionReasonCtrl = TextEditingController();
@@ -59,13 +65,18 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
 
   Future<void> _loadCompanies() async {
     try {
+      print('[API DEBUG] _loadCompanies: Starting to load companies...');
       setState(() => isLoading = true);
       final result = await _service.getCompanies();
+      print('[API DEBUG] _loadCompanies: Success! Loaded ${result.length} companies');
+      print('[API DEBUG] _loadCompanies: Companies data: ${result.map((c) => c.name).toList()}');
       setState(() {
         companies = result;
         isLoading = false;
       });
     } catch (e) {
+      print('[API ERROR] _loadCompanies: Error occurred: $e');
+      print('[API ERROR] _loadCompanies: Error type: ${e.runtimeType}');
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
@@ -78,6 +89,8 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     if (!_validateForm()) return;
 
     try {
+      print('[API DEBUG] _createCompany: Starting to create company...');
+      print('[API DEBUG] _createCompany: Company data - Name: ${nameCtrl.text}, Email: ${emailCtrl.text}');
       setState(() => isSaving = true);
       await _service.createCompany(
         name: nameCtrl.text,
@@ -86,15 +99,18 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
         address: addressCtrl.text,
         website: websiteCtrl.text,
         industry: industryCtrl.text,
-        size: selectedSize,
+        size: sizeCtrl.text,
         companySize: int.tryParse(companySizeCtrl.text),
       );
 
+      print('[API DEBUG] _createCompany: Company created successfully!');
       _showSnackBar('Company created successfully');
       _clearForm();
       Navigator.pop(context);
       _loadCompanies();
     } catch (e) {
+      print('[API ERROR] _createCompany: Error occurred: $e');
+      print('[API ERROR] _createCompany: Error type: ${e.runtimeType}');
       _showSnackBar('Error creating company', isError: true);
     } finally {
       setState(() => isSaving = false);
@@ -105,6 +121,8 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     if (!_validateForm() || editingCompany == null) return;
 
     try {
+      print('[API DEBUG] _updateCompany: Starting to update company...');
+      print('[API DEBUG] _updateCompany: Company ID: ${editingCompany!.id}, Name: ${nameCtrl.text}');
       setState(() => isSaving = true);
       await _service.updateCompany(
         id: editingCompany!.id!,
@@ -114,16 +132,19 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
         address: addressCtrl.text,
         website: websiteCtrl.text,
         industry: industryCtrl.text,
-        size: selectedSize,
+        size: sizeCtrl.text,
         companySize: int.tryParse(companySizeCtrl.text),
         status: selectedStatus,
       );
 
+      print('[API DEBUG] _updateCompany: Company updated successfully!');
       _showSnackBar('Company updated successfully');
       _clearForm();
       Navigator.pop(context);
       _loadCompanies();
     } catch (e) {
+      print('[API ERROR] _updateCompany: Error occurred: $e');
+      print('[API ERROR] _updateCompany: Error type: ${e.runtimeType}');
       _showSnackBar('Error updating company', isError: true);
     } finally {
       setState(() => isSaving = false);
@@ -153,12 +174,373 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     if (confirm != true) return;
 
     try {
+      print('[API DEBUG] _deleteCompany: Starting to delete company...');
+      print('[API DEBUG] _deleteCompany: Company ID: $id');
+      setState(() => deletingCompanyId = id);
       await _service.deleteCompany(id);
+      print('[API DEBUG] _deleteCompany: Company deleted successfully!');
       _showSnackBar('Company deleted successfully');
       _loadCompanies();
     } catch (e) {
+      print('[API ERROR] _deleteCompany: Error occurred: $e');
+      print('[API ERROR] _deleteCompany: Error type: ${e.runtimeType}');
       _showSnackBar('Error deleting company', isError: true);
+    } finally {
+      setState(() => deletingCompanyId = null);
     }
+  }
+
+  Future<void> _updateCompanyStatus(Company company, String newStatus) async {
+    try {
+      print('[API DEBUG] _updateCompanyStatus: Starting to update status...');
+      print('[API DEBUG] _updateCompanyStatus: Company ID: ${company.id}, Name: ${company.name}, Status: $newStatus');
+      setState(() => approvingId = company.id);
+      await _service.updateCompanyStatus(company.id!, newStatus);
+      print('[API DEBUG] _updateCompanyStatus: Company status updated successfully!');
+      _showSnackBar('${company.name} status updated to $newStatus');
+      _loadCompanies();
+    } catch (e) {
+      print('[API ERROR] _updateCompanyStatus: Error occurred: $e');
+      print('[API ERROR] _updateCompanyStatus: Error type: ${e.runtimeType}');
+      _showSnackBar('Error updating company status: ${e.toString()}', isError: true);
+    } finally {
+      setState(() => approvingId = null);
+    }
+  }
+
+  Future<void> _showCompanyOverview(Company company) async {
+    try {
+      print('[API DEBUG] _showCompanyOverview: Fetching stats for company ${company.id}');
+      setState(() {
+        viewingCompanyId = company.id;
+        isLoadingStats = true;
+        companyStats = null;
+      });
+
+      final stats = await _service.getCompanyStats(company.id!);
+      print('[API DEBUG] _showCompanyOverview: Stats fetched successfully');
+
+      final employeeData = stats['employees'] ?? {};
+      final employeeList = (employeeData['byDepartment'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+      final statusList = (employeeData['byStatus'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+
+      setState(() => companyStats = stats);
+
+      if (!mounted) return;
+
+      final isMobile = MediaQuery.of(context).size.width < 600;
+      final dialogWidth = isMobile 
+          ? MediaQuery.of(context).size.width * 0.95 
+          : MediaQuery.of(context).size.width * 0.75;
+      final maxHeight = MediaQuery.of(context).size.height * 0.9;
+
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: AppTheme.surface,
+          elevation: 8,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: dialogWidth,
+              maxHeight: maxHeight,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Dialog Header
+                  Padding(
+                    padding: EdgeInsets.all(isMobile ? 16 : 24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                company.name,
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Company Overview',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.outline,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: AppTheme.onSurface),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Divider(color: AppTheme.surfaceVariant, height: 1),
+
+                  // Dialog Content
+                  Padding(
+                    padding: EdgeInsets.all(isMobile ? 16 : 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Company Details Section
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceVariant,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Company Information', 
+                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              
+                              // Company ID
+                              _buildInfoRow('Company ID', company.id ?? 'N/A', isMobile),
+                              const SizedBox(height: 12),
+                              
+                              // Email and Phone in row
+                              if (isMobile)
+                                Column(
+                                  children: [
+                                    _buildInfoRow('Email', company.email ?? 'N/A', isMobile),
+                                    const SizedBox(height: 12),
+                                    _buildInfoRow('Phone', company.phone ?? 'N/A', isMobile),
+                                  ],
+                                )
+                              else
+                                Row(
+                                  children: [
+                                    Expanded(child: _buildInfoRow('Email', company.email ?? 'N/A', isMobile)),
+                                    const SizedBox(width: 16),
+                                    Expanded(child: _buildInfoRow('Phone', company.phone ?? 'N/A', isMobile)),
+                                  ],
+                                ),
+                              
+                              if (company.address != null && company.address!.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                _buildInfoRow('Address', company.address!, isMobile),
+                              ],
+                              
+                              if (company.industry != null && company.industry!.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                if (isMobile)
+                                  _buildInfoRow('Industry', company.industry!, isMobile)
+                                else
+                                  Row(
+                                    children: [
+                                      Expanded(child: _buildInfoRow('Industry', company.industry!, isMobile)),
+                                      const SizedBox(width: 16),
+                                      Expanded(child: _buildInfoRow('Size', company.size ?? 'N/A', isMobile)),
+                                    ],
+                                  ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Employee Statistics Section
+                        Text('Employee Statistics',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Stats Grid
+                        isMobile
+                            ? Column(
+                                children: [
+                                  _buildStatBox('Total Employees', (stats['employees']?['total'] ?? 0).toString(), color: Colors.blue),
+                                  const SizedBox(height: 12),
+                                  _buildStatBox('HR Users', (stats['hrCount'] ?? 0).toString(), color: Colors.purple),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildStatBox('Total Employees', (stats['employees']?['total'] ?? 0).toString(), color: Colors.blue),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _buildStatBox('HR Users', (stats['hrCount'] ?? 0).toString(), color: Colors.purple),
+                                  ),
+                                ],
+                              ),
+
+                        // Department Breakdown
+                        if (employeeList.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Employees by Department',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                ...employeeList.map((dept) => Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        dept['_id'] ?? 'Unknown',
+                                        style: const TextStyle(fontSize: 13, color: AppTheme.onSurface),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          '${dept['count'] ?? 0}',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                                      )
+                                    ],
+                                  ),
+                                )),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        // Status Breakdown
+                        if (statusList.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Employees by Status',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                ...statusList.map((status) {
+                                  final statusStr = status['_id'] ?? 'Unknown';
+                                  final color = statusStr.toLowerCase() == 'active' 
+                                      ? Colors.green 
+                                      : statusStr.toLowerCase() == 'inactive' 
+                                      ? Colors.orange 
+                                      : Colors.red;
+
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          statusStr,
+                                          style: const TextStyle(fontSize: 13, color: AppTheme.onSurface),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: color.withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            '${status['count'] ?? 0}',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: color,
+                                            ),
+                                          ),
+                                        )
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Dialog Footer
+                  Padding(
+                    padding: EdgeInsets.all(isMobile ? 16 : 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Close', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      print('[API ERROR] _showCompanyOverview: Error occurred: $e');
+      _showSnackBar('Error loading company overview: ${e.toString()}', isError: true);
+    } finally {
+      setState(() {
+        viewingCompanyId = null;
+        isLoadingStats = false;
+      });
+    }
+  }
+
+  Widget _buildInfoRow(String label, String value, bool isMobile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.outline, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontSize: 13, color: AppTheme.onSurface, fontWeight: FontWeight.w500)),
+      ],
+    );
   }
 
   void _showCreateDialog() {
@@ -178,7 +560,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     addressCtrl.text = company.address ?? '';
     websiteCtrl.text = company.website ?? '';
     industryCtrl.text = company.industry ?? '';
-    selectedSize = company.size ?? 'medium';
+    sizeCtrl.text = company.size ?? '';
     companySizeCtrl.text = company.companySize?.toString() ?? '';
     selectedStatus = company.status ?? 'active';
 
@@ -190,41 +572,19 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
 
   void _showRejectDialog(Company company) {
     selectedCompanyForReject = company;
-    rejectionReasonCtrl.clear();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Reject Company'),
+        title: const Text('Suspend Company'),
         backgroundColor: AppTheme.surface,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Rejecting: ${company.name}', style: const TextStyle(color: AppTheme.onSurface)),
+            Text('Suspend: ${company.name}', style: const TextStyle(color: AppTheme.onSurface)),
             const SizedBox(height: 16),
-            TextField(
-              controller: rejectionReasonCtrl,
-              decoration: InputDecoration(
-                hintText: 'Enter rejection reason',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppTheme.outline),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppTheme.outline),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
-                ),
-                filled: true,
-                fillColor: AppTheme.surfaceVariant,
-                hintStyle: const TextStyle(color: Color(0xFF8E8E93)),
-              ),
-              maxLines: 3,
-              style: const TextStyle(color: AppTheme.onSurface),
-            ),
+            const Text('Are you sure you want to suspend this company? It will no longer be able to access the system.', 
+              style: TextStyle(color: AppTheme.outline)),
           ],
         ),
         actions: [
@@ -233,161 +593,369 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: rejectionReasonCtrl.text.isEmpty
-                ? null
-                : () => Navigator.pop(context, true),
-            child: const Text('Reject', style: TextStyle(color: Colors.red)),
+            onPressed: () {
+              Navigator.pop(context, true);
+              _updateCompanyStatus(selectedCompanyForReject!, 'suspended');
+            },
+            child: const Text('Suspend', style: TextStyle(color: Colors.red)),
           ),
         ],
-      ),
-    ).then((value) {
-      if (value == true && selectedCompanyForReject != null) {
-        // Handle rejection
-      }
-    });
-  }
-
-  Widget _buildFormDialog(String title, {required bool isCreate}) {
-    return Dialog(
-      backgroundColor: AppTheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.onSurface),
-            ),
-            const SizedBox(height: 24),
-            // Company Name
-            TextField(
-              controller: nameCtrl,
-              decoration: _inputDecoration('Company Name'),
-              style: const TextStyle(color: AppTheme.onSurface),
-            ),
-            const SizedBox(height: 16),
-            // Email
-            TextField(
-              controller: emailCtrl,
-              decoration: _inputDecoration('Email'),
-              keyboardType: TextInputType.emailAddress,
-              style: const TextStyle(color: AppTheme.onSurface),
-            ),
-            const SizedBox(height: 16),
-            // Phone
-            TextField(
-              controller: phoneCtrl,
-              decoration: _inputDecoration('Phone'),
-              keyboardType: TextInputType.phone,
-              style: const TextStyle(color: AppTheme.onSurface),
-            ),
-            const SizedBox(height: 16),
-            // Address
-            TextField(
-              controller: addressCtrl,
-              decoration: _inputDecoration('Address'),
-              style: const TextStyle(color: AppTheme.onSurface),
-            ),
-            const SizedBox(height: 16),
-            // Website
-            TextField(
-              controller: websiteCtrl,
-              decoration: _inputDecoration('Website'),
-              keyboardType: TextInputType.url,
-              style: const TextStyle(color: AppTheme.onSurface),
-            ),
-            const SizedBox(height: 16),
-            // Industry
-            TextField(
-              controller: industryCtrl,
-              decoration: _inputDecoration('Industry'),
-              style: const TextStyle(color: AppTheme.onSurface),
-            ),
-            const SizedBox(height: 16),
-            // Size Dropdown
-            DropdownButtonFormField<String>(
-              value: selectedSize,
-              items: ['small', 'medium', 'large', 'enterprise']
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                  .toList(),
-              onChanged: (v) => setState(() => selectedSize = v ?? 'medium'),
-              decoration: _inputDecoration('Company Size Category'),
-              style: const TextStyle(color: AppTheme.onSurface),
-            ),
-            const SizedBox(height: 16),
-            // Employee Limit
-            TextField(
-              controller: companySizeCtrl,
-              decoration: _inputDecoration('Max Employee Limit'),
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: AppTheme.onSurface),
-            ),
-            if (!isCreate) ...[
-              const SizedBox(height: 16),
-              // Status (only for edit)
-              DropdownButtonFormField<String>(
-                value: selectedStatus,
-                items: ['active', 'inactive', 'suspended', 'pending']
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                    .toList(),
-                onChanged: (v) => setState(() => selectedStatus = v ?? 'active'),
-                decoration: _inputDecoration('Status'),
-                style: const TextStyle(color: AppTheme.onSurface),
-              ),
-            ],
-            const SizedBox(height: 24),
-            // Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: isSaving ? null : (isCreate ? _createCompany : _updateCompany),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                  ),
-                  child: isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(isCreate ? 'Create' : 'Update'),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
 
+  Widget _buildFormDialog(String title, {required bool isCreate}) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 600;
+        final dialogWidth = isMobile 
+            ? constraints.maxWidth * 0.9 
+            : constraints.maxWidth * 0.6;
+
+        return Dialog(
+          backgroundColor: AppTheme.surface,
+          elevation: 8,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: dialogWidth,
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(isMobile ? 16 : 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.onSurface,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isCreate
+                        ? 'Create company and admin login. Company ID is generated automatically.'
+                        : 'Update company details and settings.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.outline,
+                        ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Company Name (Full Width)
+                  _buildFormField(
+                    label: 'Company Name',
+                    controller: nameCtrl,
+                    hintText: 'Enter company name',
+                    isMobile: isMobile,
+                  ),
+                  SizedBox(height: isMobile ? 12 : 16),
+
+                  // Email + Password (Responsive Grid)
+                  _buildResponsiveRow(
+                    isMobile,
+                    [
+                      _buildFormField(
+                        label: 'Email',
+                        controller: emailCtrl,
+                        hintText: 'company@example.com',
+                        keyboardType: TextInputType.emailAddress,
+                        isMobile: isMobile,
+                      ),
+                      _buildFormField(
+                        label: 'Temporary Admin Password (optional)',
+                        controller: passwordCtrl,
+                        hintText: 'Auto-generated if left empty',
+                        obscureText: true,
+                        isMobile: isMobile,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isMobile ? 12 : 16),
+
+                  // Phone + Website (Responsive Grid)
+                  _buildResponsiveRow(
+                    isMobile,
+                    [
+                      _buildFormField(
+                        label: 'Phone',
+                        controller: phoneCtrl,
+                        hintText: '+1 (555) 123-4567',
+                        keyboardType: TextInputType.phone,
+                        isMobile: isMobile,
+                      ),
+                      _buildFormField(
+                        label: 'Website',
+                        controller: websiteCtrl,
+                        hintText: 'https://example.com',
+                        keyboardType: TextInputType.url,
+                        isMobile: isMobile,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isMobile ? 12 : 16),
+
+                  // Industry + Size Label (Responsive Grid)
+                  _buildResponsiveRow(
+                    isMobile,
+                    [
+                      _buildFormField(
+                        label: 'Industry',
+                        controller: industryCtrl,
+                        hintText: 'Technology',
+                        isMobile: isMobile,
+                      ),
+                      _buildFormField(
+                        label: 'Company Size Label',
+                        controller: sizeCtrl,
+                        hintText: '11-50',
+                        isMobile: isMobile,
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: isMobile ? 12 : 16),
+
+                  // User Limit (Full Width)
+                  _buildFormField(
+                    label: 'User Limit (Company Size)',
+                    controller: companySizeCtrl,
+                    hintText: '50',
+                    keyboardType: TextInputType.number,
+                    isMobile: isMobile,
+                  ),
+                  SizedBox(height: isMobile ? 12 : 16),
+
+                  // Address (Full Width - Multi-line)
+                  _buildFormField(
+                    label: 'Address',
+                    controller: addressCtrl,
+                    hintText: 'Enter company address',
+                    maxLines: 3,
+                    minLines: 3,
+                    isMobile: isMobile,
+                  ),
+
+                  if (!isCreate) ...[
+                    SizedBox(height: isMobile ? 12 : 16),
+                    // Status (only for edit)
+                    _buildStatusDropdown(isMobile),
+                  ],
+
+                  SizedBox(height: isMobile ? 20 : 24),
+
+                  // Buttons
+                  _buildDialogButtons(isMobile),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildResponsiveRow(bool isMobile, List<Widget> children) {
+    if (isMobile) {
+      return Column(
+        children: children
+            .expand((child) => [child, SizedBox(height: isMobile ? 12 : 16)])
+            .toList()
+          ..removeLast(),
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: children[0]),
+        SizedBox(width: isMobile ? 12 : 16),
+        Expanded(child: children[1]),
+      ],
+    );
+  }
+
+  Widget _buildFormField({
+    required String label,
+    required TextEditingController controller,
+    required String hintText,
+    TextInputType keyboardType = TextInputType.text,
+    bool obscureText = false,
+    int maxLines = 1,
+    int minLines = 1,
+    required bool isMobile,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: _labelStyle()),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          decoration: _inputDecoration(hintText),
+          keyboardType: keyboardType,
+          obscureText: obscureText,
+          maxLines: maxLines,
+          minLines: minLines,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.onSurface,
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusDropdown(bool isMobile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Status', style: _labelStyle()),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: selectedStatus,
+          items: ['active', 'inactive', 'suspended', 'pending']
+              .map((s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(s),
+                  ))
+              .toList(),
+          onChanged: (v) => setState(() => selectedStatus = v ?? 'active'),
+          decoration: _inputDecoration('Select status'),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.onSurface,
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDialogButtons(bool isMobile) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        if (isMobile) ...[
+          Expanded(
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.outline,
+              ),
+              child: Text(
+                'Cancel',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: isSaving ? null : (editingCompany == null ? _createCompany : _updateCompany),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                disabledBackgroundColor: AppTheme.primaryColor.withOpacity(0.5),
+                padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14),
+              ),
+              child: isSaving
+                  ? SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).scaffoldBackgroundColor,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      editingCompany == null ? 'Create' : 'Update',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Colors.white,
+                          ),
+                    ),
+            ),
+          ),
+        ] else ...[
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.outline,
+            ),
+            child: Text(
+              'Cancel',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton(
+            onPressed: isSaving ? null : (editingCompany == null ? _createCompany : _updateCompany),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              disabledBackgroundColor: AppTheme.primaryColor.withOpacity(0.5),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: isSaving
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Text(
+                    editingCompany == null ? 'Create' : 'Update',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Colors.white,
+                        ),
+                  ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  TextStyle _labelStyle() {
+    return Theme.of(context).textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: AppTheme.onSurface,
+        ) ??
+        const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.onSurface,
+        );
+  }
+
   InputDecoration _inputDecoration(String label) {
     return InputDecoration(
-      labelText: label,
-      labelStyle: const TextStyle(color: Color(0xFF8E8E93)),
+      hintText: label,
+      hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppTheme.outline.withOpacity(0.6),
+          ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      filled: true,
+      fillColor: AppTheme.surfaceVariant,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppTheme.outline),
+        borderSide: BorderSide(color: AppTheme.outline.withOpacity(0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppTheme.outline),
+        borderSide: BorderSide(color: AppTheme.outline.withOpacity(0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
       ),
-      filled: true,
-      fillColor: AppTheme.surfaceVariant,
-      hintStyle: const TextStyle(color: Color(0xFF8E8E93)),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.red, width: 1),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
     );
   }
 
@@ -406,6 +974,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     addressCtrl.clear();
     websiteCtrl.clear();
     industryCtrl.clear();
+    sizeCtrl.clear();
     passwordCtrl.clear();
     companySizeCtrl.clear();
     selectedSize = 'medium';
@@ -431,6 +1000,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     addressCtrl.dispose();
     websiteCtrl.dispose();
     industryCtrl.dispose();
+    sizeCtrl.dispose();
     passwordCtrl.dispose();
     companySizeCtrl.dispose();
     rejectionReasonCtrl.dispose();
@@ -602,6 +1172,20 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'ID: ${company.id ?? "N/A"}',
+                              style: const TextStyle(fontSize: 10, color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -636,6 +1220,15 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
               child: Row(
                 children: [
                   _buildActionButton(
+                    'View',
+                    Icons.visibility,
+                    colors: AppTheme.primaryColor,
+                    onPressed: viewingCompanyId == company.id && isLoadingStats
+                        ? null
+                        : () => _showCompanyOverview(company),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildActionButton(
                     'Edit',
                     Icons.edit,
                     onPressed: () => _showEditDialog(company),
@@ -645,25 +1238,19 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                     'Delete',
                     Icons.delete,
                     colors: Colors.red,
-                    onPressed: () => _deleteCompany(company.id ?? ''),
+                    onPressed: deletingCompanyId == company.id
+                        ? null
+                        : () => _deleteCompany(company.id ?? ''),
                   ),
                   const SizedBox(width: 8),
-                  if (company.status == 'pending')
+                  if (company.status != 'active')
                     _buildActionButton(
-                      'Approve',
+                      approvingId == company.id ? 'Activating...' : 'Activate',
                       Icons.check_circle,
                       colors: Colors.green,
-                      onPressed: () {
-                        // Handle approve
-                      },
-                    ),
-                  if (company.status == 'pending') const SizedBox(width: 8),
-                  if (company.status == 'pending')
-                    _buildActionButton(
-                      'Reject',
-                      Icons.close,
-                      colors: Colors.red,
-                      onPressed: () => _showRejectDialog(company),
+                      onPressed: approvingId == company.id
+                          ? null
+                          : () => _updateCompanyStatus(company, 'active'),
                     ),
                 ],
               ),
@@ -731,16 +1318,61 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     String label,
     IconData icon, {
     Color colors = AppTheme.primaryColor,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
+    final isDisabled = onPressed == null;
     return ElevatedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 16),
       label: Text(label, style: const TextStyle(fontSize: 12)),
       style: ElevatedButton.styleFrom(
-        backgroundColor: colors.withOpacity(0.2),
-        foregroundColor: colors,
+        backgroundColor: isDisabled 
+            ? colors.withOpacity(0.1)
+            : colors.withOpacity(0.2),
+        foregroundColor: isDisabled
+            ? colors.withOpacity(0.5)
+            : colors,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      ),
+    );
+  }
+
+  Widget _buildStatBox(String label, String value, {Color? bgColor, Color? textColor, Color? color}) {
+    // If color is provided (positional), use the colored version
+    if (color != null) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.outline, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 6),
+            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+          ],
+        ),
+      );
+    }
+    
+    // Default version with bgColor and textColor
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: bgColor ?? AppTheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 10, color: AppTheme.outline)),
+          const SizedBox(height: 4),
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor ?? AppTheme.onSurface)),
+        ],
       ),
     );
   }

@@ -1272,6 +1272,8 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
   String _selectedDepartment = '';
   String _position = '';
   String _joinDate = '';
+  String _salary = '';
+  String _salaryType = 'monthly';
   bool _showPassword = false;
 
   bool _isSubmitting = false;
@@ -1362,7 +1364,12 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
           // Form
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                20 + MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -1491,6 +1498,37 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
                           isRequired: true,
                           value: _joinDate,
                           onChanged: (v) => setState(() => _joinDate = v),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ── SECTION: Salary Info ─────────────────────────
+                    _sectionHeader(
+                      Icons.attach_money_rounded,
+                      'Salary Information',
+                      Color(0xFFFFB74D),
+                    ),
+                    const SizedBox(height: 12),
+                    _formCard(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: _buildTextField(
+                                label: 'Salary',
+                                hint: '50000',
+                                icon: Icons.attach_money_rounded,
+                                isRequired: true,
+                                onChanged: (v) => _salary = v,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildSalaryTypeDropdown(),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -2039,6 +2077,61 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
     );
   }
 
+  Widget _buildSalaryTypeDropdown() {
+    const items = ['monthly', 'daily'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Salary Type',
+          style: TextStyle(
+            color: _textLight,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Container(
+          height: 44,
+          decoration: BoxDecoration(
+            color: _input,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _border),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _salaryType,
+              items: items
+                  .map(
+                    (type) => DropdownMenuItem(
+                      value: type,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Text(
+                          type[0].toUpperCase() + type.substring(1),
+                          style: const TextStyle(
+                            color: _textLight,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                setState(() => _salaryType = v ?? 'monthly');
+              },
+              dropdownColor: const Color(0xFF1A1A1A),
+              iconEnabledColor: _textGrey,
+              style: const TextStyle(color: _textLight, fontSize: 13),
+              isExpanded: true,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _pickImage() async {
     try {
       final pickedFile = await _imagePicker.pickImage(
@@ -2072,6 +2165,14 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
       setState(() => _errorMessage = 'Please select a department');
       return;
     }
+    if (_salary.isEmpty) {
+      setState(() => _errorMessage = 'Please enter salary amount');
+      return;
+    }
+    if (double.tryParse(_salary) == null || double.parse(_salary) <= 0) {
+      setState(() => _errorMessage = 'Salary must be a positive number');
+      return;
+    }
 
     setState(() {
       _isSubmitting = true;
@@ -2091,6 +2192,8 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
         department: _selectedDepartment,
         position: _position,
         joinDate: _joinDate,
+        salary: _salary,
+        salaryType: _salaryType,
         profilePhoto: _selectedImage,
       );
 

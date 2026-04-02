@@ -56,7 +56,7 @@ class ExpensesNotifier extends ChangeNotifier {
   /// Refresh expenses
   Future<void> refreshExpenses(String token) async {
     debugPrint('🔄 ExpensesNotifier: Refreshing expenses...');
-    _setState(_state.copyWith(isRefreshing: true, errorMessage: null));
+    _setState(_state.copyWith(isLoading: true, errorMessage: null));
 
     try {
       final response = await ExpenseService.getExpenses(token: token);
@@ -66,7 +66,7 @@ class ExpensesNotifier extends ChangeNotifier {
       _setState(_state.copyWith(
         expenses: response.data,
         totalCount: response.count,
-        isRefreshing: false,
+        isLoading: false,
         lastUpdated: DateTime.now(),
       ));
 
@@ -74,7 +74,7 @@ class ExpensesNotifier extends ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Error refreshing expenses: $e');
       _setState(_state.copyWith(
-        isRefreshing: false,
+        isLoading: false,
         errorMessage: 'Failed to refresh expenses: $e',
       ));
     }

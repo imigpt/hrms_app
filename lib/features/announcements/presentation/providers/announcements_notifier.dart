@@ -76,7 +76,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isLoading: true, error: null));
 
-      final response = await _announcementService.getAnnouncements(
+      final response = await AnnouncementService.getAnnouncements(
         token: token,
         priority: priority,
         department: department,
@@ -105,7 +105,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
   /// Load unread count
   Future<void> _loadUnreadCount(String token) async {
     try {
-      final count = await _announcementService.getUnreadCount(token: token);
+      final count = await AnnouncementService.getUnreadCount(token: token);
       _setState(_state.copyWith(unreadCount: count));
     } catch (e) {
       // Non-blocking error for unread count
@@ -118,7 +118,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
 
-      final announcement = await _announcementService.getAnnouncementById(
+      final announcement = await AnnouncementService.getAnnouncementById(
         token: token,
         announcementId: announcementId,
       );
@@ -137,7 +137,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isRefreshing: true, error: null));
 
-      final response = await _announcementService.getAnnouncements(
+      final response = await AnnouncementService.getAnnouncements(
         token: token,
         priority: _state.priorityFilter,
         department: _state.departmentFilter,
@@ -207,7 +207,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
 
-      final success = await _announcementService.markAsRead(
+      final success = await AnnouncementService.markAsRead(
         token: token,
         announcementId: announcementId,
       );
@@ -244,7 +244,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
               .toList();
 
       for (final id in unreadIds) {
-        await _announcementService.markAsRead(
+        await AnnouncementService.markAsRead(
           token: token,
           announcementId: id,
         );
@@ -281,7 +281,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isCreating: true, error: null));
 
-      await _announcementService.createAnnouncement(
+      await AnnouncementService.createAnnouncement(
         token: token,
         title: title,
         content: content,

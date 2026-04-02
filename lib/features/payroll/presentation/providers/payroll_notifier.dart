@@ -120,7 +120,7 @@ class PayrollNotifier extends ChangeNotifier {
   /// Refresh payroll data
   Future<void> refreshPayrolls(String token) async {
     debugPrint('🔄 PayrollNotifier: Refreshing payrolls...');
-    _setState(_state.copyWith(isRefreshing: true, errorMessage: null));
+    _setState(_state.copyWith(isLoading: true, errorMessage: null));
 
     try {
       // Refresh using the same endpoint (assumes loadMyPayrolls was called first)
@@ -131,7 +131,7 @@ class PayrollNotifier extends ChangeNotifier {
       _setState(_state.copyWith(
         payrolls: response.data,
         totalCount: response.count,
-        isRefreshing: false,
+        isLoading: false,
         lastUpdated: DateTime.now(),
       ));
 
@@ -139,7 +139,7 @@ class PayrollNotifier extends ChangeNotifier {
     } catch (e) {
       debugPrint('❌ Error refreshing payrolls: $e');
       _setState(_state.copyWith(
-        isRefreshing: false,
+        isLoading: false,
         errorMessage: 'Failed to refresh payrolls: $e',
       ));
     }

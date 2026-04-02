@@ -24,7 +24,7 @@ class TasksNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isLoading: true, error: null));
       
-      final response = await _taskService.getMyTasks(token);
+      final response = await TaskService.getMyTasks(token);
       final tasks = response is List ? response : response['data'] ?? [];
       
       _setState(_state.copyWith(
@@ -51,7 +51,7 @@ class TasksNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isLoading: true, error: null));
       
-      final response = await _taskService.getTasks(
+      final response = await TaskService.getTasks(
         token,
         status: status,
         assignedTo: assignedTo,
@@ -76,7 +76,7 @@ class TasksNotifier extends ChangeNotifier {
   /// Load task statistics
   Future<void> loadTaskStatistics(String token) async {
     try {
-      final response = await _taskService.getTaskStatistics(token);
+      final response = await TaskService.getTaskStatistics(token);
       final stats = response is Map ? response : response['data'] ?? {};
       
       _setState(_state.copyWith(statistics: stats));
@@ -128,7 +128,7 @@ class TasksNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
       
-      final response = await _taskService.createTask(
+      final response = await TaskService.createTask(
         token,
         title: title,
         description: description,
@@ -169,7 +169,7 @@ class TasksNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
       
-      await _taskService.updateTask(
+      await TaskService.updateTask(
         token,
         taskId,
         title: title,
@@ -203,7 +203,7 @@ class TasksNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
       
-      await _taskService.updateTaskProgress(
+      await TaskService.updateTaskProgress(
         token,
         taskId,
         status: status,
@@ -226,7 +226,7 @@ class TasksNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
       
-      await _taskService.deleteTask(token, taskId);
+      await TaskService.deleteTask(token, taskId);
       
       final updatedTasks = _state.tasks
           .whereType<Map<String, dynamic>>()
@@ -424,7 +424,7 @@ class TasksNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
       
-      await _taskService.addAttachment(
+      await TaskService.addAttachment(
         token,
         taskId,
         filePath: filePath,
@@ -448,7 +448,7 @@ class TasksNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
       
-      await _taskService.deleteAttachment(token, taskId, attachmentId);
+      await TaskService.deleteAttachment(token, taskId, attachmentId);
     } catch (e) {
       _setState(_state.copyWith(
         error: e.toString().replaceFirst('Exception: ', ''),

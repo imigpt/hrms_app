@@ -49,12 +49,17 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
             if (authState.status == AuthStatus.authenticated) {
               final user = ProfileUser.fromAuth(authState.currentUser!);
               final token = authState.token!;
+              
+              print('[AUTH CHECK] ✅ User authenticated');
+              print('[AUTH CHECK] 👤 User role: "${authState.currentUser!.role}"');
+              print('[AUTH CHECK] 📝 ProfileUser role: "${user.role}"');
 
               // Register FCM token (fire-and-forget)
               NotificationService().registerFcmToken(token).catchError((_) {});
 
               // Start background profile fetch for non-admins
               if (authState.currentUser!.role.toLowerCase() != 'admin') {
+                print('[AUTH CHECK] 🔄 Starting background profile fetch (non-admin)');
                 ProfileService().fetchProfile(token).catchError((_) => null);
               }
 

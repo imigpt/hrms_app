@@ -33,15 +33,25 @@ class AttendanceNotifier extends ChangeNotifier {
     try {
       final response = await AttendanceService.getTodayAttendance(token: token);
 
-      _setState(_state.copyWith(
-        todayAttendance: response.data,
-        isLoading: false,
-        lastUpdated: DateTime.now(),
-      ));
+      if (response != null) {
+        _setState(_state.copyWith(
+          todayAttendance: response.data,
+          isLoading: false,
+          lastUpdated: DateTime.now(),
+        ));
 
-      debugPrint(
-        '✅ Today\'s attendance loaded: ${response.data.hasCheckedIn ? "Checked In" : "Not Checked In"}',
-      );
+        final checkedInStatus = response.data?.hasCheckedIn ?? false;
+        debugPrint(
+          '✅ Today\'s attendance loaded: ${checkedInStatus ? "Checked In" : "Not Checked In"}',
+        );
+      } else {
+        _setState(_state.copyWith(
+          todayAttendance: null,
+          isLoading: false,
+          lastUpdated: DateTime.now(),
+        ));
+        debugPrint('✅ No attendance record for today');
+      }
     } catch (e) {
       debugPrint('❌ Error loading today\'s attendance: $e');
       _setState(_state.copyWith(
@@ -57,19 +67,22 @@ class AttendanceNotifier extends ChangeNotifier {
     _setState(_state.copyWith(isLoading: true, errorMessage: null));
 
     try {
+      final now = DateTime.now();
       final response = await AttendanceService.getAttendanceHistory(
         token: token,
+        month: now.month,
+        year: now.year,
       );
 
-      _calculateStatistics(response.records);
+      _calculateStatistics(response.data);
 
       _setState(_state.copyWith(
-        attendanceHistory: response.records,
+        attendanceHistory: response.data,
         isLoading: false,
         lastUpdated: DateTime.now(),
       ));
 
-      debugPrint('✅ Attendance history loaded: ${response.records.length} records');
+      debugPrint('✅ Attendance history loaded: ${response.data.length} records');
     } catch (e) {
       debugPrint('❌ Error loading attendance history: $e');
       _setState(_state.copyWith(
@@ -84,20 +97,23 @@ class AttendanceNotifier extends ChangeNotifier {
     debugPrint('📈 AttendanceNotifier: Loading attendance summary...');
 
     try {
+      final now = DateTime.now();
       final response = await AttendanceService.getAttendanceSummary(
         token: token,
+        month: now.month,
+        year: now.year,
       );
 
       _setState(_state.copyWith(
-        attendanceSummary: response.data,
-        totalWorkingDays: response.data.workingDays,
-        presentDays: response.data.presentDays,
-        absentDays: response.data.absentDays,
-        lateDays: response.data.lateDays,
-        totalWorkHours: response.data.totalWorkingHours?.toDouble() ?? 0.0,
+        attendanceSummary: response,
+        totalWorkingDays: response.data.totalDays,
+        presentDays: response.data.present,
+        absentDays: response.data.absent,
+        lateDays: response.data.late,
+        totalWorkHours: response.data.totalWorkHours,
         attendancePercentage: _calculatePercentage(
-          response.data.presentDays,
-          response.data.workingDays,
+          response.data.present,
+          response.data.totalDays,
         ),
       ));
 
@@ -153,8 +169,10 @@ class AttendanceNotifier extends ChangeNotifier {
         longitude: position.longitude,
       );
 
+      // Reload today's attendance to get the updated state
+      await loadTodayAttendance(token);
+      
       _setState(_state.copyWith(
-        todayAttendance: response.data,
         isCheckingIn: false,
         currentLatitude: position.latitude,
         currentLongitude: position.longitude,
@@ -181,15 +199,17 @@ class AttendanceNotifier extends ChangeNotifier {
     _setState(_state.copyWith(isCheckingOut: true, errorMessage: null));
 
     try {
+      // Note: photoFile parameter is not used by checkOut API
       final response = await AttendanceService.checkOut(
         token: token,
-        photoFile: photoFile,
         latitude: position.latitude,
         longitude: position.longitude,
       );
 
+      // Reload today's attendance to get the updated state
+      await loadTodayAttendance(token);
+
       _setState(_state.copyWith(
-        todayAttendance: response.data,
         isCheckingOut: false,
         currentLatitude: position.latitude,
         currentLongitude: position.longitude,

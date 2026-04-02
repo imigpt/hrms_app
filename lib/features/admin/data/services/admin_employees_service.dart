@@ -97,6 +97,8 @@ class AdminEmployeesService {
     String? department,
     String? position,
     String? joinDate,
+    String? salary,
+    String? salaryType,
     String? status,
     File? profilePhoto,
   }) async {
@@ -125,6 +127,10 @@ class AdminEmployeesService {
         request.fields['position'] = position;
       if (joinDate != null && joinDate.isNotEmpty)
         request.fields['joinDate'] = joinDate;
+      if (salary != null && salary.isNotEmpty)
+        request.fields['salary'] = salary;
+      if (salaryType != null && salaryType.isNotEmpty)
+        request.fields['salaryType'] = salaryType;
       if (status != null && status.isNotEmpty)
         request.fields['status'] = status;
 

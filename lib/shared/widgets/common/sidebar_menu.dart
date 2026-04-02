@@ -52,15 +52,22 @@ class _SidebarMenuState extends State<SidebarMenu> {
   void initState() {
     super.initState();
     // Determine user role
-    final roleStr = widget.user?.role.toLowerCase() ?? '';
+    final roleStr = widget.user?.role.toLowerCase().trim() ?? '';
+    print('[SIDEBAR] 🔍 Raw role from widget.user: "${widget.user?.role}"');
+    print('[SIDEBAR] 🔍 Processed roleStr (lowercase trim): "$roleStr"');
+    
     if (roleStr == 'admin') {
       _userRole = 'admin';
+      print('[SIDEBAR] ✅ User role set to: ADMIN');
     } else if (roleStr == 'hr') {
       _userRole = 'hr';
+      print('[SIDEBAR] ✅ User role set to: HR');
     } else if (roleStr == 'client') {
       _userRole = 'client';
+      print('[SIDEBAR] ✅ User role set to: CLIENT');
     } else {
       _userRole = 'employee';
+      print('[SIDEBAR] ⚠️ User role defaulted to: EMPLOYEE (received role was: "$roleStr")');
     }
   }
 
@@ -68,7 +75,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
     {"title": "My Profile", "icon": Icons.person_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded},
-    {"title": "Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "Tasks", "icon": Icons.task_alt_rounded, "hasSubmenu": true},
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
     {"title": "Announcements", "icon": Icons.campaign_rounded},
@@ -90,7 +97,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
       "hasSubmenu": true,
     },
     {"title": "Calendar", "icon": Icons.event_rounded},
-    {"title": "Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "Tasks", "icon": Icons.task_alt_rounded, "hasSubmenu": true},
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
     {"title": "Announcements", "icon": Icons.campaign_rounded},
@@ -145,9 +152,19 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Leaves Management", "icon": Icons.assignment_rounded},
   ];
 
+  late final List<Map<String, dynamic>> _adminTasksSubItems = [
+    {"title": "Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "BOD/EOD", "icon": Icons.event_note_rounded},
+  ];
+
+  late final List<Map<String, dynamic>> _employeeTasksSubItems = [
+    {"title": "Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "BOD/EOD", "icon": Icons.event_note_rounded},
+  ];
+
   late final List<Map<String, dynamic>> _hrTasksSubItems = [
-    {"title": "Employee Tasks", "icon": Icons.assignment_rounded},
-    {"title": "My Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "BOD/EOD", "icon": Icons.event_note_rounded},
   ];
 
   /// Get payroll sub items based on user role
@@ -269,10 +286,10 @@ class _SidebarMenuState extends State<SidebarMenu> {
                     );
                   }
 
-                  // If this is Tasks with submenu (HR only)
+                  // If this is Tasks with submenu
                   if (menuItem['title'] == 'Tasks' &&
-                      menuItem['hasSubmenu'] == true &&
-                      _userRole == 'hr') {
+                      menuItem['hasSubmenu'] == true) {
+                    final subItems = _userRole == 'admin' ? _adminTasksSubItems : _userRole == 'hr' ? _hrTasksSubItems : _employeeTasksSubItems;
                     return Column(
                       children: [
                         _buildMenuItemWithSubmenu(
@@ -284,9 +301,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
                         ),
                         // Insert submenu items right after Tasks
                         if (_tasksExpanded)
-                          ..._hrTasksSubItems.asMap().entries.map((subEntry) {
+                          ...subItems.asMap().entries.map((subEntry) {
                             int subIdx = subEntry.key;
-                            return _buildTasksSubMenuItem(context, subIdx);
+                            return _buildTasksSubMenuItem(context, subIdx, subItems);
                           }).toList(),
                       ],
                     );
@@ -574,8 +591,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
     );
   }
 
-  Widget _buildTasksSubMenuItem(BuildContext context, int index) {
-    final subItem = _hrTasksSubItems[index];
+  Widget _buildTasksSubMenuItem(BuildContext context, int index, List<Map<String, dynamic>> subItems) {
+    final subItem = subItems[index];
     Color primaryColor = Theme.of(context).primaryColor;
 
     return Padding(
@@ -1069,15 +1086,15 @@ class _SidebarMenuState extends State<SidebarMenu> {
     }
 
     // Navigate to appropriate tasks subscreen
-    if (title == "Employee Tasks") {
-      // View all employees' tasks (admin view)
-      Navigator.of(context).push(
-        _createSmoothRoute(TasksScreen(token: widget.token, role: 'admin')),
-      );
-    } else if (title == "My Tasks") {
-      // View own tasks (personal HR view like employee panel)
+    if (title == "Tasks") {
+      // View tasks based on user role
       Navigator.of(context).push(
         _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole)),
+      );
+    } else if (title == "BOD/EOD") {
+      // This screen is under development - placeholder for BOD/EOD functionality
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('BOD/EOD screen is under development.')),
       );
     }
   }

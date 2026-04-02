@@ -20,6 +20,7 @@ import 'package:hrms_app/features/auth/data/services/auth_service.dart';
 import 'package:hrms_app/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:hrms_app/features/chat/data/services/chat_service.dart';
 import 'package:hrms_app/features/profile/data/services/profile_service.dart';
+import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/features/chat/data/models/chat_room_model.dart';
 
 // Import our custom widgets
@@ -122,15 +123,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
 
     // Determine user role
-    final roleStr = widget.user?.role.toLowerCase() ?? '';
-    if (roleStr == 'admin') {
-      _userRole = 'admin';
-    } else if (roleStr == 'hr') {
-      _userRole = 'hr';
-    } else if (roleStr == 'client') {
-      _userRole = 'client';
+    final roleStr = widget.user?.role.toLowerCase().trim() ?? '';
+    print('[DASHBOARD] 🔍 Raw role from widget.user: "${widget.user?.role}"');
+    print('[DASHBOARD] 🔍 Processed roleStr (lowercase trim): "$roleStr"');
+    
+    if (roleStr.isNotEmpty) {
+      // Use role from widget if available
+      if (roleStr == 'admin') {
+        _userRole = 'admin';
+        print('[DASHBOARD] ✅ User role set to: ADMIN');
+      } else if (roleStr == 'hr') {
+        _userRole = 'hr';
+        print('[DASHBOARD] ✅ User role set to: HR');
+      } else if (roleStr == 'client') {
+        _userRole = 'client';
+        print('[DASHBOARD] ✅ User role set to: CLIENT');
+      } else {
+        _userRole = 'employee';
+        print('[DASHBOARD] ⚠️ User role defaulted to: EMPLOYEE (received role was: "$roleStr")');
+      }
     } else {
-      _userRole = 'employee';
+      // Fallback: Get role from TokenStorageService (cached from login)
+      print('[DASHBOARD] ⚠️ widget.user.role is empty, using TokenStorageService fallback...');
+      _initializeRoleFromTokenStorage();
     }
 
     // Load full profile data (includes phone, address, dob etc.)
@@ -158,6 +173,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Load employee dashboard data - all at once
       _loadEmployeeDashboardData();
     }
+  }
+
+  /// Fallback: Initialize user role from TokenStorageService when widget.user.role is empty
+  void _initializeRoleFromTokenStorage() {
+    final storage = TokenStorageService();
+    // This is synchronous - the role was cached during login
+    storage.getUserRole().then((cachedRole) {
+      if (cachedRole != null && cachedRole.isNotEmpty) {
+        final roleStr = cachedRole.toLowerCase().trim();
+        print('[DASHBOARD] ✅ Retrieved cached role from TokenStorageService: "$roleStr"');
+        
+        setState(() {
+          if (roleStr == 'admin') {
+            _userRole = 'admin';
+            print('[DASHBOARD] ✅ User role set to: ADMIN (from cache)');
+          } else if (roleStr == 'hr') {
+            _userRole = 'hr';
+            print('[DASHBOARD] ✅ User role set to: HR (from cache)');
+          } else if (roleStr == 'client') {
+            _userRole = 'client';
+            print('[DASHBOARD] ✅ User role set to: CLIENT (from cache)');
+          } else {
+            _userRole = 'employee';
+            print('[DASHBOARD] ⚠️ User role set to: EMPLOYEE (from cache, was: "$roleStr")');
+          }
+        });
+      } else {
+        print('[DASHBOARD] ❌ Could not retrieve cached role - defaulting to EMPLOYEE');
+        setState(() => _userRole = 'employee');
+      }
+    }).catchError((e) {
+      print('[DASHBOARD] ❌ Error retrieving cached role: $e - defaulting to EMPLOYEE');
+      setState(() => _userRole = 'employee');
+    });
   }
 
   Future<void> _fetchDashboardProfile() async {

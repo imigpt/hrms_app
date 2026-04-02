@@ -195,14 +195,29 @@ class SettingsService {
   // ── HRM Settings ───────────────────────────────────────────────────────────
 
   /// GET /api/settings/hrm
-  static Future<Map<String, dynamic>> getHRMSettings(String token) async {
+  /// Supports optional companyId parameter to filter settings by company
+  static Future<Map<String, dynamic>> getHRMSettings(
+    String token, {
+    String? companyId,
+  }) async {
+    final queryParams = <String, String>{};
+    if (companyId != null && companyId.isNotEmpty) {
+      queryParams['companyId'] = companyId;
+    }
+    
+    final uri = Uri.parse('$_base/settings/hrm').replace(
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+    
     final res = await http
-        .get(Uri.parse('$_base/settings/hrm'), headers: _h(token))
+        .get(uri, headers: _h(token))
         .timeout(_timeout);
     return _decode(res);
   }
 
   /// PUT /api/settings/hrm
+  /// Updates HRM settings (salary types, working hours, leave start month, etc.)
+  /// Data can include optional companyId to scope settings
   static Future<Map<String, dynamic>> updateHRMSettings(
     String token,
     Map<String, dynamic> data,

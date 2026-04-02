@@ -60,7 +60,7 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(isLoadingRooms: true, error: null);
       notifyListeners();
 
-      final response = await _chatService.getChatRooms(token: token);
+      final response = await ChatService.getChatRooms(token: token);
       _state = _state.copyWith(
         chatRooms: response.data,
         isLoadingRooms: false,
@@ -84,7 +84,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      final response = await _chatService.getChatRooms(token: token);
+      final response = await ChatService.getChatRooms(token: token);
       _state = _state.copyWith(
         chatRooms: response.data,
         isRefreshingRooms: false,
@@ -118,7 +118,7 @@ class ChatNotifier extends ChangeNotifier {
       await _loadRoomMessages(token, room.id, limit: 50);
 
       // Mark room as read
-      await _chatService.markRoomAsRead(token: token, roomId: room.id);
+      await ChatService.markRoomAsRead(token: token, roomId: room.id);
 
       _state = _state.copyWith(
         isLoadingMessages: false,
@@ -156,7 +156,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      final response = await _chatService.getOrCreatePersonalChat(
+      final response = await ChatService.getOrCreatePersonalChat(
         token: token,
         userId: userId,
       );
@@ -195,7 +195,7 @@ class ChatNotifier extends ChangeNotifier {
     String? before,
   }) async {
     try {
-      final response = await _chatService.getRoomMessages(
+      final response = await ChatService.getRoomMessages(
         token: token,
         roomId: roomId,
         limit: limit,
@@ -203,7 +203,7 @@ class ChatNotifier extends ChangeNotifier {
       );
 
       _state = _state.copyWith(
-        currentRoomMessages: response.data,
+        currentRoomMessages: response.data ?? const [],
         hasMoreMessages: response.hasMore,
       );
       notifyListeners();
@@ -233,16 +233,19 @@ class ChatNotifier extends ChangeNotifier {
       final beforeTimestamp =
           oldestMessage?.createdAt.toIso8601String();
 
-      final response = await _chatService.getRoomMessages(
+      final response = await ChatService.getRoomMessages(
         token: token,
         roomId: roomId,
         limit: 50,
         before: beforeTimestamp,
       );
 
+      final messagesList = (response.data ?? const [])
+          .cast<ChatMessage>();
+
       final updatedMessages = [
         ..._state.currentRoomMessages,
-        ...response.data,
+        ...messagesList,
       ];
 
       _state = _state.copyWith(
@@ -286,7 +289,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      final response = await _chatService.sendRoomMessage(
+      final response = await ChatService.sendRoomMessage(
         token: token,
         roomId: _state.selectedRoomId!,
         content: content,
@@ -339,7 +342,7 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(uploadProgress: 0.3);
       notifyListeners();
 
-      final response = await _chatService.sendMediaMessage(
+      final response = await ChatService.sendMediaMessage(
         token: token,
         roomId: _state.selectedRoomId!,
         file: file,
@@ -378,7 +381,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      await _chatService.deleteMessage(token: token, messageId: messageId);
+      await ChatService.deleteMessage(token: token, messageId: messageId);
 
       // Update local message state
       final updatedMessages = _state.currentRoomMessages
@@ -412,7 +415,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      final result = await _chatService.createGroup(
+      final result = await ChatService.createGroup(
         token: token,
         name: name,
         memberIds: memberIds,
@@ -440,7 +443,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      await _chatService.addGroupMember(
+      await ChatService.addGroupMember(
         token: token,
         groupId: groupId,
         userId: userId,
@@ -464,7 +467,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      await _chatService.leaveGroup(token: token, groupId: groupId);
+      await ChatService.leaveGroup(token: token, groupId: groupId);
 
       // Remove from local list
       final updatedRooms =
@@ -490,7 +493,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      await _chatService.deleteGroup(token: token, groupId: groupId);
+      await ChatService.deleteGroup(token: token, groupId: groupId);
 
       // Remove from local list
       final updatedRooms =
@@ -520,7 +523,7 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(isLoadingUsers: true, error: null);
       notifyListeners();
 
-      final response = await _chatService.getCompanyUsers(token: token);
+      final response = await ChatService.getCompanyUsers(token: token);
       _state = _state.copyWith(
         companyUsers: response.data,
         isLoadingUsers: false,
@@ -552,7 +555,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      final response = await _chatService.searchUsers(
+      final response = await ChatService.searchUsers(
         token: token,
         query: query,
       );
@@ -598,7 +601,7 @@ class ChatNotifier extends ChangeNotifier {
       final token = await _secureStorage.getToken();
       if (token == null) throw Exception('Token not found');
 
-      await _chatService.markRoomAsRead(
+      await ChatService.markRoomAsRead(
         token: token,
         roomId: _state.selectedRoomId!,
       );
@@ -617,7 +620,7 @@ class ChatNotifier extends ChangeNotifier {
   /// Load unread counts for all rooms
   Future<void> _loadUnreadCounts(String token) async {
     try {
-      final response = await _chatService.getUnreadCount(token: token);
+      final response = await ChatService.getUnreadCount(token: token);
 
       final countMap = <String, int>{};
       for (final room in _state.chatRooms) {

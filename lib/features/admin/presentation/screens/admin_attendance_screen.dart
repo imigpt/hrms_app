@@ -158,10 +158,41 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
   }
 
   String _formatWorkHours(double h) {
-    if (h <= 0) return '-';
+    // Show work hours for all cases - including very short sessions
+    if (h < 0) return '-'; // Only show dash for negative (invalid) values
+    
+    // For less than 1 minute, don't show anything (use threshold)
+    if (h < 0.017) { // Less than 1 minute (~0.017 hours)
+      return '-';
+    }
+    
+    // For hours >= 1 minute, show hours and minutes
     final hInt = h.floor();
     final mInt = ((h - hInt) * 60).round();
+    
+    if (hInt == 0) {
+      return '${mInt}m';
+    }
     return '${hInt}h ${mInt}m';
+  }
+
+  /// Calculate display hours for admin table
+  /// Uses API workHours value, or calculates from check-in to now if not checked out
+  double _calculateDisplayHours(AttendanceRecord record) {
+    // Start with API's workHours value if > 0
+    if (record.workHours > 0) {
+      return record.workHours.toDouble();
+    }
+    
+    // If no checkOut yet, calculate from check-in to now
+    if (record.checkOut == null && record.checkIn.time != null) {
+      final checkInDateTime = record.checkIn.time;
+      final nowTime = DateTime.now();
+      final diffMs = nowTime.difference(checkInDateTime).inMilliseconds;
+      return diffMs / (1000 * 60 * 60); // Convert to hours
+    }
+    
+    return 0.0;
   }
 
   String _statusLabel(String raw) {
@@ -1012,7 +1043,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             SizedBox(
               width: 100,
               child: Text(
-                _formatWorkHours(r.workHours),
+                _formatWorkHours(_calculateDisplayHours(r)),
                 style: const TextStyle(color: _textLight, fontSize: 12),
               ),
             ),

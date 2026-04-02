@@ -60,8 +60,8 @@ class AnnouncementsState extends Equatable {
   List<Announcement> get recentAnnouncements {
     final sorted = List<Announcement>.from(announcements);
     sorted.sort((a, b) {
-      final dateA = DateTime.tryParse(a.createdAt ?? '') ?? DateTime.now();
-      final dateB = DateTime.tryParse(b.createdAt ?? '') ?? DateTime.now();
+      final dateA = DateTime.tryParse((a.createdAt ?? '') as String) ?? DateTime.now();
+      final dateB = DateTime.tryParse((b.createdAt ?? '') as String) ?? DateTime.now();
       return dateB.compareTo(dateA);
     });
     return sorted;

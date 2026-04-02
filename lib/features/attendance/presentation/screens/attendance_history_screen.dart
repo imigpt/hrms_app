@@ -344,12 +344,30 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         ? DateFormat('hh:mm a').format(record.checkOut!.time.toLocal())
         : '-';
 
-    // Calculate duration
+    // Calculate duration - show for all employees including those still clocked in
     String duration = '-';
-    if (record.checkOut != null) {
-      final hours = record.workHours.floor();
-      final minutes = ((record.workHours - hours) * 60).round();
-      duration = '${hours}h ${minutes}m';
+    double displayHours = 0.0;
+    
+    // Start with API's workHours value
+    if (record.workHours != null && record.workHours > 0) {
+      displayHours = record.workHours.toDouble();
+    } else if (record.checkOut == null && record.checkIn.time != null) {
+      // If no checkOut yet, calculate from check-in to now
+      final checkInDateTime = record.checkIn.time;
+      final nowTime = DateTime.now();
+      final diffMs = nowTime.difference(checkInDateTime).inMilliseconds;
+      displayHours = diffMs / (1000 * 60 * 60); // Convert to hours
+    }
+    
+    // Format duration - show if at least 1 minute (0.017 hours)
+    if (displayHours >= 0.017) {
+      final hours = displayHours.floor();
+      final minutes = ((displayHours - hours) * 60).round();
+      if (hours == 0) {
+        duration = '${minutes}m';
+      } else {
+        duration = '${hours}h ${minutes}m';
+      }
     }
 
     // Check if has photo (check-in photo)
@@ -855,12 +873,30 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
             ? DateFormat('hh:mm a').format(record.checkOut!.time.toLocal())
             : '-';
 
-        // Calculate duration
+        // Calculate duration - show for all employees including those still clocked in
         String duration = '-';
-        if (record.checkOut != null) {
-          final hours = record.workHours.floor();
-          final minutes = ((record.workHours - hours) * 60).round();
-          duration = '${hours}h ${minutes}m';
+        double displayHours = 0.0;
+        
+        // Start with API's workHours value
+        if (record.workHours != null && record.workHours > 0) {
+          displayHours = record.workHours.toDouble();
+        } else if (record.checkOut == null && record.checkIn.time != null) {
+          // If no checkOut yet, calculate from check-in to now
+          final checkInDateTime = record.checkIn.time;
+          final nowTime = DateTime.now();
+          final diffMs = nowTime.difference(checkInDateTime).inMilliseconds;
+          displayHours = diffMs / (1000 * 60 * 60); // Convert to hours
+        }
+        
+        // Format duration - show if at least 1 minute (0.017 hours)
+        if (displayHours >= 0.017) {
+          final hours = displayHours.floor();
+          final minutes = ((displayHours - hours) * 60).round();
+          if (hours == 0) {
+            duration = '${minutes}m';
+          } else {
+            duration = '${hours}h ${minutes}m';
+          }
         }
 
         // Format date

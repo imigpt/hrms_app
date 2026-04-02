@@ -93,7 +93,7 @@ class DashboardState extends Equatable {
   }
 
   int get pendingLeaveRequests =>
-      dashboardData?.stats.pendingLeaveRequests ?? 0;
+      dashboardData?.stats.pendingLeaves ?? 0;
 
   int get totalTasks => dashboardData?.tasks.length ?? 0;
 
@@ -104,7 +104,7 @@ class DashboardState extends Equatable {
       dashboardData?.tasks.where((t) => t.status != 'completed').length ?? 0;
 
   int get totalExpenses =>
-      dashboardData?.stats.expensesPending ?? 0;
+      (dashboardData?.stats.pendingExpenses ?? 0).toInt();
 
   String get attendanceStatus {
     if (isCheckedIn) {
