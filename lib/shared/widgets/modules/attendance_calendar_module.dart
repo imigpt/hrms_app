@@ -125,7 +125,7 @@ class AttendanceColorMap {
       Color(0xFFE5E7EB),  // border-border
     ),
     AttendanceStatus.future: (
-      Color(0xFFTRANSPARENT),
+      const Color(0x00000000), // Transparent
       Color(0xFF9CA3AF),
       Color(0xFFE5E7EB),
     ),

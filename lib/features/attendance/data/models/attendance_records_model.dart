@@ -48,7 +48,11 @@ class AttendanceRecord {
   RecordCheckOut? checkOut;
   String status;
   double workHours;
+  int overtimeMinutes;
+  int totalWorkedMinutes;
   bool isManualEntry;
+  bool autoLoggedOut;
+  DateTime? autoLoggedOutAt;
   DateTime createdAt;
   DateTime updatedAt;
   int v;
@@ -62,7 +66,11 @@ class AttendanceRecord {
     this.checkOut,
     required this.status,
     required this.workHours,
+    required this.overtimeMinutes,
+    required this.totalWorkedMinutes,
     required this.isManualEntry,
+    required this.autoLoggedOut,
+    this.autoLoggedOutAt,
     required this.createdAt,
     required this.updatedAt,
     required this.v,
@@ -86,7 +94,13 @@ class AttendanceRecord {
             : null,
         status: json["status"] ?? "unknown",
         workHours: ((json["workHours"] ?? 0) as num).toDouble(),
+        overtimeMinutes: ((json["overtimeMinutes"] ?? 0) as num).toInt(),
+        totalWorkedMinutes: ((json["totalWorkedMinutes"] ?? 0) as num).toInt(),
         isManualEntry: json["isManualEntry"] ?? false,
+        autoLoggedOut: json["autoLoggedOut"] ?? false,
+        autoLoggedOutAt: json["autoLoggedOutAt"] != null
+            ? DateTime.parse(json["autoLoggedOutAt"])
+            : null,
         createdAt: json["createdAt"] != null
             ? DateTime.parse(json["createdAt"])
             : DateTime.now(),
@@ -105,7 +119,11 @@ class AttendanceRecord {
     "checkOut": checkOut?.toJson(),
     "status": status,
     "workHours": workHours,
+    "overtimeMinutes": overtimeMinutes,
+    "totalWorkedMinutes": totalWorkedMinutes,
     "isManualEntry": isManualEntry,
+    "autoLoggedOut": autoLoggedOut,
+    "autoLoggedOutAt": autoLoggedOutAt?.toIso8601String(),
     "createdAt": createdAt.toIso8601String(),
     "updatedAt": updatedAt.toIso8601String(),
     "__v": v,

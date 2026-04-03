@@ -2954,7 +2954,6 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
 
     final records = List.from(_attendanceRecords.reversed);
     final presentCount = records.where((r) => r['status']?.toString().toLowerCase() == 'present').length;
-    final lateCount    = records.where((r) => r['status']?.toString().toLowerCase() == 'late').length;
     final absentCount  = records.where((r) => r['status']?.toString().toLowerCase() == 'absent').length;
 
     return SingleChildScrollView(
@@ -3098,8 +3097,6 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
                   const Spacer(),
                   _attLegendDot(_green, 'P: $presentCount'),
                   const SizedBox(width: 10),
-                  _attLegendDot(_yellow, 'L: $lateCount'),
-                  const SizedBox(width: 10),
                   _attLegendDot(_red, 'A: $absentCount'),
                 ],
               ),
@@ -3143,11 +3140,6 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
                       statusColor = _green;
                       statusLabel = 'Present';
                       statusIcon = Icons.check_circle;
-                      break;
-                    case 'late':
-                      statusColor = _yellow;
-                      statusLabel = 'Late';
-                      statusIcon = Icons.schedule;
                       break;
                     case 'absent':
                       statusColor = _red;

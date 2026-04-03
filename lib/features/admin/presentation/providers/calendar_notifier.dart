@@ -13,6 +13,7 @@ class CalendarNotifier extends ChangeNotifier {
   }
 
   /// Fetch holidays for a company in the given month
+  /// Holidays are calendar events with eventType='holiday'
   Future<void> fetchHolidays(
     String token,
     String companyId,
@@ -33,11 +34,10 @@ class CalendarNotifier extends ChangeNotifier {
         final List<CalendarEvent> holidays = [];
         if (res['data'] is List) {
           for (final holiday in res['data']) {
-            holidays.add(CalendarEvent.fromJson({
-              ...holiday,
-              'type': 'holiday',
-              'color': '#FF8FA3',
-            }));
+            // Backend returns eventType='holiday', parse it with fromJson
+            final parsedHoliday = CalendarEvent.fromJson(holiday);
+            print('[CALENDAR NOTIFIER] ✓ Holiday: ${parsedHoliday.title} on ${parsedHoliday.date}');
+            holidays.add(parsedHoliday);
           }
         }
         print('[CALENDAR NOTIFIER] ✅ fetchHolidays: Success - ${holidays.length} holidays loaded');
@@ -55,7 +55,7 @@ class CalendarNotifier extends ChangeNotifier {
     }
   }
 
-  /// Fetch all calendar events for a date range
+  /// Fetch all calendar events for a date range (excludes holidays)
   Future<void> fetchEvents(
     String token,
     String userId,
@@ -77,7 +77,12 @@ class CalendarNotifier extends ChangeNotifier {
         final List<CalendarEvent> events = [];
         if (res['data'] is List) {
           for (final event in res['data']) {
-            events.add(CalendarEvent.fromJson(event));
+            final calendarEvent = CalendarEvent.fromJson(event);
+            print('[CALENDAR NOTIFIER] ✓ Event: ${calendarEvent.title} on ${calendarEvent.date}');
+            // Filter out holidays from events list (they'll be in holidays list)
+            if (calendarEvent.eventType != 'holiday') {
+              events.add(calendarEvent);
+            }
           }
         }
         print('[CALENDAR NOTIFIER] ✅ fetchEvents: Success - ${events.length} events loaded');
@@ -96,6 +101,7 @@ class CalendarNotifier extends ChangeNotifier {
   }
 
   /// Create a new event
+  /// Event data should include: title, eventDate, eventType, and optionally description, endDate, allDay, priority, status
   Future<bool> createEvent(
     String token,
     Map<String, dynamic> eventData,
@@ -103,10 +109,44 @@ class CalendarNotifier extends ChangeNotifier {
     print('[CALENDAR NOTIFIER] createEvent: Starting - Event: ${eventData['title']}');
     _setState(_state.copyWith(isSaving: true, error: null));
     try {
-      final res = await CalendarService.createEvent(token, eventData);
+      // Format dates as YYYY-MM-DD (without time) to avoid timezone issues
+      final rawEventDate = eventData['eventDate'] ?? eventData['date'];
+      final rawEndDate = eventData['endDate'] ?? eventData['date'];
+      
+      String? formattedEventDate;
+      String? formattedEndDate;
+      
+      if (rawEventDate is DateTime) {
+        formattedEventDate = '${rawEventDate.year.toString().padLeft(4, '0')}-${rawEventDate.month.toString().padLeft(2, '0')}-${rawEventDate.day.toString().padLeft(2, '0')}';
+      } else {
+        formattedEventDate = rawEventDate?.toString();
+      }
+      
+      if (rawEndDate is DateTime) {
+        formattedEndDate = '${rawEndDate.year.toString().padLeft(4, '0')}-${rawEndDate.month.toString().padLeft(2, '0')}-${rawEndDate.day.toString().padLeft(2, '0')}';
+      } else {
+        formattedEndDate = rawEndDate?.toString();
+      }
+      
+      // Ensure eventDate is properly formatted
+      final payload = {
+        'title': eventData['title'] ?? '',
+        'eventDate': formattedEventDate,
+        'eventType': eventData['eventType'] ?? 'manual',
+        'description': eventData['description'] ?? '',
+        'endDate': formattedEndDate,
+        'allDay': eventData['allDay'] ?? true,
+        'priority': eventData['priority'] ?? 'medium',
+        'status': eventData['status'] ?? 'scheduled',
+        ...eventData, // Include any other fields passed in
+      };
+      
+      print('[CALENDAR NOTIFIER] createEvent: Formatted payload - eventDate: $formattedEventDate, endDate: $formattedEndDate');
+
+      final res = await CalendarService.createEvent(token, payload);
 
       if (res['success'] != false) {
-        print('[CALENDAR NOTIFIER] ✅ createEvent: Success - EventId: ${res['data']?['id']}');
+        print('[CALENDAR NOTIFIER] ✅ createEvent: Success - EventId: ${res['data']?['_id'] ?? res['data']?['id']}');
         _setState(_state.copyWith(
           successMessage: 'Event created successfully',
           isSaving: false,
@@ -127,20 +167,41 @@ class CalendarNotifier extends ChangeNotifier {
     }
   }
 
-  /// Create a new holiday
+  /// Create a new holiday as a calendar event
+  /// Holiday data should include: title, eventDate, and optionally description, allDay
   Future<bool> createHoliday(
     String token,
     String companyId,
     Map<String, dynamic> holidayData,
   ) async {
-    print('[CALENDAR NOTIFIER] createHoliday: Starting - CompanyId: $companyId, Holiday: ${holidayData['name']}');
+    print('[CALENDAR NOTIFIER] createHoliday: Starting - CompanyId: $companyId, Holiday: ${holidayData['title']}');
     _setState(_state.copyWith(isSaving: true, error: null));
     try {
-      final res =
-          await CalendarService.createHoliday(token, companyId, holidayData);
+      // Format date as YYYY-MM-DD (without time) to avoid timezone issues
+      final rawEventDate = holidayData['eventDate'] ?? holidayData['date'];
+      String? formattedEventDate;
+      
+      if (rawEventDate is DateTime) {
+        formattedEventDate = '${rawEventDate.year.toString().padLeft(4, '0')}-${rawEventDate.month.toString().padLeft(2, '0')}-${rawEventDate.day.toString().padLeft(2, '0')}';
+      } else {
+        formattedEventDate = rawEventDate?.toString();
+      }
+      
+      // Ensure the holiday has the required backend fields
+      final payload = {
+        'title': holidayData['title'] ?? holidayData['name'] ?? '',
+        'eventDate': formattedEventDate,
+        'description': holidayData['description'] ?? '',
+        'allDay': holidayData['allDay'] ?? true,
+        // eventType='holiday' will be added by the service
+      };
+      
+      print('[CALENDAR NOTIFIER] createHoliday: Formatted payload - eventDate: $formattedEventDate');
+
+      final res = await CalendarService.createHoliday(token, companyId, payload);
 
       if (res['success'] != false) {
-        print('[CALENDAR NOTIFIER] ✅ createHoliday: Success - HolidayId: ${res['data']?['id']}');
+        print('[CALENDAR NOTIFIER] ✅ createHoliday: Success - HolidayId: ${res['data']?['_id'] ?? res['data']?['id']}');
         _setState(_state.copyWith(
           successMessage: 'Holiday created successfully',
           isSaving: false,

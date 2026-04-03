@@ -132,8 +132,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             r.user.employeeId.toLowerCase().contains(q) ||
             r.user.department.toLowerCase().contains(q);
 
-        // Status filter
-        final matchStatus = _statusFilter == 'all' || r.status == _statusFilter;
+        // Status filter uses display status so active sessions can be filtered as in-progress.
+        final matchStatus =
+          _statusFilter == 'all' || _getFilterStatus(r) == _statusFilter;
 
         // User role filter
         bool matchRole = _userRoleFilter == 'all';
@@ -146,6 +147,16 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
       _computeStats(_filteredRecords);
     });
+  }
+
+  String _getFilterStatus(AttendanceRecord record) {
+    if (record.autoLoggedOut) {
+      return 'auto';
+    }
+    if (record.checkOut == null) {
+      return 'in-progress';
+    }
+    return record.status.toLowerCase();
   }
 
   String _formatTime(DateTime? dt) {
@@ -164,10 +175,63 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     return '${hInt}h ${mInt}m';
   }
 
+  String _formatMinutesToHours(int minutes) {
+    if (minutes <= 0) return '-';
+    final hInt = minutes ~/ 60;
+    final mInt = minutes % 60;
+    return '${hInt}h ${mInt}m';
+  }
+
+  String _getAutoLogoutStatus(AttendanceRecord record) {
+    if (record.autoLoggedOut) {
+      return 'Auto';
+    }
+    return record.checkOut != null ? 'Manual' : '-';
+  }
+
+  String _getDisplayHours(AttendanceRecord record) {
+    if (record.autoLoggedOut) {
+      return '-';
+    }
+
+    // If no checkout time, show "In Progress" instead of inflated hours
+    if (record.checkOut == null) {
+      return 'In Progress';
+    }
+    // Calculate actual work hours
+    final checkInTime = record.checkIn.time;
+    final checkOutTime = record.checkOut!.time;
+    final duration = checkOutTime.difference(checkInTime);
+    final hours = duration.inMinutes / 60.0;
+    return _formatWorkHours(hours);
+  }
+
+  String _getDisplayStatusLabel(AttendanceRecord record) {
+    if (record.autoLoggedOut) {
+      return '-';
+    }
+    if (record.checkOut == null) {
+      return 'In Progress';
+    }
+    return _statusLabel(record.status);
+  }
+
+  Color _getDisplayStatusColor(AttendanceRecord record) {
+    if (record.autoLoggedOut) {
+      return _textGrey;
+    }
+    if (record.checkOut == null) {
+      return Colors.blue;
+    }
+    return _statusColor(record.status);
+  }
+
   String _statusLabel(String raw) {
     switch (raw.toLowerCase()) {
       case 'present':
         return 'Present';
+      case 'in-progress':
+        return 'In Progress';
       case 'late':
         return 'Late';
       case 'absent':
@@ -185,6 +249,8 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     switch (raw.toLowerCase()) {
       case 'present':
         return _green;
+      case 'in-progress':
+        return Colors.blue;
       case 'late':
         return _orange;
       case 'absent':
@@ -245,6 +311,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
         'Check In Time',
         'Check Out Time',
         'Work Hours',
+        'Total Worked (Minutes)',
+        'Overtime',
+        'Logout Type',
         'Status',
       ];
 
@@ -264,15 +333,25 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       // Add data rows
       for (int i = 0; i < _filteredRecords.length; i++) {
         final record = _filteredRecords[i];
+        final isAutoLogout = record.autoLoggedOut;
         final rowData = [
           record.user.employeeId.toString(),
           record.user.name,
           record.user.department,
           _formatDate(record.date),
           _formatTime(record.checkIn.time),
-          _formatTime(record.checkOut?.time),
-          _formatWorkHours(record.workHours),
-          _statusLabel(record.status),
+          isAutoLogout ? '-' : _formatTime(record.checkOut?.time),
+          _getDisplayHours(record),
+          isAutoLogout
+              ? '-'
+              : _formatMinutesToHours(record.totalWorkedMinutes),
+          !isAutoLogout &&
+                  record.checkOut != null &&
+                  record.overtimeMinutes > 0
+              ? '${record.overtimeMinutes ~/ 60}h ${record.overtimeMinutes % 60}m'
+              : '-',
+          _getAutoLogoutStatus(record),
+          _getDisplayStatusLabel(record),
         ];
 
         for (int j = 0; j < rowData.length; j++) {
@@ -288,14 +367,17 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       print('✓ ${_filteredRecords.length} data rows added');
 
       // Set column widths
-      sheet.setColWidth(0, 15);
-      sheet.setColWidth(1, 20);
-      sheet.setColWidth(2, 18);
-      sheet.setColWidth(3, 16);
-      sheet.setColWidth(4, 16);
-      sheet.setColWidth(5, 16);
-      sheet.setColWidth(6, 14);
-      sheet.setColWidth(7, 14);
+      sheet.setColWidth(0, 15);  // Employee ID
+      sheet.setColWidth(1, 20);  // Employee Name
+      sheet.setColWidth(2, 18);  // Department
+      sheet.setColWidth(3, 16);  // Date
+      sheet.setColWidth(4, 16);  // Check In Time
+      sheet.setColWidth(5, 16);  // Check Out Time
+      sheet.setColWidth(6, 14);  // Work Hours
+      sheet.setColWidth(7, 18);  // Total Worked (Minutes)
+      sheet.setColWidth(8, 14);  // Overtime
+      sheet.setColWidth(9, 14);  // Logout Type
+      sheet.setColWidth(10, 14); // Status
 
       // Get save directory with proper fallbacks for mobile
       Directory? saveDir;
@@ -762,6 +844,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
               ),
             ),
             DropdownMenuItem(value: 'present', child: Text('Present')),
+            DropdownMenuItem(value: 'in-progress', child: Text('In Progress')),
             DropdownMenuItem(value: 'late', child: Text('Late')),
             DropdownMenuItem(value: 'absent', child: Text('Absent')),
             DropdownMenuItem(value: 'half-day', child: Text('Half Day')),
@@ -891,7 +974,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                     _colHeader('Date', 110),
                     _colHeader('Punch In', 100),
                     _colHeader('Punch Out', 100),
-                    _colHeader('Total Hours', 100),
+                    _colHeader('Total Hours', 120),
+                    _colHeader('Total Minutes', 120),
+                    _colHeader('Logout Type', 100),
                     _colHeader('Status', 100),
                     _colHeader('Photo', 80),
                     _colHeader('Check In Location', 150),
@@ -927,11 +1012,12 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
   Widget _buildRow(AttendanceRecord r, int index) {
     final isEven = index % 2 == 0;
-    final statusColor = _statusColor(r.status);
+    final statusColor = _getDisplayStatusColor(r);
+    final isAutoLogout = r.autoLoggedOut;
     final checkInLat = r.checkIn.location?.latitude;
     final checkInLng = r.checkIn.location?.longitude;
-    final checkOutLat = r.checkOut?.location?.latitude;
-    final checkOutLng = r.checkOut?.location?.longitude;
+    final checkOutLat = isAutoLogout ? null : r.checkOut?.location?.latitude;
+    final checkOutLng = isAutoLogout ? null : r.checkOut?.location?.longitude;
     final photoUrl = r.checkIn.photo.url;
 
     return Container(
@@ -942,8 +1028,9 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Employee
             SizedBox(
@@ -1004,16 +1091,66 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             SizedBox(
               width: 100,
               child: Text(
-                r.checkOut != null ? _formatTime(r.checkOut!.time) : '-',
+                !isAutoLogout && r.checkOut != null
+                    ? _formatTime(r.checkOut!.time)
+                    : '-',
                 style: const TextStyle(color: _textGrey, fontSize: 12),
               ),
             ),
             // Total Hours
             SizedBox(
-              width: 100,
+              width: 120,
+              child: RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: _getDisplayHours(r),
+                      style: const TextStyle(color: _textLight, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    if (!isAutoLogout && r.checkOut != null && r.overtimeMinutes > 0) ...[
+                      const TextSpan(text: '\n'),
+                      TextSpan(
+                        text: 'OT: ${(r.overtimeMinutes ~/ 60)}h ${(r.overtimeMinutes % 60)}m',
+                        style: const TextStyle(color: _orange, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            // Total Minutes
+            SizedBox(
+              width: 120,
               child: Text(
-                _formatWorkHours(r.workHours),
+                isAutoLogout ? '-' : _formatMinutesToHours(r.totalWorkedMinutes),
                 style: const TextStyle(color: _textLight, fontSize: 12),
+              ),
+            ),
+            // Logout Type
+            SizedBox(
+              width: 100,
+              child: Tooltip(
+                message: r.autoLoggedOut && r.autoLoggedOutAt != null
+                    ? 'Auto-logged out: ${_formatTime(r.autoLoggedOutAt)}'
+                    : r.checkOut != null
+                        ? 'Manual checkout'
+                        : 'Not checked out yet',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: r.autoLoggedOut ? Colors.orange.withOpacity(0.15) : Colors.green.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    _getAutoLogoutStatus(r),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: r.autoLoggedOut ? Colors.orange : Colors.green,
+                    ),
+                  ),
+                ),
               ),
             ),
             // Status
@@ -1033,7 +1170,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
                   ),
                 ),
                 child: Text(
-                  _statusLabel(r.status),
+                  _getDisplayStatusLabel(r),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: statusColor,

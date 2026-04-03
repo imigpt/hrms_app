@@ -38,10 +38,10 @@ class CalendarService {
     }
   }
 
-  // ── Company Holidays ───────────────────────────────────────────────────────
+  // ── Company Holidays (as Calendar Events with eventType='holiday') ────────
 
-  /// GET /api/company/holidays
-  /// Fetch holidays for a company in a given month/year
+  /// GET /api/calendar?eventType=holiday&startDate=...&endDate=...
+  /// Fetch holidays for a company in a given date range
   static Future<Map<String, dynamic>> getCompanyHolidays(
     String token,
     String companyId,
@@ -49,7 +49,15 @@ class CalendarService {
     int month,
   ) async {
     try {
-      final url = '$_base/company/$companyId/holidays?year=$year&month=$month';
+      // Get first and last day of the month
+      final startDate = DateTime(year, month, 1);
+      final endDate = DateTime(year, month + 1, 0); // Last day of month
+      
+      final url = '$_base/calendar'
+          '?eventType=holiday'
+          '&startDate=${startDate.toIso8601String()}'
+          '&endDate=${endDate.toIso8601String()}';
+      
       print('[CALENDAR API] GET Company Holidays - CompanyId: $companyId, Month: $month/$year');
       print('[CALENDAR API] Request URL: $url');
       
@@ -63,9 +71,24 @@ class CalendarService {
       final duration = DateTime.now().difference(startTime).inMilliseconds;
       
       print('[CALENDAR API] Response received in ${duration}ms - Status: ${res.statusCode}');
+      
+      // Log response body for debugging
+      if (res.statusCode >= 400) {
+        print('[CALENDAR API] ❌ API Error - Status: ${res.statusCode}');
+        print('[CALENDAR API] Response body: ${res.body.substring(0, 500)}');
+      }
+      
       final result = _decode(res);
       if (result['success'] != false) {
-        print('[CALENDAR API] ✅ Holidays fetched successfully: ${result['data']?.length ?? 0} holidays found');
+        final holidayCount = result['data']?.length ?? 0;
+        print('[CALENDAR API] ✅ Holidays fetched successfully: $holidayCount holidays found');
+        // Log sample holiday for debugging
+        if (result['data'] is List && (result['data'] as List).isNotEmpty) {
+          final firstHoliday = (result['data'] as List)[0];
+          print('[CALENDAR API] Sample holiday: title=${firstHoliday['title']}, eventType=${firstHoliday['eventType']}');
+        }
+      } else {
+        print('[CALENDAR API] ❌ API returned error: ${result['message']}');
       }
       return result;
     } on TimeoutException {
@@ -76,6 +99,7 @@ class CalendarService {
       };
     } catch (e) {
       print('[CALENDAR API ERROR] Exception in getCompanyHolidays: $e');
+      print('[CALENDAR API ERROR] Stack trace: ${StackTrace.current}');
       return {
         'success': false,
         'message': 'Failed to fetch holidays: $e',
@@ -83,24 +107,29 @@ class CalendarService {
     }
   }
 
-  /// POST /api/company/holidays
-  /// Create a new holiday
+  /// POST /api/calendar
+  /// Create a new holiday as a calendar event with eventType='holiday'
   static Future<Map<String, dynamic>> createHoliday(
     String token,
     String companyId,
     Map<String, dynamic> data,
   ) async {
     try {
-      final url = '$_base/company/$companyId/holidays';
+      final url = '$_base/calendar';
+      final payload = {
+        ...data,
+        'eventType': 'holiday', // Ensure it's marked as holiday
+      };
+      
       print('[CALENDAR API] POST Create Holiday - CompanyId: $companyId');
-      print('[CALENDAR API] Request data: ${jsonEncode(data)}');
+      print('[CALENDAR API] Request data: ${jsonEncode(payload)}');
       
       final startTime = DateTime.now();
       final res = await http
           .post(
             Uri.parse(url),
             headers: _h(token),
-            body: jsonEncode(data),
+            body: jsonEncode(payload),
           )
           .timeout(_timeout);
       final duration = DateTime.now().difference(startTime).inMilliseconds;
@@ -126,15 +155,15 @@ class CalendarService {
     }
   }
 
-  /// DELETE /api/company/holidays/:id
-  /// Delete a holiday
+  /// DELETE /api/calendar/:id
+  /// Delete a holiday (which is a calendar event)
   static Future<Map<String, dynamic>> deleteHoliday(
     String token,
     String companyId,
     String holidayId,
   ) async {
     try {
-      final url = '$_base/company/$companyId/holidays/$holidayId';
+      final url = '$_base/calendar/$holidayId';
       print('[CALENDAR API] DELETE Holiday - CompanyId: $companyId, HolidayId: $holidayId');
       
       final startTime = DateTime.now();
@@ -167,98 +196,10 @@ class CalendarService {
     }
   }
 
-  // ── Employee Schedules ─────────────────────────────────────────────────────
+  // ── Calendar Events ────────────────────────────────────────────────────────
 
-  /// GET /api/schedule/employee/:id
-  /// Fetch employee schedule/events for a month
-  static Future<Map<String, dynamic>> getEmployeeSchedule(
-    String token,
-    String employeeId,
-    int year,
-    int month,
-  ) async {
-    try {
-      final url = '$_base/schedule/employee/$employeeId?year=$year&month=$month';
-      print('[CALENDAR API] GET Employee Schedule - EmployeeId: $employeeId, Month: $month/$year');
-      print('[CALENDAR API] Request URL: $url');
-      
-      final startTime = DateTime.now();
-      final res = await http
-          .get(
-            Uri.parse(url),
-            headers: _h(token),
-          )
-          .timeout(_timeout);
-      final duration = DateTime.now().difference(startTime).inMilliseconds;
-      
-      print('[CALENDAR API] Response received in ${duration}ms - Status: ${res.statusCode}');
-      final result = _decode(res);
-      if (result['success'] != false) {
-        print('[CALENDAR API] ✅ Employee schedule fetched successfully');
-      }
-      return result;
-    } on TimeoutException {
-      print('[CALENDAR API ERROR] Request timeout (${_timeout.inSeconds}s) - getEmployeeSchedule');
-      return {
-        'success': false,
-        'message': 'Request timeout while fetching employee schedule',
-      };
-    } catch (e) {
-      print('[CALENDAR API ERROR] Exception in getEmployeeSchedule: $e');
-      return {
-        'success': false,
-        'message': 'Failed to fetch schedule: $e',
-      };
-    }
-  }
-
-  /// GET /api/schedule/admin
-  /// Fetch all employees' schedules for a month (admin only)
-  static Future<Map<String, dynamic>> getAdminSchedule(
-    String token,
-    String companyId,
-    int year,
-    int month,
-  ) async {
-    try {
-      final url = '$_base/schedule/admin?companyId=$companyId&year=$year&month=$month';
-      print('[CALENDAR API] GET Admin Schedule - CompanyId: $companyId, Month: $month/$year');
-      print('[CALENDAR API] Request URL: $url');
-      
-      final startTime = DateTime.now();
-      final res = await http
-          .get(
-            Uri.parse(url),
-            headers: _h(token),
-          )
-          .timeout(_timeout);
-      final duration = DateTime.now().difference(startTime).inMilliseconds;
-      
-      print('[CALENDAR API] Response received in ${duration}ms - Status: ${res.statusCode}');
-      final result = _decode(res);
-      if (result['success'] != false) {
-        print('[CALENDAR API] ✅ Admin schedule fetched successfully');
-      }
-      return result;
-    } on TimeoutException {
-      print('[CALENDAR API ERROR] Request timeout (${_timeout.inSeconds}s) - getAdminSchedule');
-      return {
-        'success': false,
-        'message': 'Request timeout while fetching admin schedule',
-      };
-    } catch (e) {
-      print('[CALENDAR API ERROR] Exception in getAdminSchedule: $e');
-      return {
-        'success': false,
-        'message': 'Failed to fetch admin schedule: $e',
-      };
-    }
-  }
-
-  // ── Events (Tasks, Leaves, Approvals) ──────────────────────────────────────
-
-  /// GET /api/calendar/events
-  /// Fetch all events (tasks, leaves, approvals) for a date range
+  /// GET /api/calendar?startDate=...&endDate=...
+  /// Fetch all calendar events for a date range (excludes holidays)
   static Future<Map<String, dynamic>> getCalendarEvents(
     String token,
     String userId,
@@ -266,7 +207,11 @@ class CalendarService {
     DateTime endDate,
   ) async {
     try {
-      final url = '$_base/calendar/events?userId=$userId&startDate=${startDate.toIso8601String()}&endDate=${endDate.toIso8601String()}';
+      // Fetch events while excluding holidays
+      final url = '$_base/calendar'
+          '?startDate=${startDate.toIso8601String()}'
+          '&endDate=${endDate.toIso8601String()}';
+      
       print('[CALENDAR API] GET Calendar Events - UserId: $userId');
       print('[CALENDAR API] Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
       print('[CALENDAR API] Request URL: $url');
@@ -281,9 +226,24 @@ class CalendarService {
       final duration = DateTime.now().difference(startTime).inMilliseconds;
       
       print('[CALENDAR API] Response received in ${duration}ms - Status: ${res.statusCode}');
+      
+      // Log response body for debugging
+      if (res.statusCode >= 400) {
+        print('[CALENDAR API] ❌ API Error - Status: ${res.statusCode}');
+        print('[CALENDAR API] Response body: ${res.body.substring(0, 500)}');
+      }
+      
       final result = _decode(res);
       if (result['success'] != false) {
-        print('[CALENDAR API] ✅ Calendar events fetched successfully: ${result['data']?.length ?? 0} events found');
+        final eventCount = result['data']?.length ?? 0;
+        print('[CALENDAR API] ✅ Calendar events fetched successfully: $eventCount events found');
+        // Log sample event for debugging
+        if (result['data'] is List && (result['data'] as List).isNotEmpty) {
+          final firstEvent = (result['data'] as List)[0];
+          print('[CALENDAR API] Sample event: id=${firstEvent['_id'] ?? firstEvent['id']}, title=${firstEvent['title']}, eventType=${firstEvent['eventType']}');
+        }
+      } else {
+        print('[CALENDAR API] ❌ API returned error: ${result['message']}');
       }
       return result;
     } on TimeoutException {
@@ -294,6 +254,7 @@ class CalendarService {
       };
     } catch (e) {
       print('[CALENDAR API ERROR] Exception in getCalendarEvents: $e');
+      print('[CALENDAR API ERROR] Stack trace: ${StackTrace.current}');
       return {
         'success': false,
         'message': 'Failed to fetch events: $e',
@@ -301,14 +262,14 @@ class CalendarService {
     }
   }
 
-  /// POST /api/calendar/events
-  /// Create a new event
+  /// POST /api/calendar
+  /// Create a new calendar event
   static Future<Map<String, dynamic>> createEvent(
     String token,
     Map<String, dynamic> data,
   ) async {
     try {
-      final url = '$_base/calendar/events';
+      final url = '$_base/calendar';
       print('[CALENDAR API] POST Create Event');
       print('[CALENDAR API] Request data: ${jsonEncode(data)}');
       
@@ -325,7 +286,7 @@ class CalendarService {
       print('[CALENDAR API] Response received in ${duration}ms - Status: ${res.statusCode}');
       final result = _decode(res);
       if (result['success'] != false) {
-        print('[CALENDAR API] ✅ Event created successfully - EventId: ${result['data']?['id'] ?? 'unknown'}');
+        print('[CALENDAR API] ✅ Event created successfully - EventId: ${result['data']?['_id'] ?? result['data']?['id'] ?? 'unknown'}');
       }
       return result;
     } on TimeoutException {
@@ -343,15 +304,15 @@ class CalendarService {
     }
   }
 
-  /// PUT /api/calendar/events/:id
-  /// Update an event
+  /// PUT /api/calendar/:id
+  /// Update a calendar event
   static Future<Map<String, dynamic>> updateEvent(
     String token,
     String eventId,
     Map<String, dynamic> data,
   ) async {
     try {
-      final url = '$_base/calendar/events/$eventId';
+      final url = '$_base/calendar/$eventId';
       print('[CALENDAR API] PUT Update Event - EventId: $eventId');
       print('[CALENDAR API] Request data: ${jsonEncode(data)}');
       
@@ -386,14 +347,14 @@ class CalendarService {
     }
   }
 
-  /// DELETE /api/calendar/events/:id
-  /// Delete an event
+  /// DELETE /api/calendar/:id
+  /// Delete a calendar event
   static Future<Map<String, dynamic>> deleteEvent(
     String token,
     String eventId,
   ) async {
     try {
-      final url = '$_base/calendar/events/$eventId';
+      final url = '$_base/calendar/$eventId';
       print('[CALENDAR API] DELETE Event - EventId: $eventId');
       
       final startTime = DateTime.now();
@@ -422,6 +383,56 @@ class CalendarService {
       return {
         'success': false,
         'message': 'Failed to delete event: $e',
+      };
+    }
+  }
+
+  /// GET /api/calendar/aggregated?startDate=...&endDate=...&sources=events,tasks,followups
+  /// Get aggregated calendar (events, tasks, lead follow-ups)
+  static Future<Map<String, dynamic>> getAggregatedCalendar(
+    String token,
+    DateTime startDate,
+    DateTime endDate, {
+    List<String> sources = const ['events', 'tasks', 'followups'],
+  }) async {
+    try {
+      final sourceParam = sources.join(',');
+      final url = '$_base/calendar/aggregated'
+          '?startDate=${startDate.toIso8601String()}'
+          '&endDate=${endDate.toIso8601String()}'
+          '&sources=$sourceParam';
+      
+      print('[CALENDAR API] GET Aggregated Calendar');
+      print('[CALENDAR API] Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
+      print('[CALENDAR API] Sources: $sourceParam');
+      print('[CALENDAR API] Request URL: $url');
+      
+      final startTime = DateTime.now();
+      final res = await http
+          .get(
+            Uri.parse(url),
+            headers: _h(token),
+          )
+          .timeout(_timeout);
+      final duration = DateTime.now().difference(startTime).inMilliseconds;
+      
+      print('[CALENDAR API] Response received in ${duration}ms - Status: ${res.statusCode}');
+      final result = _decode(res);
+      if (result['success'] != false) {
+        print('[CALENDAR API] ✅ Aggregated calendar fetched successfully: ${result['data']?.length ?? 0} items found');
+      }
+      return result;
+    } on TimeoutException {
+      print('[CALENDAR API ERROR] Request timeout (${_timeout.inSeconds}s) - getAggregatedCalendar');
+      return {
+        'success': false,
+        'message': 'Request timeout while fetching aggregated calendar',
+      };
+    } catch (e) {
+      print('[CALENDAR API ERROR] Exception in getAggregatedCalendar: $e');
+      return {
+        'success': false,
+        'message': 'Failed to fetch aggregated calendar: $e',
       };
     }
   }

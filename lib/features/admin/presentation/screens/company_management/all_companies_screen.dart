@@ -165,7 +165,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
@@ -217,12 +217,24 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
         companyStats = null;
       });
 
-      final stats = await _service.getCompanyStats(company.id!);
-      print('[API DEBUG] _showCompanyOverview: Stats fetched successfully');
+      final results = await Future.wait<Map<String, dynamic>>([
+        _service.getCompanyStats(company.id!),
+        _service.getCompanyOverview(company.id!),
+      ]);
+      print('[API DEBUG] _showCompanyOverview: Stats and overview fetched successfully');
+
+      final stats = results[0];
+      final overview = results[1];
 
       final employeeData = stats['employees'] ?? {};
       final employeeList = (employeeData['byDepartment'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
       final statusList = (employeeData['byStatus'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+      
+      // Extract additional data
+      final hrUsersList = (overview['hrUsers'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+      final leadsList = (overview['leads'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+      final documentsList = (overview['documents'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
+      final activitiesList = (overview['activities'] as List?)?.map((e) => e as Map<String, dynamic>).toList() ?? [];
 
       setState(() => companyStats = stats);
 
@@ -237,7 +249,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
       showDialog(
         context: context,
         builder: (context) => Dialog(
-          backgroundColor: AppTheme.surface,
+          backgroundColor: AppTheme.background,
           elevation: 8,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
@@ -250,8 +262,18 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Dialog Header
-                  Padding(
+                  // Dialog Header with AppTheme styling
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.08),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                      border: Border(
+                        bottom: BorderSide(color: AppTheme.outline.withOpacity(0.2), width: 1),
+                      ),
+                    ),
                     padding: EdgeInsets.all(isMobile ? 16 : 24),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -266,10 +288,12 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.onSurface,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Company Overview',
+                                'Company Overview • ${company.status?.toUpperCase() ?? 'ACTIVE'}',
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: AppTheme.outline,
                                 ),
@@ -278,26 +302,27 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: AppTheme.onSurface),
+                          icon: Icon(Icons.close, color: AppTheme.onSurface, size: isMobile ? 20 : 24),
                           onPressed: () => Navigator.pop(context),
+                          tooltip: 'Close',
                         ),
                       ],
                     ),
                   ),
-                  Divider(color: AppTheme.surfaceVariant, height: 1),
 
-                  // Dialog Content
+                  // Dialog Content with responsive padding
                   Padding(
-                    padding: EdgeInsets.all(isMobile ? 16 : 24),
+                    padding: EdgeInsets.all(isMobile ? 12 : 20),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Company Details Section
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(isMobile ? 12 : 16),
                           decoration: BoxDecoration(
-                            color: AppTheme.surfaceVariant,
+                            color: AppTheme.surfaceVariant.withOpacity(0.5),
+                            border: Border.all(color: AppTheme.outline.withOpacity(0.2), width: 1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
@@ -309,52 +334,66 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                                   color: AppTheme.onSurface,
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              
-                              // Company ID
-                              _buildInfoRow('Company ID', company.id ?? 'N/A', isMobile),
                               const SizedBox(height: 12),
                               
-                              // Email and Phone in row
+                              // Company ID (Full width)
+                              _buildCompanyDetailRow('Company ID', company.companyId ?? 'N/A', isMobile),
+                              
+                              // Email and Phone (Responsive)
                               if (isMobile)
                                 Column(
                                   children: [
-                                    _buildInfoRow('Email', company.email ?? 'N/A', isMobile),
                                     const SizedBox(height: 12),
-                                    _buildInfoRow('Phone', company.phone ?? 'N/A', isMobile),
+                                    _buildCompanyDetailRow('Email', company.email ?? 'N/A', isMobile),
+                                    const SizedBox(height: 12),
+                                    _buildCompanyDetailRow('Phone', company.phone ?? 'N/A', isMobile),
                                   ],
                                 )
                               else
                                 Row(
                                   children: [
-                                    Expanded(child: _buildInfoRow('Email', company.email ?? 'N/A', isMobile)),
+                                    Expanded(child: Column(children: [
+                                      const SizedBox(height: 12),
+                                      _buildCompanyDetailRow('Email', company.email ?? 'N/A', isMobile),
+                                    ])),
                                     const SizedBox(width: 16),
-                                    Expanded(child: _buildInfoRow('Phone', company.phone ?? 'N/A', isMobile)),
+                                    Expanded(child: Column(children: [
+                                      const SizedBox(height: 12),
+                                      _buildCompanyDetailRow('Phone', company.phone ?? 'N/A', isMobile),
+                                    ])),
                                   ],
                                 ),
                               
+                              // Address (Full width)
                               if (company.address != null && company.address!.isNotEmpty) ...[
                                 const SizedBox(height: 12),
-                                _buildInfoRow('Address', company.address!, isMobile),
+                                _buildCompanyDetailRow('Address', company.address!, isMobile),
                               ],
                               
+                              // Industry and Size (Responsive)
                               if (company.industry != null && company.industry!.isNotEmpty) ...[
                                 const SizedBox(height: 12),
                                 if (isMobile)
-                                  _buildInfoRow('Industry', company.industry!, isMobile)
+                                  Column(
+                                    children: [
+                                      _buildCompanyDetailRow('Industry', company.industry!, isMobile),
+                                      const SizedBox(height: 12),
+                                      _buildCompanyDetailRow('Size', company.size ?? 'N/A', isMobile),
+                                    ],
+                                  )
                                 else
                                   Row(
                                     children: [
-                                      Expanded(child: _buildInfoRow('Industry', company.industry!, isMobile)),
+                                      Expanded(child: _buildCompanyDetailRow('Industry', company.industry!, isMobile)),
                                       const SizedBox(width: 16),
-                                      Expanded(child: _buildInfoRow('Size', company.size ?? 'N/A', isMobile)),
+                                      Expanded(child: _buildCompanyDetailRow('Size', company.size ?? 'N/A', isMobile)),
                                     ],
                                   ),
                               ],
                             ],
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
                         // Employee Statistics Section
                         Text('Employee Statistics',
@@ -365,23 +404,27 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Stats Grid
+                        // Stats Grid - Responsive
                         isMobile
                             ? Column(
                                 children: [
-                                  _buildStatBox('Total Employees', (stats['employees']?['total'] ?? 0).toString(), color: Colors.blue),
+                                  _buildStatBoxNew('Total Employees', (stats['employees']?['total'] ?? 0).toString(), 
+                                    icon: Icons.people, color: AppTheme.primaryColor),
                                   const SizedBox(height: 12),
-                                  _buildStatBox('HR Users', (stats['hrCount'] ?? 0).toString(), color: Colors.purple),
+                                  _buildStatBoxNew('HR Users', (stats['hrCount'] ?? 0).toString(), 
+                                    icon: Icons.admin_panel_settings, color: AppTheme.secondaryColor),
                                 ],
                               )
                             : Row(
                                 children: [
                                   Expanded(
-                                    child: _buildStatBox('Total Employees', (stats['employees']?['total'] ?? 0).toString(), color: Colors.blue),
+                                    child: _buildStatBoxNew('Total Employees', (stats['employees']?['total'] ?? 0).toString(), 
+                                      icon: Icons.people, color: AppTheme.primaryColor),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: _buildStatBox('HR Users', (stats['hrCount'] ?? 0).toString(), color: Colors.purple),
+                                    child: _buildStatBoxNew('HR Users', (stats['hrCount'] ?? 0).toString(), 
+                                      icon: Icons.admin_panel_settings, color: AppTheme.secondaryColor),
                                   ),
                                 ],
                               ),
@@ -417,7 +460,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: Colors.blue.withOpacity(0.15),
+                                          color: AppTheme.primaryColor.withOpacity(0.15),
                                           borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
@@ -425,7 +468,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                                           style: const TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.blue,
+                                            color: AppTheme.primaryColor,
                                           ),
                                         ),
                                       )
@@ -459,10 +502,10 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                                 ...statusList.map((status) {
                                   final statusStr = status['_id'] ?? 'Unknown';
                                   final color = statusStr.toLowerCase() == 'active' 
-                                      ? Colors.green 
+                                      ? AppTheme.successColor 
                                       : statusStr.toLowerCase() == 'inactive' 
-                                      ? Colors.orange 
-                                      : Colors.red;
+                                      ? AppTheme.warningColor 
+                                      : AppTheme.errorColor;
 
                                   return Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -496,23 +539,342 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                             ),
                           ),
                         ],
+
+                        // HR Users Section
+                        if (hrUsersList.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('HR Users',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                ...hrUsersList.map((user) {
+                                  final userName = user['name'] ?? 'Unknown';
+                                  final userEmail = user['email'] ?? 'N/A';
+                                  final userStatus = user['status'] ?? 'active';
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(userName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.onSurface)),
+                                                  Text(userEmail, style: const TextStyle(fontSize: 11, color: AppTheme.outline)),
+                                                ],
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: userStatus.toString().toLowerCase() == 'active'
+                                                    ? AppTheme.successColor.withOpacity(0.15)
+                                                    : AppTheme.warningColor.withOpacity(0.15),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                userStatus.toString(),
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: userStatus.toString().toLowerCase() == 'active'
+                                                      ? AppTheme.successColor
+                                                      : AppTheme.warningColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (hrUsersList.indexOf(user) < hrUsersList.length - 1)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 8),
+                                            child: Divider(color: AppTheme.outline.withOpacity(0.2), height: 1),
+                                          ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        // Leads Section
+                        if (leadsList.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Leads',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                ...leadsList.map((lead) {
+                                  final leadName = lead['name'] ?? 'Unknown';
+                                  final leadPhone = lead['phone'] ?? 'N/A';
+                                  final leadCity = lead['city'] ?? 'N/A';
+                                  final leadStatus = lead['status'] ?? 'open';
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(leadName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.onSurface)),
+                                                  Text('$leadCity • $leadPhone', style: const TextStyle(fontSize: 11, color: AppTheme.outline)),
+                                                ],
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: leadStatus.toString().toLowerCase() == 'closed'
+                                                    ? AppTheme.successColor.withOpacity(0.15)
+                                                    : AppTheme.primaryColor.withOpacity(0.15),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                leadStatus.toString(),
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: leadStatus.toString().toLowerCase() == 'closed'
+                                                      ? AppTheme.successColor
+                                                      : AppTheme.primaryColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (leadsList.indexOf(lead) < leadsList.length - 1)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 8),
+                                            child: Divider(color: AppTheme.outline.withOpacity(0.2), height: 1),
+                                          ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        // Documents Section
+                        if (documentsList.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Documents',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                ...documentsList.map((doc) {
+                                  final docName = doc['name'] ?? 'Unknown';
+                                  final docType = doc['uploadType'] ?? 'File';
+                                  final docStatus = doc['status'] ?? 'pending';
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(docName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                  Text(docType, style: const TextStyle(fontSize: 11, color: AppTheme.outline)),
+                                                ],
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: docStatus.toString().toLowerCase() == 'verified'
+                                                    ? AppTheme.successColor.withOpacity(0.15)
+                                                    : AppTheme.warningColor.withOpacity(0.15),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                docStatus.toString(),
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: docStatus.toString().toLowerCase() == 'verified'
+                                                      ? AppTheme.successColor
+                                                      : AppTheme.warningColor,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        if (documentsList.indexOf(doc) < documentsList.length - 1)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 8),
+                                            child: Divider(color: AppTheme.outline.withOpacity(0.2), height: 1),
+                                          ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        // Activities Section
+                        if (activitiesList.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Recent Activities',
+                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                ...activitiesList.take(5).map((activity) {
+                                  final actType = activity['type'] ?? 'System';
+                                  final actLabel = activity['label'] ?? 'Activity';
+                                  final actDate = activity['createdAt'] ?? '';
+                                  
+                                  // Parse date
+                                  String formattedDate = 'N/A';
+                                  try {
+                                    if (actDate.isNotEmpty) {
+                                      final dateTime = DateTime.parse(actDate.toString());
+                                      formattedDate = '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+                                    }
+                                  } catch (e) {
+                                    formattedDate = actDate.toString();
+                                  }
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(actLabel, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.onSurface)),
+                                                  Text(actType, style: const TextStyle(fontSize: 11, color: AppTheme.outline)),
+                                                ],
+                                              ),
+                                            ),
+                                            Text(formattedDate, style: const TextStyle(fontSize: 10, color: AppTheme.outline)),
+                                          ],
+                                        ),
+                                        if (activitiesList.take(5).toList().indexOf(activity) < activitiesList.take(5).toList().length - 1)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 8),
+                                            child: Divider(color: AppTheme.outline.withOpacity(0.2), height: 1),
+                                          ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
 
                   // Dialog Footer
-                  Padding(
-                    padding: EdgeInsets.all(isMobile ? 16 : 24),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryColor,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text('Close', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: AppTheme.outline.withOpacity(0.2), width: 1),
                       ),
+                      color: AppTheme.surface.withOpacity(0.5),
+                    ),
+                    padding: EdgeInsets.all(isMobile ? 12 : 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isMobile ? 20 : 32,
+                              vertical: isMobile ? 10 : 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Close',
+                            style: TextStyle(
+                              fontSize: isMobile ? 12 : 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -532,14 +894,73 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     }
   }
 
-  Widget _buildInfoRow(String label, String value, bool isMobile) {
+  Widget _buildCompanyDetailRow(String label, String value, bool isMobile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.outline, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 13, color: AppTheme.onSurface, fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: isMobile ? 10 : 11,
+            color: AppTheme.outline,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: isMobile ? 12 : 13,
+            color: AppTheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
       ],
+    );
+  }
+
+  Widget _buildStatBoxNew(String label, String value, {required IconData icon, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.outline,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(icon, color: color, size: 18),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -570,40 +991,6 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     );
   }
 
-  void _showRejectDialog(Company company) {
-    selectedCompanyForReject = company;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Suspend Company'),
-        backgroundColor: AppTheme.surface,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Suspend: ${company.name}', style: const TextStyle(color: AppTheme.onSurface)),
-            const SizedBox(height: 16),
-            const Text('Are you sure you want to suspend this company? It will no longer be able to access the system.', 
-              style: TextStyle(color: AppTheme.outline)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context, true);
-              _updateCompanyStatus(selectedCompanyForReject!, 'suspended');
-            },
-            child: const Text('Suspend', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildFormDialog(String title, {required bool isCreate}) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -613,40 +1000,63 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
             : constraints.maxWidth * 0.6;
 
         return Dialog(
-          backgroundColor: AppTheme.surface,
+          backgroundColor: AppTheme.background,
           elevation: 8,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: dialogWidth,
-              maxHeight: MediaQuery.of(context).size.height * 0.9,
+              maxHeight: MediaQuery.of(context).size.height * 0.95,
             ),
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(isMobile ? 16 : 24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.onSurface,
+                  // Header with AppTheme styling
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.08),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                      border: Border(
+                        bottom: BorderSide(color: AppTheme.outline.withOpacity(0.2), width: 1),
+                      ),
+                    ),
+                    padding: EdgeInsets.all(isMobile ? 16 : 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.onSurface,
+                          ),
                         ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isCreate
-                        ? 'Create company and admin login. Company ID is generated automatically.'
-                        : 'Update company details and settings.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.outline,
+                        const SizedBox(height: 4),
+                        Text(
+                          isCreate
+                              ? 'Create company and admin login. Company ID is generated automatically.'
+                              : 'Update company details and settings.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.outline,
+                            fontSize: isMobile ? 11 : 12,
+                          ),
                         ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
 
-                  // Company Name (Full Width)
+                  // Form Content
+                  Padding(
+                    padding: EdgeInsets.all(isMobile ? 14 : 20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                   _buildFormField(
                     label: 'Company Name',
                     controller: nameCtrl,
@@ -744,15 +1154,25 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                     // Status (only for edit)
                     _buildStatusDropdown(isMobile),
                   ],
+                      ],
+                    ),
+                  ),
 
-                  SizedBox(height: isMobile ? 20 : 24),
-
-                  // Buttons
-                  _buildDialogButtons(isMobile),
+                  // Dialog Footer with Buttons
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: AppTheme.outline.withOpacity(0.2), width: 1),
+                      ),
+                      color: AppTheme.surface.withOpacity(0.5),
+                    ),
+                    padding: EdgeInsets.all(isMobile ? 12 : 16),
+                    child: _buildDialogButtons(isMobile),
+                  ),
                 ],
               ),
             ),
-          ),
+          )
         );
       },
     );
@@ -760,11 +1180,12 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
 
   Widget _buildResponsiveRow(bool isMobile, List<Widget> children) {
     if (isMobile) {
+      final expandedList = children
+          .expand((child) => [child, SizedBox(height: isMobile ? 12 : 16)])
+          .toList();
+      expandedList.removeLast();
       return Column(
-        children: children
-            .expand((child) => [child, SizedBox(height: isMobile ? 12 : 16)])
-            .toList()
-          ..removeLast(),
+        children: expandedList,
       );
     }
     return Row(
@@ -836,14 +1257,21 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
       children: [
         if (isMobile) ...[
           Expanded(
-            child: TextButton(
+            child: OutlinedButton(
               onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(
-                foregroundColor: AppTheme.outline,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.onSurface,
+                side: BorderSide(color: AppTheme.outline.withOpacity(0.3), width: 1),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: Text(
                 'Cancel',
-                style: Theme.of(context).textTheme.labelLarge,
+                style: TextStyle(
+                  fontSize: isMobile ? 12 : 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.onSurface,
+                ),
               ),
             ),
           ),
@@ -854,36 +1282,45 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
                 disabledBackgroundColor: AppTheme.primaryColor.withOpacity(0.5),
-                padding: EdgeInsets.symmetric(vertical: isMobile ? 12 : 14),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: isSaving
-                  ? SizedBox(
-                      height: 18,
-                      width: 18,
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Theme.of(context).scaffoldBackgroundColor,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
                   : Text(
-                      editingCompany == null ? 'Create' : 'Update',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Colors.white,
-                          ),
+                      editingCompany == null ? 'Create Company' : 'Save Changes',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
             ),
           ),
         ] else ...[
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.outline,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.onSurface,
+              side: BorderSide(color: AppTheme.outline.withOpacity(0.3), width: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Text(
               'Cancel',
-              style: Theme.of(context).textTheme.labelLarge,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.onSurface,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -892,22 +1329,26 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
               disabledBackgroundColor: AppTheme.primaryColor.withOpacity(0.5),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: isSaving
                 ? const SizedBox(
-                    height: 20,
-                    width: 20,
+                    height: 18,
+                    width: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
                 : Text(
-                    editingCompany == null ? 'Create' : 'Update',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Colors.white,
-                        ),
+                    editingCompany == null ? 'Create Company' : 'Save Changes',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
           ),
         ],
@@ -950,11 +1391,11 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.red, width: 1),
+        borderSide: const BorderSide(color: AppTheme.errorColor, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Colors.red, width: 2),
+        borderSide: const BorderSide(color: AppTheme.errorColor, width: 2),
       ),
     );
   }
@@ -986,7 +1427,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? AppTheme.errorColor : AppTheme.successColor,
         duration: const Duration(seconds: 3),
       ),
     );
@@ -1065,11 +1506,17 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                           ? Container(
                               padding: const EdgeInsets.all(32),
                               decoration: BoxDecoration(
-                                color: Colors.grey[900],
+                                color: AppTheme.surface,
                                 borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppTheme.outline.withOpacity(0.25)),
                               ),
-                              child: const Center(
-                                child: Text('No companies found'),
+                              child: Center(
+                                child: Text(
+                                  'No companies found',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: AppTheme.outline,
+                                      ),
+                                ),
                               ),
                             )
                           : ListView.separated(
@@ -1100,11 +1547,11 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
       children: [
-        _buildStatCard('Total Companies', total.toString(), Colors.blue, Icons.apartment),
-        _buildStatCard('Active', active.toString(), Colors.green, Icons.check_circle),
-        _buildStatCard('Pending', pending.toString(), Colors.orange, Icons.schedule),
-        _buildStatCard('Total Employees', totalEmployees.toString(), Colors.purple, Icons.people),
-        _buildStatCard('Total HR', totalHR.toString(), Colors.cyan, Icons.admin_panel_settings),
+        _buildStatCard('Total Companies', total.toString(), AppTheme.primaryColor, Icons.apartment),
+        _buildStatCard('Active', active.toString(), AppTheme.successColor, Icons.check_circle),
+        _buildStatCard('Pending', pending.toString(), AppTheme.warningColor, Icons.schedule),
+        _buildStatCard('Total Employees', totalEmployees.toString(), AppTheme.secondaryColor, Icons.people),
+        _buildStatCard('Total HR', totalHR.toString(), AppTheme.primaryColor, Icons.admin_panel_settings),
       ],
     );
   }
@@ -1125,7 +1572,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
           const SizedBox(height: 8),
           Text(
             title,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+            style: const TextStyle(fontSize: 12, color: AppTheme.outline),
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
@@ -1168,7 +1615,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                           const SizedBox(height: 4),
                           Text(
                             company.email ?? 'No email',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF8E8E93)),
+                            style: const TextStyle(fontSize: 12, color: AppTheme.outline),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1180,7 +1627,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'ID: ${company.id ?? "N/A"}',
+                              'ID: ${company.companyId ?? "N/A"}',
                               style: const TextStyle(fontSize: 10, color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1237,7 +1684,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                   _buildActionButton(
                     'Delete',
                     Icons.delete,
-                    colors: Colors.red,
+                    colors: AppTheme.errorColor,
                     onPressed: deletingCompanyId == company.id
                         ? null
                         : () => _deleteCompany(company.id ?? ''),
@@ -1247,7 +1694,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
                     _buildActionButton(
                       approvingId == company.id ? 'Activating...' : 'Activate',
                       Icons.check_circle,
-                      colors: Colors.green,
+                        colors: AppTheme.successColor,
                       onPressed: approvingId == company.id
                           ? null
                           : () => _updateCompanyStatus(company, 'active'),
@@ -1271,7 +1718,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF8E8E93))),
+          Text(label, style: const TextStyle(fontSize: 10, color: AppTheme.outline)),
           const SizedBox(height: 2),
           Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.onSurface)),
         ],
@@ -1285,20 +1732,20 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
 
     switch (status.toLowerCase()) {
       case 'active':
-        bgColor = Colors.green.withOpacity(0.2);
-        textColor = Colors.green;
+        bgColor = AppTheme.successColor.withOpacity(0.2);
+        textColor = AppTheme.successColor;
         break;
       case 'pending':
-        bgColor = Colors.orange.withOpacity(0.2);
-        textColor = Colors.orange;
+        bgColor = AppTheme.warningColor.withOpacity(0.2);
+        textColor = AppTheme.warningColor;
         break;
       case 'rejected':
-        bgColor = Colors.red.withOpacity(0.2);
-        textColor = Colors.red;
+        bgColor = AppTheme.errorColor.withOpacity(0.2);
+        textColor = AppTheme.errorColor;
         break;
       default:
-        bgColor = Colors.grey.withOpacity(0.2);
-        textColor = Colors.grey;
+        bgColor = AppTheme.outline.withOpacity(0.2);
+        textColor = AppTheme.outline;
     }
 
     return Container(
@@ -1333,46 +1780,6 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
             ? colors.withOpacity(0.5)
             : colors,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      ),
-    );
-  }
-
-  Widget _buildStatBox(String label, String value, {Color? bgColor, Color? textColor, Color? color}) {
-    // If color is provided (positional), use the colored version
-    if (color != null) {
-      return Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3), width: 1),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.outline, fontWeight: FontWeight.w500)),
-            const SizedBox(height: 6),
-            Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-          ],
-        ),
-      );
-    }
-    
-    // Default version with bgColor and textColor
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: bgColor ?? AppTheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: AppTheme.outline)),
-          const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor ?? AppTheme.onSurface)),
-        ],
       ),
     );
   }

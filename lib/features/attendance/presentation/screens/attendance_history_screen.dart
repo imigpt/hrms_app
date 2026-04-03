@@ -388,10 +388,6 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         statusColor = Colors.red;
         statusBgColor = Colors.red.withOpacity(0.15);
         break;
-      case 'late':
-        statusColor = Colors.orange;
-        statusBgColor = Colors.orange.withOpacity(0.15);
-        break;
       case 'leave':
         statusColor = Colors.purple;
         statusBgColor = Colors.purple.withOpacity(0.15);

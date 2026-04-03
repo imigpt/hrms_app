@@ -260,4 +260,30 @@ class CompanyService {
     }
   }
 
+  /// GET /api/companies/:id/overview - Get company overview details
+  Future<Map<String, dynamic>> getCompanyOverview(String id) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/companies/$id/overview');
+      print('🏢 [OVERVIEW] Fetching: $uri');
+
+      final response = await http
+          .get(
+            uri,
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('🏢 [OVERVIEW] Status: ${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final respBody = jsonDecode(response.body) as Map<String, dynamic>;
+        return respBody['data'] ?? respBody;
+      }
+      throw Exception('Failed to fetch company overview');
+    } catch (e) {
+      print('❌ [OVERVIEW] Error: $e');
+      throw Exception('Error fetching company overview: $e');
+    }
+  }
+
 }

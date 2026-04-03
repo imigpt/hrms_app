@@ -24,7 +24,7 @@ import 'package:hrms_app/shared/theme/app_theme.dart';
 // import 'attendance_api_test_screen.dart';
 
 // 1. Define Status Enum
-enum AttendanceStatus { present, absent, late, halfDay, leave }
+enum AttendanceStatus { present, absent, halfDay, leave }
 
 /// [initialAction] can be 'checkIn' or 'checkOut' to immediately trigger
 /// the respective flow when the screen opens from the dashboard.
@@ -301,9 +301,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             switch (record.status.toLowerCase().trim()) {
               case 'present':
                 status = AttendanceStatus.present;
-                break;
-              case 'late':
-                status = AttendanceStatus.late;
                 break;
               case 'absent':
                 status = AttendanceStatus.absent;
@@ -1033,7 +1030,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     final present = _summaryData?.present.toString() ?? '0';
-    final late = _summaryData?.late.toString() ?? '0';
     final absent = _summaryData?.absent.toString() ?? '0';
     final halfDay = _summaryData?.halfDay.toString() ?? '0';
     // final wfh = _summaryData?.wfh.toString() ?? '0';
@@ -1048,7 +1044,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     return Column(
       children: [
-        // First Row: Present, Late
+        // First Row: Present, Absent
         Row(
           children: [
             Expanded(
@@ -1062,27 +1058,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: _buildStatCard(
-                "Late",
-                late,
-                Icons.access_time,
-                Colors.orangeAccent,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        // Second Row: Absent, Half Day
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
                 "Absent",
                 absent,
                 Icons.cancel,
                 Colors.redAccent,
               ),
             ),
-            const SizedBox(width: 12),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Second Row: Half Day, Leaves
+        Row(
+          children: [
             Expanded(
               child: _buildStatCard(
                 "Half Day",
@@ -1091,12 +1078,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 Colors.amberAccent,
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        Row(
-          children: [
+            const SizedBox(width: 12),
             Expanded(
               child: _buildStatCard(
                 "Leaves",
@@ -1105,112 +1087,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 Colors.purpleAccent,
               ),
             ),
-        //     const SizedBox(width: 12),
-        //     Expanded(
-        //       child: _buildStatCard(
-        //         "Total Days",
-        //         _summaryData?.totalDays.toString() ?? '0',
-        //         Icons.calendar_today,
-        //         Colors.blueAccent,
-        //       ),
-            // ),
           ],
         ),
         // const SizedBox(height: 16),
-        // Summary Cards
-      //   Row(
-      //     children: [
-      //       Expanded(
-      //         child: Container(
-      //           padding: const EdgeInsets.all(16),
-      //           decoration: BoxDecoration(
-      //             color: const Color(0xFF141414),
-      //             borderRadius: BorderRadius.circular(16),
-      //             border: Border.all(color: Colors.white.withOpacity(0.05)),
-      //           ),
-      //           child: Column(
-      //             crossAxisAlignment: CrossAxisAlignment.start,
-      //             children: [
-      //               Row(
-      //                 children: [
-      //                   Icon(
-      //                     Icons.access_time_filled,
-      //                     color: Colors.cyanAccent,
-      //                     size: 20,
-      //                   ),
-      //                   const SizedBox(width: 8),
-      //                   Flexible(
-      //                     child: Text(
-      //                       'Total Work Hours',
-      //                       style: TextStyle(
-      //                         color: Colors.grey[500],
-      //                         fontSize: 12,
-      //                       ),
-      //                       overflow: TextOverflow.ellipsis,
-      //                     ),
-      //                   ),
-      //                 ],
-      //               ),
-      //               const SizedBox(height: 8),
-      //               Text(
-      //                 totalWorkHoursStr,
-      //                 style: const TextStyle(
-      //                   fontSize: 20,
-      //                   fontWeight: FontWeight.bold,
-      //                   color: Colors.white,
-      //                 ),
-      //               ),
-      //             ],
-      //           ),
-      //         ),
-      //       ),
-      //       const SizedBox(width: 12),
-      //       Expanded(
-      //         child: Container(
-      //           padding: const EdgeInsets.all(16),
-      //           decoration: BoxDecoration(
-      //             color: const Color(0xFF141414),
-      //             borderRadius: BorderRadius.circular(16),
-      //             border: Border.all(color: Colors.white.withOpacity(0.05)),
-      //           ),
-      //           child: Column(
-      //             crossAxisAlignment: CrossAxisAlignment.start,
-      //             children: [
-      //               Row(
-      //                 children: [
-      //                   Icon(
-      //                     Icons.trending_up,
-      //                     color: Colors.greenAccent,
-      //                     size: 20,
-      //                   ),
-      //                   const SizedBox(width: 8),
-      //                   Flexible(
-      //                     child: Text(
-      //                       'Avg. Work Hours',
-      //                       style: TextStyle(
-      //                         color: Colors.grey[500],
-      //                         fontSize: 12,
-      //                       ),
-      //                       overflow: TextOverflow.ellipsis,
-      //                     ),
-      //                   ),
-      //                 ],
-      //               ),
-      //               const SizedBox(height: 8),
-      //               Text(
-      //                 averageWorkHours,
-      //                 style: const TextStyle(
-      //                   fontSize: 20,
-      //                   fontWeight: FontWeight.bold,
-      //                   color: Colors.white,
-      //                 ),
-      //               ),
-      //             ],
-      //           ),
-      //         ),
-      //       ),
-      //     ],
-      //   ),
+        // Summary Cards - commented out for now
       ],
     );
   }
@@ -1222,8 +1102,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final kGreenText = const Color(0xFF4CAF50);
     final kRedBg = const Color(0xFF3A1B1B);
     final kRedText = const Color(0xFFE57373);
-    final kOrangeBg = const Color(0xFF3E2723);
-    final kOrangeText = Colors.orangeAccent;
     final kAmberBg = const Color(0xFF3E3520);
     final kAmberText = Colors.amberAccent;
     final kPurpleBg = const Color(0xFF2A1A3E);
@@ -1301,11 +1179,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             bgColor = kRedBg;
                             textColor = kRedText;
                             icon = Icons.close;
-                            break;
-                          case AttendanceStatus.late:
-                            bgColor = kOrangeBg;
-                            textColor = kOrangeText;
-                            icon = Icons.access_time;
                             break;
                           case AttendanceStatus.halfDay:
                             bgColor = kAmberBg;
@@ -1549,8 +1422,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         return 'Present';
       case 'absent':
         return 'Absent';
-      case 'late':
-        return 'Late';
       case 'leave':
       case 'on leave':
         return 'Leave';
@@ -1570,8 +1441,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         return Icons.check_circle_outline;
       case 'absent':
         return Icons.cancel_outlined;
-      case 'late':
-        return Icons.access_time;
       case 'leave':
       case 'on leave':
         return Icons.event_busy_outlined;
@@ -1626,10 +1495,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       case 'absent':
         statusColor = const Color(0xFFE57373);
         statusBgColor = const Color(0xFF3A1B1B);
-        break;
-      case 'late':
-        statusColor = Colors.orangeAccent;
-        statusBgColor = const Color(0xFF3E2723);
         break;
       case 'leave':
         statusColor = const Color(0xFFCE93D8);

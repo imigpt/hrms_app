@@ -414,8 +414,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               'totalHRAccounts': stats['totalHR'] ?? 0,
               'totalEmployees': stats['totalEmployees'] ?? 0,
               'activeToday': stats['activeToday'] ?? 0,
-              'totalLeaves': stats['totalLeaves'] ?? 0,
-              'totalTasks': stats['totalTasks'] ?? 0,
+              'pendingLeaves': stats['pendingLeaves'] ?? 0,
+              'activeTasks': stats['activeTasks'] ?? 0,
+              'pendingExpenses': stats['pendingExpenses'] ?? 0,
+              'totalExpenseAmount': stats['pendingExpenses'] ?? 0,
             };
             // Extract system health metrics
             final health = statsResult['systemHealth'] as Map<String, dynamic>? ?? {};

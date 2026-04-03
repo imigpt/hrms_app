@@ -1,5 +1,6 @@
 class Company {
-  final String? id;
+  final String? id; // MongoDB _id ObjectId
+  final String? companyId; // Custom readable ID (COMP-0001, etc.)
   final String name;
   final String? email;
   final String? phone;
@@ -17,6 +18,7 @@ class Company {
 
   Company({
     this.id,
+    this.companyId,
     required this.name,
     this.email,
     this.phone,
@@ -36,6 +38,7 @@ class Company {
   factory Company.fromJson(Map<String, dynamic> json) {
     return Company(
       id: json['_id'] as String?,
+      companyId: json['company_id'] as String?,
       name: json['name'] as String? ?? '',
       email: json['email'] as String?,
       phone: json['phone'] as String?,
@@ -60,6 +63,7 @@ class Company {
   Map<String, dynamic> toJson() {
     return {
       '_id': id,
+      'company_id': companyId,
       'name': name,
       'email': email,
       'phone': phone,
@@ -79,6 +83,7 @@ class Company {
 
   Company copyWith({
     String? id,
+    String? companyId,
     String? name,
     String? email,
     String? phone,
@@ -96,6 +101,7 @@ class Company {
   }) {
     return Company(
       id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
