@@ -4,16 +4,36 @@ import 'package:hrms_app/shared/theme/app_theme.dart';
 import 'package:hrms_app/features/admin/presentation/providers/calendar_notifier.dart';
 import 'package:intl/intl.dart';
 
+const List<Map<String, String>> _reminderOptions = [
+  {'value': 'none', 'label': 'No reminder'},
+  {'value': '30min', 'label': '30 minutes before'},
+  {'value': '1hr', 'label': '1 hour before'},
+  {'value': '1day', 'label': '1 day before'},
+];
+
+const List<Map<String, String>> _timezoneOptions = [
+  {'value': 'Asia/Kolkata', 'label': 'IST (India)'},
+  {'value': 'Europe/London', 'label': 'GMT/BST (UK)'},
+  {'value': 'America/New_York', 'label': 'EST/EDT (New York)'},
+  {'value': 'America/Los_Angeles', 'label': 'PST/PDT (Los Angeles)'},
+  {'value': 'America/Chicago', 'label': 'CST/CDT (Chicago)'},
+  {'value': 'Europe/Paris', 'label': 'CET/CEST (Paris)'},
+  {'value': 'Asia/Singapore', 'label': 'SGT (Singapore)'},
+  {'value': 'Australia/Sydney', 'label': 'AEST/AEDT (Sydney)'},
+];
+
 class AddEventDialog extends StatefulWidget {
   final String? token;
   final String? userId;
   final DateTime? initialDate;
+  final String initialType;
 
   const AddEventDialog({
     super.key,
     this.token,
     this.userId,
     this.initialDate,
+    this.initialType = 'event',
   });
 
   @override
@@ -28,16 +48,14 @@ class _AddEventDialogState extends State<AddEventDialog> {
   DateTime? _endTime;
   String _selectedType = 'event';
   String _selectedPriority = 'medium';
+  String _selectedReminder = 'none';
+  String _selectedTimezone = 'Asia/Kolkata';
   bool _isAllDay = false;
   bool _isLoading = false;
 
   final List<String> _eventTypes = [
     'event',
-    'task',
-    'follow-up',
     'meeting',
-    'deadline',
-    'document-approval',
     'reminder',
   ];
 
@@ -46,6 +64,9 @@ class _AddEventDialogState extends State<AddEventDialog> {
   @override
   void initState() {
     super.initState();
+    _selectedType = _eventTypes.contains(widget.initialType)
+        ? widget.initialType
+        : 'event';
     _selectedDate = widget.initialDate ?? DateTime.now();
     _startTime = DateTime(
       _selectedDate!.year,
@@ -193,6 +214,13 @@ class _AddEventDialogState extends State<AddEventDialog> {
   }
 
   Future<void> _saveEvent() async {
+    if (widget.token == null || widget.token!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to create event: missing token')),
+      );
+      return;
+    }
+
     if (_titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter event title')),
@@ -218,13 +246,15 @@ class _AddEventDialogState extends State<AddEventDialog> {
       final eventData = {
         'title': _titleController.text,
         'description': _descriptionController.text,
-        'eventDate': _selectedDate!,
-        'endDate': _selectedDate!,
-        'eventType': _selectedType,
+        'eventDate': _isAllDay ? _selectedDate! : _startTime,
+        'endDate': _isAllDay ? _selectedDate! : _endTime,
+        'eventType': _selectedType == 'event' ? 'manual' : _selectedType,
         'allDay': _isAllDay,
         'startTime': _isAllDay ? null : _startTime,
         'endTime': _isAllDay ? null : _endTime,
         'priority': _selectedPriority,
+        'reminder': _selectedReminder,
+        'timezone': _selectedTimezone,
         'status': 'scheduled',
       };
       
@@ -260,9 +290,17 @@ class _AddEventDialogState extends State<AddEventDialog> {
 
     return Dialog(
       backgroundColor: AppTheme.cardColor,
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 40,
+        vertical: isMobile ? 16 : 24,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+          padding: EdgeInsets.all(isMobile ? 16 : 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,6 +326,15 @@ class _AddEventDialogState extends State<AddEventDialog> {
               const SizedBox(height: 20),
 
               // Title Field
+              const Text(
+                'Title *',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _titleController,
                 decoration: InputDecoration(
@@ -412,6 +459,141 @@ class _AddEventDialogState extends State<AddEventDialog> {
               ),
               const SizedBox(height: 16),
 
+              // Reminder and Timezone
+              if (isMobile) ...[
+                DropdownButtonFormField<String>(
+                  value: _selectedReminder,
+                  dropdownColor: AppTheme.cardColor,
+                  decoration: InputDecoration(
+                    labelText: 'Reminder',
+                    labelStyle: TextStyle(color: Colors.grey[300]),
+                    filled: true,
+                    fillColor: AppTheme.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                  items: _reminderOptions
+                      .map(
+                        (option) => DropdownMenuItem<String>(
+                          value: option['value'],
+                          child: Text(option['label'] ?? option['value']!),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _selectedReminder = value);
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _selectedTimezone,
+                  dropdownColor: AppTheme.cardColor,
+                  decoration: InputDecoration(
+                    labelText: 'Timezone',
+                    labelStyle: TextStyle(color: Colors.grey[300]),
+                    filled: true,
+                    fillColor: AppTheme.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                  items: _timezoneOptions
+                      .map(
+                        (option) => DropdownMenuItem<String>(
+                          value: option['value'],
+                          child: Text(option['label'] ?? option['value']!),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setState(() => _selectedTimezone = value);
+                  },
+                ),
+              ] else
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedReminder,
+                        dropdownColor: AppTheme.cardColor,
+                        decoration: InputDecoration(
+                          labelText: 'Reminder',
+                          labelStyle: TextStyle(color: Colors.grey[300]),
+                          filled: true,
+                          fillColor: AppTheme.background,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                          ),
+                        ),
+                        style: const TextStyle(color: Colors.white),
+                        items: _reminderOptions
+                            .map(
+                              (option) => DropdownMenuItem<String>(
+                                value: option['value'],
+                                child: Text(option['label'] ?? option['value']!),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) setState(() => _selectedReminder = value);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedTimezone,
+                        dropdownColor: AppTheme.cardColor,
+                        decoration: InputDecoration(
+                          labelText: 'Timezone',
+                          labelStyle: TextStyle(color: Colors.grey[300]),
+                          filled: true,
+                          fillColor: AppTheme.background,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                          ),
+                        ),
+                        style: const TextStyle(color: Colors.white),
+                        items: _timezoneOptions
+                            .map(
+                              (option) => DropdownMenuItem<String>(
+                                value: option['value'],
+                                child: Text(option['label'] ?? option['value']!),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) setState(() => _selectedTimezone = value);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 16),
+
               // Date Selection
               GestureDetector(
                 onTap: _selectDate,
@@ -468,9 +650,87 @@ class _AddEventDialogState extends State<AddEventDialog> {
 
               // Time Selection (Hidden if All Day)
               if (!_isAllDay) ...[
-                Row(
-                  children: [
-                    Expanded(
+                isMobile
+                    ? Column(
+                        children: [
+                          GestureDetector(
+                            onTap: _selectStartTime,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.background,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.access_time,
+                                      color: Colors.grey, size: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _startTime != null
+                                          ? DateFormat('h:mm a').format(_startTime!)
+                                          : 'Start Time',
+                                      style: TextStyle(
+                                        color: _startTime != null
+                                            ? Colors.white
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          GestureDetector(
+                            onTap: _selectEndTime,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.background,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.access_time,
+                                      color: Colors.grey, size: 18),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _endTime != null
+                                          ? DateFormat('h:mm a').format(_endTime!)
+                                          : 'End Time',
+                                      style: TextStyle(
+                                        color: _endTime != null
+                                            ? Colors.white
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
                       child: GestureDetector(
                         onTap: _selectStartTime,
                         child: Container(
@@ -507,8 +767,8 @@ class _AddEventDialogState extends State<AddEventDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                          const SizedBox(width: 12),
+                          Expanded(
                       child: GestureDetector(
                         onTap: _selectEndTime,
                         child: Container(
@@ -545,8 +805,8 @@ class _AddEventDialogState extends State<AddEventDialog> {
                         ),
                       ),
                     ),
-                  ],
-                ),
+                        ],
+                      ),
                 const SizedBox(height: 16),
               ],
 
@@ -594,6 +854,7 @@ class _AddEventDialogState extends State<AddEventDialog> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

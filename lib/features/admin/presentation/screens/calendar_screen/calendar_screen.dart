@@ -4,8 +4,10 @@ import 'package:hrms_app/shared/theme/app_theme.dart';
 import 'package:hrms_app/features/admin/presentation/providers/calendar_provider.dart';
 import 'package:hrms_app/features/admin/presentation/providers/calendar_notifier.dart';
 import 'package:hrms_app/features/admin/presentation/providers/calendar_state.dart';
+import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:intl/intl.dart';
 import 'add_event_dialog.dart';
+import 'add_meeting_dialog.dart';
 import 'week_view.dart';
 import 'day_view.dart';
 
@@ -58,6 +60,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
     with SingleTickerProviderStateMixin {
   late DateTime _currentDate;
   DateTime? _selectedDate;
+  String? _activeToken;
   late TabController _tabController;
   String _viewMode = 'month'; // 'month', 'week', 'day'
   bool _showAddMenu = false;
@@ -75,6 +78,9 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
   String _selectedReminder = 'none';
   String _selectedDuration = '60';  // in minutes
 
+  DateTime get _rangeStart => DateTime(_currentDate.year, _currentDate.month, 1);
+  DateTime get _rangeEnd => DateTime(_currentDate.year, _currentDate.month + 1, 0);
+
   @override
   void initState() {
     super.initState();
@@ -83,13 +89,14 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
     _tabController = TabController(length: 5, vsync: this);
     
     // Fetch calendar data
-    Future.microtask(() {
+    Future.microtask(() async {
+      _activeToken = widget.token ?? await TokenStorageService().getToken();
       final notifier = Provider.of<CalendarNotifier>(context, listen: false);
       print('[CALENDAR API] initState: Starting to fetch calendar data...');
-      print('[CALENDAR API] initState: Token: ${widget.token != null}, CompanyId: ${widget.companyId}, UserId: ${widget.userId}');
+      print('[CALENDAR API] initState: Token: ${_activeToken != null}, CompanyId: ${widget.companyId}, UserId: ${widget.userId}');
       
       // Check if we have required parameters
-      if (widget.token == null) {
+      if (_activeToken == null) {
         print('[CALENDAR API] ❌ ERROR: Token is null!');
         return;
       }
@@ -101,7 +108,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
         hasDataSources = true;
         print('[CALENDAR API] Fetching holidays for company: ${widget.companyId}, Month: ${_currentDate.month}/${_currentDate.year}');
         notifier.fetchHolidays(
-          widget.token!,
+          _activeToken!,
           widget.companyId!,
           _currentDate.year,
           _currentDate.month,
@@ -115,10 +122,10 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
         hasDataSources = true;
         print('[CALENDAR API] Fetching events for user: ${widget.userId}, From: ${_currentDate.month}/${_currentDate.year}');
         notifier.fetchEvents(
-          widget.token!,
+          _activeToken!,
           widget.userId!,
-          _currentDate,
-          DateTime(_currentDate.year, _currentDate.month + 1, 0),
+          _rangeStart,
+          _rangeEnd,
         );
       } else {
         print('[CALENDAR API] ⚠️ WARNING: UserId is missing, skipping events fetch');
@@ -136,6 +143,213 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  // Build search and filter panel
+  Widget _buildSearchFilterPanel() {
+    return Consumer<CalendarNotifier>(
+      builder: (context, calendarNotifier, _) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isSmallScreen = screenWidth < 600;
+
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmallScreen ? 12 : 16,
+            vertical: isSmallScreen ? 8 : 12,
+          ),
+          child: isSmallScreen
+              ? Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    // Events button
+                    FilterChip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.event, size: 16),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Events',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      selected: _showEvents,
+                      onSelected: (selected) {
+                        setState(() => _showEvents = selected);
+                      },
+                      backgroundColor: AppTheme.surfaceVariant.withOpacity(0.5),
+                      selectedColor: AppTheme.primaryColor,
+                      labelStyle: TextStyle(
+                        color: _showEvents ? Colors.white : Colors.grey[400],
+                      ),
+                      side: BorderSide(
+                        color: _showEvents
+                            ? AppTheme.primaryColor
+                            : Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                    // Tasks button
+                    FilterChip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.assignment, size: 16),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Tasks',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      selected: _showTasks,
+                      onSelected: (selected) {
+                        setState(() => _showTasks = selected);
+                      },
+                      backgroundColor: AppTheme.surfaceVariant.withOpacity(0.5),
+                      selectedColor: AppTheme.primaryColor,
+                      labelStyle: TextStyle(
+                        color: _showTasks ? Colors.white : Colors.grey[400],
+                      ),
+                      side: BorderSide(
+                        color: _showTasks
+                            ? AppTheme.primaryColor
+                            : Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                    // Follow-ups button
+                    FilterChip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.checklist, size: 16),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Follow-ups',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      selected: _showFollowups,
+                      onSelected: (selected) {
+                        setState(() => _showFollowups = selected);
+                      },
+                      backgroundColor: AppTheme.surfaceVariant.withOpacity(0.5),
+                      selectedColor: AppTheme.primaryColor,
+                      labelStyle: TextStyle(
+                        color: _showFollowups ? Colors.white : Colors.grey[400],
+                      ),
+                      side: BorderSide(
+                        color: _showFollowups
+                            ? AppTheme.primaryColor
+                            : Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    // Events button
+                    Expanded(
+                      child: FilterChip(
+                        label: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.event, size: 16),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Events',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        selected: _showEvents,
+                        onSelected: (selected) {
+                          setState(() => _showEvents = selected);
+                        },
+                        backgroundColor: AppTheme.surfaceVariant.withOpacity(0.5),
+                        selectedColor: AppTheme.primaryColor,
+                        labelStyle: TextStyle(
+                          color: _showEvents ? Colors.white : Colors.grey[400],
+                        ),
+                        side: BorderSide(
+                          color: _showEvents
+                              ? AppTheme.primaryColor
+                              : Colors.white.withOpacity(0.1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Tasks button
+                    Expanded(
+                      child: FilterChip(
+                        label: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.assignment, size: 16),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Tasks',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        selected: _showTasks,
+                        onSelected: (selected) {
+                          setState(() => _showTasks = selected);
+                        },
+                        backgroundColor: AppTheme.surfaceVariant.withOpacity(0.5),
+                        selectedColor: AppTheme.primaryColor,
+                        labelStyle: TextStyle(
+                          color: _showTasks ? Colors.white : Colors.grey[400],
+                        ),
+                        side: BorderSide(
+                          color: _showTasks
+                              ? AppTheme.primaryColor
+                              : Colors.white.withOpacity(0.1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Follow-ups button
+                    Expanded(
+                      child: FilterChip(
+                        label: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.checklist, size: 16),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Follow-ups',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        selected: _showFollowups,
+                        onSelected: (selected) {
+                          setState(() => _showFollowups = selected);
+                        },
+                        backgroundColor: AppTheme.surfaceVariant.withOpacity(0.5),
+                        selectedColor: AppTheme.primaryColor,
+                        labelStyle: TextStyle(
+                          color: _showFollowups ? Colors.white : Colors.grey[400],
+                        ),
+                        side: BorderSide(
+                          color: _showFollowups
+                              ? AppTheme.primaryColor
+                              : Colors.white.withOpacity(0.1),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+        );
+      },
+    );
   }
 
   List<DateTime> _getDaysInMonth(DateTime date) {
@@ -163,34 +377,36 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
     return days;
   }
 
+  void _refreshCalendarForCurrentRange() {
+    Future.microtask(() {
+      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      if (_activeToken != null && widget.companyId != null) {
+        notifier.fetchHolidays(
+          _activeToken!,
+          widget.companyId!,
+          _currentDate.year,
+          _currentDate.month,
+        );
+      }
+      if (_activeToken != null && widget.userId != null) {
+        notifier.fetchEvents(
+          _activeToken!,
+          widget.userId!,
+          _rangeStart,
+          _rangeEnd,
+        );
+      }
+    });
+  }
+
   void _previousMonth() {
     setState(() {
       _currentDate = DateTime(_currentDate.year, _currentDate.month - 1);
       _selectedDate = null;
       print('[CALENDAR] Month changed to: ${_currentDate.month}/${_currentDate.year}');
     });
-    
-    // Fetch data for new month
-    Future.microtask(() {
-      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
-      if (widget.token != null && widget.companyId != null) {
-        print('[CALENDAR API] Fetching holidays for previous month: ${_currentDate.month}/${_currentDate.year}');
-        notifier.fetchHolidays(
-          widget.token!,
-          widget.companyId!,
-          _currentDate.year,
-          _currentDate.month,
-        );
-      }
-      if (widget.token != null && widget.userId != null) {
-        notifier.fetchEvents(
-          widget.token!,
-          widget.userId!,
-          _currentDate,
-          DateTime(_currentDate.year, _currentDate.month + 1, 0),
-        );
-      }
-    });
+
+    _refreshCalendarForCurrentRange();
   }
 
   void _nextMonth() {
@@ -199,28 +415,8 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
       _selectedDate = null;
       print('[CALENDAR] Month changed to: ${_currentDate.month}/${_currentDate.year}');
     });
-    
-    // Fetch data for new month
-    Future.microtask(() {
-      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
-      if (widget.token != null && widget.companyId != null) {
-        print('[CALENDAR API] Fetching holidays for next month: ${_currentDate.month}/${_currentDate.year}');
-        notifier.fetchHolidays(
-          widget.token!,
-          widget.companyId!,
-          _currentDate.year,
-          _currentDate.month,
-        );
-      }
-      if (widget.token != null && widget.userId != null) {
-        notifier.fetchEvents(
-          widget.token!,
-          widget.userId!,
-          _currentDate,
-          DateTime(_currentDate.year, _currentDate.month + 1, 0),
-        );
-      }
-    });
+
+    _refreshCalendarForCurrentRange();
   }
 
   void _today() {
@@ -229,6 +425,43 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
       _selectedDate = DateTime.now();
       print('[CALENDAR] Navigated to today: ${DateTime.now().month}/${DateTime.now().year}');
     });
+    _refreshCalendarForCurrentRange();
+  }
+
+  void _previousWeek() {
+    setState(() {
+      _currentDate = _currentDate.subtract(const Duration(days: 7));
+      _selectedDate = _selectedDate?.subtract(const Duration(days: 7));
+    });
+    _refreshCalendarForCurrentRange();
+  }
+
+  void _nextWeek() {
+    setState(() {
+      _currentDate = _currentDate.add(const Duration(days: 7));
+      _selectedDate = _selectedDate?.add(const Duration(days: 7));
+    });
+    _refreshCalendarForCurrentRange();
+  }
+
+  void _previousDay() {
+    final base = _selectedDate ?? _currentDate;
+    final next = base.subtract(const Duration(days: 1));
+    setState(() {
+      _selectedDate = next;
+      _currentDate = next;
+    });
+    _refreshCalendarForCurrentRange();
+  }
+
+  void _nextDay() {
+    final base = _selectedDate ?? _currentDate;
+    final next = base.add(const Duration(days: 1));
+    setState(() {
+      _selectedDate = next;
+      _currentDate = next;
+    });
+    _refreshCalendarForCurrentRange();
   }
 
   // Delete event functionality
@@ -270,22 +503,11 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
   void _editEvent(CalendarEvent event) async {
     final result = await showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: AppTheme.cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width < 768
-                ? MediaQuery.of(context).size.width * 0.9
-                : 500,
-            maxHeight: MediaQuery.of(context).size.height * 0.85,
-          ),
-          child: AddEventDialog(
-            token: widget.token,
-            userId: widget.userId,
-            initialDate: event.date,
-          ),
-        ),
+      builder: (context) => AddEventDialog(
+        token: _activeToken,
+        userId: widget.userId,
+        initialDate: event.date,
+        initialType: event.type ?? 'event',
       ),
     );
     if (result != null) {
@@ -331,6 +553,60 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
     );
   }
 
+  Future<void> _openAddEventDialog({String initialType = 'event'}) async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => AddEventDialog(
+        token: _activeToken,
+        userId: widget.userId,
+        initialDate: _selectedDate ?? DateTime.now(),
+        initialType: initialType,
+      ),
+    );
+
+    if (result == true && mounted && _activeToken != null && widget.userId != null) {
+      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      notifier.fetchEvents(
+        _activeToken!,
+        widget.userId!,
+        _rangeStart,
+        _rangeEnd,
+      );
+    }
+  }
+
+  Future<void> _openAddMeetingDialog() async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => AddMeetingDialog(
+        token: _activeToken,
+        userId: widget.userId,
+        initialDate: _selectedDate ?? DateTime.now(),
+      ),
+    );
+
+    if (result != null && mounted && _activeToken != null && widget.userId != null) {
+      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      notifier.fetchEvents(
+        _activeToken!,
+        widget.userId!,
+        _rangeStart,
+        _rangeEnd,
+      );
+    }
+  }
+
+  List<CalendarEvent> _applySourceFilters(List<CalendarEvent> events) {
+    return events.where((e) {
+      final type = (e.type ?? '').toLowerCase().trim();
+      if (type == 'task') return _showTasks;
+      if (type == 'follow-up' || type == 'follow_up' || type == 'followup') {
+        return _showFollowups;
+      }
+      return _showEvents;
+    }).toList();
+  }
+
   // Filter events based on search and type
   List<CalendarEvent> _filterEvents(
     List<CalendarEvent> events,
@@ -338,9 +614,26 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
   ) {
     List<CalendarEvent> combined = [...events, ...holidays];
 
+    // Apply source filters (aligned with web UniversalCalendarModule)
+    combined = combined.where((e) {
+      final type = (e.type ?? '').toLowerCase().trim();
+      if (type == 'task') return _showTasks;
+      if (type == 'follow-up' || type == 'follow_up' || type == 'followup') {
+        return _showFollowups;
+      }
+      // Everything else is treated as events source
+      return _showEvents;
+    }).toList();
+
     // Apply type filter
     if (_filterType != 'all') {
-      combined = combined.where((e) => e.type == _filterType).toList();
+      combined = combined.where((e) {
+        final type = (e.type ?? '').toLowerCase().trim();
+        if (_filterType == 'follow-up') {
+          return type == 'follow-up' || type == 'follow_up' || type == 'followup';
+        }
+        return type == _filterType;
+      }).toList();
     }
 
     // Apply search filter
@@ -365,6 +658,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
       appBar: AppBar(
         backgroundColor: AppTheme.background,
         elevation: 0,
+        titleSpacing: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -388,26 +682,31 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppTheme.primaryColor,
+          indicatorPadding: EdgeInsets.zero,
           labelColor: AppTheme.primaryColor,
           unselectedLabelColor: Colors.grey[600],
-          isScrollable: true,
+          isScrollable: false,
+          labelPadding: EdgeInsets.symmetric(horizontal: 12),
           tabs: const [
             Tab(text: 'Month View', icon: Icon(Icons.calendar_view_month)),
             Tab(text: 'Week View', icon: Icon(Icons.calendar_view_week)),
             Tab(text: 'Day View', icon: Icon(Icons.calendar_view_day)),
-            Tab(text: 'Events', icon: Icon(Icons.list)),
-            Tab(text: 'Search', icon: Icon(Icons.search)),
           ],
         ),
       ),
       body: SafeArea(
-        child: TabBarView(
-          controller: _tabController,
+        child: Column(
           children: [
+            _buildSearchFilterPanel(),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
             // Tab 1: Month View
             Consumer<CalendarNotifier>(
               builder: (context, calendarNotifier, _) {
                 final calendarState = calendarNotifier.state;
+                final visibleEvents = _applySourceFilters(calendarState.events);
                 final isLoading = calendarState.isLoading;
 
                 return SingleChildScrollView(
@@ -539,7 +838,10 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
                               const SizedBox(height: 12),
 
                               // Calendar grid
-                              _buildCalendarGrid(isMobile, calendarState),
+                              _buildCalendarGrid(
+                                isMobile,
+                                calendarState.copyWith(events: visibleEvents),
+                              ),
                             ],
                           ),
                         ),
@@ -583,7 +885,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
                                 // Events on selected date
                                 ..._getEventsForDate(
                                   _selectedDate!,
-                                  calendarState.events,
+                                  visibleEvents,
                                   calendarState.holidays,
                                 ),
                               ],
@@ -600,16 +902,18 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
             Consumer<CalendarNotifier>(
               builder: (context, calendarNotifier, _) {
                 final calendarState = calendarNotifier.state;
+                final visibleEvents = _applySourceFilters(calendarState.events);
                 return WeekView(
                   currentDate: _currentDate,
-                  events: calendarState.events,
+                  events: visibleEvents,
                   holidays: calendarState.holidays,
                   onDateSelected: (date) {
                     setState(() => _selectedDate = date);
                   },
-                  onPreviousWeek: _previousMonth,
-                  onNextWeek: _nextMonth,
+                  onPreviousWeek: _previousWeek,
+                  onNextWeek: _nextWeek,
                   onToday: _today,
+                  onEventTap: (event) => _showViewEventDialog(event, calendarNotifier),
                 );
               },
             ),
@@ -618,564 +922,61 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
             Consumer<CalendarNotifier>(
               builder: (context, calendarNotifier, _) {
                 final calendarState = calendarNotifier.state;
+                final visibleEvents = _applySourceFilters(calendarState.events);
                 final selectedDate = _selectedDate ?? DateTime.now();
                 return DayView(
                   selectedDate: selectedDate,
-                  events: calendarState.events,
+                  events: visibleEvents,
                   holidays: calendarState.holidays,
-                  onPreviousDay: _previousMonth,
-                  onNextDay: _nextMonth,
+                  onPreviousDay: _previousDay,
+                  onNextDay: _nextDay,
                   onToday: _today,
+                  onEventTap: (event) => _showViewEventDialog(event, calendarNotifier),
                 );
               },
             ),
-
-            // Tab 4: Events List
-            Consumer<CalendarNotifier>(
-              builder: (context, calendarNotifier, _) {
-                final calendarState = calendarNotifier.state;
-                final allEvents = [
-                  ...calendarState.events,
-                  ...calendarState.holidays,
-                ];
-
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (allEvents.isEmpty)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.event_note,
-                                  size: 64,
-                                  color: Colors.grey[600],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No events scheduled',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: allEvents.length,
-                          itemBuilder: (context, index) {
-                            final event = allEvents[index];
-                            final isHoliday = event.type == 'holiday';
-
-                            return GestureDetector(
-                              onTap: () => _showViewEventDialog(event, calendarNotifier),
-                              child: Card(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                color: AppTheme.cardColor,
-                                child: Column(
-                                  children: [
-                                    ListTile(
-                                      leading: Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: _getEventColor(event.type),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      title: Text(
-                                        event.title,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            DateFormat('MMM d, yyyy').format(event.date),
-                                            style: TextStyle(
-                                              color: Colors.grey[400],
-                                            ),
-                                          ),
-                                          if (event.startTime != null)
-                                            Text(
-                                              DateFormat('HH:mm').format(event.startTime!),
-                                              style: TextStyle(
-                                                color: Colors.grey[500],
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.edit_outlined,
-                                                size: 18, color: AppTheme.primaryColor),
-                                            onPressed: () => _editEvent(event),
-                                            tooltip: 'Edit event',
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete_outline,
-                                                size: 18, color: Colors.red),
-                                            onPressed: () => _deleteEvent(event, calendarNotifier),
-                                            tooltip: 'Delete event',
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    // Status and Priority badges
-                                    if (event.status != null || event.priority != null)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                        child: Wrap(
-                                          spacing: 8,
-                                          children: [
-                                            if (event.status != null)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 10,
-                                                  vertical: 4,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: _getStatusColor(event.status)
-                                                      .withOpacity(0.2),
-                                                  border: Border.all(
-                                                    color: _getStatusColor(event.status),
-                                                  ),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  (event.status ?? '').toUpperCase(),
-                                                  style: TextStyle(
-                                                    color:
-                                                        _getStatusColor(event.status),
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            if (event.priority != null)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 10,
-                                                  vertical: 4,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: _getPriorityColor(event.priority)
-                                                      .withOpacity(0.2),
-                                                  border: Border.all(
-                                                    color:
-                                                        _getPriorityColor(event.priority),
-                                                  ),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  (event.priority ?? '').toUpperCase(),
-                                                  style: TextStyle(
-                                                    color: _getPriorityColor(
-                                                        event.priority),
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                );
-              },
+              ],
             ),
-
-            // Tab 5: Search & Filter
-            Consumer<CalendarNotifier>(
-              builder: (context, calendarNotifier, _) {
-                final calendarState = calendarNotifier.state;
-                final filteredEvents = _filterEvents(
-                  calendarState.events,
-                  calendarState.holidays,
-                );
-
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Search input
-                      TextField(
-                        controller: _searchController,
-                        onChanged: (value) {
-                          setState(() => _searchQuery = value);
-                        },
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Search events...',
-                          hintStyle: TextStyle(color: Colors.grey[400]),
-                          prefixIcon: const Icon(Icons.search, color: AppTheme.primaryColor),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: AppTheme.primaryColor),
-                          ),
-                          filled: true,
-                          fillColor: AppTheme.surfaceVariant.withOpacity(0.5),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Type filter chips
-                      Text(
-                        'Filter by Type',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: ['all', 'event', 'meeting', 'holiday', 'leave'].map((type) {
-                          final isSelected = _filterType == type;
-                          return FilterChip(
-                            label: Text(
-                              type.toUpperCase(),
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : Colors.grey[400],
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            selected: isSelected,
-                            onSelected: (selected) {
-                              setState(() => _filterType = selected ? type : 'all');
-                            },
-                            backgroundColor: AppTheme.surfaceVariant.withOpacity(0.5),
-                            selectedColor: AppTheme.primaryColor,
-                            side: BorderSide(
-                              color: isSelected ? AppTheme.primaryColor : Colors.white.withOpacity(0.1),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Source filtering
-                      Text(
-                        'Filter by Source',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      CheckboxListTile(
-                        value: _showEvents,
-                        onChanged: (value) {
-                          setState(() => _showEvents = value ?? false);
-                        },
-                        title: const Text('Events', style: TextStyle(color: Colors.white)),
-                        secondary: const Icon(Icons.event, color: AppTheme.primaryColor),
-                        contentPadding: EdgeInsets.zero,
-                        checkColor: Colors.white,
-                        activeColor: AppTheme.primaryColor,
-                      ),
-                      CheckboxListTile(
-                        value: _showTasks,
-                        onChanged: (value) {
-                          setState(() => _showTasks = value ?? false);
-                        },
-                        title: const Text('Tasks', style: TextStyle(color: Colors.white)),
-                        secondary: const Icon(Icons.assignment, color: Colors.blue),
-                        contentPadding: EdgeInsets.zero,
-                        checkColor: Colors.white,
-                        activeColor: Colors.blue,
-                      ),
-                      CheckboxListTile(
-                        value: _showFollowups,
-                        onChanged: (value) {
-                          setState(() => _showFollowups = value ?? false);
-                        },
-                        title: const Text('Follow-ups', style: TextStyle(color: Colors.white)),
-                        secondary: const Icon(Icons.checklist, color: Colors.orange),
-                        contentPadding: EdgeInsets.zero,
-                        checkColor: Colors.white,
-                        activeColor: Colors.orange,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Timezone selector
-                      Text(
-                        'Timezone',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
-                          borderRadius: BorderRadius.circular(8),
-                          color: AppTheme.surfaceVariant.withOpacity(0.3),
-                        ),
-                        child: DropdownButton<String>(
-                          value: _selectedTimezone,
-                          onChanged: (String? newValue) {
-                            if (newValue != null) {
-                              setState(() => _selectedTimezone = newValue);
-                              print('[CALENDAR] Timezone changed to: $newValue');
-                            }
-                          },
-                          isExpanded: true,
-                          underline: const SizedBox(),
-                          style: const TextStyle(color: Colors.white),
-                          dropdownColor: AppTheme.cardColor,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          items: TIMEZONE_OPTIONS
-                              .map<DropdownMenuItem<String>>((Map<String, String> option) {
-                            return DropdownMenuItem<String>(
-                              value: option['value']!,
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.public,
-                                      size: 18, color: AppTheme.primaryColor),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    option['label']!,
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Results
-                      Text(
-                        'Results (${filteredEvents.length})',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                            ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (filteredEvents.isEmpty)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.search_off,
-                                  size: 64,
-                                  color: Colors.grey[600],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No events found',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: filteredEvents.length,
-                          itemBuilder: (context, index) {
-                            final event = filteredEvents[index];
-                            return GestureDetector(
-                              onTap: () => _showViewEventDialog(event, calendarNotifier),
-                              child: Card(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                color: AppTheme.cardColor,
-                                child: Column(
-                                  children: [
-                                    ListTile(
-                                      leading: Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: _getEventColor(event.type),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      title: Text(
-                                        event.title,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            DateFormat('MMM d, yyyy')
-                                                .format(event.date),
-                                            style: TextStyle(
-                                                color: Colors.grey[400]),
-                                          ),
-                                          if (event.description.isNotEmpty)
-                                            Text(
-                                              event.description,
-                                              style: TextStyle(
-                                                color: Colors.grey[500],
-                                                fontSize: 12,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                        ],
-                                      ),
-                                      trailing: _buildEventTypeChip(
-                                          event.type ?? 'event'),
-                                    ),
-                                    // Status and Priority badges
-                                    if (event.status != null || event.priority != null)
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                        child: Wrap(
-                                          spacing: 8,
-                                          children: [
-                                            if (event.status != null)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 10,
-                                                  vertical: 4,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: _getStatusColor(
-                                                          event.status)
-                                                      .withOpacity(0.2),
-                                                  border: Border.all(
-                                                    color: _getStatusColor(
-                                                        event.status),
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  (event.status ?? '')
-                                                      .toUpperCase(),
-                                                  style: TextStyle(
-                                                    color: _getStatusColor(
-                                                        event.status),
-                                                    fontSize: 11,
-                                                    fontWeight:
-                                                        FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            if (event.priority != null)
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 10,
-                                                  vertical: 4,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: _getPriorityColor(
-                                                          event.priority)
-                                                      .withOpacity(0.2),
-                                                  border: Border.all(
-                                                    color:
-                                                        _getPriorityColor(
-                                                            event.priority),
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: Text(
-                                                  (event.priority ?? '')
-                                                      .toUpperCase(),
-                                                  style: TextStyle(
-                                                    color: _getPriorityColor(
-                                                        event.priority),
-                                                    fontSize: 11,
-                                                    fontWeight:
-                                                        FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                );
-              },
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showDialog(
+        onPressed: () async {
+          final choice = await showModalBottomSheet<String>(
             context: context,
-            builder: (context) => Dialog(
-              backgroundColor: AppTheme.cardColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width < 768
-                      ? MediaQuery.of(context).size.width * 0.9
-                      : 500,
-                  maxHeight: MediaQuery.of(context).size.height * 0.85,
-                ),
-                child: AddEventDialog(
-                  token: widget.token,
-                  userId: widget.userId,
-                  initialDate: _selectedDate ?? DateTime.now(),
-                ),
+            backgroundColor: AppTheme.cardColor,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            builder: (context) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.event, color: Colors.blue),
+                    title: const Text('Add Event', style: TextStyle(color: Colors.white)),
+                    onTap: () => Navigator.pop(context, 'event'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.videocam, color: Colors.purple),
+                    title: const Text('Add Meeting', style: TextStyle(color: Colors.white)),
+                    onTap: () => Navigator.pop(context, 'meeting'),
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ),
             ),
           );
+
+          if (choice == 'meeting') {
+            await _openAddMeetingDialog();
+          } else if (choice == 'event') {
+            await _openAddEventDialog(initialType: 'event');
+          }
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Event'),
+        icon: const Icon(Icons.add_circle_outline),
+        label: const Text('Add'),
         backgroundColor: AppTheme.primaryColor,
       ),
     );
@@ -1187,6 +988,11 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
       'leave': (Colors.orange, Colors.white),
       'event': (Colors.blue, Colors.white),
       'meeting': (Colors.purple, Colors.white),
+      'task': (Colors.lightBlue, Colors.white),
+      'follow-up': (Colors.amber, Colors.black),
+      'deadline': (Colors.redAccent, Colors.white),
+      'reminder': (Colors.teal, Colors.white),
+      'document-approval': (Colors.cyan, Colors.black),
     };
 
     final (bgColor, textColor) = colors[type] ?? (Colors.grey, Colors.white);
@@ -1342,9 +1148,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
                   if (eventsOnDay.isNotEmpty || holidaysOnDay.isNotEmpty) {
                     print('[CALENDAR] Selected date has ${eventsOnDay.length} events and ${holidaysOnDay.length} holidays');
                   }
-                  // Show day detail panel
-                  final notifier = Provider.of<CalendarNotifier>(context, listen: false);
-                  _showDayDetailPanel(day, notifier);
+                  // Day detail bottom sheet removed per user request.
                 }
               : null,
           child: AnimatedContainer(
@@ -1673,10 +1477,9 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -2115,7 +1918,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
   // Day Detail Panel - Show BOD/EOD logs and day summary
   // ─────────────────────────────────────────────────────────────────
   void _showDayDetailPanel(DateTime selectedDate, CalendarNotifier notifier) {
-    final events = notifier.state.events
+    final events = _applySourceFilters(notifier.state.events)
         .where((e) =>
             e.date.year == selectedDate.year &&
             e.date.month == selectedDate.month &&

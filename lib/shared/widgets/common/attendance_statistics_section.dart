@@ -233,22 +233,24 @@ class _AttendanceStatisticsSectionState
                           ),
                           const SizedBox(height: 12),
                           _buildLegendItem(
-                            'Leaves',
-                            '0',
+                            'Absent',
+                            _summaryData!.absent.toString(),
                             const Color(0xFFF44336), // Red
                           ),
+                          const SizedBox(height: 12),
+                          _buildLegendItem(
+                            'Leaves',
+                            _summaryData!.leaves.toString(),
+                            const Color(0xFFFFC107), // Amber
+                          ),
+                          const SizedBox(height: 12),
                           const SizedBox(height: 12),
                           _buildLegendItem(
                             'Half Day',
                             _summaryData!.halfDay.toString(),
                             const Color(0xFF2196F3), // Blue
                           ),
-                          const SizedBox(height: 12),
-                          _buildLegendItem(
-                            'Late Attendance',
-                            _summaryData!.late.toString(),
-                            const Color(0xFFFF9800), // Orange
-                          ),
+                          
                         ],
                       ),
                     ),

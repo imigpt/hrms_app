@@ -66,9 +66,9 @@ class CalendarNotifier extends ChangeNotifier {
     print('[CALENDAR NOTIFIER] fetchEvents: Date range: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
     _setState(_state.copyWith(isLoading: true, error: null));
     try {
-      final res = await CalendarService.getCalendarEvents(
+      // Use aggregated feed so tasks and follow-ups appear with events.
+      final res = await CalendarService.getAggregatedCalendar(
         token,
-        userId,
         startDate,
         endDate,
       );
@@ -109,7 +109,7 @@ class CalendarNotifier extends ChangeNotifier {
     print('[CALENDAR NOTIFIER] createEvent: Starting - Event: ${eventData['title']}');
     _setState(_state.copyWith(isSaving: true, error: null));
     try {
-      // Format dates as YYYY-MM-DD (without time) to avoid timezone issues
+      // Preserve full DateTime values for event/meeting precision.
       final rawEventDate = eventData['eventDate'] ?? eventData['date'];
       final rawEndDate = eventData['endDate'] ?? eventData['date'];
       
@@ -117,13 +117,13 @@ class CalendarNotifier extends ChangeNotifier {
       String? formattedEndDate;
       
       if (rawEventDate is DateTime) {
-        formattedEventDate = '${rawEventDate.year.toString().padLeft(4, '0')}-${rawEventDate.month.toString().padLeft(2, '0')}-${rawEventDate.day.toString().padLeft(2, '0')}';
+        formattedEventDate = rawEventDate.toIso8601String();
       } else {
         formattedEventDate = rawEventDate?.toString();
       }
       
       if (rawEndDate is DateTime) {
-        formattedEndDate = '${rawEndDate.year.toString().padLeft(4, '0')}-${rawEndDate.month.toString().padLeft(2, '0')}-${rawEndDate.day.toString().padLeft(2, '0')}';
+        formattedEndDate = rawEndDate.toIso8601String();
       } else {
         formattedEndDate = rawEndDate?.toString();
       }

@@ -365,6 +365,8 @@ class AttendanceService {
                   id: r.id,
                   date: r.date,
                   status: r.status,
+                  checkInTime: r.checkIn.time.toIso8601String(),
+                  checkOutTime: r.checkOut?.time?.toIso8601String(),
                   workHours: r.workHours,
                 ),
               )

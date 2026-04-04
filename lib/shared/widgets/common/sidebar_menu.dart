@@ -8,6 +8,7 @@ import 'package:hrms_app/features/attendance/presentation/screens/attendance_scr
 import 'package:hrms_app/features/expenses/presentation/screens/expenses_screen.dart';
 import 'package:hrms_app/features/profile/presentation/screens/profile_screen.dart';
 import 'package:hrms_app/features/tasks/presentation/screens/tasks_screen.dart';
+import 'package:hrms_app/features/tasks/presentation/screens/bod_eod_screen.dart';
 import 'package:hrms_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:hrms_app/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
@@ -75,6 +76,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
     {"title": "My Profile", "icon": Icons.person_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded},
+    {"title": "Calendar", "icon": Icons.event_rounded},
     {"title": "Tasks", "icon": Icons.task_alt_rounded, "hasSubmenu": true},
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
@@ -1092,9 +1094,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
         _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole)),
       );
     } else if (title == "BOD/EOD") {
-      // This screen is under development - placeholder for BOD/EOD functionality
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('BOD/EOD screen is under development.')),
+      Navigator.of(context).push(
+        _createSmoothRoute(BodEodScreen(token: widget.token, role: _userRole)),
       );
     }
   }

@@ -32,14 +32,24 @@ class CalendarEvent {
   });
 
   factory CalendarEvent.fromJson(Map<String, dynamic> json) {
+    String normalizeType(String? raw) {
+      final value = (raw ?? '').toLowerCase().trim();
+      if (value.isEmpty) return '';
+      if (value == 'followup' || value == 'follow_up') return 'follow-up';
+      if (value == 'document_approval' || value == 'document approval') {
+        return 'document-approval';
+      }
+      return value;
+    }
+
     // Map backend field names to model fields
     final id = json['_id'] ?? json['id'] ?? '';
     final title = json['title'] ?? '';
     final description = json['description'] ?? '';
     
-    // Backend uses eventDate, model uses date
+    // Backend can return eventDate/date (calendar API) or start/end (aggregated API)
     // Parse date carefully to avoid timezone issues
-    final eventDate = json['eventDate'] ?? json['date'];
+    final eventDate = json['eventDate'] ?? json['date'] ?? json['start'];
     DateTime date = DateTime.now();
     
     if (eventDate != null) {
@@ -57,7 +67,7 @@ class CalendarEvent {
           print('[CALENDAR STATE]   ✓ Parsed as date: ${date.toString()}');
         } else {
           // Full datetime string - parse as is
-          date = DateTime.parse(dateStr);
+          date = DateTime.parse(dateStr).toLocal();
           print('[CALENDAR STATE]   ✓ Parsed as datetime: ${date.toString()}');
         }
       } catch (e) {
@@ -66,10 +76,10 @@ class CalendarEvent {
       }
     }
     
-    // Backend uses endDate for multi-day events, model uses endTime
+    // Backend may return endDate (calendar API) or end (aggregated API)
     // For allDay events, endDate contains the end date
     // For timed events, this represents the end time
-    final endDate = json['endDate'];
+    final endDate = json['endDate'] ?? json['end'];
     DateTime? endTime;
     
     if (endDate != null) {
@@ -83,7 +93,7 @@ class CalendarEvent {
             int.parse(parts[2]),
           );
         } else {
-          endTime = DateTime.parse(dateStr);
+          endTime = DateTime.parse(dateStr).toLocal();
         }
       } catch (e) {
         print('[CALENDAR STATE] Error parsing endDate: $e');
@@ -91,17 +101,28 @@ class CalendarEvent {
       }
     }
     
-    // Determine the type based on eventType or backend response
-    final backendEventType = json['eventType'] ?? 'manual';
+    // Determine display type from backend eventType first, then fallback to type.
+    final backendEventType = normalizeType(json['eventType']?.toString());
+    final rawType = normalizeType(json['type']?.toString());
+    const supportedTypes = {
+      'event',
+      'task',
+      'follow-up',
+      'meeting',
+      'deadline',
+      'document-approval',
+      'reminder',
+      'holiday',
+      'leave',
+    };
+
     String? displayType;
-    if (backendEventType == 'holiday') {
-      displayType = 'holiday';
-    } else if (backendEventType == 'meeting') {
-      displayType = 'meeting';
-    } else if (backendEventType == 'reminder') {
-      displayType = 'reminder';
+    if (supportedTypes.contains(backendEventType)) {
+      displayType = backendEventType;
+    } else if (supportedTypes.contains(rawType)) {
+      displayType = rawType;
     } else {
-      displayType = json['type'] ?? 'event';
+      displayType = 'event';
     }
     
     // Map participants - could be array of objects or array of strings
@@ -119,14 +140,14 @@ class CalendarEvent {
       title: title,
       description: description,
       date: date,
-      startTime: null, // Backend doesn't provide separate startTime
+      startTime: eventDate != null ? date : null,
       endTime: endTime,
       type: displayType,
       priority: json['priority'],
       status: json['status'],
-      color: json['color'] ?? _getDefaultColorForType(backendEventType),
+      color: json['color'] ?? _getDefaultColorForType(displayType),
       allDay: json['allDay'] ?? true, // Default to all-day
-      eventType: backendEventType,
+      eventType: backendEventType.isNotEmpty ? backendEventType : null,
       participants: participants,
       meetingUrl: json['meetingUrl'] ?? json['meeting_url'],
     );
@@ -137,11 +158,21 @@ class CalendarEvent {
     switch (eventType?.toLowerCase()) {
       case 'holiday':
         return '#FF8FA3'; // Red-pink for holidays
+      case 'leave':
+        return '#FFB74D';
       case 'meeting':
         return '#9575CD'; // Purple for meetings
+      case 'task':
+        return '#64B5F6';
+      case 'follow-up':
+        return '#FFB74D';
+      case 'deadline':
+        return '#E57373';
+      case 'document-approval':
+        return '#4DB6AC';
       case 'reminder':
         return '#FFCA28'; // Amber for reminders
-      case 'manual':
+      case 'event':
       default:
         return '#64B5F6'; // Blue for manual events
     }

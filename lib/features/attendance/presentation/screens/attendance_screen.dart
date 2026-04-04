@@ -296,28 +296,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
             print('📅 Record: date=$normalizedDate, status=${record.status}');
 
-            // Map backend status to enum
+            // Map backend status to enum (support common variants)
+            final rawStatus = (record.status ?? '').toLowerCase().trim();
             AttendanceStatus status;
-            switch (record.status.toLowerCase().trim()) {
-              case 'present':
-                status = AttendanceStatus.present;
-                break;
-              case 'absent':
-                status = AttendanceStatus.absent;
-                break;
-              case 'halfday':
-              case 'half_day':
-              case 'half day':
-              case 'half-day':
-                status = AttendanceStatus.halfDay;
-                break;
-              case 'leave':
-              case 'on leave':
-                status = AttendanceStatus.leave;
-                break;
-              default:
-                print('⚠️ Unknown status: ${record.status}');
-                status = AttendanceStatus.absent;
+
+            if (rawStatus == 'present') {
+              status = AttendanceStatus.present;
+            } else if (rawStatus == 'absent') {
+              status = AttendanceStatus.absent;
+            } else if (rawStatus == 'in-progress' ||
+                rawStatus == 'in_progress' ||
+                rawStatus == 'in progress') {
+              // Treat checked-in-but-not-checked-out as present on calendar
+              status = AttendanceStatus.present;
+            } else if (rawStatus == 'halfday' ||
+                rawStatus == 'half_day' ||
+                rawStatus == 'half day' ||
+                rawStatus == 'half-day') {
+              status = AttendanceStatus.halfDay;
+            } else if (rawStatus == 'leave' ||
+                rawStatus == 'on leave' ||
+                rawStatus == 'on-leave' ||
+                rawStatus == 'on_leave') {
+              status = AttendanceStatus.leave;
+            } else {
+              print('⚠️ Unknown status: ${record.status}');
+              status = AttendanceStatus.absent;
             }
 
             attendanceMap[normalizedDate] = status;
@@ -1420,6 +1424,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     switch (raw.toLowerCase().trim()) {
       case 'present':
         return 'Present';
+      case 'in-progress':
+      case 'in_progress':
+      case 'in progress':
+        return 'In Progress';
       case 'absent':
         return 'Absent';
       case 'leave':
@@ -1439,6 +1447,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     switch (raw.toLowerCase().trim()) {
       case 'present':
         return Icons.check_circle_outline;
+      case 'in-progress':
+      case 'in_progress':
+      case 'in progress':
+        return Icons.timelapse;
       case 'absent':
         return Icons.cancel_outlined;
       case 'leave':
@@ -1471,6 +1483,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final hours = record.workHours.floor();
       final minutes = ((record.workHours - hours) * 60).round();
       duration = '${hours}h ${minutes}m';
+    }
+
+    // Format OT string from overtimeMinutes
+    String ot = '-';
+    try {
+      final otMinutes = record.overtimeMinutes;
+      if (otMinutes != null && otMinutes > 0) {
+        final otHours = otMinutes ~/ 60;
+        final otRem = otMinutes % 60;
+        ot = otHours == 0 ? '${otRem}m' : '${otHours}h ${otRem}m';
+      }
+    } catch (_) {
+      ot = '-';
     }
 
     // Check if has photo
@@ -1622,6 +1647,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   duration,
                   Icons.access_time,
                   Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTimeInfo(
+                  'OT',
+                  ot,
+                  Icons.timer,
+                  Colors.cyan,
                 ),
               ),
             ],

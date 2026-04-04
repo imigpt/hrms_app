@@ -26,7 +26,6 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
     'All',
     'Present',
     'Absent',
-    'Late',
     'Half Day',
     'Leave',
   ];
@@ -239,10 +238,11 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                   Colors.red,
                 ),
                 _buildStatItem(
-                  'Late',
-                  '${_records.where((r) => r.status.toLowerCase() == 'late').length}',
-                  Colors.orange,
+                  'OT',
+                  '${_records.where((r) => (r.overtimeMinutes ?? 0) > 0).length}',
+                  Colors.cyan,
                 ),
+                // Late removed — use frontend-derived statuses (in-progress shown as Present on calendar)
                 _buildStatItem(
                   'Half Day',
                   '${_records.where((r) {
@@ -321,19 +321,23 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   Widget _buildAttendanceCard(AttendanceRecord record, int index) {
     final rawStatus = record.status.toLowerCase();
 
-    // Normalize status for display label
+    // Normalize status for display label (match frontend statuses)
     String status;
-    switch (rawStatus) {
-      case 'halfday':
-      case 'half_day':
-      case 'half day':
-      case 'half-day':
-        status = 'Half Day';
-        break;
-      default:
-        status =
-            record.status.substring(0, 1).toUpperCase() +
-            record.status.substring(1);
+    if (rawStatus == 'halfday' ||
+        rawStatus == 'half_day' ||
+        rawStatus == 'half day' ||
+        rawStatus == 'half-day') {
+      status = 'Half Day';
+    } else if (rawStatus == 'in-progress' ||
+        rawStatus == 'in_progress' ||
+        rawStatus == 'in progress') {
+      status = 'In Progress';
+    } else if (rawStatus == 'on-leave' || rawStatus == 'on_leave' || rawStatus == 'on leave') {
+      status = 'Leave';
+    } else {
+      status = record.status.isNotEmpty
+          ? record.status.substring(0, 1).toUpperCase() + record.status.substring(1)
+          : '';
     }
 
     // Format times
@@ -370,6 +374,19 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       }
     }
 
+    // Format OT string from overtimeMinutes
+    String ot = '-';
+    try {
+      final otMinutes = record.overtimeMinutes;
+      if (otMinutes != null && otMinutes > 0) {
+        final otHours = otMinutes ~/ 60;
+        final otRem = otMinutes % 60;
+        ot = otHours == 0 ? '${otRem}m' : '${otHours}h ${otRem}m';
+      }
+    } catch (_) {
+      ot = '-';
+    }
+
     // Check if has photo (check-in photo)
     final hasPhoto = record.checkIn.photo.url.isNotEmpty;
 
@@ -384,6 +401,12 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         statusColor = Colors.green;
         statusBgColor = Colors.green.withOpacity(0.15);
         break;
+      case 'in progress':
+      case 'in-progress':
+      case 'in_progress':
+        statusColor = Colors.blueAccent;
+        statusBgColor = Colors.blueAccent.withOpacity(0.12);
+        break;
       case 'absent':
         statusColor = Colors.red;
         statusBgColor = Colors.red.withOpacity(0.15);
@@ -392,9 +415,9 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         statusColor = Colors.purple;
         statusBgColor = Colors.purple.withOpacity(0.15);
         break;
+      case 'half day':
       case 'halfday':
       case 'half_day':
-      case 'half day':
       case 'half-day':
         statusColor = Colors.amber;
         statusBgColor = Colors.amber.withOpacity(0.15);
@@ -450,10 +473,13 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
             ),
 
             if (status.toLowerCase() == 'present' ||
-                status.toLowerCase() == 'late' ||
-                status.toLowerCase() == 'halfday' ||
-                status.toLowerCase() == 'half_day' ||
-                status.toLowerCase() == 'half day') ...[
+              status.toLowerCase() == 'in progress' ||
+              status.toLowerCase() == 'in-progress' ||
+              status.toLowerCase() == 'in_progress' ||
+              status.toLowerCase() == 'halfday' ||
+              status.toLowerCase() == 'half_day' ||
+              status.toLowerCase() == 'half day' ||
+              status.toLowerCase() == 'half-day') ...[
               const SizedBox(height: 12),
               const Divider(color: Color(0xFF1A1A1A), height: 1),
               const SizedBox(height: 12),
@@ -485,6 +511,15 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                       duration,
                       Icons.access_time,
                       Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildTimeInfo(
+                      'OT',
+                      ot,
+                      Icons.timer,
+                      Colors.cyan,
                     ),
                   ),
                 ],
@@ -827,6 +862,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
         'Check In',
         'Check Out',
         'Duration',
+        'OT',
         'Location',
       ];
 
@@ -853,12 +889,16 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       for (int i = 0; i < _records.length; i++) {
         final record = _records[i];
 
-        // Format status
+        // Format status (match frontend)
         String status = record.status;
-        if (status.toLowerCase() == 'halfday' ||
-            status.toLowerCase() == 'half_day') {
+        final raw = status.toLowerCase();
+        if (raw == 'halfday' || raw == 'half_day' || raw == 'half-day' || raw == 'half day') {
           status = 'Half Day';
-        } else {
+        } else if (raw == 'in-progress' || raw == 'in_progress' || raw == 'in progress') {
+          status = 'In Progress';
+        } else if (raw == 'on-leave' || raw == 'on_leave' || raw == 'on leave') {
+          status = 'Leave';
+        } else if (status.isNotEmpty) {
           status = status[0].toUpperCase() + status.substring(1);
         }
 
@@ -913,12 +953,26 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
           location = '-';
         }
 
+        // Format OT
+        String otStr = '-';
+        try {
+          final otMinutes = record.overtimeMinutes ?? 0;
+          if (otMinutes > 0) {
+            final otHours = otMinutes ~/ 60;
+            final otRem = otMinutes % 60;
+            otStr = otHours == 0 ? '${otRem}m' : '${otHours}h ${otRem}m';
+          }
+        } catch (_) {
+          otStr = '-';
+        }
+
         final rowData = [
           dateStr,
           status,
           checkInTime,
           checkOutTime,
           duration,
+          otStr,
           location,
         ];
 
@@ -938,7 +992,7 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
       print('✓ ${_records.length} data rows added');
 
       // Set column widths (use double values to match excel API)
-      final List<double> columnWidths = [18.0, 14.0, 14.0, 14.0, 14.0, 40.0];
+      final List<double> columnWidths = [18.0, 14.0, 14.0, 14.0, 14.0, 10.0, 40.0];
       for (int col = 0; col < columnWidths.length; col++) {
         sheet.setColWidth(col, columnWidths[col]);
       }

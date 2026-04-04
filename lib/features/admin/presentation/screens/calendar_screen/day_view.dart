@@ -10,6 +10,7 @@ class DayView extends StatefulWidget {
   final VoidCallback onPreviousDay;
   final VoidCallback onNextDay;
   final VoidCallback onToday;
+  final void Function(CalendarEvent) onEventTap;
 
   const DayView({
     super.key,
@@ -19,6 +20,7 @@ class DayView extends StatefulWidget {
     required this.onPreviousDay,
     required this.onNextDay,
     required this.onToday,
+    required this.onEventTap,
   });
 
   @override
@@ -268,154 +270,157 @@ class _DayViewState extends State<DayView> {
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: bgColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: textColor.withOpacity(0.3),
-                                width: 1.5,
+                          child: GestureDetector(
+                            onTap: () => widget.onEventTap(event),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: bgColor,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: textColor.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
                               ),
-                            ),
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Header with icon and type
-                                Row(
-                                  children: [
-                                    Icon(
-                                      _getEventIcon(event.type),
-                                      size: 20,
-                                      color: textColor,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            event.title,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Header with icon and type
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        _getEventIcon(event.type),
+                                        size: 20,
+                                        color: textColor,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              event.title,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
                                             ),
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 2,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  textColor.withOpacity(0.2),
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              event.type ?? 'event',
-                                              style: TextStyle(
-                                                color: textColor,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w600,
+                                            const SizedBox(height: 4),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 8,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    textColor.withOpacity(0.2),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                event.type ?? 'event',
+                                                style: TextStyle(
+                                                  color: textColor,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
 
-                                // Time
-                                if (!event.allDay && event.startTime != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.access_time_rounded,
-                                          size: 16,
-                                          color: textColor.withOpacity(0.7),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          DateFormat('h:mm a')
-                                              .format(event.startTime!),
-                                          style: TextStyle(
-                                            color: textColor.withOpacity(0.8),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
+                                  // Time
+                                  if (!event.allDay && event.startTime != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.access_time_rounded,
+                                            size: 16,
+                                            color: textColor.withOpacity(0.7),
                                           ),
-                                        ),
-                                        if (event.endTime != null) ...[
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '-',
-                                            style: TextStyle(
-                                              color:
-                                                  textColor.withOpacity(0.5),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(width: 8),
                                           Text(
                                             DateFormat('h:mm a')
-                                                .format(event.endTime!),
+                                                .format(event.startTime!),
                                             style: TextStyle(
                                               color: textColor.withOpacity(0.8),
                                               fontSize: 12,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
+                                          if (event.endTime != null) ...[
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '-',
+                                              style: TextStyle(
+                                                color:
+                                                    textColor.withOpacity(0.5),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              DateFormat('h:mm a')
+                                                  .format(event.endTime!),
+                                              style: TextStyle(
+                                                color: textColor.withOpacity(0.8),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         ],
-                                      ],
-                                    ),
-                                  ),
-
-                                // Description
-                                if (event.description.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Text(
-                                      event.description,
-                                      style: TextStyle(
-                                        color: Colors.grey[300],
-                                        fontSize: 13,
-                                      ),
-                                      maxLines: 3,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-
-                                // All Day Badge
-                                if (event.allDay)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: textColor.withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      'All Day',
-                                      style: TextStyle(
-                                        color: textColor,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  ),
+
+                                  // Description
+                                  if (event.description.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Text(
+                                        event.description,
+                                        style: TextStyle(
+                                          color: Colors.grey[300],
+                                          fontSize: 13,
+                                        ),
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+
+                                  // All Day Badge
+                                  if (event.allDay)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: textColor.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'All Day',
+                                        style: TextStyle(
+                                          color: textColor,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
                               ],
                             ),
                           ),
+                        )
                         );
                       },
                     ),
