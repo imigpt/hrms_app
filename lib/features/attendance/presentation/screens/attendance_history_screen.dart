@@ -242,7 +242,6 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
                   '${_records.where((r) => (r.overtimeMinutes ?? 0) > 0).length}',
                   Colors.cyan,
                 ),
-                // Late removed — use frontend-derived statuses (in-progress shown as Present on calendar)
                 _buildStatItem(
                   'Half Day',
                   '${_records.where((r) {

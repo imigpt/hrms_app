@@ -610,13 +610,6 @@ class MobileDashboardStats extends StatelessWidget {
           responsive,
         ),
         _buildQuickStatCard(
-          'Late',
-          '${stats?.lateCount ?? 0}',
-          Icons.schedule,
-          const Color(0xFFFFA500),
-          responsive,
-        ),
-        _buildQuickStatCard(
           'Early Checkout',
           '${stats?.earlyCheckout ?? 0}',
           Icons.logout,

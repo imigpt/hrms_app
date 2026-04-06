@@ -16,8 +16,9 @@ import 'task_detail_sheet.dart';
 
 class TasksScreen extends StatefulWidget {
   final String? token;
-  final String? role; 
-  const TasksScreen({super.key, this.token, this.role});
+  final String? role;
+  final bool showOnlyCurrentUser;
+  const TasksScreen({super.key, this.token, this.role, this.showOnlyCurrentUser = false});
 
   @override
   State<TasksScreen> createState() => _TasksScreenState();
@@ -132,7 +133,12 @@ class _TasksScreenState extends State<TasksScreen> {
     if (_isAdmin) {
       await Future.wait([_loadData(), _loadEmployees(), _loadProjects()]);
     } else {
-      await Future.wait([_loadData(), _loadRunningTimer(), _loadTimeLogs()]);
+      // If the screen was opened specifically to show only current user's tasks
+      if (widget.showOnlyCurrentUser == true) {
+        await Future.wait([_loadMyTasks(), _loadRunningTimer(), _loadTimeLogs()]);
+      } else {
+        await Future.wait([_loadData(), _loadRunningTimer(), _loadTimeLogs()]);
+      }
     }
   }
 
@@ -170,6 +176,59 @@ class _TasksScreenState extends State<TasksScreen> {
         });
       }
     } catch (_) {}
+  }
+
+  /// Load only current user's tasks and statistics
+  Future<void> _loadMyTasks({bool showLoading = true}) async {
+    if (_token == null) return;
+    try {
+      if (!mounted) return;
+      if (showLoading) setState(() => _isLoading = true);
+
+      final results = await Future.wait([
+        TaskService.getMyTasks(_token!),
+        TaskService.getTaskStatistics(_token!),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          final tasksRes = results[0];
+          final statsRes = results[1] as Map<String, dynamic>;
+          _tasks = tasksRes is List ? tasksRes : (tasksRes['data'] as List<dynamic>? ?? []);
+
+          if (statsRes['success'] == true && statsRes['data'] != null) {
+            _stats = {
+              'total': (statsRes['data']['total'] ?? 0) as int,
+              'assigned': (statsRes['data']['assigned'] as int?) ??
+                  _tasks.where((t) => t['status'] == 'assigned').length,
+              'todo': (statsRes['data']['todo'] ?? 0) as int,
+              'inProgress': (statsRes['data']['inProgress'] ?? 0) as int,
+              'completed': (statsRes['data']['completed'] ?? 0) as int,
+              'overdue': (statsRes['data']['overdue'] ?? 0) as int,
+              'cancelled': (statsRes['data']['cancelled'] ?? 0) as int,
+              'pending': (statsRes['data']['pending'] ?? 0) as int,
+              'underReview': (statsRes['data']['underReview'] ?? 0) as int,
+            };
+          } else {
+            _stats = {
+              'total': _tasks.length,
+              'assigned': _tasks.where((t) => t['status'] == 'assigned').length,
+              'todo': _tasks.where((t) => t['status'] == 'todo').length,
+              'inProgress': _tasks.where((t) => t['status'] == 'in-progress').length,
+              'completed': _tasks.where((t) => t['status'] == 'completed').length,
+            };
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('Exception: ', '');
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadTimeLogs() async {

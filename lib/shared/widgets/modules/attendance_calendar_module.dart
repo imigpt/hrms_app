@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 enum AttendanceStatus {
   present,
   absent,
-  late,
   holiday,
   weekend,
   future,
@@ -36,19 +35,17 @@ class AttendanceDayData {
 class AttendanceStats {
   final int present;
   final int absent;
-  final int late;
   final int leave;
   final int holiday;
 
   AttendanceStats({
     required this.present,
     required this.absent,
-    required this.late,
     required this.leave,
     required this.holiday,
   });
 
-  int get total => present + absent + late + leave + holiday;
+  int get total => present + absent + leave + holiday;
 }
 
 class LeaveRecord {
@@ -98,11 +95,6 @@ class AttendanceColorMap {
       Color(0xFFFEE2E2), // bg-destructive/20
       Color(0xFFDC2626), // text-destructive
       Color(0xFFFCA5A5),  // border-destructive/30
-    ),
-    AttendanceStatus.late: (
-      Color(0xFFFEF3C7), // bg-warning/20
-      Color(0xFFD97706), // text-warning
-      Color(0xFFFCD34D),  // border-warning/30
     ),
     AttendanceStatus.holiday: (
       Color(0xFFDEF7FF), // bg-primary/20
@@ -180,7 +172,7 @@ class _AttendanceCalendarModuleState extends State<AttendanceCalendarModule> {
     super.initState();
     _currentMonth = DateTime.now();
     _calendarData = [];
-    _stats = AttendanceStats(present: 0, absent: 0, late: 0, leave: 0, holiday: 0);
+    _stats = AttendanceStats(present: 0, absent: 0, leave: 0, holiday: 0);
     _buildCalendar();
   }
 
@@ -268,7 +260,6 @@ class _AttendanceCalendarModuleState extends State<AttendanceCalendarModule> {
       // Calculate stats
       final present = days.where((d) => d.status == AttendanceStatus.present).length;
       final absent = days.where((d) => d.status == AttendanceStatus.absent).length;
-      final late = days.where((d) => d.status == AttendanceStatus.late).length;
       final leave = days.where((d) => d.status == AttendanceStatus.leave || d.status == AttendanceStatus.halfDay).length;
       final holiday = days.where((d) => d.status == AttendanceStatus.holiday).length;
 
@@ -278,7 +269,6 @@ class _AttendanceCalendarModuleState extends State<AttendanceCalendarModule> {
           _stats = AttendanceStats(
             present: present,
             absent: absent,
-            late: late,
             leave: leave,
             holiday: holiday,
           );
@@ -366,7 +356,6 @@ class _AttendanceCalendarModuleState extends State<AttendanceCalendarModule> {
     final stats = [
       ('Present', _stats.present, const Color(0xFF059669)),
       ('Absent', _stats.absent, const Color(0xFFDC2626)),
-      ('Late', _stats.late, const Color(0xFFD97706)),
       ('Leave', _stats.leave, const Color(0xFF3B82F6)),
       ('Holiday', _stats.holiday, const Color(0xFF0369A1)),
     ];
@@ -543,7 +532,6 @@ class _AttendanceCalendarModuleState extends State<AttendanceCalendarModule> {
     final legendItems = [
       ('Present', AttendanceStatus.present),
       ('Absent', AttendanceStatus.absent),
-      ('Late', AttendanceStatus.late),
       ('Leave', AttendanceStatus.leave),
       ('Holiday', AttendanceStatus.holiday),
       ('Weekend', AttendanceStatus.weekend),

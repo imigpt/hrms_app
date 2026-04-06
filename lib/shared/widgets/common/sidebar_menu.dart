@@ -91,7 +91,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "HR Accounts", "icon": Icons.manage_accounts_rounded},
     {"title": "Employees", "icon": Icons.people_rounded},
     {"title": "Companies", "icon": Icons.apartment_rounded},
-    {"title": "Clients", "icon": Icons.people_outline_rounded},
+    // {"title": "Clients", "icon": Icons.people_outline_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded, "hasSubmenu": true},
     {
       "title": "Leaves",
@@ -113,9 +113,10 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
     {"title": "My Profile", "icon": Icons.person_rounded},
     {"title": "Employees", "icon": Icons.people_rounded},
-    {"title": "Clients", "icon": Icons.people_outline_rounded},
+    // {"title": "Clients", "icon": Icons.people_outline_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded, "hasSubmenu": true},
     {"title": "Leaves", "icon": Icons.calendar_month_rounded, "hasSubmenu": true},
+    {"title": "Calendar", "icon": Icons.event_rounded},
     {"title": "Tasks", "icon": Icons.task_alt_rounded, "hasSubmenu": true},
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
     {"title": "Chat", "icon": Icons.chat_bubble_rounded},
@@ -165,7 +166,8 @@ class _SidebarMenuState extends State<SidebarMenu> {
   ];
 
   late final List<Map<String, dynamic>> _hrTasksSubItems = [
-    {"title": "Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "Employee Tasks", "icon": Icons.task_alt_rounded},
+    {"title": "My Tasks", "icon": Icons.assignment_rounded},
     {"title": "BOD/EOD", "icon": Icons.event_note_rounded},
   ];
 
@@ -1088,10 +1090,15 @@ class _SidebarMenuState extends State<SidebarMenu> {
     }
 
     // Navigate to appropriate tasks subscreen
-    if (title == "Tasks") {
+    if (title == "Employee Tasks") {
       // View tasks based on user role
       Navigator.of(context).push(
         _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole)),
+      );
+    } else if (title == "My Tasks") {
+      // View only current user's tasks
+      Navigator.of(context).push(
+        _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole, showOnlyCurrentUser: true)),
       );
     } else if (title == "BOD/EOD") {
       Navigator.of(context).push(

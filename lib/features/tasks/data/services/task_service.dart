@@ -44,10 +44,10 @@ class TaskService {
       final params = <String, String>{
         'page': page.toString(),
         'limit': limit.toString(),
-        'status': ?status,
-        'assignedTo': ?assignedTo,
-        'sortBy': ?sortBy,
       };
+      if (status != null && status.isNotEmpty) params['status'] = status;
+      if (assignedTo != null && assignedTo.isNotEmpty) params['assignedTo'] = assignedTo;
+      if (sortBy != null && sortBy.isNotEmpty) params['sortBy'] = sortBy;
 
       final uri = Uri.parse('$baseUrl/tasks').replace(queryParameters: params);
       final response = await http
@@ -216,11 +216,10 @@ class TaskService {
     String? notes,
   }) async {
     try {
-      final body = <String, dynamic>{
-        'status': ?status,
-        'progress': ?completionPercentage, // API expects 'progress'
-        'notes': ?notes,
-      };
+      final body = <String, dynamic>{};
+      if (status != null) body['status'] = status;
+      if (completionPercentage != null) body['progress'] = completionPercentage;
+      if (notes != null) body['notes'] = notes;
 
       final response = await http
           .put(
@@ -361,7 +360,8 @@ class TaskService {
     try {
       final response = await http
           .get(
-            Uri.parse('$baseUrl/employees/tasks'),
+            // backend exposes /tasks/my for current user's tasks
+            Uri.parse('$baseUrl/tasks/my'),
             headers: _getHeaders(token),
           )
           .timeout(const Duration(seconds: 15));

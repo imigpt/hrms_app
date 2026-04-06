@@ -791,7 +791,7 @@ class _BodEodScreenState extends State<BodEodScreen>
                 labelColor: AppTheme.primaryColor,
                 unselectedLabelColor: Colors.grey[500],
                 tabs: const [
-                  Tab(text: 'My Logs'),
+                  Tab(text: 'My BOD/EOD'),
                   Tab(text: 'All Employees'),
                 ],
               )
