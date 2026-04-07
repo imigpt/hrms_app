@@ -78,7 +78,7 @@ class CalendarNotifier extends ChangeNotifier {
         if (res['data'] is List) {
           for (final event in res['data']) {
             final calendarEvent = CalendarEvent.fromJson(event);
-            print('[CALENDAR NOTIFIER] ✓ Event: ${calendarEvent.title} on ${calendarEvent.date}');
+            print('[CALENDAR NOTIFIER] ✓ Event: ${calendarEvent.title} (Type: ${calendarEvent.type}) on ${calendarEvent.date}');
             // Filter out holidays from events list (they'll be in holidays list)
             if (calendarEvent.eventType != 'holiday') {
               events.add(calendarEvent);
@@ -86,6 +86,9 @@ class CalendarNotifier extends ChangeNotifier {
           }
         }
         print('[CALENDAR NOTIFIER] ✅ fetchEvents: Success - ${events.length} events loaded');
+        final taskCount = events.where((e) => e.type == 'task').length;
+        final eventCount = events.where((e) => e.type != 'task').length;
+        print('[CALENDAR NOTIFIER] Event breakdown - Tasks: $taskCount, Other: $eventCount');
         _setState(_state.copyWith(events: events));
       } else {
         print('[CALENDAR NOTIFIER] ❌ fetchEvents: Failed - ${res['message']}');
@@ -247,6 +250,59 @@ class CalendarNotifier extends ChangeNotifier {
       }
     } catch (e) {
       print('[CALENDAR NOTIFIER] ❌ deleteEvent: Exception - $e');
+      _setState(_state.copyWith(error: 'Error: $e', isSaving: false));
+      return false;
+    }
+  }
+
+  /// Mark an event as completed
+  Future<bool> markEventComplete(String token, String eventId) async {
+    print('[CALENDAR NOTIFIER] markEventComplete: Starting - EventId: $eventId');
+    _setState(_state.copyWith(isSaving: true, error: null));
+    try {
+      final res = await CalendarService.updateEvent(token, eventId, {
+        'status': 'completed',
+      });
+
+      if (res['success'] != false) {
+        print('[CALENDAR NOTIFIER] ✅ markEventComplete: Success - EventId: $eventId');
+        _setState(_state.copyWith(
+          events: _state.events
+              .map((e) => e.id == eventId
+                  ? CalendarEvent(
+                      id: e.id,
+                      title: e.title,
+                      description: e.description,
+                      date: e.date,
+                      startTime: e.startTime,
+                      endTime: e.endTime,
+                      type: e.type,
+                      priority: e.priority,
+                      status: 'completed',
+                      color: e.color,
+                      allDay: e.allDay,
+                      eventType: e.eventType,
+                      participants: e.participants,
+                      meetingUrl: e.meetingUrl,
+                      createdBy: e.createdBy,
+                      assignedTo: e.assignedTo,
+                    )
+                  : e)
+              .toList(),
+          successMessage: 'Event marked as complete',
+          isSaving: false,
+        ));
+        return true;
+      } else {
+        print('[CALENDAR NOTIFIER] ❌ markEventComplete: Failed - ${res['message']}');
+        _setState(_state.copyWith(
+          error: res['message'] ?? 'Failed to mark event as complete',
+          isSaving: false,
+        ));
+        return false;
+      }
+    } catch (e) {
+      print('[CALENDAR NOTIFIER] ❌ markEventComplete: Exception - $e');
       _setState(_state.copyWith(error: 'Error: $e', isSaving: false));
       return false;
     }

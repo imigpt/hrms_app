@@ -185,39 +185,37 @@ class _TasksScreenState extends State<TasksScreen> {
       if (!mounted) return;
       if (showLoading) setState(() => _isLoading = true);
 
-      final results = await Future.wait([
-        TaskService.getMyTasks(_token!),
-        TaskService.getTaskStatistics(_token!),
-      ]);
+      final tasksRes = await TaskService.getMyTasks(_token!);
 
       if (mounted) {
         setState(() {
-          final tasksRes = results[0];
-          final statsRes = results[1] as Map<String, dynamic>;
           _tasks = tasksRes is List ? tasksRes : (tasksRes['data'] as List<dynamic>? ?? []);
 
-          if (statsRes['success'] == true && statsRes['data'] != null) {
-            _stats = {
-              'total': (statsRes['data']['total'] ?? 0) as int,
-              'assigned': (statsRes['data']['assigned'] as int?) ??
-                  _tasks.where((t) => t['status'] == 'assigned').length,
-              'todo': (statsRes['data']['todo'] ?? 0) as int,
-              'inProgress': (statsRes['data']['inProgress'] ?? 0) as int,
-              'completed': (statsRes['data']['completed'] ?? 0) as int,
-              'overdue': (statsRes['data']['overdue'] ?? 0) as int,
-              'cancelled': (statsRes['data']['cancelled'] ?? 0) as int,
-              'pending': (statsRes['data']['pending'] ?? 0) as int,
-              'underReview': (statsRes['data']['underReview'] ?? 0) as int,
-            };
-          } else {
-            _stats = {
-              'total': _tasks.length,
-              'assigned': _tasks.where((t) => t['status'] == 'assigned').length,
-              'todo': _tasks.where((t) => t['status'] == 'todo').length,
-              'inProgress': _tasks.where((t) => t['status'] == 'in-progress').length,
-              'completed': _tasks.where((t) => t['status'] == 'completed').length,
-            };
-          }
+          // Compute stats from MY tasks only (not from API which includes all employees)
+          _stats = {
+            'total': _tasks.length,
+            'assigned': _tasks.where((t) => 
+              (t['status'] as String?)?.toLowerCase() == 'assigned').length,
+            'todo': _tasks.where((t) => 
+              (t['status'] as String?)?.toLowerCase() == 'todo').length,
+            'inProgress': _tasks.where((t) => 
+              (t['status'] as String?)?.toLowerCase() == 'in-progress').length,
+            'completed': _tasks.where((t) => 
+              (t['status'] as String?)?.toLowerCase() == 'completed').length,
+            'overdue': _tasks.where((t) {
+              final dueDate = t['dueDate'] != null 
+                ? DateTime.tryParse(t['dueDate'].toString()) 
+                : null;
+              return dueDate != null && dueDate.isBefore(DateTime.now()) &&
+                  (t['status'] as String?)?.toLowerCase() != 'completed';
+            }).length,
+            'cancelled': _tasks.where((t) => 
+              (t['status'] as String?)?.toLowerCase() == 'cancelled').length,
+            'pending': _tasks.where((t) => 
+              (t['status'] as String?)?.toLowerCase() == 'pending').length,
+            'underReview': _tasks.where((t) => 
+              (t['status'] as String?)?.toLowerCase() == 'under-review').length,
+          };
           _isLoading = false;
         });
       }

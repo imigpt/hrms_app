@@ -3272,27 +3272,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           SizedBox(height: verticalSpacing),
 
-                          // ── Recent Activity + System Alerts ──
-                          if (isDesktopDevice)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  flex: 1,
-                                  child: _buildRecentActivitySection(),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  flex: 1,
-                                  child: _buildSystemAlertsSection(),
-                                ),
-                              ],
-                            )
-                          else ...[
-                            _buildRecentActivitySection(),
-                            SizedBox(height: verticalSpacing),
-                            _buildSystemAlertsSection(),
-                          ],
+                          // ── Recent Activity ──
+                          _buildRecentActivitySection(),
                           SizedBox(height: verticalSpacing),
 
                           // ── Quick Actions ──
@@ -3592,123 +3573,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 }),
               ],
             ),
-        ],
-      ),
-    );
-  }
-
-  // ── System Alerts Section ──
-  Widget _buildSystemAlertsSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.warning_amber_rounded,
-                  color: Colors.redAccent,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'System Alerts',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Items requiring attention',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // No Alerts Message
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _accentGreen.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _accentGreen.withOpacity(0.2)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.check_circle, color: _accentGreen, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'No alerts',
-                    style: TextStyle(
-                      color: _accentGreen,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // System Health Section
-          Text(
-            'System Health',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Server Load
-          _buildHealthMetric(
-            label: 'Server Load',
-            percentage: (_systemHealth['serverLoad'] as num? ?? 0).toInt(),
-            color: _getHealthColor((_systemHealth['serverLoad'] as num? ?? 0).toDouble()),
-          ),
-          const SizedBox(height: 14),
-
-          // Database
-          _buildHealthMetric(
-            label: 'Database',
-            percentage: (_systemHealth['database'] as num? ?? 0).toInt(),
-            color: _getHealthColor((_systemHealth['database'] as num? ?? 0).toDouble()),
-          ),
-          const SizedBox(height: 14),
-
-          // Storage
-          _buildHealthMetric(
-            label: 'Storage',
-            percentage: (_systemHealth['storage'] as num? ?? 0).toInt(),
-            color: _getHealthColor((_systemHealth['storage'] as num? ?? 0).toDouble()),
-          ),
         ],
       ),
     );

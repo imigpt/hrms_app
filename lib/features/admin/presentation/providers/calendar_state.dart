@@ -13,6 +13,8 @@ class CalendarEvent {
   final String? eventType; // 'manual', 'meeting', 'reminder'
   final List<String>? participants; // Email addresses
   final String? meetingUrl;
+  final String? createdBy; // Name of the event creator
+  final String? assignedTo; // Name of the assigned person
 
   CalendarEvent({
     required this.id,
@@ -29,6 +31,8 @@ class CalendarEvent {
     this.eventType,
     this.participants,
     this.meetingUrl,
+    this.createdBy,
+    this.assignedTo,
   });
 
   factory CalendarEvent.fromJson(Map<String, dynamic> json) {
@@ -42,13 +46,29 @@ class CalendarEvent {
       return value;
     }
 
+    String? normalizePerson(dynamic value) {
+      if (value == null) return null;
+      if (value is String) {
+        final v = value.trim();
+        return v.isEmpty ? null : v;
+      }
+      if (value is Map) {
+        final name = value['name']?.toString().trim();
+        if (name != null && name.isNotEmpty) return name;
+        final email = value['email']?.toString().trim();
+        if (email != null && email.isNotEmpty) return email;
+        final id = value['_id']?.toString().trim();
+        if (id != null && id.isNotEmpty) return id;
+      }
+      final asText = value.toString().trim();
+      return asText.isEmpty ? null : asText;
+    }
+
     // Map backend field names to model fields
     final id = json['_id'] ?? json['id'] ?? '';
     final title = json['title'] ?? '';
     final description = json['description'] ?? '';
     
-    // Backend can return eventDate/date (calendar API) or start/end (aggregated API)
-    // Parse date carefully to avoid timezone issues
     final eventDate = json['eventDate'] ?? json['date'] ?? json['start'];
     DateTime date = DateTime.now();
     
@@ -74,6 +94,9 @@ class CalendarEvent {
         print('[CALENDAR STATE] ❌ Error parsing eventDate: $e for input: "$eventDate"');
         date = DateTime.now();
       }
+    } else {
+      // No date provided - use today for undated tasks
+      print('[CALENDAR STATE] ⚠️  No date provided for "$title" (type: ${json['type']}) - using today (${DateTime.now()})');
     }
     
     // Backend may return endDate (calendar API) or end (aggregated API)
@@ -150,6 +173,12 @@ class CalendarEvent {
       eventType: backendEventType.isNotEmpty ? backendEventType : null,
       participants: participants,
       meetingUrl: json['meetingUrl'] ?? json['meeting_url'],
+      createdBy: normalizePerson(
+        json['createdBy'] ?? json['created_by'] ?? json['creator'],
+      ),
+      assignedTo: normalizePerson(
+        json['assignedTo'] ?? json['assigned_to'] ?? json['assignee'],
+      ),
     );
   }
 
@@ -194,6 +223,8 @@ class CalendarEvent {
       'eventType': eventType,
       'participants': participants,
       'meetingUrl': meetingUrl,
+      'createdBy': createdBy,
+      'assignedTo': assignedTo,
     };
   }
 }

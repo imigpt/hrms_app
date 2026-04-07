@@ -289,15 +289,18 @@ class _AddMeetingDialogState extends State<AddMeetingDialog> {
       if (!mounted) return;
 
       final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      final startTime = _startTime ?? DateTime.now();
+      final endTime = _endTime ?? DateTime.now().add(const Duration(hours: 1));
+      
       final meetingData = {
         'title': _titleController.text,
         'description': _descriptionController.text,
-        'eventDate': _startTime,
-        'endDate': _endTime,
+        'eventDate': startTime.toIso8601String(),
+        'endDate': endTime.toIso8601String(),
         'eventType': 'meeting',
         'allDay': false,
-        'startTime': _startTime,
-        'endTime': _endTime,
+        'startTime': startTime.toIso8601String(),
+        'endTime': endTime.toIso8601String(),
         'priority': 'medium',
         'reminder': _selectedReminder,
         'timezone': _selectedTimezone,

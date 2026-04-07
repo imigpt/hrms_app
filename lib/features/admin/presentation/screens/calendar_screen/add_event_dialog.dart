@@ -243,15 +243,19 @@ class _AddEventDialogState extends State<AddEventDialog> {
       final notifier = Provider.of<CalendarNotifier>(context, listen: false);
       
       // Create event via API
+      final startTime = _startTime ?? DateTime.now();
+      final endTime = _endTime ?? DateTime.now().add(const Duration(hours: 1));
+      final selectedDate = _selectedDate ?? DateTime.now();
+      
       final eventData = {
         'title': _titleController.text,
         'description': _descriptionController.text,
-        'eventDate': _isAllDay ? _selectedDate! : _startTime,
-        'endDate': _isAllDay ? _selectedDate! : _endTime,
+        'eventDate': _isAllDay ? selectedDate.toIso8601String() : startTime.toIso8601String(),
+        'endDate': _isAllDay ? selectedDate.toIso8601String() : endTime.toIso8601String(),
         'eventType': _selectedType == 'event' ? 'manual' : _selectedType,
         'allDay': _isAllDay,
-        'startTime': _isAllDay ? null : _startTime,
-        'endTime': _isAllDay ? null : _endTime,
+        'startTime': _isAllDay ? null : startTime.toIso8601String(),
+        'endTime': _isAllDay ? null : endTime.toIso8601String(),
         'priority': _selectedPriority,
         'reminder': _selectedReminder,
         'timezone': _selectedTimezone,

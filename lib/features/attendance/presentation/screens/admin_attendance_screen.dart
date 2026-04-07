@@ -44,7 +44,6 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
   // Stats
   int _presentCount = 0;
-  int _lateCount = 0;
   int _absentCount = 0;
   int _halfDayCount = 0;
 
@@ -116,7 +115,6 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
 
   void _computeStats(List<AttendanceRecord> records) {
     _presentCount = records.where((r) => r.status == 'present').length;
-    _lateCount = records.where((r) => r.status == 'late').length;
     _absentCount = records.where((r) => r.status == 'absent').length;
     _halfDayCount = records.where((r) => r.status == 'half-day').length;
   }
@@ -156,7 +154,10 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
     if (record.checkOut == null) {
       return 'in-progress';
     }
-    return record.status.toLowerCase();
+    final status = record.status.toLowerCase();
+    // Normalize 'late' to 'present' so UI doesn't treat it separately
+    if (status == 'late') return 'present';
+    return status;
   }
 
   String _formatTime(DateTime? dt) {
@@ -233,7 +234,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       case 'in-progress':
         return 'In Progress';
       case 'late':
-        return 'Late';
+        return 'Present';
       case 'absent':
         return 'Absent';
       case 'half-day':
@@ -252,7 +253,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       case 'in-progress':
         return Colors.blue;
       case 'late':
-        return _orange;
+        return _green;
       case 'absent':
         return _red;
       case 'half-day':
@@ -722,7 +723,6 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
       'Present',
       _presentCount,
     ),
-    _statCard(Icons.schedule_rounded, _orange, 'Late', _lateCount),
     _statCard(Icons.cancel_outlined, _red, 'Absent', _absentCount),
     _statCard(Icons.timelapse_rounded, _primary, 'Half Day', _halfDayCount),
   ];
@@ -845,7 +845,7 @@ class _AdminAttendanceScreenState extends State<AdminAttendanceScreen> {
             ),
             DropdownMenuItem(value: 'present', child: Text('Present')),
             DropdownMenuItem(value: 'in-progress', child: Text('In Progress')),
-            DropdownMenuItem(value: 'late', child: Text('Late')),
+            // 'Late' removed from filters per request
             DropdownMenuItem(value: 'absent', child: Text('Absent')),
             DropdownMenuItem(value: 'half-day', child: Text('Half Day')),
             DropdownMenuItem(value: 'on-leave', child: Text('On Leave')),

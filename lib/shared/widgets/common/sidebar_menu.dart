@@ -1090,13 +1090,13 @@ class _SidebarMenuState extends State<SidebarMenu> {
     }
 
     // Navigate to appropriate tasks subscreen
-    if (title == "Employee Tasks") {
-      // View tasks based on user role
+    if (title == "Tasks" || title == "Employee Tasks") {
+      // View all employee tasks (Admin/HR)
       Navigator.of(context).push(
         _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole)),
       );
     } else if (title == "My Tasks") {
-      // View only current user's tasks
+      // View only current user's tasks (HR only)
       Navigator.of(context).push(
         _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole, showOnlyCurrentUser: true)),
       );
