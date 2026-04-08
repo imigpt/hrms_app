@@ -51,11 +51,36 @@ class _AttendanceStatisticsSectionState
         year: _currentYear,
       );
 
-      if (response.success && mounted) {
-        setState(() {
-          _summaryData = response.data;
-          _isLoading = false;
-        });
+      // Ensure we always update UI state even when backend returns success=false
+      if (mounted) {
+        if (response.success) {
+          setState(() {
+            _summaryData = response.data;
+            _isLoading = false;
+            _error = null;
+          });
+        } else {
+          // Log full response for debugging and show a friendly error
+          // (AttendanceService may return success=false with details)
+          try {
+            // Attempt to extract message if present
+            final maybeMsg = response.data is Object ? null : null;
+            setState(() {
+              _error = 'No attendance summary available for selected month.';
+              _summaryData = null;
+              _isLoading = false;
+            });
+            // Print debug info to console to aid troubleshooting
+            // ignore: avoid_print
+            print('Attendance summary returned success=false for $token, month=$_currentMonth year=$_currentYear');
+          } catch (e) {
+            setState(() {
+              _error = 'Failed to load attendance summary.';
+              _summaryData = null;
+              _isLoading = false;
+            });
+          }
+        }
       }
     } catch (e) {
       setState(() {
@@ -218,11 +243,7 @@ class _AttendanceStatisticsSectionState
                         children: [
                           _buildLegendItem(
                             'Total Attendance',
-                            (_summaryData!.present +
-                                    _summaryData!.absent +
-                                    _summaryData!.late +
-                                    _summaryData!.halfDay)
-                                .toString(),
+                            _summaryData!.totalDays.toString(),
                             const Color(0xFF9C27B0), // Purple
                           ),
                           const SizedBox(height: 12),
@@ -233,22 +254,21 @@ class _AttendanceStatisticsSectionState
                           ),
                           const SizedBox(height: 12),
                           _buildLegendItem(
-                            'Absent',
-                            _summaryData!.absent.toString(),
-                            const Color(0xFFF44336), // Red
+                            'Leaves',
+                            _summaryData!.leaves.toString(),
+                            const Color(0xFFEF4444), // Red
                           ),
                           const SizedBox(height: 12),
                           _buildLegendItem(
-                            'Leaves',
-                            _summaryData!.leaves.toString(),
-                            const Color(0xFFFFC107), // Amber
+                            'Absent',
+                            _summaryData!.absent.toString(),
+                            const Color(0xFFEF6A6A), // Light Red
                           ),
-                          const SizedBox(height: 12),
                           const SizedBox(height: 12),
                           _buildLegendItem(
                             'Half Day',
                             _summaryData!.halfDay.toString(),
-                            const Color(0xFF2196F3), // Blue
+                            const Color(0xFF3B82F6), // Blue
                           ),
                           
                         ],
@@ -310,8 +330,8 @@ class _AttendanceStatisticsSectionState
   Widget _buildDonutChart() {
     final total =
         _summaryData!.present +
+        _summaryData!.leaves +
         _summaryData!.absent +
-        _summaryData!.late +
         _summaryData!.halfDay;
 
     if (total == 0) {
@@ -326,8 +346,8 @@ class _AttendanceStatisticsSectionState
     return CustomPaint(
       painter: DonutChartPainter(
         present: _summaryData!.present.toDouble(),
+        leaves: _summaryData!.leaves.toDouble(),
         absent: _summaryData!.absent.toDouble(),
-        late: _summaryData!.late.toDouble(),
         halfDay: _summaryData!.halfDay.toDouble(),
         total: total.toDouble(),
       ),
@@ -338,15 +358,15 @@ class _AttendanceStatisticsSectionState
 
 class DonutChartPainter extends CustomPainter {
   final double present;
+  final double leaves;
   final double absent;
-  final double late;
   final double halfDay;
   final double total;
 
   DonutChartPainter({
     required this.present,
+    required this.leaves,
     required this.absent,
-    required this.late,
     required this.halfDay,
     required this.total,
   });
@@ -359,11 +379,11 @@ class DonutChartPainter extends CustomPainter {
 
     var startAngle = -90.0 * (3.14159 / 180); // Start from top
 
-    // Colors matching the legend
+    // Colors matching React dashboard
     const presentColor = Color(0xFF4CAF50); // Green
-    const absentColor = Color(0xFFF44336); // Red
-    const lateColor = Color(0xFFFF9800); // Orange
-    const halfDayColor = Color(0xFF2196F3); // Blue
+    const leavesColor = Color(0xFFEF4444); // Red
+    const absentColor = Color(0xFFEF6A6A); // Light Red
+    const halfDayColor = Color(0xFF3B82F6); // Blue
 
     // Draw Present segment (Green)
     _drawSegment(
@@ -377,7 +397,19 @@ class DonutChartPainter extends CustomPainter {
     );
     startAngle += (present / total) * 360 * (3.14159 / 180);
 
-    // Draw Absent segment (Red)
+    // Draw Leaves segment (Red)
+    _drawSegment(
+      canvas,
+      center,
+      radius,
+      innerRadius,
+      startAngle,
+      (leaves / total) * 360,
+      leavesColor,
+    );
+    startAngle += (leaves / total) * 360 * (3.14159 / 180);
+
+    // Draw Absent segment (Light Red)
     _drawSegment(
       canvas,
       center,
@@ -388,18 +420,6 @@ class DonutChartPainter extends CustomPainter {
       absentColor,
     );
     startAngle += (absent / total) * 360 * (3.14159 / 180);
-
-    // Draw Late segment (Orange)
-    _drawSegment(
-      canvas,
-      center,
-      radius,
-      innerRadius,
-      startAngle,
-      (late / total) * 360,
-      lateColor,
-    );
-    startAngle += (late / total) * 360 * (3.14159 / 180);
 
     // Draw Half Day segment (Blue)
     _drawSegment(
@@ -454,8 +474,8 @@ class DonutChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(DonutChartPainter oldDelegate) {
     return oldDelegate.present != present ||
+        oldDelegate.leaves != leaves ||
         oldDelegate.absent != absent ||
-        oldDelegate.late != late ||
         oldDelegate.halfDay != halfDay;
   }
 }

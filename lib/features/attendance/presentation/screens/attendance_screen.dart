@@ -24,7 +24,7 @@ import 'package:hrms_app/shared/theme/app_theme.dart';
 // import 'attendance_api_test_screen.dart';
 
 // 1. Define Status Enum
-enum AttendanceStatus { present, absent, halfDay, leave }
+enum AttendanceStatus { present, absent, halfDay, leave, inProgress }
 
 /// [initialAction] can be 'checkIn' or 'checkOut' to immediately trigger
 /// the respective flow when the screen opens from the dashboard.
@@ -63,9 +63,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   // --- Calendar State ---
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  
+  // Month/Year state matching React EmployeeAttendance
+  int _selectedMonth = DateTime.now().month;
+  int _selectedYear = DateTime.now().year;
 
   // Attendance History Data for the Calendar
   Map<DateTime, AttendanceStatus> _attendanceData = {};
+  List<records.AttendanceRecord> _monthAttendanceData = [];
   bool _isLoadingHistory = false;
 
   // Latest Attendance Records (max 5)
@@ -273,8 +278,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       final history = await AttendanceService.getAttendanceHistory(
         token: token,
-        month: _focusedDay.month,
-        year: _focusedDay.year,
+        month: _selectedMonth,
+        year: _selectedYear,
       );
 
       print(
@@ -307,8 +312,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             } else if (rawStatus == 'in-progress' ||
                 rawStatus == 'in_progress' ||
                 rawStatus == 'in progress') {
-              // Treat checked-in-but-not-checked-out as present on calendar
-              status = AttendanceStatus.present;
+              // In-progress status (checked in, not yet checked out)
+              status = AttendanceStatus.inProgress;
             } else if (rawStatus == 'halfday' ||
                 rawStatus == 'half_day' ||
                 rawStatus == 'half day' ||
@@ -337,6 +342,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
         setState(() {
           _attendanceData = attendanceMap;
+          _monthAttendanceData = history.data.cast<records.AttendanceRecord>();
           _isLoadingHistory = false;
         });
       }
@@ -845,6 +851,98 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return null;
   }
 
+  // --- React-compatible helper methods ---
+
+  /// Get attendance record for a specific day
+  records.AttendanceRecord? _getAttendanceForDay(DateTime day) {
+    for (var record in _monthAttendanceData) {
+      if (record.date.year == day.year &&
+          record.date.month == day.month &&
+          record.date.day == day.day) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  /// Extract status string from record, handle null
+  String _getStatusString(records.AttendanceRecord? record) {
+    if (record == null) return 'unmarked';
+    return (record.status ?? 'unmarked').toLowerCase().trim();
+  }
+
+  /// Simple date equality check
+  bool isToday(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
+  /// Calculate monthly stats by filtering records
+  Map<String, int> _getMonthlyStats() {
+    final stats = {
+      'present': 0,
+      'absent': 0,
+      'leave': 0,
+      'halfday': 0,
+    };
+
+    for (var record in _monthAttendanceData) {
+      final status = (record.status ?? '').toLowerCase().trim();
+      if (status == 'present') {
+        stats['present'] = (stats['present'] ?? 0) + 1;
+      } else if (status == 'absent') {
+        stats['absent'] = (stats['absent'] ?? 0) + 1;
+      } else if (status == 'on-leave' ||
+          status == 'on_leave' ||
+          status == 'on leave') {
+        stats['leave'] = (stats['leave'] ?? 0) + 1;
+      } else if (status == 'half-day' ||
+          status == 'half_day' ||
+          status == 'half day' ||
+          status == 'halfday') {
+        stats['halfday'] = (stats['halfday'] ?? 0) + 1;
+      }
+    }
+    return stats;
+  }
+
+  /// Navigate to previous month (React pattern)
+  void _handlePreviousMonth() {
+    setState(() {
+      _selectedMonth--;
+      if (_selectedMonth < 1) {
+        _selectedMonth = 12;
+        _selectedYear--;
+      }
+      _focusedDay = DateTime(_selectedYear, _selectedMonth, 1);
+    });
+    _fetchAttendanceHistory();
+  }
+
+  /// Navigate to next month (React pattern)
+  void _handleNextMonth() {
+    setState(() {
+      _selectedMonth++;
+      if (_selectedMonth > 12) {
+        _selectedMonth = 1;
+        _selectedYear++;
+      }
+      _focusedDay = DateTime(_selectedYear, _selectedMonth, 1);
+    });
+    _fetchAttendanceHistory();
+  }
+
+  /// Jump to today (React pattern)
+  void _handleToday() {
+    setState(() {
+      _selectedMonth = DateTime.now().month;
+      _selectedYear = DateTime.now().year;
+      _focusedDay = DateTime.now();
+    });
+    _fetchAttendanceHistory();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1177,7 +1275,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           case AttendanceStatus.present:
                             bgColor = kGreenBg;
                             textColor = kGreenText;
-                            icon = Icons.check;
+                            icon = Icons.check_circle;
                             break;
                           case AttendanceStatus.absent:
                             bgColor = kRedBg;
@@ -1193,6 +1291,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                             bgColor = kPurpleBg;
                             textColor = kPurpleText;
                             icon = Icons.event_busy_outlined;
+                            break;
+                          case AttendanceStatus.inProgress:
+                            bgColor = const Color(0xFF1B2A3A); // Blue bg (darker shade)
+                            textColor = const Color(0xFF3B82F6); // Blue text
+                            icon = Icons.access_time;
                             break;
                         }
 

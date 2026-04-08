@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hrms_app/features/auth/data/services/auth_service.dart';
+import 'package:provider/provider.dart';
+import 'package:hrms_app/features/auth/presentation/providers/auth_notifier.dart';
 import 'login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -25,8 +26,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   // --- Countdown Timer ---
   int _resendCountdown = 0;
-
-  final AuthService _authService = AuthService();
 
   // --- Colors ---
   final Color kBackground = const Color(0xFF000000);
@@ -57,8 +56,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _step1Loading = true);
 
     try {
-      await _authService.forgotPassword(email);
+      final authNotifier = context.read<AuthNotifier>();
+      await authNotifier.forgotPassword(email);
       if (!mounted) return;
+
+      final error = authNotifier.state.errorMessage;
+      if (error != null && error.isNotEmpty) {
+        setState(() => _step1Loading = false);
+        _showError(error);
+        return;
+      }
 
       setState(() {
         _step1Complete = true;
@@ -108,13 +115,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _step2Loading = true);
 
     try {
-      final newToken = await _authService.resetPassword(
+      final authNotifier = context.read<AuthNotifier>();
+      await authNotifier.resetPassword(
         email: email,
         resetToken: code,
         newPassword: newPwd,
       );
 
       if (!mounted) return;
+
+      final error = authNotifier.state.errorMessage;
+      if (error != null && error.isNotEmpty) {
+        setState(() => _step2Loading = false);
+        _showError(error);
+        return;
+      }
 
       _showSuccess(
         'Password reset successfully!',

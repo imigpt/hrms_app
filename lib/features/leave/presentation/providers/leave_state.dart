@@ -1,12 +1,15 @@
 import 'package:equatable/equatable.dart';
+import 'package:hrms_app/features/leave/data/models/leave_balance_model.dart';
 import 'package:hrms_app/features/leave/data/models/leave_management_model.dart';
 
 /// Immutable state for leave feature
 class LeaveState extends Equatable {
   final Map<String, dynamic>? userBalance; // Current user's balance
+  final List<LeaveBalanceEntry> leaveBalances; // Admin balance management list
   final List<AdminLeaveData> leaves;
   final bool isLoading;
   final bool isLoadingBalance;
+  final bool isLoadingLeaveBalances;
   final bool isLoadingLeaves;
   final String? errorMessage;
   final String? errorType; // 'balance', 'leaves', 'approval', 'rejection'
@@ -18,9 +21,11 @@ class LeaveState extends Equatable {
 
   const LeaveState({
     this.userBalance,
+    this.leaveBalances = const [],
     this.leaves = const [],
     this.isLoading = false,
     this.isLoadingBalance = false,
+    this.isLoadingLeaveBalances = false,
     this.isLoadingLeaves = false,
     this.errorMessage,
     this.errorType,
@@ -33,9 +38,11 @@ class LeaveState extends Equatable {
 
   LeaveState copyWith({
     Map<String, dynamic>? userBalance,
+    List<LeaveBalanceEntry>? leaveBalances,
     List<AdminLeaveData>? leaves,
     bool? isLoading,
     bool? isLoadingBalance,
+    bool? isLoadingLeaveBalances,
     bool? isLoadingLeaves,
     String? errorMessage,
     String? errorType,
@@ -47,9 +54,12 @@ class LeaveState extends Equatable {
   }) {
     return LeaveState(
       userBalance: userBalance ?? this.userBalance,
+      leaveBalances: leaveBalances ?? this.leaveBalances,
       leaves: leaves ?? this.leaves,
       isLoading: isLoading ?? this.isLoading,
       isLoadingBalance: isLoadingBalance ?? this.isLoadingBalance,
+      isLoadingLeaveBalances:
+          isLoadingLeaveBalances ?? this.isLoadingLeaveBalances,
       isLoadingLeaves: isLoadingLeaves ?? this.isLoadingLeaves,
       errorMessage: errorMessage ?? this.errorMessage,
       errorType: errorType ?? this.errorType,
@@ -64,9 +74,11 @@ class LeaveState extends Equatable {
   @override
   List<Object?> get props => [
     userBalance,
+    leaveBalances,
     leaves,
     isLoading,
     isLoadingBalance,
+    isLoadingLeaveBalances,
     isLoadingLeaves,
     errorMessage,
     errorType,

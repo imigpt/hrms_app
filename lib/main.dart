@@ -185,7 +185,7 @@ class _HrmsAppState extends State<HrmsApp> {
               debugPrint('→ Navigating to Leave Management');
               nav.push(
                 MaterialPageRoute(
-                  builder: (_) => LeaveManagementScreen(token: token),
+                  builder: (_) => const LeaveManagementScreen(),
                 ),
               );
               break;

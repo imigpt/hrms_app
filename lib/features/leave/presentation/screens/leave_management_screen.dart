@@ -1,16 +1,14 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:hrms_app/features/leave/data/models/leave_management_model.dart';
-import 'package:hrms_app/features/leave/data/services/leave_service.dart';
-import 'package:hrms_app/shared/services/core/token_storage_service.dart';
+import 'package:hrms_app/features/leave/presentation/providers/leave_notifier.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
 
 class LeaveManagementScreen extends StatefulWidget {
-  final String? token;
-
-  const LeaveManagementScreen({super.key, this.token});
+  const LeaveManagementScreen({super.key});
 
   @override
   State<LeaveManagementScreen> createState() => _LeaveManagementScreenState();
@@ -29,11 +27,6 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
   static const Color _blue = Color(0xFF4FC3F7);
 
   // â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  bool _isLoading = true;
-  String? _error;
-  String? _resolvedToken;
-  List<AdminLeaveData> _allLeaves = [];
-
   // Filters
   String _statusFilter =
       'all'; // all | pending | approved | rejected | cancelled
@@ -44,17 +37,17 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
   List<AnimationController> _rowAnims = [];
 
   // â”€â”€ Computed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  int get _totalCount => _allLeaves.length;
+  int get _totalCount => context.read<LeaveNotifier>().state.leaves.length;
   int get _pendingCount =>
-      _allLeaves.where((l) => l.status == 'pending').length;
+      context.read<LeaveNotifier>().state.leaves.where((l) => l.status == 'pending').length;
   int get _approvedCount =>
-      _allLeaves.where((l) => l.status == 'approved').length;
+      context.read<LeaveNotifier>().state.leaves.where((l) => l.status == 'approved').length;
   int get _rejectedCount =>
-      _allLeaves.where((l) => l.status == 'rejected').length;
+      context.read<LeaveNotifier>().state.leaves.where((l) => l.status == 'rejected').length;
 
   List<String> get _departments {
     final depts = <String>{};
-    for (final l in _allLeaves) {
+    for (final l in context.read<LeaveNotifier>().state.leaves) {
       if (l.user?.department != null && l.user!.department!.isNotEmpty) {
         depts.add(l.user!.department!);
       }
@@ -63,7 +56,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
   }
 
   List<AdminLeaveData> get _visibleLeaves {
-    return _allLeaves.where((l) {
+    return context.read<LeaveNotifier>().state.leaves.where((l) {
       final matchesStatus = _statusFilter == 'all' || l.status == _statusFilter;
       final matchesType = _typeFilter == 'all' || l.leaveType == _typeFilter;
       final matchesDept =
@@ -81,47 +74,26 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
 
   @override
   void dispose() {
-    for (final c in _rowAnims) c.dispose();
+    for (final c in _rowAnims) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _init() async {
-    String? tok = widget.token;
-    if (tok == null || tok.isEmpty) {
-      tok = await TokenStorageService().getToken();
-    }
-    _resolvedToken = tok;
     await _fetchLeaves();
   }
 
   Future<void> _fetchLeaves() async {
-    for (final c in _rowAnims) c.dispose();
-    _rowAnims = [];
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final tok = _resolvedToken;
-      if (tok == null) throw Exception('No token. Please login again.');
-
-      final response = await LeaveService.getAdminLeaves(token: tok);
-
-      if (!mounted) return;
-      setState(() {
-        _allLeaves = response.data;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceFirst('Exception:', '').trim();
-          _isLoading = false;
-        });
-      }
+    for (final c in _rowAnims) {
+      c.dispose();
     }
+    _rowAnims = [];
+    if (!mounted) return;
+    await context.read<LeaveNotifier>().loadAllLeaves(
+      statusFilter: _statusFilter,
+      typeFilter: _typeFilter,
+    );
   }
 
   // â”€â”€ Approve / Reject â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -140,27 +112,25 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
 
     setState(() => _processingIds.add(leave.id));
     try {
-      await LeaveService.approveAdminLeave(
-        token: _resolvedToken!,
-        leaveId: leave.id,
-      );
+      await context.read<LeaveNotifier>().approveLeave(leave.id);
+      if (!mounted) return;
       _snack('Leave approved successfully', _green);
 
       // Show notification for leave approval
       await NotificationService().showLeaveApprovedNotification(
         employeeName: leave.user?.name ?? 'Employee',
         leaveType: _leaveTypeLabel(leave.leaveType),
-        startDate: DateFormat(
-          'MMM dd',
-        ).format(leave.startDate ?? DateTime.now()),
+        startDate: DateFormat('MMM dd').format(leave.startDate ?? DateTime.now()),
         endDate: DateFormat('MMM dd').format(leave.endDate ?? DateTime.now()),
       );
-
-      await _fetchLeaves();
     } catch (e) {
-      _snack(e.toString().replaceFirst('Exception:', '').trim(), _red);
+      if (mounted) {
+        _snack(e.toString().replaceFirst('Exception:', '').trim(), _red);
+      }
     } finally {
-      if (mounted) setState(() => _processingIds.remove(leave.id));
+      if (mounted) {
+        setState(() => _processingIds.remove(leave.id));
+      }
     }
   }
 
@@ -237,14 +207,13 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
 
     setState(() => _processingIds.add(leave.id));
     try {
-      await LeaveService.rejectAdminLeave(
-        token: _resolvedToken!,
-        leaveId: leave.id,
-        reviewNote: noteCtrl.text.trim().isNotEmpty
-            ? noteCtrl.text.trim()
-            : null,
+      await context.read<LeaveNotifier>().rejectLeave(
+        leave.id,
+        noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : '',
       );
-      _snack('Leave request rejected', _orange);
+      if (mounted) {
+        _snack('Leave request rejected', _orange);
+      }
 
       // Show notification for leave rejection
       await NotificationService().showLeaveRejectedNotification(
@@ -252,10 +221,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
         leaveType: _leaveTypeLabel(leave.leaveType),
         reason: noteCtrl.text.trim().isNotEmpty ? noteCtrl.text.trim() : null,
       );
-
-      await _fetchLeaves();
     } catch (e) {
-      _snack(e.toString().replaceFirst('Exception:', '').trim(), _red);
+      if (mounted) {
+        _snack(e.toString().replaceFirst('Exception:', '').trim(), _red);
+      }
     } finally {
       if (mounted) setState(() => _processingIds.remove(leave.id));
     }
@@ -322,17 +291,24 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(isMob),
-            Expanded(
-              child: _isLoading
-                  ? _buildLoader()
-                  : _error != null
-                  ? _buildError()
-                  : _buildBody(isMob),
-            ),
-          ],
+        child: Consumer<LeaveNotifier>(
+          builder: (context, leaveNotifier, child) {
+            final isLoading = leaveNotifier.state.isLoadingLeaves;
+            final error = leaveNotifier.state.errorMessage;
+
+            return Column(
+              children: [
+                _buildTopBar(isMob),
+                Expanded(
+                  child: isLoading
+                      ? _buildLoader()
+                      : error != null
+                      ? _buildError(error)
+                      : _buildBody(isMob),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -432,7 +408,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
     ),
   );
 
-  Widget _buildError() => Center(
+  Widget _buildError(String? errorMessage) => Center(
     child: Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -441,7 +417,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
           Icon(Icons.error_outline, color: _red, size: 52),
           const SizedBox(height: 14),
           Text(
-            _error!,
+            errorMessage ?? 'Failed to load leave requests',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white60, fontSize: 13),
           ),
@@ -811,10 +787,10 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: isActive ? _primary.withOpacity(0.08) : const Color(0xFF161616),
+        color: isActive ? _primary.withValues(alpha: 0.08) : const Color(0xFF161616),
         borderRadius: BorderRadius.circular(9),
         border: Border.all(
-          color: isActive ? _primary.withOpacity(0.5) : _border,
+          color: isActive ? _primary.withValues(alpha: 0.5) : _border,
         ),
       ),
       child: Row(
@@ -865,9 +841,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: active ? color.withOpacity(0.14) : _card,
+          color: active ? color.withValues(alpha: 0.14) : _card,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: active ? color.withOpacity(0.5) : _border),
+          border: Border.all(color: active ? color.withValues(alpha: 0.5) : _border),
         ),
         child: Text(
           label,
@@ -883,85 +859,89 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
 
   // â”€â”€ Table section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildTableSection(bool isMob) {
-    final visible = _visibleLeaves;
+    return Builder(
+      builder: (context) {
+        final visible = _visibleLeaves;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            child: Row(
-              children: [
-                const Text(
-                  'All Leave Requests',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${visible.length}',
-                    style: TextStyle(
-                      color: _primary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        return Container(
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _border),
           ),
-          Divider(color: _border, height: 1),
-          if (visible.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                child: Row(
                   children: [
-                    const Icon(
-                      Icons.inbox_outlined,
-                      color: Colors.white24,
-                      size: 52,
+                    const Text(
+                      'All Leave Requests',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _statusFilter == 'all'
-                          ? 'No leave requests found'
-                          : 'No $_statusFilter requests',
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 14,
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${visible.length}',
+                        style: TextStyle(
+                          color: _primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            )
-          else if (isMob)
-            _buildMobileCards(visible)
-          else
-            _buildDesktopTable(visible),
-        ],
-      ),
+              Divider(color: _border, height: 1),
+              if (visible.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.inbox_outlined,
+                          color: Colors.white24,
+                          size: 52,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _statusFilter == 'all'
+                              ? 'No leave requests found'
+                              : 'No $_statusFilter requests',
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else if (isMob)
+                _buildMobileCards(visible)
+              else
+                _buildDesktopTable(visible),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1156,7 +1136,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.06),
+                        color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -1306,7 +1286,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
               color: const Color(0xFF161616),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isPending ? _orange.withOpacity(0.3) : _border,
+                color: isPending ? _orange.withValues(alpha: 0.3) : _border,
               ),
             ),
             clipBehavior: Clip.antiAlias,
@@ -1420,16 +1400,16 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: _red.withOpacity(0.07),
+                        color: _red.withValues(alpha: 0.07),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: _red.withOpacity(0.2)),
+                        border: Border.all(color: _red.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.note_outlined,
-                            color: _red.withOpacity(0.6),
+                            color: _red.withValues(alpha: 0.6),
                             size: 13,
                           ),
                           const SizedBox(width: 6),
@@ -1437,7 +1417,7 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
                             child: Text(
                               leave.reviewNote!,
                               style: TextStyle(
-                                color: _red.withOpacity(0.9),
+                                color: _red.withValues(alpha: 0.9),
                                 fontSize: 12,
                               ),
                             ),
@@ -1635,9 +1615,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -1671,14 +1651,14 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
     if (photo != null && photo.isNotEmpty && photo.startsWith('http')) {
       return CircleAvatar(
         radius: 18,
-        backgroundColor: _primary.withOpacity(0.2),
+        backgroundColor: _primary.withValues(alpha: 0.2),
         backgroundImage: NetworkImage(photo),
-        onBackgroundImageError: (_, __) {},
+        onBackgroundImageError: (_, _) {},
       );
     }
     return CircleAvatar(
       radius: 18,
-      backgroundColor: _primary.withOpacity(0.2),
+      backgroundColor: _primary.withValues(alpha: 0.2),
       child: Text(
         initials,
         style: TextStyle(
@@ -1695,9 +1675,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         _leaveTypeLabel(type),
@@ -1715,9 +1695,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         status.toUpperCase(),
@@ -1738,9 +1718,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
   }) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: color.withOpacity(0.2)),
+      border: Border.all(color: color.withValues(alpha: 0.2)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -1772,9 +1752,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
         width: 34,
         height: 34,
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           shape: BoxShape.circle,
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Icon(icon, color: color, size: 16),
       ),
@@ -1794,9 +1774,9 @@ class _LeaveManagementScreenState extends State<LeaveManagementScreen>
       duration: const Duration(milliseconds: 160),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        color: filled ? color : color.withOpacity(0.1),
+        color: filled ? color : color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: filled ? null : Border.all(color: color.withOpacity(0.5)),
+        border: filled ? null : Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1941,7 +1921,7 @@ class _FadeSlide extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (_, __) => Opacity(
+      builder: (_, _) => Opacity(
         opacity: animation.value.clamp(0.0, 1.0),
         child: Transform.translate(
           offset: Offset(0, 18 * (1 - animation.value)),

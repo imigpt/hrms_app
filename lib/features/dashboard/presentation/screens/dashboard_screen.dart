@@ -2763,7 +2763,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => LeaveManagementScreen(token: widget.token),
+        builder: (context) => const LeaveManagementScreen(),
       ),
     );
   }

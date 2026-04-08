@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:hrms_app/features/leave/data/models/leave_balance_model.dart';
 import 'package:hrms_app/features/leave/data/models/leave_management_model.dart';
 import 'package:hrms_app/features/leave/data/services/leave_service.dart';
 import 'package:hrms_app/features/leave/presentation/providers/leave_state.dart';
@@ -154,6 +155,109 @@ class LeaveNotifier extends ChangeNotifier {
         isLoadingLeaves: false,
         errorMessage: 'Error: ${e.toString()}',
         errorType: 'leaves',
+      ));
+    }
+  }
+
+  /// Load leave balances list for admin/HR management screen
+  Future<void> loadLeaveBalances() async {
+    _setState(_state.copyWith(
+      isLoadingLeaveBalances: true,
+      errorMessage: null,
+      errorType: null,
+    ));
+
+    try {
+      final token = await _tokenStorage.getToken();
+      if (token == null) {
+        _setState(_state.copyWith(
+          isLoadingLeaveBalances: false,
+          errorMessage: 'Authentication data not found',
+          errorType: 'leaveBalances',
+        ));
+        return;
+      }
+
+      final response = await LeaveService.getLeaveBalances(token: token);
+
+      _setState(_state.copyWith(
+        leaveBalances: response.data,
+        isLoadingLeaveBalances: false,
+        errorMessage: null,
+        errorType: null,
+      ));
+    } catch (e) {
+      debugPrint('Error loading leave balances: $e');
+      _setState(_state.copyWith(
+        isLoadingLeaveBalances: false,
+        errorMessage: e.toString().replaceFirst('Exception:', '').trim(),
+        errorType: 'leaveBalances',
+      ));
+    }
+  }
+
+  /// Assign leave balance for single user (admin/HR action)
+  Future<void> assignLeaveBalance({
+    required String userId,
+    required int paid,
+    required int sick,
+    required int unpaid,
+  }) async {
+    try {
+      final token = await _tokenStorage.getToken();
+      if (token == null) {
+        _setState(_state.copyWith(
+          errorMessage: 'Authentication data not found',
+          errorType: 'leaveBalances',
+        ));
+        return;
+      }
+
+      await LeaveService.assignLeaveBalance(
+        token: token,
+        userId: userId,
+        paid: paid,
+        sick: sick,
+        unpaid: unpaid,
+      );
+    } catch (e) {
+      debugPrint('Error assigning leave balance: $e');
+      _setState(_state.copyWith(
+        errorMessage: e.toString().replaceFirst('Exception:', '').trim(),
+        errorType: 'leaveBalances',
+      ));
+    }
+  }
+
+  /// Bulk assign leave balances (admin/HR action)
+  Future<void> bulkAssignLeaveBalance({
+    required List<String> userIds,
+    required int paid,
+    required int sick,
+    required int unpaid,
+  }) async {
+    try {
+      final token = await _tokenStorage.getToken();
+      if (token == null) {
+        _setState(_state.copyWith(
+          errorMessage: 'Authentication data not found',
+          errorType: 'leaveBalances',
+        ));
+        return;
+      }
+
+      await LeaveService.bulkAssignLeaveBalance(
+        token: token,
+        userIds: userIds,
+        paid: paid,
+        sick: sick,
+        unpaid: unpaid,
+      );
+    } catch (e) {
+      debugPrint('Error bulk assigning leave balances: $e');
+      _setState(_state.copyWith(
+        errorMessage: e.toString().replaceFirst('Exception:', '').trim(),
+        errorType: 'leaveBalances',
       ));
     }
   }

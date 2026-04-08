@@ -39,7 +39,7 @@ class LeaveBalance {
 }
 
 class LeaveScreen extends StatefulWidget {
-  const LeaveScreen({super.key, String? token});
+  const LeaveScreen({super.key});
 
   @override
   State<LeaveScreen> createState() => _LeaveScreenState();

@@ -1065,21 +1065,26 @@ class _SidebarMenuState extends State<SidebarMenu> {
     }
 
     // Navigate to appropriate leaves subscreen
-    if (title == "Leaves" || title == "Leaves Management") {
+    if (title == "Leaves") {
+      // Leaves (Admin)
+      Navigator.of(
+        context,
+      ).push(_createSmoothRoute(const LeaveManagementScreen()));
+    } else if (title == "Leaves Management") {
       // Leaves Management (Admin)
       Navigator.of(
         context,
-      ).push(_createSmoothRoute(LeaveBalanceScreen(token: widget.token)));
+      ).push(_createSmoothRoute(const LeaveBalanceScreen()));
     } else if (title == "Employee Leaves") {
       // Employee Leaves (HR)
       Navigator.of(
         context,
-      ).push(_createSmoothRoute(LeaveManagementScreen(token: widget.token)));
+      ).push(_createSmoothRoute(const LeaveManagementScreen()));
     } else if (title == "My Leaves") {
       // My Leaves (HR)
       Navigator.of(
         context,
-      ).push(_createSmoothRoute(LeaveScreen(token: widget.token)));
+      ).push(_createSmoothRoute(const LeaveScreen()));
     }
   }
 

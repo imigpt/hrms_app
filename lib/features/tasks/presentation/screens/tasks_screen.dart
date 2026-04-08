@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +8,6 @@ import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/features/admin/data/services/admin_employees_service.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
 import 'package:hrms_app/features/tasks/data/services/workflow_service.dart';
-import 'package:hrms_app/features/tasks/data/services/workflow_visualization_service.dart';
 import 'package:hrms_app/shared/widgets/common/workflow_tab_widget.dart';
 import 'package:hrms_app/shared/widgets/common/workflow_template_manager.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
@@ -25,7 +24,7 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
-  // â”€â”€ Theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Theme Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   final Color _bgDark = const Color(0xFF050505);
   final Color _cardDark = const Color(0xFF141414);
   final Color _inputDark = const Color(0xFF1F1F1F);
@@ -42,7 +41,7 @@ class _TasksScreenState extends State<TasksScreen> {
   String? _userId;
   bool _isAdmin = false;
 
-  // â”€â”€ API state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ API state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   bool _isLoading = true;
   String? _error;
   List<dynamic> _tasks = [];
@@ -58,52 +57,53 @@ class _TasksScreenState extends State<TasksScreen> {
     'underReview': 0,
   };
 
-  // â”€â”€ Admin state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Admin state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   List<dynamic> _employees = [];
   String? _adminStatusFilter;
   String? _adminPriorityFilter;
   String? _adminEmployeeFilter; // employee _id
 
-  // â”€â”€ Tab state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Tab state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   int _employeeTab = 0; // 0=list, 1=kanban, 2=time
   int _adminTab = 0; // 0=list, 1=kanban, 2=employees, 3=projects, 4=time, 5=analytics
 
-  // â”€â”€ Employee priority filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Employee priority filter Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   String? _employeePriorityFilter;
   // Quick filter: 'overdue' | 'high-priority' | 'in-progress' | 'assigned' | null
   String? _quickFilter;
 
-  // â”€â”€ Projects state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Projects state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   List<dynamic> _projects = [];
   Map<String, dynamic>? _selectedProject;
   List<dynamic> _milestones = [];
 
-  // â”€â”€ Time tracking state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Time tracking state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Map<String, dynamic>? _runningTimer;
   int _timerElapsed = 0;
   bool _timerLoading = false;
   List<dynamic> _timeLogs = [];
   Timer? _timerInterval;
 
-  // â”€â”€ Analytics state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Analytics state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Map<String, dynamic>? _analyticsStats;
   List<dynamic> _analyticsProductivity = [];
   List<dynamic> _analyticsWorkload = [];
   bool _analyticsLoading = false;
 
-  // â”€â”€ Workflow state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Workflow state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   List<dynamic> _workflows = [];
   Map<String, dynamic>? _selectedWorkflow;
   bool _workflowsLoading = false;
 
-  // ── Workflow Editor state ────────────────────────────────────────────────
+  // â”€â”€ Workflow Editor state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   String _editorPanel = 'list'; // 'list' | 'create' | 'edit'
   Map<String, dynamic>? _editingWorkflow;
-  String _workflowFormName = '';
-  String _workflowFormDesc = '';
-  bool _workflowFormShared = false;
-  List<Map<String, dynamic>> _workflowFormSteps = [];
+  final String _workflowFormName = '';
+  final String _workflowFormDesc = '';
+  final bool _workflowFormShared = false;
+  final List<Map<String, dynamic>> _workflowFormSteps = [];
   bool _workflowSaving = false;
+  @override
   void initState() {
     super.initState();
     _searchController.addListener(() {
@@ -128,33 +128,43 @@ class _TasksScreenState extends State<TasksScreen> {
     if ((_userId == null || _userId!.isEmpty) && _token != null) {
       _userId = _decodeUserIdFromJwt(_token!);
     }
-    _isAdmin = (widget.role?.toLowerCase() == 'admin');
+    _isAdmin = (widget.role?.toLowerCase() == 'admin' || widget.role?.toLowerCase() == 'hr');
     await _loadWorkflows();
-    if (_isAdmin) {
+    
+    // Priority: Check showOnlyCurrentUser first, then check role
+    if (widget.showOnlyCurrentUser == true) {
+      // "My Tasks" view - load only current user's tasks, ignore admin role
+      await Future.wait([_loadMyTasks(), _loadRunningTimer(), _loadTimeLogs()]);
+    } else if (_isAdmin) {
+      // Admin/HR full interface - load all tasks and employees
       await Future.wait([_loadData(), _loadEmployees(), _loadProjects()]);
     } else {
-      // If the screen was opened specifically to show only current user's tasks
-      if (widget.showOnlyCurrentUser == true) {
-        await Future.wait([_loadMyTasks(), _loadRunningTimer(), _loadTimeLogs()]);
-      } else {
-        await Future.wait([_loadData(), _loadRunningTimer(), _loadTimeLogs()]);
-      }
+      // Regular employee view - load their own tasks with timings
+      await Future.wait([_loadData(), _loadRunningTimer(), _loadTimeLogs()]);
     }
   }
 
   Future<void> _loadEmployees() async {
     if (_token == null) return;
     try {
-      final res = await AdminEmployeesService.getAllEmployees(_token!);
+      final res = await AdminEmployeesService.getAllEmployees(
+        _token!,
+        role: widget.role ?? 'admin', // Pass user's role to use correct endpoint
+      );
       if (res['success'] == true && mounted) {
         setState(() {
           _employees = (res['data'] as List<dynamic>? ?? []);
+          print('✅ Loaded ${_employees.length} employees');
         });
+      } else {
+        print('Failed to load employees: ${res['message'] ?? 'Unknown error'}');
       }
-    } catch (_) {}
+    } catch (e) {
+      print('Error loading employees: $e');
+    }
   }
 
-  // â”€â”€ Time Tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Time Tracking Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Future<void> _loadRunningTimer() async {
     if (_token == null) return;
@@ -366,7 +376,7 @@ class _TasksScreenState extends State<TasksScreen> {
     return m == 0 ? '${h}h' : '${h}h ${m}m';
   }
 
-  // â”€â”€ Projects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Projects Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Future<void> _loadProjects() async {
     if (_token == null) return;
@@ -525,7 +535,7 @@ class _TasksScreenState extends State<TasksScreen> {
     } catch (_) {}
   }
 
-  // â”€â”€ Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Analytics Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Future<void> _loadAnalytics() async {
     if (_token == null) return;
@@ -554,7 +564,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // â”€â”€ Workflow Loading (Enhanced) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Workflow Loading (Enhanced) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   Future<void> _loadWorkflows() async {
     if (_token == null) {
@@ -860,7 +870,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  /// Decodes the JWT payload (no signature verification neededâ€”server
+  /// Decodes the JWT payload (no signature verification neededÃ¢â‚¬â€server
   /// already validated it) to extract the `id` field.
   String? _decodeUserIdFromJwt(String token) {
     try {
@@ -940,7 +950,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // â”€â”€ Filtering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Filtering Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   List<dynamic> get _filteredTasks {
     var list = _tasks.where((t) {
       final q = _searchQuery.toLowerCase();
@@ -996,14 +1006,16 @@ class _TasksScreenState extends State<TasksScreen> {
       }
       if (_adminPriorityFilter != null && _adminPriorityFilter!.isNotEmpty) {
         if ((t['priority'] ?? '').toString().toLowerCase() !=
-            _adminPriorityFilter)
+            _adminPriorityFilter) {
           return false;
+        }
       }
       if (_adminEmployeeFilter != null && _adminEmployeeFilter!.isNotEmpty) {
         final assignedTo = t['assignedTo'];
         if (assignedTo is Map) {
-          if ((assignedTo['_id'] ?? '').toString() != _adminEmployeeFilter)
+          if ((assignedTo['_id'] ?? '').toString() != _adminEmployeeFilter) {
             return false;
+          }
         } else if (assignedTo is String) {
           if (assignedTo != _adminEmployeeFilter) return false;
         } else {
@@ -1020,7 +1032,7 @@ class _TasksScreenState extends State<TasksScreen> {
     return '';
   }
 
-  // â”€â”€ Priority / status helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Priority / status helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Color _priorityColor(String p) {
     switch (p.toLowerCase()) {
       case 'high':
@@ -1108,7 +1120,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // â”€â”€ Task detail / update sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Task detail / update sheet Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   void _showTaskDetail(Map<String, dynamic> task) {
     showModalBottomSheet(
@@ -1149,7 +1161,7 @@ class _TasksScreenState extends State<TasksScreen> {
           length: 5,
           child: StatefulBuilder(
             builder: (stateContext, ss) {
-              // â”€â”€ helpers scoped to the sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // Ã¢â€â‚¬Ã¢â€â‚¬ helpers scoped to the sheet Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
               void addCommentAction() async {
                 final text = commentCtrl.text.trim();
                 if (text.isEmpty || _token == null) return;
@@ -1250,7 +1262,7 @@ class _TasksScreenState extends State<TasksScreen> {
                 } catch (_) {}
               }
 
-              // â”€â”€ Activity timeline builder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+              // Ã¢â€â‚¬Ã¢â€â‚¬ Activity timeline builder Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
               List<Map<String, dynamic>> buildTimeline() {
                 final items = <Map<String, dynamic>>[];
                 for (final e in (taskData['workflowHistory'] ?? [])) {
@@ -1259,7 +1271,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     'icon': Icons.swap_horiz,
                     'iconColor': const Color(0xFF60A5FA),
                     'user': _getUserName(e['performedBy']),
-                    'action': '${_statusLabel(e['fromStatus'] ?? '')} â†’ ${_statusLabel(e['toStatus'] ?? '')}',
+                    'action': '${_statusLabel(e['fromStatus'] ?? '')} Ã¢â€ â€™ ${_statusLabel(e['toStatus'] ?? '')}',
                     'detail': e['comment'],
                     'time': e['timestamp'],
                   });
@@ -1290,7 +1302,7 @@ class _TasksScreenState extends State<TasksScreen> {
                 maxChildSize: 0.97,
                 builder: (_, scroll) => Column(
                   children: [
-                    // â”€â”€ Drag handle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // Ã¢â€â‚¬Ã¢â€â‚¬ Drag handle Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                     Padding(
                       padding: const EdgeInsets.only(top: 12, bottom: 4),
                       child: Center(
@@ -1303,7 +1315,7 @@ class _TasksScreenState extends State<TasksScreen> {
                         ),
                       ),
                     ),
-                    // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 4, 8, 0),
                       child: Row(
@@ -1361,7 +1373,7 @@ class _TasksScreenState extends State<TasksScreen> {
                         ],
                       ),
                     ),
-                    // â”€â”€ Tab bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // Ã¢â€â‚¬Ã¢â€â‚¬ Tab bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                     Container(
                       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                       decoration: BoxDecoration(
@@ -1418,11 +1430,11 @@ class _TasksScreenState extends State<TasksScreen> {
                         ],
                       ),
                     ),
-                    // â”€â”€ Tab content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // Ã¢â€â‚¬Ã¢â€â‚¬ Tab content Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                     Expanded(
                       child: TabBarView(
                         children: [
-                          // â•â• TAB 0: DETAILS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                          // Ã¢â€¢ÂÃ¢â€¢Â TAB 0: DETAILS Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
                           ListView(
                             controller: scroll,
                             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -1502,7 +1514,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                 ),
                               ),
                               Text(
-                                'Status updates automatically: 100% â†’ Completed, <100% â†’ In Progress',
+                                'Status updates automatically: 100% Ã¢â€ â€™ Completed, <100% Ã¢â€ â€™ In Progress',
                                 style: TextStyle(color: _textGrey.withValues(alpha: 0.55), fontSize: 11),
                               ),
                               // Subtasks
@@ -1571,7 +1583,7 @@ class _TasksScreenState extends State<TasksScreen> {
                             ],
                           ),
 
-                          // â•â• TAB 1: COMMENTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                          // Ã¢â€¢ÂÃ¢â€¢Â TAB 1: COMMENTS Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
                           Column(
                             children: [
                               // Add comment input
@@ -1683,7 +1695,7 @@ class _TasksScreenState extends State<TasksScreen> {
                             ],
                           ),
 
-                          // â•â• TAB 2: ATTACHMENTS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                          // Ã¢â€¢ÂÃ¢â€¢Â TAB 2: ATTACHMENTS Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
                           Column(
                             children: [
                               // Upload button
@@ -1809,7 +1821,7 @@ class _TasksScreenState extends State<TasksScreen> {
                             formatDate: _formatDate, workflow: null, onStepComplete: null, onWorkflowAction: null,
                           ),
 
-                          // â•â• TAB 4: ACTIVITY â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                          // Ã¢â€¢ÂÃ¢â€¢Â TAB 4: ACTIVITY Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
                           Builder(builder: (_) {
                             final timeline = buildTimeline();
                             if (timeline.isEmpty) {
@@ -1917,7 +1929,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  // â”€â”€ Helper: extract user name from a user field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Helper: extract user name from a user field Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   String _getUserName(dynamic user) {
     if (user == null) return '';
     if (user is Map) return user['name']?.toString() ?? user['email']?.toString() ?? '';
@@ -2031,7 +2043,7 @@ class _TasksScreenState extends State<TasksScreen> {
     } catch (_) {}
   }
 
-  // â”€â”€ Edit task dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Edit task dialog Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Future<void> _showEditTaskDialog(Map<String, dynamic> task) async {
     final titleCtrl = TextEditingController(
       text: task['title']?.toString() ?? '',
@@ -2093,7 +2105,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
     bool submitting = false;
 
-    Future<DateTime?> _pickDateTime(
+    Future<DateTime?> pickDateTime(
       BuildContext ctx,
       DateTime? initial,
     ) async {
@@ -2149,7 +2161,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // â”€â”€ Drag handle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Drag handle Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       Center(
                         child: Container(
                           width: 40,
@@ -2184,7 +2196,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // â”€â”€ Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Title Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       _inputLabel('Title *'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -2194,7 +2206,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Description â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Description Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       _inputLabel('Description'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -2205,7 +2217,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Priority + Estimated Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Priority + Estimated Time Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -2326,7 +2338,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Start Date & Due Date â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Start Date & Due Date Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       Row(
                         children: [
                           Expanded(
@@ -2337,12 +2349,13 @@ class _TasksScreenState extends State<TasksScreen> {
                                 const SizedBox(height: 8),
                                 GestureDetector(
                                   onTap: () async {
-                                    final picked = await _pickDateTime(
+                                    final picked = await pickDateTime(
                                       sheetContext,
                                       selectedStartDate,
                                     );
-                                    if (picked != null)
+                                    if (picked != null) {
                                       ss(() => selectedStartDate = picked);
+                                    }
                                   },
                                   child: _dateTimePickerBox(
                                     selectedStartDate,
@@ -2361,12 +2374,13 @@ class _TasksScreenState extends State<TasksScreen> {
                                 const SizedBox(height: 8),
                                 GestureDetector(
                                   onTap: () async {
-                                    final picked = await _pickDateTime(
+                                    final picked = await pickDateTime(
                                       sheetContext,
                                       selectedDueDate,
                                     );
-                                    if (picked != null)
+                                    if (picked != null) {
                                       ss(() => selectedDueDate = picked);
+                                    }
                                   },
                                   child: _dateTimePickerBox(
                                     selectedDueDate,
@@ -2380,7 +2394,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Tags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Tags Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       _inputLabel('Tags'),
                       const SizedBox(height: 8),
                       Row(
@@ -2479,7 +2493,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ],
                       const SizedBox(height: 16),
 
-                      // ── Workflow Template (optional) ──────────────────────
+                      // â”€â”€ Workflow Template (optional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -2570,7 +2584,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                               DropdownMenuItem<String?>(
                                                 value: null,
                                                 child: Text(
-                                                  '— No workflow —',
+                                                  'â€” No workflow â€”',
                                                   style: TextStyle(
                                                     color: _textGrey,
                                                     fontSize: 13,
@@ -2617,7 +2631,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                                     ],
                                                   ),
                                                 );
-                                              }).toList(),
+                                              }),
                                             ],
                                             onChanged: (value) =>
                                                 ss(() => selectedEditWorkflow = value),
@@ -2639,7 +2653,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                     ],
                                   ),
                       ),
-                      // ── Workflow Preview ──────────────────────────────────
+                      // â”€â”€ Workflow Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       if (selectedEditWorkflow != null && _workflows.isNotEmpty)
                         Builder(
                           builder: (context) {
@@ -2770,7 +2784,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                                   ],
                                                 ),
                                               );
-                                            }).toList(),
+                                            }),
                                           ],
                                         ),
                                 ),
@@ -2809,7 +2823,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // â”€â”€ Save Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Save Button Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -2844,8 +2858,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                     final h = double.tryParse(
                                       estimatedCustomCtrl.text.trim(),
                                     );
-                                    if (h != null && h > 0)
+                                    if (h != null && h > 0) {
                                       estMinutes = (h * 60).round();
+                                    }
                                   }
                                   try {
                                     await _updateTaskDetails(
@@ -2877,11 +2892,13 @@ class _TasksScreenState extends State<TasksScreen> {
                                         print('Error assigning workflow: $e');
                                       }
                                     }
-                                    if (sheetContext.mounted)
+                                    if (sheetContext.mounted) {
                                       Navigator.pop(sheetContext, true);
+                                    }
                                   } catch (e) {
-                                    if (sheetContext.mounted)
+                                    if (sheetContext.mounted) {
                                       ss(() => submitting = false);
+                                    }
                                     if (mounted) {
                                       ScaffoldMessenger.of(
                                         context,
@@ -2949,7 +2966,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  /// Pure API call â€“ caller handles pop, snackbar, and reload.
+  /// Pure API call Ã¢â‚¬â€œ caller handles pop, snackbar, and reload.
   Future<void> _updateTaskDetails({
     required String taskId,
     required String title,
@@ -2979,7 +2996,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // â”€â”€ Create Task â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Create Task Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Future<void> _showCreateTaskDialog() async {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -2992,9 +3009,10 @@ class _TasksScreenState extends State<TasksScreen> {
     DateTime? selectedDueDate;
     List<String> tags = [];
     String? selectedWorkflow;
+    String? selectedAssigneeId; // Optional: defaults to current user if null
     bool submitting = false;
 
-    Future<DateTime?> _pickDateTime(
+    Future<DateTime?> pickDateTime(
       BuildContext ctx,
       DateTime? initial,
     ) async {
@@ -3050,7 +3068,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // â”€â”€ Drag handle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Drag handle Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       Center(
                         child: Container(
                           width: 40,
@@ -3085,7 +3103,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // â”€â”€ Task Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Task Title Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       _inputLabel('Task Title *'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -3095,7 +3113,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Description â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Description Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       _inputLabel('Description'),
                       const SizedBox(height: 8),
                       _inputField(
@@ -3106,7 +3124,229 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Priority + Estimated Time (2 columns) â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢"â‚¬Ã¢"â‚¬ Assign To (Optional) Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
+                      _inputLabel('Assign To (Optional)'),
+                      const SizedBox(height: 10),
+                      Builder(
+                        builder: (ctx) {
+                          final selectedEmployee = selectedAssigneeId == null
+                              ? null
+                              : _employees.cast<Map<String, dynamic>>().firstWhere(
+                                  (e) => e['_id']?.toString() == selectedAssigneeId,
+                                  orElse: () => <String, dynamic>{},
+                                );
+                          return Column(
+                            children: [
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await _pickEmployee(sheetContext);
+                                  if (picked != null) {
+                                    ss(() => selectedAssigneeId = picked);
+                                  }
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _inputDark,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.white10),
+                                  ),
+                                  child: selectedAssigneeId == null || (selectedEmployee?.isEmpty ?? true)
+                                      ? Row(
+                                          children: [
+                                            Icon(
+                                              Icons.person_add,
+                                              color: _textGrey,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              'You (default)',
+                                              style: TextStyle(
+                                                color: _textGrey,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 16,
+                                              backgroundColor:
+                                                  _accentPink.withValues(alpha: 0.2),
+                                              child: Text(
+                                                (selectedEmployee?['name'] ?? '?')[0]
+                                                    .toString()
+                                                    .toUpperCase(),
+                                                style: TextStyle(
+                                                  color: _accentPink,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    selectedEmployee?['name'] ?? '',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    selectedEmployee?['employeeId'] ??
+                                                        '',
+                                                    style: TextStyle(
+                                                      color: _textGrey,
+                                                      fontSize: 11,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => ss(
+                                                () => selectedAssigneeId = null,
+                                              ),
+                                              child: Icon(
+                                                Icons.close,
+                                                color: _textGrey,
+                                                size: 18,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Ã¢"â‚¬Ã¢"â‚¬ Assign To (Optional) Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬Ã¢"â‚¬
+                      _inputLabel('Assign To (Optional)'),
+                      const SizedBox(height: 10),
+                      Builder(
+                        builder: (ctx) {
+                          final selectedEmployee = selectedAssigneeId == null
+                              ? null
+                              : _employees.cast<Map<String, dynamic>>().firstWhere(
+                                  (e) => e['_id']?.toString() == selectedAssigneeId,
+                                  orElse: () => <String, dynamic>{},
+                                );
+                          return Column(
+                            children: [
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await _pickEmployee(sheetContext);
+                                  if (picked != null) {
+                                    ss(() => selectedAssigneeId = picked);
+                                  }
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _inputDark,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.white10),
+                                  ),
+                                  child: selectedAssigneeId == null || (selectedEmployee?.isEmpty ?? true)
+                                      ? Row(
+                                          children: [
+                                            Icon(
+                                              Icons.person_add,
+                                              color: _textGrey,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              'You (default)',
+                                              style: TextStyle(
+                                                color: _textGrey,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 16,
+                                              backgroundColor:
+                                                  _accentPink.withValues(alpha: 0.2),
+                                              child: Text(
+                                                (selectedEmployee?['name'] ?? '?')[0]
+                                                    .toString()
+                                                    .toUpperCase(),
+                                                style: TextStyle(
+                                                  color: _accentPink,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    selectedEmployee?['name'] ?? '',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 13,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    selectedEmployee?['employeeId'] ??
+                                                        '',
+                                                    style: TextStyle(
+                                                      color: _textGrey,
+                                                      fontSize: 11,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            GestureDetector(
+                                              onTap: () => ss(
+                                                () => selectedAssigneeId = null,
+                                              ),
+                                              child: Icon(
+                                                Icons.close,
+                                                color: _textGrey,
+                                                size: 18,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Priority + Estimated Time (2 columns) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -3230,7 +3470,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Start Date & Time â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Start Date & Time Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       Row(
                         children: [
                           Expanded(
@@ -3241,12 +3481,13 @@ class _TasksScreenState extends State<TasksScreen> {
                                 const SizedBox(height: 8),
                                 GestureDetector(
                                   onTap: () async {
-                                    final picked = await _pickDateTime(
+                                    final picked = await pickDateTime(
                                       sheetContext,
                                       selectedStartDate,
                                     );
-                                    if (picked != null)
+                                    if (picked != null) {
                                       ss(() => selectedStartDate = picked);
+                                    }
                                   },
                                   child: _dateTimePickerBox(
                                     selectedStartDate,
@@ -3266,12 +3507,13 @@ class _TasksScreenState extends State<TasksScreen> {
                                 const SizedBox(height: 8),
                                 GestureDetector(
                                   onTap: () async {
-                                    final picked = await _pickDateTime(
+                                    final picked = await pickDateTime(
                                       sheetContext,
                                       selectedDueDate,
                                     );
-                                    if (picked != null)
+                                    if (picked != null) {
                                       ss(() => selectedDueDate = picked);
+                                    }
                                   },
                                   child: _dateTimePickerBox(
                                     selectedDueDate,
@@ -3286,7 +3528,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Tags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Tags Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       _inputLabel('Tags'),
                       const SizedBox(height: 8),
                       Row(
@@ -3385,7 +3627,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       ],
                       const SizedBox(height: 28),
 
-                      // â”€â”€ Workflow Template (optional) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Workflow Template (optional) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -3523,7 +3765,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                                     ],
                                                   ),
                                                 );
-                                              }).toList(),
+                                              }),
                                             ],
                                             onChanged: (value) =>
                                                 ss(() => selectedWorkflow = value),
@@ -3545,7 +3787,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                     ],
                                   ),
                       ),
-                      // â”€â”€ Workflow Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Workflow Preview Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       if (selectedWorkflow != null &&
                           _workflows.isNotEmpty)
                         Builder(
@@ -3696,7 +3938,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                                   ],
                                                 ),
                                               );
-                                            }).toList(),
+                                            }),
                                           ],
                                         ),
                                 ),
@@ -3706,7 +3948,7 @@ class _TasksScreenState extends State<TasksScreen> {
                         ),
                       const SizedBox(height: 28),
 
-                      // â”€â”€ Submit Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Submit Button Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                       SizedBox(
                         width: double.infinity,
                         height: 52,
@@ -3751,8 +3993,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                     final h = double.tryParse(
                                       estimatedCustomCtrl.text.trim(),
                                     );
-                                    if (h != null && h > 0)
+                                    if (h != null && h > 0) {
                                       estMinutes = (h * 60).round();
+                                    }
                                   }
                                   try {
                                     final taskId = await _createTask(
@@ -3763,6 +4006,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                       startDate: selectedStartDate,
                                       estimatedTime: estMinutes,
                                       tags: tags,
+                                      assignedTo: selectedAssigneeId,
                                     );
                                     // Assign workflow if selected
                                     if (selectedWorkflow != null && _token != null && taskId != null) {
@@ -3784,11 +4028,13 @@ class _TasksScreenState extends State<TasksScreen> {
                                         // Workflow assignment failure is non-critical
                                       }
                                     }
-                                    if (sheetContext.mounted)
+                                    if (sheetContext.mounted) {
                                       Navigator.pop(sheetContext, true);
+                                    }
                                   } catch (e) {
-                                    if (sheetContext.mounted)
+                                    if (sheetContext.mounted) {
                                       ss(() => submitting = false);
+                                    }
                                     if (mounted) {
                                       ScaffoldMessenger.of(
                                         context,
@@ -3855,7 +4101,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
-  /// Pure API call â€“ no UI side-effects.
+  /// Pure API call Ã¢â‚¬â€œ no UI side-effects.
   Future<String?> _createTask({
     required String title,
     required String description,
@@ -3864,9 +4110,10 @@ class _TasksScreenState extends State<TasksScreen> {
     DateTime? startDate,
     int? estimatedTime,
     List<String>? tags,
+    String? assignedTo,
   }) async {
     if (_token == null) throw Exception('Not authenticated');
-    final assignTo = _userId ?? '';
+    final assignTo = assignedTo ?? _userId ?? '';
     if (assignTo.isEmpty) throw Exception('User ID not found');
     final response = await TaskService.createTask(
       _token!,
@@ -3897,7 +4144,7 @@ class _TasksScreenState extends State<TasksScreen> {
     return null;
   }
 
-  // â”€â”€ Input helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Input helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Widget _metaChip({
     required String label,
     required Color color,
@@ -4006,10 +4253,11 @@ class _TasksScreenState extends State<TasksScreen> {
     ),
   );
 
-  // â”€â”€ Build â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Build Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   @override
   Widget build(BuildContext context) {
-    if (_isAdmin) return _buildAdminScaffold(context);
+    // Show admin interface unless this is "My Tasks" view (showOnlyCurrentUser=true)
+    if (_isAdmin && widget.showOnlyCurrentUser != true) return _buildAdminScaffold(context);
     return Scaffold(
       backgroundColor: _bgDark,
       body: SafeArea(
@@ -4019,7 +4267,7 @@ class _TasksScreenState extends State<TasksScreen> {
             return Column(
               children: [
                 _buildHeader(context, isMobile),
-                // â”€â”€ Employee Tab Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // Ã¢â€â‚¬Ã¢â€â‚¬ Employee Tab Bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                 _buildTabBar(
                   [
                     {'label': 'List', 'icon': Icons.list_alt_rounded},
@@ -4039,11 +4287,13 @@ class _TasksScreenState extends State<TasksScreen> {
                       : IndexedStack(
                           index: _employeeTab,
                           children: [
-                            // â”€â”€ Tab 0: List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                            // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 0: List Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                             RefreshIndicator(
                               color: _accentPink,
                               backgroundColor: _cardDark,
-                              onRefresh: () => _loadData(showLoading: false),
+                              onRefresh: () => widget.showOnlyCurrentUser == true
+                                ? _loadMyTasks(showLoading: false)
+                                : _loadData(showLoading: false),
                               child: SingleChildScrollView(
                                 physics: const AlwaysScrollableScrollPhysics(),
                                 padding: const EdgeInsets.symmetric(
@@ -4067,9 +4317,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                 ),
                               ),
                             ),
-                            // â”€â”€ Tab 1: Kanban â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                            // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 1: Kanban Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                             _buildKanbanView(_filteredTasks),
-                            // â”€â”€ Tab 2: Time Tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                            // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 2: Time Tracking Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                             SingleChildScrollView(
                               child: _buildTimeTrackingTab(),
                             ),
@@ -4093,7 +4343,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // â”€â”€ ADMIN PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ ADMIN PANEL Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Widget _buildAdminScaffold(BuildContext context) {
     return Scaffold(
       backgroundColor: _bgDark,
@@ -4101,7 +4351,7 @@ class _TasksScreenState extends State<TasksScreen> {
         child: Column(
           children: [
             _buildAdminHeader(context),
-            // â”€â”€ Admin Tab Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Admin Tab Bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
             _buildTabBar(
               [
                 {'label': 'List', 'icon': Icons.list_alt_rounded},
@@ -4127,12 +4377,16 @@ class _TasksScreenState extends State<TasksScreen> {
                   : IndexedStack(
                       index: _adminTab,
                       children: [
-                        // â”€â”€ Tab 0: List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 0: List Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                         RefreshIndicator(
                           color: _accentPink,
                           backgroundColor: _cardDark,
                           onRefresh: () async {
-                            await Future.wait([_loadData(), _loadEmployees()]);
+                            if (widget.showOnlyCurrentUser == true) {
+                              await _loadMyTasks(showLoading: false);
+                            } else {
+                              await Future.wait([_loadData(), _loadEmployees()]);
+                            }
                           },
                           child: SingleChildScrollView(
                             physics: const AlwaysScrollableScrollPhysics(),
@@ -4153,17 +4407,17 @@ class _TasksScreenState extends State<TasksScreen> {
                             ),
                           ),
                         ),
-                        // â”€â”€ Tab 1: Kanban â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 1: Kanban Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                         _buildKanbanView(_adminFilteredTasks),
-                        // â”€â”€ Tab 2: By Employee â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 2: By Employee Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                         _buildAdminByEmployeeTab(),
-                        // â”€â”€ Tab 3: Projects â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 3: Projects Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                         _buildProjectsTab(),
-                        // â”€â”€ Tab 4: Time Tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 4: Time Tracking Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                         SingleChildScrollView(
                           child: _buildTimeTrackingTab(),
                         ),
-                        // â”€â”€ Tab 5: Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                        // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 5: Analytics Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                         SingleChildScrollView(
                           child: _buildAnalyticsTab(),
                         ),
@@ -4778,7 +5032,7 @@ class _TasksScreenState extends State<TasksScreen> {
                         const SizedBox(height: 8),
                         // Title
                         Text(
-                          task['title'] ?? 'â€”',
+                          task['title'] ?? 'Ã¢â‚¬â€',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
@@ -4930,7 +5184,7 @@ class _TasksScreenState extends State<TasksScreen> {
     ),
   );
 
-  // â”€â”€ Review helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Review helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   List<Widget> _buildReviewCard(Map<String, dynamic> review) {
     final rating = (review['rating'] ?? 0) as num;
     final comment = (review['comment'] ?? '').toString();
@@ -5205,12 +5459,14 @@ class _TasksScreenState extends State<TasksScreen> {
                                     comment: commentCtrl.text.trim(),
                                     rating: selectedRating,
                                   );
-                                  if (sheetCtx.mounted)
+                                  if (sheetCtx.mounted) {
                                     Navigator.pop(sheetCtx, true);
+                                  }
                                 } catch (e) {
-                                  if (sheetCtx.mounted)
+                                  if (sheetCtx.mounted) {
                                     ss(() => submitting = false);
-                                  if (mounted)
+                                  }
+                                  if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
@@ -5222,6 +5478,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                         backgroundColor: Colors.red,
                                       ),
                                     );
+                                  }
                                 }
                               },
                         icon: submitting
@@ -5512,7 +5769,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       color: _accentPink,
                     ),
                   ),
-                  // â”€â”€ Existing review display in detail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                  // Ã¢â€â‚¬Ã¢â€â‚¬ Existing review display in detail Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                   if (task['review'] != null)
                     ..._buildReviewCard(task['review'] as Map<String, dynamic>),
                   const SizedBox(height: 20),
@@ -5541,10 +5798,44 @@ class _TasksScreenState extends State<TasksScreen> {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     String selectedPriority = 'medium';
+    DateTime? selectedStartDate;
     DateTime? selectedDueDate;
-    String? selectedEmployeeId;
+    List<String> selectedEmployeeIds = [];
     String? selectedAdminWorkflow;
     bool submitting = false;
+
+    Future<DateTime?> pickDateTime(
+      BuildContext ctx,
+      DateTime? initial,
+    ) async {
+      final date = await showDatePicker(
+        context: ctx,
+        initialDate: initial ?? DateTime.now().add(const Duration(days: 1)),
+        firstDate: DateTime.now().subtract(const Duration(days: 365)),
+        lastDate: DateTime.now().add(const Duration(days: 365)),
+        builder: (_, c) => Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme:
+                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+          ),
+          child: c!,
+        ),
+      );
+      if (date == null) return null;
+      final time = await showTimePicker(
+        context: ctx,
+        initialTime: TimeOfDay.fromDateTime(initial ?? DateTime.now()),
+        builder: (_, c) => Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme:
+                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+          ),
+          child: c!,
+        ),
+      );
+      if (time == null) return date;
+      return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    }
 
     try {
       final result = await showModalBottomSheet<bool>(
@@ -5556,12 +5847,11 @@ class _TasksScreenState extends State<TasksScreen> {
         ),
         builder: (sheetCtx) => StatefulBuilder(
           builder: (_, ss) {
-            final selectedEmployee = selectedEmployeeId != null
-                ? _employees.firstWhere(
-                    (e) => e['_id'] == selectedEmployeeId,
-                    orElse: () => null,
-                  )
-                : null;
+            final selectedEmployees = selectedEmployeeIds.isNotEmpty
+                ? _employees.where(
+                    (e) => selectedEmployeeIds.contains(e['_id']),
+                  ).toList()
+                : [];
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
@@ -5607,14 +5897,15 @@ class _TasksScreenState extends State<TasksScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    // Assign To
-                    _inputLabel('Assign To *'),
+                    // Assign To (Multiple Employees)
+                    _inputLabel('Assign To (Multiple) *'),
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: () async {
-                        final picked = await _pickEmployee(sheetCtx);
-                        if (picked != null)
-                          ss(() => selectedEmployeeId = picked);
+                        final picked = await _pickEmployees(sheetCtx);
+                        if (picked != null) {
+                          ss(() => selectedEmployeeIds = picked);
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -5625,79 +5916,109 @@ class _TasksScreenState extends State<TasksScreen> {
                           color: _inputDark,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: selectedEmployee != null
+                            color: selectedEmployeeIds.isNotEmpty
                                 ? _accentPink.withValues(alpha: 0.5)
                                 : Colors.white.withValues(alpha: 0.07),
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            if (selectedEmployee != null) ...[
-                              CircleAvatar(
-                                radius: 14,
-                                backgroundColor: _accentPink.withValues(
-                                  alpha: 0.2,
-                                ),
-                                child: Text(
-                                  (selectedEmployee['name'] ?? '?')[0]
-                                      .toString()
-                                      .toUpperCase(),
-                                  style: TextStyle(
-                                    color: _accentPink,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                        child: selectedEmployeeIds.isNotEmpty
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: selectedEmployees.map((emp) {
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _accentPink.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: _accentPink.withValues(
+                                              alpha: 0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              emp['name'] ?? '?',
+                                              style: TextStyle(
+                                                color: _accentPink,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            GestureDetector(
+                                              onTap: () => ss(
+                                                () => selectedEmployeeIds
+                                                    .remove(emp['_id']),
+                                              ),
+                                              child: Icon(
+                                                Icons.close,
+                                                size: 14,
+                                                color: _accentPink,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      selectedEmployee['name'] ?? '',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.edit,
+                                        color: _accentPink,
+                                        size: 16,
                                       ),
-                                    ),
-                                    if (selectedEmployee['department'] != null)
+                                      const SizedBox(width: 4),
                                       Text(
-                                        selectedEmployee['department']
-                                            .toString(),
+                                        'Tap to change',
                                         style: TextStyle(
-                                          color: _textGrey,
+                                          color: _accentPink
+                                              .withValues(alpha: 0.7),
                                           fontSize: 11,
                                         ),
                                       ),
-                                  ],
-                                ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Icon(
+                                    Icons.person_add_outlined,
+                                    color: _textGrey,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Select Employees',
+                                    style: TextStyle(
+                                      color: _textGrey.withValues(alpha: 0.7),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Icon(
+                                    Icons.keyboard_arrow_down,
+                                    color: _textGrey,
+                                    size: 18,
+                                  ),
+                                ],
                               ),
-                              Icon(Icons.edit, color: _accentPink, size: 16),
-                            ] else ...[
-                              Icon(
-                                Icons.person_add_outlined,
-                                color: _textGrey,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Select Employee',
-                                style: TextStyle(
-                                  color: _textGrey.withValues(alpha: 0.7),
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const Spacer(),
-                              Icon(
-                                Icons.keyboard_arrow_down,
-                                color: _textGrey,
-                                size: 18,
-                              ),
-                            ],
-                          ],
-                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -5743,67 +6064,59 @@ class _TasksScreenState extends State<TasksScreen> {
                       }).toList(),
                     ),
                     const SizedBox(height: 16),
-                    _inputLabel('Due Date'),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now().add(
-                            const Duration(days: 1),
-                          ),
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 365),
-                          ),
-                          builder: (_, c) => Theme(
-                            data: ThemeData.dark().copyWith(
-                              colorScheme: ColorScheme.dark(
-                                primary: _accentPink,
-                                surface: _cardDark,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _inputLabel('Start Date & Time'),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await pickDateTime(
+                                    sheetCtx,
+                                    selectedStartDate,
+                                  );
+                                  if (picked != null) {
+                                    ss(() => selectedStartDate = picked);
+                                  }
+                                },
+                                child: _dateTimePickerBox(
+                                  selectedStartDate,
+                                  'Start date & time',
+                                ),
                               ),
-                            ),
-                            child: c!,
-                          ),
-                        );
-                        if (picked != null) ss(() => selectedDueDate = picked);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _inputDark,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.07),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today_outlined,
-                              color: _textGrey,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              selectedDueDate != null
-                                  ? DateFormat(
-                                      'MMM d, y',
-                                    ).format(selectedDueDate!)
-                                  : 'Select due date',
-                              style: TextStyle(
-                                color: selectedDueDate != null
-                                    ? Colors.white
-                                    : _textGrey.withValues(alpha: 0.6),
-                                fontSize: 14,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _inputLabel('Due Date & Time *'),
+                              const SizedBox(height: 8),
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await pickDateTime(
+                                    sheetCtx,
+                                    selectedDueDate,
+                                  );
+                                  if (picked != null) {
+                                    ss(() => selectedDueDate = picked);
+                                  }
+                                },
+                                child: _dateTimePickerBox(
+                                  selectedDueDate,
+                                  'Due date & time',
+                                  required: true,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -5946,7 +6259,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                                   ],
                                                 ),
                                               );
-                                            }).toList(),
+                                            }),
                                           ],
                                           onChanged: (value) =>
                                               ss(() => selectedAdminWorkflow = value),
@@ -5968,7 +6281,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                   ],
                                 ),
                     ),
-                    // â”€â”€ Workflow Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // Ã¢â€â‚¬Ã¢â€â‚¬ Workflow Preview Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                     if (selectedAdminWorkflow != null &&
                         _workflows.isNotEmpty)
                       Builder(
@@ -6119,7 +6432,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                                 ],
                                               ),
                                             );
-                                          }).toList(),
+                                          }),
                                         ],
                                       ),
                               ),
@@ -6152,11 +6465,11 @@ class _TasksScreenState extends State<TasksScreen> {
                                   );
                                   return;
                                 }
-                                if (selectedEmployeeId == null) {
+                                if (selectedEmployeeIds.isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'Please select an employee',
+                                        'Please select at least one employee',
                                       ),
                                       backgroundColor: Colors.red,
                                     ),
@@ -6165,62 +6478,102 @@ class _TasksScreenState extends State<TasksScreen> {
                                 }
                                 ss(() => submitting = true);
                                 try {
-                                  final response = await TaskService.createTask(
-                                    _token!,
-                                    title: titleCtrl.text.trim(),
-                                    description: descCtrl.text.trim().isEmpty
-                                        ? titleCtrl.text.trim()
-                                        : descCtrl.text.trim(),
-                                    priority: selectedPriority,
-                                    dueDate: selectedDueDate != null
-                                        ? DateFormat(
-                                            'yyyy-MM-dd',
-                                          ).format(selectedDueDate!)
-                                        : DateFormat('yyyy-MM-dd').format(
-                                            DateTime.now().add(
-                                              const Duration(days: 7),
-                                            ),
-                                          ),
-                                    assignedTo: selectedEmployeeId!,
-                                  );
-                                  
-                                  // Extract task ID and assign workflow if selected
-                                  String? taskId;
-                                  if (response is Map<String, dynamic>) {
-                                    if (response['success'] == true && response['data'] != null) {
-                                      taskId = response['data']['_id'] ?? response['data']['id'];
-                                    } else if (response['data'] != null && response['data'] is Map) {
-                                      taskId = response['data']['_id'] ?? response['data']['id'];
-                                    }
+                                  // Validate due date is set
+                                  if (selectedDueDate == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Due date & time is required'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    ss(() => submitting = false);
+                                    return;
                                   }
-                                  
-                                  // Assign workflow if selected
-                                  if (selectedAdminWorkflow != null && _token != null && taskId != null) {
+
+                                  // Validate at least one employee is selected
+                                  if (selectedEmployeeIds.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Please select at least one employee'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    ss(() => submitting = false);
+                                    return;
+                                  }
+
+                                  // Create task for EACH selected employee
+                                  List<String> createdTaskIds = [];
+                                  int successCount = 0;
+                                  int failureCount = 0;
+
+                                  for (String employeeId in selectedEmployeeIds) {
                                     try {
-                                      final workflowTemplate = _workflows.firstWhere(
-                                        (w) => (w['_id'] ?? w['id']) == selectedAdminWorkflow,
-                                        orElse: () => null,
+                                      final taskId = await _createTask(
+                                        title: titleCtrl.text.trim(),
+                                        description: descCtrl.text.trim().isEmpty
+                                            ? titleCtrl.text.trim()
+                                            : descCtrl.text.trim(),
+                                        priority: selectedPriority,
+                                        dueDate: selectedDueDate,
+                                        startDate: selectedStartDate,
+                                        assignedTo: employeeId,
                                       );
-                                      if (workflowTemplate != null) {
-                                        await WorkflowService.assignToTask(
-                                          _token!,
-                                          taskId,
-                                          templateId: selectedAdminWorkflow!,
-                                          workflowName: workflowTemplate['name'],
-                                        );
+
+                                      if (taskId != null) {
+                                        createdTaskIds.add(taskId);
+                                        successCount++;
+
+                                        // Assign workflow if selected (only for first task to avoid duplication)
+                                        if (selectedAdminWorkflow != null && _token != null && createdTaskIds.length == 1) {
+                                          try {
+                                            final workflowTemplate = _workflows.firstWhere(
+                                              (w) => (w['_id'] ?? w['id']) == selectedAdminWorkflow,
+                                              orElse: () => null,
+                                            );
+                                            if (workflowTemplate != null) {
+                                              await WorkflowService.assignToTask(
+                                                _token!,
+                                                taskId,
+                                                templateId: selectedAdminWorkflow!,
+                                                workflowName: workflowTemplate['name'],
+                                              );
+                                            }
+                                          } catch (e) {
+                                            print('Error assigning workflow: $e');
+                                          }
+                                        }
                                       }
                                     } catch (e) {
-                                      print('Error assigning workflow: $e');
-                                      // Workflow assignment failure is non-critical
+                                      failureCount++;
+                                      print('Failed to create task for employee $employeeId: $e');
                                     }
                                   }
-                                  
-                                  if (sheetCtx.mounted)
+
+                                  // Show result summary
+                                  String resultMessage = 'Task created for $successCount employee${successCount != 1 ? 's' : ''}';
+                                  if (failureCount > 0) {
+                                    resultMessage += '\n(Failed for $failureCount employee${failureCount != 1 ? 's' : ''})';
+                                  }
+
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(resultMessage),
+                                        backgroundColor: failureCount > 0 ? Colors.orange : Colors.green,
+                                        duration: const Duration(seconds: 3),
+                                      ),
+                                    );
+                                  }
+
+                                  if (sheetCtx.mounted) {
                                     Navigator.pop(sheetCtx, true);
+                                  }
                                 } catch (e) {
-                                  if (sheetCtx.mounted)
+                                  if (sheetCtx.mounted) {
                                     ss(() => submitting = false);
-                                  if (mounted)
+                                  }
+                                  if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
@@ -6232,6 +6585,7 @@ class _TasksScreenState extends State<TasksScreen> {
                                         backgroundColor: Colors.red,
                                       ),
                                     );
+                                  }
                                 }
                               },
                         icon: submitting
@@ -6279,7 +6633,289 @@ class _TasksScreenState extends State<TasksScreen> {
     }
   }
 
+  /// Pick multiple employees (for task assignment)
+  Future<List<String>?> _pickEmployees(BuildContext sheetCtx) async {
+    // Ensure employees are loaded before showing picker
+    if (_employees.isEmpty) {
+      await _loadEmployees();
+    }
+
+    return showModalBottomSheet<List<String>>(
+      context: sheetCtx,
+      backgroundColor: _cardDark,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) {
+        String search = '';
+        List<String> selectedIds = [];
+        return StatefulBuilder(
+          builder: (_, ss2) {
+            final filtered = _employees.where((e) {
+              if (search.isEmpty) return true;
+              return (e['name'] ?? '').toString().toLowerCase().contains(
+                    search.toLowerCase(),
+                  ) ||
+                  (e['employeeId'] ?? '').toString().toLowerCase().contains(
+                    search.toLowerCase(),
+                  ) ||
+                  (e['department'] ?? '').toString().toLowerCase().contains(
+                    search.toLowerCase(),
+                  );
+            }).toList();
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.6,
+              maxChildSize: 0.95,
+              builder: (_, sc) => Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Select Employees',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${selectedIds.length} selected',
+                          style: TextStyle(
+                            color: _textGrey,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: _inputDark,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white10),
+                          ),
+                          child: TextField(
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                            ),
+                            onChanged: (v) => ss2(() => search = v),
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'Search employees...',
+                              hintStyle: TextStyle(
+                                color: _textGrey,
+                                fontSize: 13,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: _textGrey,
+                                size: 18,
+                              ),
+                              prefixIconConstraints: const BoxConstraints(
+                                minWidth: 36,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: _employees.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.people_outline, color: _textGrey, size: 48),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No employees found',
+                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Check your permissions',
+                                  style: TextStyle(color: _textGrey, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          )
+                        : filtered.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.search_off, color: _textGrey, size: 48),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No matching employees',
+                                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
+                      controller: sc,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      itemCount: filtered.length,
+                      itemBuilder: (_, i) {
+                        final e = filtered[i];
+                        final eId = e['_id']?.toString() ?? '';
+                        final isSelected = selectedIds.contains(eId);
+                        return ListTile(
+                          dense: true,
+                          leading: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isSelected
+                                    ? _accentPink
+                                    : Colors.white30,
+                                width: 2,
+                              ),
+                            ),
+                            child: isSelected
+                                ? CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: _accentPink,
+                                    child: Icon(
+                                      Icons.check,
+                                      color: Colors.black,
+                                      size: 14,
+                                    ),
+                                  )
+                                : CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor:
+                                        _accentPink.withValues(alpha: 0.2),
+                                    child: Text(
+                                      (e['name'] ?? '?')[0]
+                                          .toString()
+                                          .toUpperCase(),
+                                      style: TextStyle(
+                                        color: _accentPink,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          title: Text(
+                            e['name'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${e['department'] ?? ''} â€¢ ${e['employeeId'] ?? ''}',
+                            style: TextStyle(color: _textGrey, fontSize: 11),
+                          ),
+                          trailing: Checkbox(
+                            value: isSelected,
+                            onChanged: (_) {
+                              ss2(() {
+                                if (isSelected) {
+                                  selectedIds.remove(eId);
+                                } else {
+                                  selectedIds.add(eId);
+                                }
+                              });
+                            },
+                            fillColor: WidgetStateColor.resolveWith(
+                              (states) => isSelected
+                                  ? _accentPink
+                                  : Colors.transparent,
+                            ),
+                            checkColor: Colors.black,
+                            side: BorderSide(
+                              color:
+                                  isSelected ? _accentPink : Colors.white30,
+                              width: 2,
+                            ),
+                          ),
+                          onTap: () {
+                            ss2(() {
+                              if (isSelected) {
+                                selectedIds.remove(eId);
+                              } else {
+                                selectedIds.add(eId);
+                              }
+                            });
+                          },
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  if (selectedIds.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () =>
+                              Navigator.pop(context, selectedIds),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _accentPink,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Assign to ${selectedIds.length} Employee${selectedIds.length != 1 ? 's' : ''}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<String?> _pickEmployee(BuildContext sheetCtx) async {
+    // Ensure employees are loaded before showing picker
+    if (_employees.isEmpty) {
+      await _loadEmployees();
+    }
+
     return showModalBottomSheet<String>(
       context: sheetCtx,
       backgroundColor: _cardDark,
@@ -6370,7 +7006,40 @@ class _TasksScreenState extends State<TasksScreen> {
                     ),
                   ),
                   Expanded(
-                    child: ListView.builder(
+                    child: _employees.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.people_outline, color: _textGrey, size: 48),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No employees found',
+                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Check your permissions',
+                                  style: TextStyle(color: _textGrey, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          )
+                        : filtered.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.search_off, color: _textGrey, size: 48),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No matching employees',
+                                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : ListView.builder(
                       controller: sc,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -6402,7 +7071,7 @@ class _TasksScreenState extends State<TasksScreen> {
                             ),
                           ),
                           subtitle: Text(
-                            '${e['department'] ?? ''} â€¢ ${e['employeeId'] ?? ''}',
+                            '${e['department'] ?? ''} Ã¢â‚¬Â¢ ${e['employeeId'] ?? ''}',
                             style: TextStyle(color: _textGrey, fontSize: 11),
                           ),
                           onTap: () =>
@@ -7066,7 +7735,7 @@ class _TasksScreenState extends State<TasksScreen> {
                           const SizedBox(height: 8),
                           // Title
                           Text(
-                            task['title'] ?? 'â€”',
+                            task['title'] ?? 'Ã¢â‚¬â€',
                             style: TextStyle(
                               color: isCompleted ? _textGrey : Colors.white,
                               fontSize: 14,
@@ -7194,7 +7863,7 @@ class _TasksScreenState extends State<TasksScreen> {
     ); // closes Dismissible
   }
 
-  // â”€â”€ Tab Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Tab Bar Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Widget _buildTabBar(
     List<Map<String, dynamic>> tabs,
     int current,
@@ -7249,7 +7918,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // â”€â”€ Employee filter row (status + priority) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Employee filter row (status + priority) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Widget _buildEmployeeFilterRow() {
     return Row(
       children: [
@@ -7434,7 +8103,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // â”€â”€ Kanban view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Kanban view Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Widget _buildKanbanView(List<dynamic> tasks) {
     final columns = [
       {'status': 'draft', 'label': 'Draft', 'color': Colors.grey},
@@ -7595,7 +8264,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // â”€â”€ Time Tracking Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Time Tracking Tab Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Widget _buildTimeTrackingTab() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -7789,7 +8458,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // â”€â”€ Admin by-employee tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Admin by-employee tab Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Widget _buildAdminByEmployeeTab() {
     if (_employees.isEmpty) {
       return Center(
@@ -7859,7 +8528,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       children: [
                         Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
                         Text(
-                          '${dept.isNotEmpty ? '$dept â€¢ ' : ''}${empIdNum.isNotEmpty ? empIdNum : ''}',
+                          '${dept.isNotEmpty ? '$dept Ã¢â‚¬Â¢ ' : ''}${empIdNum.isNotEmpty ? empIdNum : ''}',
                           style: TextStyle(color: _textGrey, fontSize: 11),
                         ),
                       ],
@@ -7955,7 +8624,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // â”€â”€ Projects Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Projects Tab Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Widget _buildProjectsTab() {
     if (_projects.isEmpty) {
       return Center(
@@ -8165,7 +8834,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // â”€â”€ Analytics Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Analytics Tab Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Widget _buildAnalyticsTab() {
     if (_analyticsLoading) {
       return Center(child: CircularProgressIndicator(color: _accentPink));
@@ -8214,7 +8883,7 @@ class _TasksScreenState extends State<TasksScreen> {
               final count = (emp['taskCount'] ?? emp['count'] ?? 0) as num;
               final total = _analyticsWorkload.fold<num>(
                 0,
-                (s, e) => s + ((e as Map)['taskCount'] ?? (e)['count'] ?? 0) as num,
+                (s, e) => s + ((e as Map)['taskCount'] ?? (e)['count'] ?? 0),
               );
               final pct = total > 0 ? count / total : 0.0;
               return Container(
@@ -8288,7 +8957,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  // â”€â”€ Create project dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Create project dialog Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Future<void> _showCreateProjectDialog() async {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -8480,7 +9149,7 @@ class _TasksScreenState extends State<TasksScreen> {
     descCtrl.dispose();
   }
 
-  // â”€â”€ Create milestone dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Create milestone dialog Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   Future<void> _showCreateMilestoneDialog(String projectId) async {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();

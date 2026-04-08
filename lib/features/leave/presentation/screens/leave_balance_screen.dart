@@ -2,13 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hrms_app/features/leave/data/models/leave_balance_model.dart';
-import 'package:hrms_app/features/leave/data/services/leave_service.dart';
-import 'package:hrms_app/shared/services/core/token_storage_service.dart';
+import 'package:provider/provider.dart';
+import 'package:hrms_app/features/leave/presentation/providers/leave_notifier.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
 
 class LeaveBalanceScreen extends StatefulWidget {
-  final String? token;
-  const LeaveBalanceScreen({super.key, this.token});
+  const LeaveBalanceScreen({super.key});
 
   @override
   State<LeaveBalanceScreen> createState() => _LeaveBalanceScreenState();
@@ -29,7 +28,6 @@ class _LeaveBalanceScreenState extends State<LeaveBalanceScreen>
   // ── State ──────────────────────────────────────────────────────────────────
   bool _isLoading = true;
   String? _error;
-  String? _resolvedToken;
   List<LeaveBalanceEntry> _allEntries = [];
 
   String _roleFilter = 'all'; // all | hr | employee
@@ -80,11 +78,6 @@ class _LeaveBalanceScreenState extends State<LeaveBalanceScreen>
   }
 
   Future<void> _init() async {
-    String? tok = widget.token;
-    if (tok == null || tok.isEmpty) {
-      tok = await TokenStorageService().getToken();
-    }
-    _resolvedToken = tok;
     await _fetchBalances();
   }
 
@@ -96,12 +89,16 @@ class _LeaveBalanceScreenState extends State<LeaveBalanceScreen>
       _error = null;
     });
     try {
-      final resp = await LeaveService.getLeaveBalances(
-        token: _resolvedToken ?? '',
-      );
+      final notifier = context.read<LeaveNotifier>();
+      await notifier.loadLeaveBalances();
+
+      final state = notifier.state;
       if (!mounted) return;
       setState(() {
-        _allEntries = resp.data;
+        _allEntries = state.leaveBalances;
+        if (state.errorType == 'leaveBalances') {
+          _error = state.errorMessage;
+        }
         _isLoading = false;
       });
     } catch (e) {
@@ -140,8 +137,7 @@ class _LeaveBalanceScreenState extends State<LeaveBalanceScreen>
 
     setState(() => _processingIds.add(entry.id));
     try {
-      await LeaveService.assignLeaveBalance(
-        token: _resolvedToken ?? '',
+      await context.read<LeaveNotifier>().assignLeaveBalance(
         userId: entry.id,
         paid: result['paid']!,
         sick: result['sick']!,
@@ -177,8 +173,7 @@ class _LeaveBalanceScreenState extends State<LeaveBalanceScreen>
       for (final id in _selectedIds) _processingIds.add(id);
     });
     try {
-      await LeaveService.bulkAssignLeaveBalance(
-        token: _resolvedToken ?? '',
+      await context.read<LeaveNotifier>().bulkAssignLeaveBalance(
         userIds: _selectedIds.toList(),
         paid: result['paid']!,
         sick: result['sick']!,
