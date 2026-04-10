@@ -17,7 +17,8 @@ class TasksScreen extends StatefulWidget {
   final String? token;
   final String? role;
   final bool showOnlyCurrentUser;
-  const TasksScreen({super.key, this.token, this.role, this.showOnlyCurrentUser = false});
+  final bool isManagementView;
+  const TasksScreen({super.key, this.token, this.role, this.showOnlyCurrentUser = false, this.isManagementView = false});
 
   @override
   State<TasksScreen> createState() => _TasksScreenState();

@@ -9,6 +9,7 @@ import 'package:hrms_app/features/expenses/presentation/screens/expenses_screen.
 import 'package:hrms_app/features/profile/presentation/screens/profile_screen.dart';
 import 'package:hrms_app/features/tasks/presentation/screens/tasks_screen.dart';
 import 'package:hrms_app/features/tasks/presentation/screens/bod_eod_screen.dart';
+import 'package:hrms_app/features/tasks/presentation/screens/task_management_screen.dart';
 import 'package:hrms_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:hrms_app/features/auth/presentation/providers/auth_notifier.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
@@ -56,7 +57,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
     final roleStr = widget.user?.role.toLowerCase().trim() ?? '';
     print('[SIDEBAR] 🔍 Raw role from widget.user: "${widget.user?.role}"');
     print('[SIDEBAR] 🔍 Processed roleStr (lowercase trim): "$roleStr"');
-    
+
     if (roleStr == 'admin') {
       _userRole = 'admin';
       print('[SIDEBAR] ✅ User role set to: ADMIN');
@@ -68,7 +69,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
       print('[SIDEBAR] ✅ User role set to: CLIENT');
     } else {
       _userRole = 'employee';
-      print('[SIDEBAR] ⚠️ User role defaulted to: EMPLOYEE (received role was: "$roleStr")');
+      print(
+        '[SIDEBAR] ⚠️ User role defaulted to: EMPLOYEE (received role was: "$roleStr")',
+      );
     }
   }
 
@@ -108,14 +111,17 @@ class _SidebarMenuState extends State<SidebarMenu> {
     {"title": "Settings", "icon": Icons.settings_rounded},
   ];
 
-
   late final List<Map<String, dynamic>> _hrMenuItems = [
     {"title": "Dashboard", "icon": Icons.grid_view_rounded},
     {"title": "My Profile", "icon": Icons.person_rounded},
     {"title": "Employees", "icon": Icons.people_rounded},
     // {"title": "Clients", "icon": Icons.people_outline_rounded},
     {"title": "Attendance", "icon": Icons.schedule_rounded, "hasSubmenu": true},
-    {"title": "Leaves", "icon": Icons.calendar_month_rounded, "hasSubmenu": true},
+    {
+      "title": "Leaves",
+      "icon": Icons.calendar_month_rounded,
+      "hasSubmenu": true,
+    },
     {"title": "Calendar", "icon": Icons.event_rounded},
     {"title": "Tasks", "icon": Icons.task_alt_rounded, "hasSubmenu": true},
     {"title": "Expenses", "icon": Icons.account_balance_wallet_rounded},
@@ -156,6 +162,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
   ];
 
   late final List<Map<String, dynamic>> _adminTasksSubItems = [
+    {"title": "Task Management", "icon": Icons.assignment_rounded},
     {"title": "Tasks", "icon": Icons.task_alt_rounded},
     {"title": "BOD/EOD", "icon": Icons.event_note_rounded},
   ];
@@ -182,7 +189,10 @@ class _SidebarMenuState extends State<SidebarMenu> {
     ];
     // Add My Salary for employees, Salary Management for admin
     if (_userRole == 'admin') {
-      items.add({"title": "Employee Salary", "icon": Icons.admin_panel_settings_rounded});
+      items.add({
+        "title": "Employee Salary",
+        "icon": Icons.admin_panel_settings_rounded,
+      });
     } else {
       items.add({"title": "My Salary", "icon": Icons.money_rounded});
     }
@@ -225,7 +235,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   if (menuItem['title'] == 'Attendance' &&
                       menuItem['hasSubmenu'] == true &&
                       (_userRole == 'admin' || _userRole == 'hr')) {
-                    final subItems = _userRole == 'hr' ? _hrAttendanceSubItems : _attendanceSubItems;
+                    final subItems = _userRole == 'hr'
+                        ? _hrAttendanceSubItems
+                        : _attendanceSubItems;
                     return Column(
                       children: [
                         _buildMenuItemWithSubmenu(
@@ -239,7 +251,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
                         if (_attendanceExpanded)
                           ...subItems.asMap().entries.map((subEntry) {
                             int subIdx = subEntry.key;
-                            return _buildAttendanceSubMenuItem(context, subIdx, subItems);
+                            return _buildAttendanceSubMenuItem(
+                              context,
+                              subIdx,
+                              subItems,
+                            );
                           }).toList(),
                       ],
                     );
@@ -270,7 +286,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   // If this is Leaves with submenu
                   if (menuItem['title'] == 'Leaves' &&
                       menuItem['hasSubmenu'] == true) {
-                    final subItems = _userRole == 'admin' ? _adminLeavesSubItems : _leavesSubItems;
+                    final subItems = _userRole == 'admin'
+                        ? _adminLeavesSubItems
+                        : _leavesSubItems;
                     return Column(
                       children: [
                         _buildMenuItemWithSubmenu(
@@ -284,7 +302,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
                         if (_leavesExpanded)
                           ...subItems.asMap().entries.map((subEntry) {
                             int subIdx = subEntry.key;
-                            return _buildLeavesSubMenuItem(context, subIdx, subItems);
+                            return _buildLeavesSubMenuItem(
+                              context,
+                              subIdx,
+                              subItems,
+                            );
                           }).toList(),
                       ],
                     );
@@ -293,7 +315,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
                   // If this is Tasks with submenu
                   if (menuItem['title'] == 'Tasks' &&
                       menuItem['hasSubmenu'] == true) {
-                    final subItems = _userRole == 'admin' ? _adminTasksSubItems : _userRole == 'hr' ? _hrTasksSubItems : _employeeTasksSubItems;
+                    final subItems = _userRole == 'admin'
+                        ? _adminTasksSubItems
+                        : _userRole == 'hr'
+                        ? _hrTasksSubItems
+                        : _employeeTasksSubItems;
                     return Column(
                       children: [
                         _buildMenuItemWithSubmenu(
@@ -307,7 +333,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
                         if (_tasksExpanded)
                           ...subItems.asMap().entries.map((subEntry) {
                             int subIdx = subEntry.key;
-                            return _buildTasksSubMenuItem(context, subIdx, subItems);
+                            return _buildTasksSubMenuItem(
+                              context,
+                              subIdx,
+                              subItems,
+                            );
                           }).toList(),
                       ],
                     );
@@ -495,7 +525,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
     );
   }
 
-  Widget _buildLeavesSubMenuItem(BuildContext context, int index, List<Map<String, dynamic>> subItems) {
+  Widget _buildLeavesSubMenuItem(
+    BuildContext context,
+    int index,
+    List<Map<String, dynamic>> subItems,
+  ) {
     final subItem = subItems[index];
     Color primaryColor = Theme.of(context).primaryColor;
 
@@ -545,7 +579,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
     );
   }
 
-  Widget _buildAttendanceSubMenuItem(BuildContext context, int index, List<Map<String, dynamic>> subItems) {
+  Widget _buildAttendanceSubMenuItem(
+    BuildContext context,
+    int index,
+    List<Map<String, dynamic>> subItems,
+  ) {
     final subItem = subItems[index];
     Color primaryColor = Theme.of(context).primaryColor;
 
@@ -595,7 +633,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
     );
   }
 
-  Widget _buildTasksSubMenuItem(BuildContext context, int index, List<Map<String, dynamic>> subItems) {
+  Widget _buildTasksSubMenuItem(
+    BuildContext context,
+    int index,
+    List<Map<String, dynamic>> subItems,
+  ) {
     final subItem = subItems[index];
     Color primaryColor = Theme.of(context).primaryColor;
 
@@ -899,11 +941,14 @@ class _SidebarMenuState extends State<SidebarMenu> {
         break;
 
       case "Expenses":
-        Navigator.of(
-          context,
-        ).push(_createSmoothRoute(ExpensesScreen(
-          role: _userRole,  // Pass user's actual role: 'hr', 'employee', or 'admin'
-        )));
+        Navigator.of(context).push(
+          _createSmoothRoute(
+            ExpensesScreen(
+              role:
+                  _userRole, // Pass user's actual role: 'hr', 'employee', or 'admin'
+            ),
+          ),
+        );
         break;
 
       case "Chat":
@@ -919,11 +964,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
         break;
 
       case "Notifications":
-        Navigator.of(context).push(
-          _createSmoothRoute(
-            const NotificationsScreen(),
-          ),
-        );
+        Navigator.of(
+          context,
+        ).push(_createSmoothRoute(const NotificationsScreen()));
         break;
 
       case "Company Policy":
@@ -961,12 +1004,11 @@ class _SidebarMenuState extends State<SidebarMenu> {
         break;
 
       case "Employees":
-        Navigator.of(
-          context,
-        ).push(_createSmoothRoute(AllEmployeesScreen(
-          token: widget.token,
-          role: _userRole,
-        )));
+        Navigator.of(context).push(
+          _createSmoothRoute(
+            AllEmployeesScreen(token: widget.token, role: _userRole),
+          ),
+        );
         break;
 
       case "HR Accounts":
@@ -980,13 +1022,15 @@ class _SidebarMenuState extends State<SidebarMenu> {
         break;
 
       case "Calendar":
-        Navigator.of(
-          context,
-        ).push(_createSmoothRoute(AdminCalendarScreen(
-          token: widget.token,
-          userId: widget.user?.id,
-          companyId: null, // Can be selected in calendar screen
-        )));
+        Navigator.of(context).push(
+          _createSmoothRoute(
+            AdminCalendarScreen(
+              token: widget.token,
+              userId: widget.user?.id,
+              companyId: null, // Can be selected in calendar screen
+            ),
+          ),
+        );
         break;
 
       default:
@@ -1005,29 +1049,27 @@ class _SidebarMenuState extends State<SidebarMenu> {
     // Navigate to appropriate attendance subscreen
     if (title == "Attendance") {
       // For admin, view all employees' attendance; for HR, view all
-      Navigator.of(context).push(
-        _createSmoothRoute(AdminAttendanceScreen(token: widget.token)),
-      );
+      Navigator.of(
+        context,
+      ).push(_createSmoothRoute(AdminAttendanceScreen(token: widget.token)));
     } else if (title == "My Attendance") {
       // View own attendance (HR only)
-      Navigator.of(context).push(
-        _createSmoothRoute(AttendanceScreen(token: widget.token)),
-      );
+      Navigator.of(
+        context,
+      ).push(_createSmoothRoute(AttendanceScreen(token: widget.token)));
     } else if (title == "Edit Requests") {
       // View all employees' edit requests
       Navigator.of(context).push(
-        _createSmoothRoute(EditRequestsScreen(
-          token: widget.token,
-          showOnlyCurrentUser: false,
-        )),
+        _createSmoothRoute(
+          EditRequestsScreen(token: widget.token, showOnlyCurrentUser: false),
+        ),
       );
     } else if (title == "My Edit Requests") {
       // View own edit requests (HR personal view)
       Navigator.of(context).push(
-        _createSmoothRoute(EditRequestsScreen(
-          token: widget.token,
-          showOnlyCurrentUser: true,
-        )),
+        _createSmoothRoute(
+          EditRequestsScreen(token: widget.token, showOnlyCurrentUser: true),
+        ),
       );
     }
   }
@@ -1050,11 +1092,9 @@ class _SidebarMenuState extends State<SidebarMenu> {
     } else if (title == "My Salary") {
       Navigator.of(context).push(_createSmoothRoute(const MySalaryScreen()));
     } else if (title == "Employee Salary") {
-      Navigator.of(context).push(
-        _createSmoothRoute(
-          AdminSalaryScreen(token: widget.token),
-        ),
-      );
+      Navigator.of(
+        context,
+      ).push(_createSmoothRoute(AdminSalaryScreen(token: widget.token)));
     }
   }
 
@@ -1082,9 +1122,7 @@ class _SidebarMenuState extends State<SidebarMenu> {
       ).push(_createSmoothRoute(const LeaveManagementScreen()));
     } else if (title == "My Leaves") {
       // My Leaves (HR)
-      Navigator.of(
-        context,
-      ).push(_createSmoothRoute(const LeaveScreen()));
+      Navigator.of(context).push(_createSmoothRoute(const LeaveScreen()));
     }
   }
 
@@ -1095,7 +1133,12 @@ class _SidebarMenuState extends State<SidebarMenu> {
     }
 
     // Navigate to appropriate tasks subscreen
-    if (title == "Tasks" || title == "Employee Tasks") {
+    if (title == "Task Management") {
+      // View task management dashboard (Admin only)
+      Navigator.of(
+        context,
+      ).push(_createSmoothRoute(TaskManagementScreen(token: widget.token)));
+    } else if (title == "Tasks" || title == "Employee Tasks") {
       // View all employee tasks (Admin/HR)
       Navigator.of(context).push(
         _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole)),
@@ -1103,7 +1146,13 @@ class _SidebarMenuState extends State<SidebarMenu> {
     } else if (title == "My Tasks") {
       // View only current user's tasks (HR only)
       Navigator.of(context).push(
-        _createSmoothRoute(TasksScreen(token: widget.token, role: _userRole, showOnlyCurrentUser: true)),
+        _createSmoothRoute(
+          TasksScreen(
+            token: widget.token,
+            role: _userRole,
+            showOnlyCurrentUser: true,
+          ),
+        ),
       );
     } else if (title == "BOD/EOD") {
       Navigator.of(context).push(

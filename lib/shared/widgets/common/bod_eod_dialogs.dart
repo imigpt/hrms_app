@@ -34,8 +34,10 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
 
   Future<void> _submit() async {
     // Validate: at least one task must have title, description, and estimated time
-    final tasksWithTitle = _tasks.where((t) => t.titleCtrl.text.trim().isNotEmpty).toList();
-    
+    final tasksWithTitle = _tasks
+        .where((t) => t.titleCtrl.text.trim().isNotEmpty)
+        .toList();
+
     if (tasksWithTitle.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -49,16 +51,20 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
     // Check if any task is missing required fields (description and estimated time)
     final incompleteTasks = tasksWithTitle.where((t) {
       final hasDescription = t.descCtrl.text.trim().isNotEmpty;
-      final hasEstimatedTime = t.estimatedType == 'before-lunch' || 
-          t.estimatedType == 'evening' || 
-          (t.estimatedType == 'custom' && (double.tryParse(t.hoursCtrl.text) ?? 0) > 0);
+      final hasEstimatedTime =
+          t.estimatedType == 'before-lunch' ||
+          t.estimatedType == 'evening' ||
+          (t.estimatedType == 'custom' &&
+              (double.tryParse(t.hoursCtrl.text) ?? 0) > 0);
       return !hasDescription || !hasEstimatedTime;
     }).toList();
 
     if (incompleteTasks.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Description and Estimated Time are required for each task'),
+          content: Text(
+            'Description and Estimated Time are required for each task',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
@@ -183,8 +189,11 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
                     color: Colors.amber.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.wb_sunny_rounded,
-                      color: Colors.amber, size: 20),
+                  child: const Icon(
+                    Icons.wb_sunny_rounded,
+                    color: Colors.amber,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -201,8 +210,7 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
                       ),
                       Text(
                         'Add the tasks you plan to work on today. These will appear as your daily goals.',
-                        style:
-                            TextStyle(color: Colors.grey[500], fontSize: 12),
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
                       ),
                     ],
                   ),
@@ -235,8 +243,7 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
                       label: const Text('Add Another Task'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white70,
-                        side: BorderSide(
-                            color: Colors.white.withOpacity(0.2)),
+                        side: BorderSide(color: Colors.white.withOpacity(0.2)),
                         minimumSize: const Size.fromHeight(40),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -252,7 +259,11 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
           Divider(color: Colors.white.withOpacity(0.07), height: 1),
           Padding(
             padding: EdgeInsets.fromLTRB(
-                16, 12, 16, 12 + MediaQuery.of(context).viewInsets.bottom),
+              16,
+              12,
+              16,
+              12 + MediaQuery.of(context).viewInsets.bottom,
+            ),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -308,8 +319,7 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.07),
                   borderRadius: BorderRadius.circular(6),
@@ -317,17 +327,21 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
                 child: Text(
                   'Task ${index + 1}',
                   style: const TextStyle(
-                      color: Colors.white60,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600),
+                    color: Colors.white60,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const Spacer(),
               if (_tasks.length > 1)
                 GestureDetector(
                   onTap: () => _removeTask(index),
-                  child: const Icon(Icons.close,
-                      color: Colors.redAccent, size: 18),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.redAccent,
+                    size: 18,
+                  ),
                 ),
             ],
           ),
@@ -348,11 +362,14 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
           ),
           const SizedBox(height: 8),
           // Estimated time
-          Text('Estimated Time *',
-              style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500)),
+          Text(
+            'Estimated Time *',
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: 4),
           StatefulBuilder(
             builder: (ctx, setLocal) => Column(
@@ -361,8 +378,7 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.06),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.1)),
+                    border: Border.all(color: Colors.white.withOpacity(0.1)),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -370,18 +386,20 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
                       isExpanded: true,
                       dropdownColor: const Color(0xFF2A2A2A),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 13),
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
                       items: const [
                         DropdownMenuItem(
-                            value: 'custom',
-                            child: Text('Custom Hours')),
+                          value: 'custom',
+                          child: Text('Custom Hours'),
+                        ),
                         DropdownMenuItem(
-                            value: 'before-lunch',
-                            child: Text('Before Lunch (~4h)')),
+                          value: 'before-lunch',
+                          child: Text('Before Lunch (~4h)'),
+                        ),
                         DropdownMenuItem(
-                            value: 'evening',
-                            child: Text('Evening of Day (~8h)')),
+                          value: 'evening',
+                          child: Text('Evening of Day (~8h)'),
+                        ),
                       ],
                       onChanged: (v) {
                         if (v != null) {
@@ -397,8 +415,9 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
                     controller: task.hoursCtrl,
                     hint: 'e.g. 2',
                     label: 'Hours',
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                   ),
                 ],
               ],
@@ -419,11 +438,14 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 11,
-                fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey[500],
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         const SizedBox(height: 4),
         TextField(
           controller: controller,
@@ -435,22 +457,21 @@ class _BODBottomSheetState extends State<BODBottomSheet> {
             hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
             filled: true,
             fillColor: Colors.white.withOpacity(0.06),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.1)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide:
-                  BorderSide(color: Colors.white.withOpacity(0.1)),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide:
-                  BorderSide(color: Colors.amber.withOpacity(0.6)),
+              borderSide: BorderSide(color: Colors.amber.withOpacity(0.6)),
             ),
           ),
         ),
@@ -520,7 +541,43 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
     setState(() {});
   }
 
+  bool _isEODValid() {
+    // If there are BOD tasks, at least one must have been actively reviewed
+    // (marked as 'completed' or 'in-progress', not left as default 'not-done')
+    if (_tasks.isNotEmpty) {
+      final hasReviewedTask = _tasks.any(
+        (t) => t.eodStatus == 'completed' || t.eodStatus == 'in-progress',
+      );
+      if (!hasReviewedTask) {
+        return false;
+      }
+    }
+
+    // All mandatory new tasks must have a title
+    for (final t in _newTasks) {
+      if (t.titleCtrl.text.trim().isEmpty) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   Future<void> _submitEOD() async {
+    // Validate EOD data before submitting
+    if (!_isEODValid()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please complete all EOD fields before checking out'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _submitting = true);
 
     try {
@@ -533,24 +590,24 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
       final statusUpdates = _tasks
           .where((t) => t.eodStatus == 'completed' && t.status != 'completed')
           .map((t) async {
-        try {
-          await http
-              .put(
-                Uri.parse('$baseUrl/tasks/${t.id}'),
-                headers: {
-                  'Authorization': 'Bearer $token',
-                  'Content-Type': 'application/json',
-                },
-                body: jsonEncode({'status': 'completed', 'progress': 100}),
-              )
-              .timeout(const Duration(seconds: 8));
-        } catch (_) {}
-      });
+            try {
+              await http
+                  .put(
+                    Uri.parse('$baseUrl/tasks/${t.id}'),
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                    body: jsonEncode({'status': 'completed', 'progress': 100}),
+                  )
+                  .timeout(const Duration(seconds: 8));
+            } catch (_) {}
+          });
 
       // Add EOD notes as comments where provided
-      final noteUpdates = _tasks
-          .where((t) => t.notes.trim().isNotEmpty)
-          .map((t) async {
+      final noteUpdates = _tasks.where((t) => t.notes.trim().isNotEmpty).map((
+        t,
+      ) async {
         try {
           await http
               .post(
@@ -574,30 +631,30 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
       final newTaskCreations = _newTasks
           .where((t) => t.titleCtrl.text.trim().isNotEmpty)
           .map((t) async {
-        try {
-          await http
-              .post(
-                Uri.parse('$baseUrl/tasks'),
-                headers: {
-                  'Authorization': 'Bearer $token',
-                  'Content-Type': 'application/json',
-                },
-                body: jsonEncode({
-                  'title': t.titleCtrl.text.trim(),
-                  'description': t.descCtrl.text.trim().isNotEmpty
-                      ? t.descCtrl.text.trim()
-                      : t.titleCtrl.text.trim(),
-                  'priority': 'medium',
-                  'dueDate': dueDate,
-                  'isBODTask': true,
-                  'bodDate': bodDate,
-                  'status': 'completed',
-                  'progress': 100,
-                }),
-              )
-              .timeout(const Duration(seconds: 8));
-        } catch (_) {}
-      });
+            try {
+              await http
+                  .post(
+                    Uri.parse('$baseUrl/tasks'),
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                      'Content-Type': 'application/json',
+                    },
+                    body: jsonEncode({
+                      'title': t.titleCtrl.text.trim(),
+                      'description': t.descCtrl.text.trim().isNotEmpty
+                          ? t.descCtrl.text.trim()
+                          : t.titleCtrl.text.trim(),
+                      'priority': 'medium',
+                      'dueDate': dueDate,
+                      'isBODTask': true,
+                      'bodDate': bodDate,
+                      'status': 'completed',
+                      'progress': 100,
+                    }),
+                  )
+                  .timeout(const Duration(seconds: 8));
+            } catch (_) {}
+          });
 
       // Wait for all updates (non-blocking - proceed even on failures)
       await Future.wait([
@@ -626,23 +683,33 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
 
       final baseUrl = ApiConfig.baseUrl;
       final today = DateTime.now();
-      final startOfDay =
-          DateTime(today.year, today.month, today.day).toIso8601String();
-      final endOfDay = DateTime(today.year, today.month, today.day, 23, 59, 59)
-          .toIso8601String();
+      final startOfDay = DateTime(
+        today.year,
+        today.month,
+        today.day,
+      ).toIso8601String();
+      final endOfDay = DateTime(
+        today.year,
+        today.month,
+        today.day,
+        23,
+        59,
+        59,
+      ).toIso8601String();
 
       print('[EOD] Base URL: $baseUrl');
-      final uri = Uri.parse('$baseUrl/tasks').replace(queryParameters: {
-        'isBODTask': 'true',
-        'dueAfter': startOfDay,
-        'dueBefore': endOfDay,
-        'limit': '20',
-      });
+      final uri = Uri.parse('$baseUrl/tasks').replace(
+        queryParameters: {
+          'isBODTask': 'true',
+          'dueAfter': startOfDay,
+          'dueBefore': endOfDay,
+          'limit': '20',
+        },
+      );
 
-      final response = await http.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
-      ).timeout(const Duration(seconds: 8));
+      final response = await http
+          .get(uri, headers: {'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
@@ -708,8 +775,11 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                     color: Colors.blue.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.nightlight_round,
-                      color: Colors.blueAccent, size: 20),
+                  child: const Icon(
+                    Icons.nightlight_round,
+                    color: Colors.blueAccent,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -726,8 +796,7 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                       ),
                       Text(
                         'How did today go?',
-                        style:
-                            TextStyle(color: Colors.grey[500], fontSize: 12),
+                        style: TextStyle(color: Colors.grey[500], fontSize: 12),
                       ),
                     ],
                   ),
@@ -763,13 +832,18 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                             child: Center(
                               child: Column(
                                 children: [
-                                  Icon(Icons.check_circle_outline,
-                                      color: Colors.grey[700], size: 48),
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.grey[700],
+                                    size: 48,
+                                  ),
                                   const SizedBox(height: 12),
                                   Text(
                                     'No BOD tasks for today',
                                     style: TextStyle(
-                                        color: Colors.grey[600], fontSize: 14),
+                                      color: Colors.grey[600],
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -778,18 +852,19 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                         else ...[
                           for (int i = 0; i < _tasks.length; i++) ...[
                             _buildTaskItem(i),
-                            if (i < _tasks.length - 1) const SizedBox(height: 8),
+                            if (i < _tasks.length - 1)
+                              const SizedBox(height: 8),
                           ],
                         ],
-                        
+
                         const SizedBox(height: 16),
-                        
+
                         // Add new tasks section
                         for (int i = 0; i < _newTasks.length; i++) ...[
                           _buildNewTaskRow(i),
                           const SizedBox(height: 8),
                         ],
-                        
+
                         // Add task button
                         OutlinedButton.icon(
                           onPressed: _addNewTask,
@@ -797,7 +872,9 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                           label: const Text('Add Task Not in BOD'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white70,
-                            side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                            side: BorderSide(
+                              color: Colors.white.withOpacity(0.2),
+                            ),
                             minimumSize: const Size.fromHeight(36),
                             textStyle: const TextStyle(fontSize: 12),
                             shape: RoundedRectangleBorder(
@@ -805,7 +882,7 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                             ),
                           ),
                         ),
-                        
+
                         // Summary bar
                         if (_tasks.isNotEmpty) ...[
                           const SizedBox(height: 16),
@@ -820,12 +897,18 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
           Divider(color: Colors.white.withOpacity(0.07), height: 1),
           Padding(
             padding: EdgeInsets.fromLTRB(
-                16, 12, 16, 12 + MediaQuery.of(context).viewInsets.bottom),
+              16,
+              12,
+              16,
+              12 + MediaQuery.of(context).viewInsets.bottom,
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: _submitting ? null : () => Navigator.pop(context, false),
+                    onPressed: _submitting
+                        ? null
+                        : () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.grey[400],
                       side: BorderSide(color: Colors.white.withOpacity(0.15)),
@@ -841,10 +924,15 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: _submitting ? null : _submitEOD,
+                    onPressed: _submitting || !_isEODValid()
+                        ? null
+                        : _submitEOD,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB300),
                       foregroundColor: Colors.black,
+                      disabledBackgroundColor: const Color(
+                        0xFFFFB300,
+                      ).withOpacity(0.5),
                       minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -859,13 +947,22 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                               color: Colors.black87,
                             ),
                           )
-                        : const Row(
+                        : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.nightlight_round, size: 18),
-                              SizedBox(width: 6),
-                              Text('End My Day',
-                                  style: TextStyle(fontWeight: FontWeight.bold)),
+                              const Icon(Icons.nightlight_round, size: 18),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  _isEODValid()
+                                      ? 'End My Day'
+                                      : 'Complete EOD to Checkout',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                   ),
@@ -902,9 +999,10 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                 Text(
                   task.title,
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500),
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -918,7 +1016,8 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                           color: Colors.white.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                              color: Colors.white.withOpacity(0.1)),
+                            color: Colors.white.withOpacity(0.1),
+                          ),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
@@ -928,12 +1027,16 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                             dropdownColor: const Color(0xFF2A2A2A),
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 11),
+                              color: Colors.white,
+                              fontSize: 11,
+                            ),
                             items: _statusOptions
-                                .map((o) => DropdownMenuItem(
-                                      value: o['value'] as String,
-                                      child: Text(o['label'] as String),
-                                    ))
+                                .map(
+                                  (o) => DropdownMenuItem(
+                                    value: o['value'] as String,
+                                    child: Text(o['label'] as String),
+                                  ),
+                                )
                                 .toList(),
                             onChanged: (v) {
                               if (v != null) {
@@ -949,30 +1052,39 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
                       child: TextField(
                         onChanged: (v) => _tasks[index].notes = v,
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 11),
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Notes (optional)...',
                           hintStyle: TextStyle(
-                              color: Colors.grey[600], fontSize: 11),
+                            color: Colors.grey[600],
+                            fontSize: 11,
+                          ),
                           filled: true,
                           fillColor: Colors.white.withOpacity(0.05),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8),
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                                color: Colors.white.withOpacity(0.1)),
+                              color: Colors.white.withOpacity(0.1),
+                            ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                                color: Colors.white.withOpacity(0.1)),
+                              color: Colors.white.withOpacity(0.1),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                                color: Colors.blueAccent.withOpacity(0.6)),
+                              color: Colors.blueAccent.withOpacity(0.6),
+                            ),
                           ),
                         ),
                       ),
@@ -990,11 +1102,17 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
   Widget _eodStatusIcon(String status) {
     switch (status) {
       case 'completed':
-        return const Icon(Icons.check_circle_rounded,
-            color: Colors.greenAccent, size: 20);
+        return const Icon(
+          Icons.check_circle_rounded,
+          color: Colors.greenAccent,
+          size: 20,
+        );
       case 'in-progress':
-        return const Icon(Icons.pending_rounded,
-            color: Colors.blueAccent, size: 20);
+        return const Icon(
+          Icons.pending_rounded,
+          color: Colors.blueAccent,
+          size: 20,
+        );
       default:
         return Icon(Icons.circle_outlined, color: Colors.grey[600], size: 20);
     }
@@ -1032,17 +1150,24 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
               ),
               GestureDetector(
                 onTap: () => _removeNewTask(index),
-                child: const Icon(Icons.close, color: Colors.redAccent, size: 16),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.redAccent,
+                  size: 16,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           // Title field
-          Text('Task Title *',
-              style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500)),
+          Text(
+            'Task Title *',
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: 4),
           TextField(
             controller: task.titleCtrl,
@@ -1053,8 +1178,10 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
               filled: true,
               fillColor: Colors.white.withOpacity(0.06),
               isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -1065,17 +1192,22 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: Colors.blueAccent.withOpacity(0.6)),
+                borderSide: BorderSide(
+                  color: Colors.blueAccent.withOpacity(0.6),
+                ),
               ),
             ),
           ),
           const SizedBox(height: 8),
           // Description field
-          Text('Description',
-              style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500)),
+          Text(
+            'Description',
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: 4),
           TextField(
             controller: task.descCtrl,
@@ -1087,8 +1219,10 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
               filled: true,
               fillColor: Colors.white.withOpacity(0.06),
               isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 8,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
                 borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -1099,7 +1233,9 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: Colors.blueAccent.withOpacity(0.6)),
+                borderSide: BorderSide(
+                  color: Colors.blueAccent.withOpacity(0.6),
+                ),
               ),
             ),
           ),
@@ -1135,10 +1271,7 @@ class _EODBottomSheetState extends State<EODBottomSheet> {
         const SizedBox(width: 16),
         Text(
           '⭕ $notDone not done',
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 11,
-          ),
+          style: TextStyle(color: Colors.grey[500], fontSize: 11),
         ),
       ],
     );
@@ -1152,11 +1285,7 @@ class _EODTask {
   String eodStatus = 'not-done';
   String notes = '';
 
-  _EODTask({
-    required this.id,
-    required this.title,
-    required this.status,
-  }) {
+  _EODTask({required this.id, required this.title, required this.status}) {
     // Set initial eodStatus based on backend status
     if (status == 'completed') {
       eodStatus = 'completed';
