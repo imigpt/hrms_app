@@ -2,8 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:hrms_app/features/expenses/data/models/expense_model.dart';
-import 'package:hrms_app/features/expenses/data/services/expense_service.dart';
+import 'package:hrms_app/features/expenses/presentation/providers/expenses_notifier.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 // import 'expense_api_test_screen.dart';
 
@@ -28,12 +29,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   final Color _textGrey = const Color(0xFF9E9E9E);
 
   // -- State --
-  bool get _isAdmin =>
-      widget.role?.toLowerCase() == 'admin' ||
-      widget.role?.toLowerCase() == 'hr';
-  String _selectedFilter = "All";
-  bool _isLoading = true;
-  List<Expense> _expenses = [];
   String? _token;
 
   // -- Form Controllers --
@@ -61,26 +56,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   // --- API Integration ---
   Future<void> _loadExpenses() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
       _token = await TokenStorageService().getToken();
       if (_token == null) {
         throw Exception('No authentication token found');
       }
 
-      final response = await ExpenseService.getExpenses(token: _token!);
-      setState(() {
-        _expenses = response.data;
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      await context.read<ExpensesNotifier>().loadExpenses(_token!);
     } catch (e) {
       print('Error loading expenses: $e');
-      setState(() {
-        _isLoading = false;
-      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -90,15 +75,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         );
       }
     }
-  }
-
-  // --- Search/Filter Logic ---
-  List<Expense> _getFilteredExpenses() {
-    if (_selectedFilter == "All") return _expenses;
-    final filterStatus = _selectedFilter.toLowerCase();
-    return _expenses
-        .where((e) => e.status.toLowerCase() == filterStatus)
-        .toList();
   }
 
   // --- Date Picker Logic ---
@@ -160,21 +136,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final displayedExpenses = _getFilteredExpenses();
-
-    // Calculate Stats
-    final totalApproved = _expenses
-        .where((e) => e.status.toLowerCase() == 'approved')
-        .fold(0.0, (sum, item) => sum + item.amount);
-    final pendingCount = _expenses
-        .where((e) => e.status.toLowerCase() == 'pending')
-        .length;
-    final approvedCount = _expenses
-        .where((e) => e.status.toLowerCase() == 'approved')
-        .length;
-    final rejectedCount = _expenses
-        .where((e) => e.status.toLowerCase() == 'rejected')
-        .length;
+    final state = context.watch<ExpensesNotifier>().state;
+    final displayedExpenses = state.filteredExpenses;
+    final totalApproved = state.totalApprovedAmount;
+    final pendingCount = state.pendingExpenseCount;
+    final approvedCount = state.approvedExpenseCount;
+    final rejectedCount = state.rejectedExpenseCount;
+    final selectedFilter = _displayFilterLabel(state.selectedStatus);
 
     return Scaffold(
       backgroundColor: _bgDark,
@@ -216,11 +184,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         const SizedBox(height: 30),
 
                         // Section Header & Filter
-                        _buildSectionHeader(isMobile),
+                        _buildSectionHeader(isMobile, selectedFilter),
                         const SizedBox(height: 20),
 
                         // Loading or List
-                        _isLoading
+                        state.isLoading
                             ? const Center(
                                 child: Padding(
                                   padding: EdgeInsets.all(32.0),
@@ -325,7 +293,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     );
   }
 
-  Widget _buildSectionHeader(bool isMobile) {
+  Widget _buildSectionHeader(bool isMobile, String selectedFilter) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -361,7 +329,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
-                  value: _selectedFilter,
+                  value: selectedFilter,
                   dropdownColor: _cardDark,
                   icon: const Icon(
                     Icons.keyboard_arrow_down,
@@ -372,7 +340,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   items: ["All", "Pending", "Approved", "Rejected"]
                       .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                       .toList(),
-                  onChanged: (v) => setState(() => _selectedFilter = v!),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    context.read<ExpensesNotifier>().filterByStatus(
+                      v == 'All' ? 'all' : v.toLowerCase(),
+                    );
+                  },
                 ),
               ),
             ),
@@ -396,6 +369,20 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         ),
       ],
     );
+  }
+
+  String _displayFilterLabel(String status) {
+    switch (status) {
+      case 'pending':
+        return 'Pending';
+      case 'approved':
+        return 'Approved';
+      case 'rejected':
+        return 'Rejected';
+      case 'all':
+      default:
+        return 'All';
+    }
   }
 
   Widget _buildMobileStats(
@@ -764,15 +751,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         throw Exception('No authentication token found');
       }
 
-      await ExpenseService.submitExpense(
-        token: _token!,
-        category: _selectedCategory!,
-        amount: amount,
-        currency: _selectedCurrency,
-        date: _selectedDate!,
-        description: _descController.text,
-        receiptFile: _selectedReceiptFile,
-      );
+      await context.read<ExpensesNotifier>().submitExpense(
+            token: _token!,
+            category: _selectedCategory!,
+            amount: amount,
+            currency: _selectedCurrency,
+            date: _selectedDate!,
+            description: _descController.text,
+            receiptFile: _selectedReceiptFile,
+          );
 
       // Close loading dialog
       if (mounted) Navigator.pop(context);
@@ -790,8 +777,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         );
       }
 
-      // Reload expenses
-      await _loadExpenses();
     } catch (e) {
       // Close loading dialog
       if (mounted) Navigator.pop(context);
@@ -1505,16 +1490,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         throw Exception('No authentication token found');
       }
 
-      await ExpenseService.updateExpense(
-        token: _token!,
-        expenseId: expenseId,
-        category: _selectedCategory!,
-        amount: amount,
-        currency: _selectedCurrency,
-        date: _selectedDate!,
-        description: _descController.text,
-        receiptFile: _selectedReceiptFile,
-      );
+      await context.read<ExpensesNotifier>().updateExpense(
+            token: _token!,
+            expenseId: expenseId,
+            category: _selectedCategory!,
+            amount: amount,
+            currency: _selectedCurrency,
+            date: _selectedDate!,
+            description: _descController.text,
+            receiptFile: _selectedReceiptFile,
+          );
 
       // Close loading dialog
       if (mounted) Navigator.pop(context);
@@ -1532,8 +1517,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         );
       }
 
-      // Reload expenses
-      await _loadExpenses();
     } catch (e) {
       // Close loading dialog
       if (mounted) Navigator.pop(context);
@@ -1615,7 +1598,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         throw Exception('No authentication token found');
       }
 
-      await ExpenseService.deleteExpense(token: _token!, expenseId: expense.id);
+      await context.read<ExpensesNotifier>().deleteExpense(
+        token: _token!,
+        expenseId: expense.id,
+          );
 
       // Close loading dialog
       if (mounted) Navigator.pop(context);
@@ -1633,8 +1619,6 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         );
       }
 
-      // Reload expenses
-      await _loadExpenses();
     } catch (e) {
       // Close loading dialog
       if (mounted) Navigator.pop(context);

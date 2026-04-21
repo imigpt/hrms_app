@@ -3,6 +3,8 @@ import 'package:hrms_app/features/expenses/data/models/expense_model.dart';
 
 /// Immutable Expenses State using Equatable for proper comparison
 class ExpensesState extends Equatable {
+  static const Object _unset = Object();
+
   final List<Expense> expenses;
   final Expense? selectedExpense;
   final bool isLoading;
@@ -58,21 +60,21 @@ class ExpensesState extends Equatable {
   /// Create a copy of this state with optional property overrides
   ExpensesState copyWith({
     List<Expense>? expenses,
-    Expense? selectedExpense,
+    Object? selectedExpense = _unset,
     bool? isLoading,
     bool? isLoadingMore,
     bool? isSubmitting,
-    String? errorMessage,
+    Object? errorMessage = _unset,
     DateTime? lastUpdated,
     int? currentPage,
     int? totalCount,
     bool? hasMore,
     String? selectedCategory,
     String? selectedStatus,
-    double? filterAmountMin,
-    double? filterAmountMax,
-    DateTime? filterDateFrom,
-    DateTime? filterDateTo,
+    Object? filterAmountMin = _unset,
+    Object? filterAmountMax = _unset,
+    Object? filterDateFrom = _unset,
+    Object? filterDateTo = _unset,
     double? totalSubmittedAmount,
     double? totalApprovedAmount,
     double? totalRejectedAmount,
@@ -82,21 +84,33 @@ class ExpensesState extends Equatable {
   }) {
     return ExpensesState(
       expenses: expenses ?? this.expenses,
-      selectedExpense: selectedExpense ?? this.selectedExpense,
+      selectedExpense: identical(selectedExpense, _unset)
+        ? this.selectedExpense
+        : selectedExpense as Expense?,
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       isSubmitting: isSubmitting ?? this.isSubmitting,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: identical(errorMessage, _unset)
+        ? this.errorMessage
+        : errorMessage as String?,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       currentPage: currentPage ?? this.currentPage,
       totalCount: totalCount ?? this.totalCount,
       hasMore: hasMore ?? this.hasMore,
       selectedCategory: selectedCategory ?? this.selectedCategory,
       selectedStatus: selectedStatus ?? this.selectedStatus,
-      filterAmountMin: filterAmountMin ?? this.filterAmountMin,
-      filterAmountMax: filterAmountMax ?? this.filterAmountMax,
-      filterDateFrom: filterDateFrom ?? this.filterDateFrom,
-      filterDateTo: filterDateTo ?? this.filterDateTo,
+      filterAmountMin: identical(filterAmountMin, _unset)
+        ? this.filterAmountMin
+        : filterAmountMin as double?,
+      filterAmountMax: identical(filterAmountMax, _unset)
+        ? this.filterAmountMax
+        : filterAmountMax as double?,
+      filterDateFrom: identical(filterDateFrom, _unset)
+        ? this.filterDateFrom
+        : filterDateFrom as DateTime?,
+      filterDateTo: identical(filterDateTo, _unset)
+        ? this.filterDateTo
+        : filterDateTo as DateTime?,
       totalSubmittedAmount: totalSubmittedAmount ?? this.totalSubmittedAmount,
       totalApprovedAmount: totalApprovedAmount ?? this.totalApprovedAmount,
       totalRejectedAmount: totalRejectedAmount ?? this.totalRejectedAmount,

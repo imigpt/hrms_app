@@ -68,6 +68,12 @@ class AttendanceService {
       request.fields['location'] = json.encode(locationData);
 
       print('Request fields: ${request.fields}');
+      // DEBUG: print headers to verify Authorization is present for multipart requests
+      try {
+        print('Request headers: ${request.headers}');
+      } catch (err) {
+        print('Unable to print request headers: $err');
+      }
 
       // Send request
       final streamedResponse = await request.send();

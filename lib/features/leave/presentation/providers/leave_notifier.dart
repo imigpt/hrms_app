@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:hrms_app/features/leave/data/models/leave_balance_model.dart';
+import 'package:hrms_app/features/leave/data/models/apply_leave_model.dart';
 import 'package:hrms_app/features/leave/data/models/leave_management_model.dart';
 import 'package:hrms_app/features/leave/data/services/leave_service.dart';
 import 'package:hrms_app/features/leave/presentation/providers/leave_state.dart';
@@ -335,6 +335,85 @@ class LeaveNotifier extends ChangeNotifier {
   /// Update search query
   void setSearchQuery(String query) {
     _setState(_state.copyWith(searchQuery: query));
+  }
+
+  /// Apply full-day leave request.
+  Future<ApplyLeaveResponse> applyLeave({
+    required String leaveType,
+    required DateTime startDate,
+    required DateTime endDate,
+    required String reason,
+    double? days,
+  }) async {
+    final token = await _tokenStorage.getToken();
+    if (token == null) {
+      throw Exception('Authentication token not found');
+    }
+
+    _setState(_state.copyWith(isLoading: true, errorMessage: null, errorType: null));
+    try {
+      final response = await LeaveService.applyLeave(
+        token: token,
+        leaveType: leaveType,
+        startDate: startDate,
+        endDate: endDate,
+        reason: reason,
+        days: days,
+      );
+
+      // Keep both balances and leave requests in sync after successful apply.
+      await Future.wait([
+        loadLeaveBalance(),
+        loadLeaveRequests(),
+      ]);
+      _setState(_state.copyWith(isLoading: false));
+      return response;
+    } catch (e) {
+      _setState(_state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Exception:', '').trim(),
+        errorType: 'apply',
+      ));
+      rethrow;
+    }
+  }
+
+  /// Apply half-day leave request.
+  Future<ApplyLeaveResponse> applyHalfDayLeave({
+    required DateTime date,
+    required String session,
+    required String reason,
+    String leaveType = 'paid',
+  }) async {
+    final token = await _tokenStorage.getToken();
+    if (token == null) {
+      throw Exception('Authentication token not found');
+    }
+
+    _setState(_state.copyWith(isLoading: true, errorMessage: null, errorType: null));
+    try {
+      final response = await LeaveService.applyHalfDayLeave(
+        token: token,
+        date: date,
+        session: session,
+        reason: reason,
+        leaveType: leaveType,
+      );
+
+      await Future.wait([
+        loadLeaveBalance(),
+        loadLeaveRequests(),
+      ]);
+      _setState(_state.copyWith(isLoading: false));
+      return response;
+    } catch (e) {
+      _setState(_state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceFirst('Exception:', '').trim(),
+        errorType: 'apply',
+      ));
+      rethrow;
+    }
   }
 
   /// Clear errors

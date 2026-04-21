@@ -5,6 +5,8 @@ import 'package:hrms_app/features/attendance/data/models/attendance_summary_mode
 
 /// Immutable Attendance State using Equatable for proper comparison
 class AttendanceState extends Equatable {
+  static const Object _unset = Object();
+
   final AttendanceData? todayAttendance;
   final List<history_model.AttendanceRecord>? attendanceHistory;
   final AttendanceSummary? attendanceSummary;
@@ -57,19 +59,19 @@ class AttendanceState extends Equatable {
 
   /// Create a copy of this state with optional property overrides
   AttendanceState copyWith({
-    AttendanceData? todayAttendance,
-    List<history_model.AttendanceRecord>? attendanceHistory,
-    AttendanceSummary? attendanceSummary,
+    Object? todayAttendance = _unset,
+    Object? attendanceHistory = _unset,
+    Object? attendanceSummary = _unset,
     bool? isLoading,
     bool? isCheckingIn,
     bool? isCheckingOut,
-    String? errorMessage,
-    DateTime? lastUpdated,
-    double? currentLatitude,
-    double? currentLongitude,
-    String? currentLocationError,
-    DateTime? filterStartDate,
-    DateTime? filterEndDate,
+    Object? errorMessage = _unset,
+    Object? lastUpdated = _unset,
+    Object? currentLatitude = _unset,
+    Object? currentLongitude = _unset,
+    Object? currentLocationError = _unset,
+    Object? filterStartDate = _unset,
+    Object? filterEndDate = _unset,
     String? selectedStatus,
     int? totalWorkingDays,
     int? presentDays,
@@ -79,19 +81,39 @@ class AttendanceState extends Equatable {
     double? attendancePercentage,
   }) {
     return AttendanceState(
-      todayAttendance: todayAttendance ?? this.todayAttendance,
-      attendanceHistory: attendanceHistory ?? this.attendanceHistory,
-      attendanceSummary: attendanceSummary ?? this.attendanceSummary,
+      todayAttendance: identical(todayAttendance, _unset)
+        ? this.todayAttendance
+        : todayAttendance as AttendanceData?,
+      attendanceHistory: identical(attendanceHistory, _unset)
+        ? this.attendanceHistory
+        : attendanceHistory as List<history_model.AttendanceRecord>?,
+      attendanceSummary: identical(attendanceSummary, _unset)
+        ? this.attendanceSummary
+        : attendanceSummary as AttendanceSummary?,
       isLoading: isLoading ?? this.isLoading,
       isCheckingIn: isCheckingIn ?? this.isCheckingIn,
       isCheckingOut: isCheckingOut ?? this.isCheckingOut,
-      errorMessage: errorMessage ?? this.errorMessage,
-      lastUpdated: lastUpdated ?? this.lastUpdated,
-      currentLatitude: currentLatitude ?? this.currentLatitude,
-      currentLongitude: currentLongitude ?? this.currentLongitude,
-      currentLocationError: currentLocationError ?? this.currentLocationError,
-      filterStartDate: filterStartDate ?? this.filterStartDate,
-      filterEndDate: filterEndDate ?? this.filterEndDate,
+      errorMessage: identical(errorMessage, _unset)
+        ? this.errorMessage
+        : errorMessage as String?,
+      lastUpdated: identical(lastUpdated, _unset)
+        ? this.lastUpdated
+        : lastUpdated as DateTime?,
+      currentLatitude: identical(currentLatitude, _unset)
+        ? this.currentLatitude
+        : currentLatitude as double?,
+      currentLongitude: identical(currentLongitude, _unset)
+        ? this.currentLongitude
+        : currentLongitude as double?,
+      currentLocationError: identical(currentLocationError, _unset)
+        ? this.currentLocationError
+        : currentLocationError as String?,
+      filterStartDate: identical(filterStartDate, _unset)
+        ? this.filterStartDate
+        : filterStartDate as DateTime?,
+      filterEndDate: identical(filterEndDate, _unset)
+        ? this.filterEndDate
+        : filterEndDate as DateTime?,
       selectedStatus: selectedStatus ?? this.selectedStatus,
       totalWorkingDays: totalWorkingDays ?? this.totalWorkingDays,
       presentDays: presentDays ?? this.presentDays,

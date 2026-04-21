@@ -239,8 +239,8 @@ class _AddEventDialogState extends State<AddEventDialog> {
 
     try {
       if (!mounted) return;
-      
-      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+
+      final notifier = context.read<CalendarNotifier>();
       
       // Create event via API
       final startTime = _startTime ?? DateTime.now();

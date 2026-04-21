@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:hrms_app/features/leave/data/services/leave_service.dart';
 import 'package:hrms_app/features/leave/presentation/providers/leave_notifier.dart';
-import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/core/utils/responsive_utils.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
 
@@ -991,16 +989,7 @@ class _ApplyLeaveDialogState extends State<ApplyLeaveDialog> {
     });
 
     try {
-      // Get token
-      final storage = TokenStorageService();
-      final token = await storage.getToken();
-      if (token == null) {
-        throw Exception('Authentication token not found');
-      }
-
-      // Call API
-      final response = await LeaveService.applyLeave(
-        token: token,
+      final response = await context.read<LeaveNotifier>().applyLeave(
         leaveType: _selectedLeaveType,
         startDate: _fromDate!,
         endDate: _toDate!,
@@ -1603,21 +1592,13 @@ class _ApplyHalfDayDialogState extends State<ApplyHalfDayDialog> {
     });
 
     try {
-      // Get token
-      final token = await TokenStorageService().getToken();
-      if (token == null) {
-        throw Exception('Authentication token not found');
-      }
-
       // Convert date to UTC before sending to API
       final utcDate = DateTime.utc(
         _selectedDate!.year,
         _selectedDate!.month,
         _selectedDate!.day,
       );
-      // Call the new half-day API
-      final response = await LeaveService.applyHalfDayLeave(
-        token: token,
+      final response = await context.read<LeaveNotifier>().applyHalfDayLeave(
         date: utcDate,
         session: _selectedSession,
         reason: _reasonController.text.trim(),

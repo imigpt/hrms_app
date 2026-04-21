@@ -3,12 +3,55 @@ import 'package:hrms_app/features/announcements/data/models/announcement_model.d
 import 'package:hrms_app/features/announcements/data/services/announcement_service.dart';
 import 'announcements_state.dart';
 
+typedef _GetAnnouncementsFn = Future<AnnouncementResponse> Function({
+  required String token,
+  String? priority,
+  String? department,
+});
+
+typedef _GetUnreadCountFn = Future<int> Function({required String token});
+
+typedef _GetAnnouncementByIdFn = Future<Announcement> Function({
+  required String token,
+  required String announcementId,
+});
+
+typedef _MarkAsReadFn = Future<bool> Function({
+  required String token,
+  required String announcementId,
+});
+
+typedef _CreateAnnouncementFn = Future<void> Function({
+  required String token,
+  required String title,
+  required String content,
+  required String priority,
+  String? category,
+  String? targetDepartment,
+  DateTime? expiryDate,
+});
+
 class AnnouncementsNotifier extends ChangeNotifier {
-  final AnnouncementService _announcementService;
+  final _GetAnnouncementsFn _getAnnouncements;
+  final _GetUnreadCountFn _getUnreadCount;
+  final _GetAnnouncementByIdFn _getAnnouncementById;
+  final _MarkAsReadFn _markAsRead;
+  final _CreateAnnouncementFn _createAnnouncement;
   AnnouncementsState _state = const AnnouncementsState();
 
-  AnnouncementsNotifier({required AnnouncementService announcementService})
-      : _announcementService = announcementService;
+  AnnouncementsNotifier({
+    _GetAnnouncementsFn? getAnnouncements,
+    _GetUnreadCountFn? getUnreadCount,
+    _GetAnnouncementByIdFn? getAnnouncementById,
+    _MarkAsReadFn? markAsRead,
+    _CreateAnnouncementFn? createAnnouncement,
+  }) : _getAnnouncements = getAnnouncements ?? AnnouncementService.getAnnouncements,
+       _getUnreadCount = getUnreadCount ?? AnnouncementService.getUnreadCount,
+       _getAnnouncementById =
+           getAnnouncementById ?? AnnouncementService.getAnnouncementById,
+       _markAsRead = markAsRead ?? AnnouncementService.markAsRead,
+       _createAnnouncement =
+           createAnnouncement ?? AnnouncementService.createAnnouncement;
 
   AnnouncementsState get state => _state;
 
@@ -55,11 +98,29 @@ class AnnouncementsNotifier extends ChangeNotifier {
           .toList();
     }
 
-    // Apply selected filter
-    if (_state.selectedFilter == 'Unread') {
-      filtered = filtered
-          .where((a) => !_state.readAnnouncementIds.contains(a.id))
-          .toList();
+    // Apply selected filter from UI
+    switch (_state.selectedFilter) {
+      case 'Unread':
+        filtered = filtered
+            .where((a) => !_state.readAnnouncementIds.contains(a.id))
+            .toList();
+        break;
+      case 'Urgent':
+        filtered = filtered
+            .where((a) => a.displayType == 'Urgent')
+            .toList();
+        break;
+      case 'Important':
+        filtered = filtered
+            .where((a) => a.displayType == 'Important')
+            .toList();
+        break;
+      case 'Info':
+        filtered = filtered.where((a) => a.displayType == 'Info').toList();
+        break;
+      case 'All':
+      default:
+        break;
     }
 
     _setState(_state.copyWith(filteredAnnouncements: filtered));
@@ -76,7 +137,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isLoading: true, error: null));
 
-      final response = await AnnouncementService.getAnnouncements(
+      final response = await _getAnnouncements(
         token: token,
         priority: priority,
         department: department,
@@ -105,11 +166,11 @@ class AnnouncementsNotifier extends ChangeNotifier {
   /// Load unread count
   Future<void> _loadUnreadCount(String token) async {
     try {
-      final count = await AnnouncementService.getUnreadCount(token: token);
+      final count = await _getUnreadCount(token: token);
       _setState(_state.copyWith(unreadCount: count));
     } catch (e) {
       // Non-blocking error for unread count
-      print('Error loading unread count: $e');
+      debugPrint('Error loading unread count: $e');
     }
   }
 
@@ -118,7 +179,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
 
-      final announcement = await AnnouncementService.getAnnouncementById(
+      final announcement = await _getAnnouncementById(
         token: token,
         announcementId: announcementId,
       );
@@ -137,7 +198,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isRefreshing: true, error: null));
 
-      final response = await AnnouncementService.getAnnouncements(
+      final response = await _getAnnouncements(
         token: token,
         priority: _state.priorityFilter,
         department: _state.departmentFilter,
@@ -207,7 +268,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(error: null));
 
-      final success = await AnnouncementService.markAsRead(
+      final success = await _markAsRead(
         token: token,
         announcementId: announcementId,
       );
@@ -244,7 +305,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
               .toList();
 
       for (final id in unreadIds) {
-        await AnnouncementService.markAsRead(
+        await _markAsRead(
           token: token,
           announcementId: id,
         );
@@ -281,7 +342,7 @@ class AnnouncementsNotifier extends ChangeNotifier {
     try {
       _setState(_state.copyWith(isCreating: true, error: null));
 
-      await AnnouncementService.createAnnouncement(
+      await _createAnnouncement(
         token: token,
         title: title,
         content: content,

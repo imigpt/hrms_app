@@ -16,23 +16,20 @@ import 'package:hrms_app/features/notifications/presentation/screens/notificatio
 import 'package:hrms_app/features/payroll/presentation/screens/payroll_screen.dart';
 import 'package:hrms_app/features/tasks/presentation/screens/tasks_screen.dart';
 import 'package:hrms_app/features/profile/presentation/providers/profile_notifier.dart';
-import 'package:hrms_app/features/profile/data/services/profile_service.dart';
 import 'package:hrms_app/features/leave/presentation/providers/leave_notifier.dart';
 import 'package:hrms_app/features/admin/presentation/providers/calendar_notifier.dart';
 import 'package:hrms_app/features/admin/presentation/providers/company_notifier.dart';
+import 'package:hrms_app/features/admin/presentation/providers/clients_notifier.dart';
 import 'package:hrms_app/features/notifications/presentation/providers/notifications_notifier.dart';
-import 'package:hrms_app/features/notifications/data/services/api_notification_service.dart';
 import 'package:hrms_app/features/dashboard/presentation/providers/dashboard_notifier.dart';
 import 'package:hrms_app/features/expenses/presentation/providers/expenses_notifier.dart';
-import 'package:hrms_app/features/expenses/data/services/expense_service.dart';
 import 'package:hrms_app/features/payroll/presentation/providers/payroll_notifier.dart';
-import 'package:hrms_app/features/payroll/data/services/payroll_service.dart';
 import 'package:hrms_app/features/attendance/presentation/providers/attendance_notifier.dart';
 import 'package:hrms_app/features/attendance/data/services/attendance_service.dart';
 import 'package:hrms_app/features/tasks/presentation/providers/tasks_notifier.dart';
-import 'package:hrms_app/features/tasks/data/services/task_service.dart';
 import 'package:hrms_app/features/announcements/presentation/providers/announcements_notifier.dart';
 import 'package:hrms_app/features/announcements/data/services/announcement_service.dart';
+import 'package:hrms_app/features/policies/presentation/providers/policies_notifier.dart';
 import 'package:hrms_app/features/settings/presentation/providers/settings_notifier.dart';
 import 'package:hrms_app/features/chat/presentation/providers/chat_notifier.dart';
 import 'package:hrms_app/features/chat/data/services/chat_media_service.dart';
@@ -46,9 +43,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 2. Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint('✅ Firebase initialized successfully');
 
   // 3. Register FCM background message handler
@@ -109,9 +104,13 @@ Future<void> _retrieveFCMToken() async {
     String? token = await FirebaseMessaging.instance.getToken();
     if (token != null && token.isNotEmpty) {
       debugPrint('🔥 FCM token retrieved at startup: $token');
-      debugPrint('💡 Token will be saved to backend after user login via registerFcmToken()');
+      debugPrint(
+        '💡 Token will be saved to backend after user login via registerFcmToken()',
+      );
     } else {
-      debugPrint('⚠️ FCM token is null at startup — will retry after login via registerFcmToken()');
+      debugPrint(
+        '⚠️ FCM token is null at startup — will retry after login via registerFcmToken()',
+      );
     }
   } catch (e) {
     debugPrint('❌ Error retrieving FCM token at startup: $e');
@@ -135,111 +134,105 @@ class _HrmsAppState extends State<HrmsApp> {
 
     // Register notification tap handler for background/terminated FCM taps
     // Supports notifications from both HRMS system and external apps
-    NotificationService.onNotificationTap =
-        (String type, String referenceId) async {
-          final nav = NotificationService.navigatorKey.currentState;
-          if (nav == null) {
-            debugPrint('⚠️ Navigator not available for notification tap');
-            return;
-          }
+    NotificationService
+        .onNotificationTap = (String type, String referenceId) async {
+      final nav = NotificationService.navigatorKey.currentState;
+      if (nav == null) {
+        debugPrint('⚠️ Navigator not available for notification tap');
+        return;
+      }
 
-          debugPrint(
-            '📲 Handling notification tap: type=$type, ref=$referenceId',
+      debugPrint('📲 Handling notification tap: type=$type, ref=$referenceId');
+
+      final storage = TokenStorageService();
+      final token = await storage.getToken();
+      final role = await storage.getUserRole() ?? 'employee';
+
+      // Handle notifications from HRMS system and external apps
+      switch (type) {
+        case 'chat':
+          debugPrint('→ Navigating to Chat');
+          nav.push(MaterialPageRoute(builder: (_) => const ChatScreen()));
+          break;
+        case 'announcement':
+          debugPrint('→ Navigating to Announcements');
+          nav.push(
+            MaterialPageRoute(
+              builder: (_) => AnnouncementsScreen(token: token, role: role),
+            ),
           );
-
-          final storage = TokenStorageService();
-          final token = await storage.getToken();
-          final role = await storage.getUserRole() ?? 'employee';
-
-          // Handle notifications from HRMS system and external apps
-          switch (type) {
-            case 'chat':
-              debugPrint('→ Navigating to Chat');
-              nav.push(MaterialPageRoute(builder: (_) => const ChatScreen()));
-              break;
-            case 'announcement':
-              debugPrint('→ Navigating to Announcements');
-              nav.push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      AnnouncementsScreen(token: token, role: role),
-                ),
-              );
-              break;
-            case 'task':
-            case 'task_assigned':
-            case 'task_updated':
-            case 'task_completed':
-            case 'task_comment':
-              debugPrint('→ Navigating to Tasks');
-              nav.push(
-                MaterialPageRoute(
-                  builder: (_) => TasksScreen(token: token, role: role),
-                ),
-              );
-              break;
-            case 'leave':
-            case 'leave_request':
-            case 'leave_approved':
-            case 'leave_rejected':
-              debugPrint('→ Navigating to Leave Management');
-              nav.push(
-                MaterialPageRoute(
-                  builder: (_) => const LeaveManagementScreen(),
-                ),
-              );
-              break;
-            case 'expense':
-            case 'expense_approved':
-            case 'expense_rejected':
-              debugPrint('→ Navigating to Expenses');
-              nav.push(
-                MaterialPageRoute(
-                  builder: (_) => ExpensesScreen(role: role),
-                ),
-              );
-              break;
-            case 'payroll':
-            case 'payroll_generated':
-              debugPrint('→ Navigating to Payroll');
-              nav.push(
-                MaterialPageRoute(builder: (_) => PayrollScreen(role: role)),
-              );
-              break;
-            case 'attendance':
-            case 'attendance_checkin':
-            case 'attendance_checkout':
-            case 'attendance_correction':
-              debugPrint('→ Navigating to Attendance');
-              nav.push(
-                MaterialPageRoute(
-                  builder: (_) => const AttendanceScreen(),
-                ),
-              );
-              break;
-            case 'approval':
-            case 'approval_required':
-            default:
-              // Default navigation for unknown types from external apps
-              debugPrint('→ Navigating to Notifications (default for: $type)');
-              nav.push(
-                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-              );
-              break;
-          }
-        };
+          break;
+        case 'task':
+        case 'task_assigned':
+        case 'task_updated':
+        case 'task_completed':
+        case 'task_comment':
+          debugPrint('→ Navigating to Tasks');
+          nav.push(
+            MaterialPageRoute(
+              builder: (_) => TasksScreen(token: token, role: role),
+            ),
+          );
+          break;
+        case 'leave':
+        case 'leave_request':
+        case 'leave_approved':
+        case 'leave_rejected':
+          debugPrint('→ Navigating to Leave Management');
+          nav.push(
+            MaterialPageRoute(builder: (_) => const LeaveManagementScreen()),
+          );
+          break;
+        case 'expense':
+        case 'expense_approved':
+        case 'expense_rejected':
+          debugPrint('→ Navigating to Expenses');
+          nav.push(
+            MaterialPageRoute(builder: (_) => ExpensesScreen(role: role)),
+          );
+          break;
+        case 'payroll':
+        case 'payroll_generated':
+          debugPrint('→ Navigating to Payroll');
+          nav.push(
+            MaterialPageRoute(builder: (_) => PayrollScreen(role: role)),
+          );
+          break;
+        case 'attendance':
+        case 'attendance_checkin':
+        case 'attendance_checkout':
+        case 'attendance_correction':
+          debugPrint('→ Navigating to Attendance');
+          nav.push(MaterialPageRoute(builder: (_) => const AttendanceScreen()));
+          break;
+        case 'approval':
+        case 'approval_required':
+        default:
+          // Default navigation for unknown types from external apps
+          debugPrint('→ Navigating to Notifications (default for: $type)');
+          nav.push(
+            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+          );
+          break;
+      }
+    };
 
     // Consume any pending terminated-state notification that the retry loop
     // could not deliver yet (navigator was not ready during app start).
     final pendingType = NotificationService.pendingNotificationType;
-    final pendingRef  = NotificationService.pendingNotificationReferenceId;
+    final pendingRef = NotificationService.pendingNotificationReferenceId;
     if (pendingType != null) {
-      debugPrint('📲 Consuming pending terminated-state notification: type=$pendingType');
-      NotificationService.pendingNotificationType        = null;
+      debugPrint(
+        '📲 Consuming pending terminated-state notification: type=$pendingType',
+      );
+      NotificationService.pendingNotificationType = null;
       NotificationService.pendingNotificationReferenceId = null;
       // Small delay so the navigator has finished building the initial route.
       Future.delayed(const Duration(milliseconds: 300), () {
-        NotificationService.onNotificationTap?.call(pendingType, pendingRef ?? '');
+        NotificationService.onNotificationTap?.call(
+          pendingType,
+          pendingRef ?? '',
+        );
       });
     }
   }
@@ -256,25 +249,23 @@ class _HrmsAppState extends State<HrmsApp> {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthNotifier>(
-          create: (_) => AuthNotifier(
-            AuthService(),
-            TokenStorageService(),
-          ),
+          create: (_) => AuthNotifier(AuthService(), TokenStorageService()),
         ),
         ChangeNotifierProvider<ProfileNotifier>(
-          create: (_) => ProfileNotifier(ProfileService()),
+          create: (_) => ProfileNotifier(),
         ),
-        ChangeNotifierProvider<LeaveNotifier>(
-          create: (_) => LeaveNotifier(),
-        ),
+        ChangeNotifierProvider<LeaveNotifier>(create: (_) => LeaveNotifier()),
         ChangeNotifierProvider<CalendarNotifier>(
           create: (_) => CalendarNotifier(),
         ),
         ChangeNotifierProvider<CompanyNotifier>(
           create: (_) => CompanyNotifier(),
         ),
+        ChangeNotifierProvider<ClientsNotifier>(
+          create: (_) => ClientsNotifier(),
+        ),
         ChangeNotifierProvider<NotificationsNotifier>(
-          create: (_) => NotificationsNotifier(ApiNotificationService()),
+          create: (_) => NotificationsNotifier(),
         ),
         ChangeNotifierProvider<DashboardNotifier>(
           create: (_) => DashboardNotifier(
@@ -283,30 +274,25 @@ class _HrmsAppState extends State<HrmsApp> {
           ),
         ),
         ChangeNotifierProvider<ExpensesNotifier>(
-          create: (_) => ExpensesNotifier(expenseService: ExpenseService()),
+          create: (_) => ExpensesNotifier(),
         ),
         ChangeNotifierProvider<PayrollNotifier>(
-          create: (_) => PayrollNotifier(payrollService: PayrollService()),
+          create: (_) => PayrollNotifier(),
         ),
         ChangeNotifierProvider<AttendanceNotifier>(
-          create: (_) => AttendanceNotifier(
-            attendanceService: AttendanceService(),
-          ),
+          create: (_) => AttendanceNotifier(),
         ),
-        ChangeNotifierProvider<TasksNotifier>(
-          create: (_) => TasksNotifier(taskService: TaskService()),
-        ),
+        ChangeNotifierProvider<TasksNotifier>(create: (_) => TasksNotifier()),
         ChangeNotifierProvider<AnnouncementsNotifier>(
-          create: (_) => AnnouncementsNotifier(
-            announcementService: AnnouncementService(),
-          ),
+          create: (_) => AnnouncementsNotifier(),
+        ),
+        ChangeNotifierProvider<PoliciesNotifier>(
+          create: (_) => PoliciesNotifier(),
         ),
         ChangeNotifierProvider<SettingsNotifier>(
           create: (_) => SettingsNotifier(),
         ),
-        ChangeNotifierProvider<ChatNotifier>(
-          create: (_) => ChatNotifier(),
-        ),
+        ChangeNotifierProvider<ChatNotifier>(create: (_) => ChatNotifier()),
       ],
       child: Builder(
         builder: (context) {

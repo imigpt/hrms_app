@@ -90,7 +90,7 @@ class CompanyService {
     String? website,
     String? industry,
     String? size,
-    int? companySize,
+    int? companySize, required String password,
   }) async {
     try {
       final body = <String, dynamic>{

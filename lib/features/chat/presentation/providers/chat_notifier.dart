@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:hrms_app/core/auth/secure_storage.dart';
@@ -6,13 +5,125 @@ import 'package:hrms_app/features/chat/data/models/chat_room_model.dart';
 import 'package:hrms_app/features/chat/data/services/chat_service.dart';
 import 'chat_state.dart';
 
+typedef _GetTokenFn = Future<String?> Function();
+typedef _GetChatRoomsFn = Future<ChatRoomsResponse> Function({
+  required String token,
+});
+typedef _GetCompanyUsersFn = Future<ChatUsersResponse> Function({
+  required String token,
+});
+typedef _GetUnreadCountFn = Future<UnreadCountResponse> Function({
+  required String token,
+});
+typedef _GetRoomMessagesFn = Future<ChatMessagesResponse> Function({
+  required String token,
+  required String roomId,
+  int? limit,
+  String? before,
+});
+typedef _MarkRoomAsReadFn = Future<MarkReadResponse> Function({
+  required String token,
+  required String roomId,
+});
+typedef _GetOrCreatePersonalChatFn = Future<ChatPersonalRoomResponse> Function({
+  required String token,
+  required String userId,
+});
+typedef _SendRoomMessageFn = Future<SendMessageResponse> Function({
+  required String token,
+  required String roomId,
+  required String content,
+  String messageType,
+  String? replyTo,
+});
+typedef _SendMediaMessageFn = Future<SendMessageResponse> Function({
+  required String token,
+  required String roomId,
+  required File file,
+  required String messageType,
+  String content,
+});
+typedef _DeleteMessageFn = Future<Map<String, dynamic>> Function({
+  required String token,
+  required String messageId,
+});
+typedef _CreateGroupFn = Future<Map<String, dynamic>> Function({
+  required String token,
+  required String name,
+  required List<String> memberIds,
+  String? description,
+});
+typedef _AddGroupMemberFn = Future<Map<String, dynamic>> Function({
+  required String token,
+  required String groupId,
+  required String userId,
+});
+typedef _LeaveGroupFn = Future<Map<String, dynamic>> Function({
+  required String token,
+  required String groupId,
+});
+typedef _DeleteGroupFn = Future<Map<String, dynamic>> Function({
+  required String token,
+  required String groupId,
+});
+typedef _SearchUsersFn = Future<ChatUsersResponse> Function({
+  required String token,
+  required String query,
+});
+
 class ChatNotifier extends ChangeNotifier {
-  ChatState _state = ChatState();
+  ChatState _state = const ChatState();
 
   ChatState get state => _state;
 
-  final ChatService _chatService = ChatService();
-  final SecureStorage _secureStorage = SecureStorage();
+  final _GetTokenFn _getToken;
+  final _GetChatRoomsFn _getChatRooms;
+  final _GetCompanyUsersFn _getCompanyUsers;
+  final _GetUnreadCountFn _getUnreadCount;
+  final _GetRoomMessagesFn _getRoomMessages;
+  final _MarkRoomAsReadFn _markRoomAsRead;
+  final _GetOrCreatePersonalChatFn _getOrCreatePersonalChat;
+  final _SendRoomMessageFn _sendRoomMessage;
+  final _SendMediaMessageFn _sendMediaMessage;
+  final _DeleteMessageFn _deleteMessage;
+  final _CreateGroupFn _createGroup;
+  final _AddGroupMemberFn _addGroupMember;
+  final _LeaveGroupFn _leaveGroup;
+  final _DeleteGroupFn _deleteGroup;
+  final _SearchUsersFn _searchUsers;
+
+  ChatNotifier({
+    _GetTokenFn? getToken,
+    _GetChatRoomsFn? getChatRooms,
+    _GetCompanyUsersFn? getCompanyUsers,
+    _GetUnreadCountFn? getUnreadCount,
+    _GetRoomMessagesFn? getRoomMessages,
+    _MarkRoomAsReadFn? markRoomAsRead,
+    _GetOrCreatePersonalChatFn? getOrCreatePersonalChat,
+    _SendRoomMessageFn? sendRoomMessage,
+    _SendMediaMessageFn? sendMediaMessage,
+    _DeleteMessageFn? deleteMessage,
+    _CreateGroupFn? createGroup,
+    _AddGroupMemberFn? addGroupMember,
+    _LeaveGroupFn? leaveGroup,
+    _DeleteGroupFn? deleteGroup,
+    _SearchUsersFn? searchUsers,
+  })  : _getToken = getToken ?? SecureStorage().getToken,
+        _getChatRooms = getChatRooms ?? ChatService.getChatRooms,
+        _getCompanyUsers = getCompanyUsers ?? ChatService.getCompanyUsers,
+        _getUnreadCount = getUnreadCount ?? ChatService.getUnreadCount,
+        _getRoomMessages = getRoomMessages ?? ChatService.getRoomMessages,
+        _markRoomAsRead = markRoomAsRead ?? ChatService.markRoomAsRead,
+        _getOrCreatePersonalChat =
+            getOrCreatePersonalChat ?? ChatService.getOrCreatePersonalChat,
+        _sendRoomMessage = sendRoomMessage ?? ChatService.sendRoomMessage,
+        _sendMediaMessage = sendMediaMessage ?? ChatService.sendMediaMessage,
+        _deleteMessage = deleteMessage ?? ChatService.deleteMessage,
+        _createGroup = createGroup ?? ChatService.createGroup,
+        _addGroupMember = addGroupMember ?? ChatService.addGroupMember,
+        _leaveGroup = leaveGroup ?? ChatService.leaveGroup,
+        _deleteGroup = deleteGroup ?? ChatService.deleteGroup,
+        _searchUsers = searchUsers ?? ChatService.searchUsers;
 
   // ──────────────────────────────────────────────────────────────────────────
   // INITIALIZATION
@@ -24,17 +135,17 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(isLoadingRooms: true, error: null);
       notifyListeners();
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null || token.isEmpty) {
         throw Exception('Authentication token not found');
       }
 
-      // Load rooms and users in parallel
+      // Rooms should load before unread counts are mapped by room ID.
       await Future.wait([
         loadChatRooms(token),
         loadCompanyUsers(token),
-        _loadUnreadCounts(token),
       ]);
+      await _loadUnreadCounts(token);
 
       _state = _state.copyWith(
         isLoadingRooms: false,
@@ -60,7 +171,7 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(isLoadingRooms: true, error: null);
       notifyListeners();
 
-      final response = await ChatService.getChatRooms(token: token);
+      final response = await _getChatRooms(token: token);
       _state = _state.copyWith(
         chatRooms: response.data,
         isLoadingRooms: false,
@@ -81,10 +192,10 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(isRefreshingRooms: true);
       notifyListeners();
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      final response = await ChatService.getChatRooms(token: token);
+      final response = await _getChatRooms(token: token);
       _state = _state.copyWith(
         chatRooms: response.data,
         isRefreshingRooms: false,
@@ -112,13 +223,13 @@ class ChatNotifier extends ChangeNotifier {
       );
       notifyListeners();
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
       await _loadRoomMessages(token, room.id, limit: 50);
 
       // Mark room as read
-      await ChatService.markRoomAsRead(token: token, roomId: room.id);
+      await _markRoomAsRead(token: token, roomId: room.id);
 
       _state = _state.copyWith(
         isLoadingMessages: false,
@@ -153,10 +264,10 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(isLoadingMessages: true, error: null);
       notifyListeners();
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      final response = await ChatService.getOrCreatePersonalChat(
+      final response = await _getOrCreatePersonalChat(
         token: token,
         userId: userId,
       );
@@ -183,9 +294,170 @@ class ChatNotifier extends ChangeNotifier {
     }
   }
 
+  /// Get or create a personal chat and return the room for navigation flows.
+  Future<ChatRoom?> getOrCreatePersonalChatRoom(String userId) async {
+    try {
+      _state = _state.copyWith(error: null);
+      notifyListeners();
+
+      final token = await _getToken();
+      if (token == null) throw Exception('Token not found');
+
+      final response = await _getOrCreatePersonalChat(
+        token: token,
+        userId: userId,
+      );
+      final room = response.data;
+
+      if (!_state.chatRooms.any((r) => r.id == room.id)) {
+        _state = _state.copyWith(chatRooms: [room, ..._state.chatRooms]);
+        notifyListeners();
+      }
+
+      return room;
+    } catch (e) {
+      _state = _state.copyWith(
+        error: 'Failed to open chat: ${e.toString()}',
+      );
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// Set the currently visible room messages from detail screen flows.
+  void setDetailRoomMessages({
+    required List<ChatMessage> messages,
+    required bool hasMore,
+  }) {
+    _state = _state.copyWith(
+      currentRoomMessages: messages,
+      hasMoreMessages: hasMore,
+      isRefreshingMessages: false,
+    );
+    notifyListeners();
+  }
+
+  /// Toggle older-messages loading state for detail pagination.
+  void setLoadingOlderMessages(bool isLoading) {
+    _state = _state.copyWith(isRefreshingMessages: isLoading);
+    notifyListeners();
+  }
+
+  /// Append older messages at the end of the current room list.
+  void appendOlderRoomMessages({
+    required List<ChatMessage> olderMessages,
+    required bool hasMore,
+  }) {
+    _state = _state.copyWith(
+      currentRoomMessages: [..._state.currentRoomMessages, ...olderMessages],
+      hasMoreMessages: hasMore,
+      isRefreshingMessages: false,
+    );
+    notifyListeners();
+  }
+
+  /// Insert a message at the top (newest-first list), avoiding duplicates.
+  void insertRoomMessage(ChatMessage message) {
+    if (_state.currentRoomMessages.any((m) => m.id == message.id)) return;
+    _state = _state.copyWith(
+      currentRoomMessages: [message, ..._state.currentRoomMessages],
+    );
+    notifyListeners();
+  }
+
+  /// Replace an optimistic temp message with server-confirmed message.
+  void replaceTempRoomMessage(String tempId, ChatMessage serverMessage) {
+    final updatedMessages = _state.currentRoomMessages
+        .map((m) => m.tempId == tempId ? serverMessage : m)
+        .toList();
+    _state = _state.copyWith(currentRoomMessages: updatedMessages);
+    notifyListeners();
+  }
+
+  /// Remove an optimistic temp message when send fails.
+  void removeTempRoomMessage(String tempId) {
+    final updatedMessages = _state.currentRoomMessages
+        .where((m) => m.tempId != tempId)
+        .toList();
+    _state = _state.copyWith(currentRoomMessages: updatedMessages);
+    notifyListeners();
+  }
+
+  /// Mark outgoing messages as read after receiving read receipts.
+  void markCurrentRoomMessagesRead(String? currentUserId) {
+    if (currentUserId == null) return;
+
+    final updatedMessages = _state.currentRoomMessages.map((m) {
+      if ((m.sender?.id == currentUserId || m.sender == null) && !m.isRead) {
+        return m.copyWith(isRead: true);
+      }
+      return m;
+    }).toList();
+
+    _state = _state.copyWith(currentRoomMessages: updatedMessages);
+    notifyListeners();
+  }
+
+  /// Mark a message as deleted in local room list.
+  void markRoomMessageDeleted(String messageId) {
+    final updatedMessages = _state.currentRoomMessages
+        .map((m) => m.id == messageId ? m.copyWith(isDeleted: true) : m)
+        .toList();
+    _state = _state.copyWith(currentRoomMessages: updatedMessages);
+    notifyListeners();
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // MESSAGES
   // ──────────────────────────────────────────────────────────────────────────
+
+  /// Fetch room messages for screens that still manage local message state.
+  Future<ChatMessagesResponse> fetchRoomMessages({
+    required String token,
+    required String roomId,
+    int limit = 50,
+    String? before,
+  }) async {
+    return _getRoomMessages(
+      token: token,
+      roomId: roomId,
+      limit: limit,
+      before: before,
+    );
+  }
+
+  /// Send a room text message without mutating provider state.
+  Future<SendMessageResponse> sendRoomMessageDirect({
+    required String token,
+    required String roomId,
+    required String content,
+    String? replyTo,
+  }) async {
+    return _sendRoomMessage(
+      token: token,
+      roomId: roomId,
+      content: content,
+      messageType: 'text',
+      replyTo: replyTo,
+    );
+  }
+
+  /// Send a room media message without mutating provider state.
+  Future<SendMessageResponse> sendMediaMessageDirect({
+    required String token,
+    required String roomId,
+    required File file,
+    required String messageType,
+    String content = '',
+  }) async {
+    return _sendMediaMessage(
+      token: token,
+      roomId: roomId,
+      file: file,
+      messageType: messageType,
+      content: content,
+    );
+  }
 
   /// Load messages for the current room (internal helper)
   Future<void> _loadRoomMessages(
@@ -195,7 +467,7 @@ class ChatNotifier extends ChangeNotifier {
     String? before,
   }) async {
     try {
-      final response = await ChatService.getRoomMessages(
+      final response = await _getRoomMessages(
         token: token,
         roomId: roomId,
         limit: limit,
@@ -203,7 +475,7 @@ class ChatNotifier extends ChangeNotifier {
       );
 
       _state = _state.copyWith(
-        currentRoomMessages: response.data ?? const [],
+        currentRoomMessages: response.data,
         hasMoreMessages: response.hasMore,
       );
       notifyListeners();
@@ -220,7 +492,7 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(isLoadingMessages: true);
       notifyListeners();
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
       final roomId = _state.selectedRoomId;
@@ -233,15 +505,14 @@ class ChatNotifier extends ChangeNotifier {
       final beforeTimestamp =
           oldestMessage?.createdAt.toIso8601String();
 
-      final response = await ChatService.getRoomMessages(
+      final response = await _getRoomMessages(
         token: token,
         roomId: roomId,
         limit: 50,
         before: beforeTimestamp,
       );
 
-      final messagesList = (response.data ?? const [])
-          .cast<ChatMessage>();
+      final messagesList = response.data.cast<ChatMessage>();
 
       final updatedMessages = [
         ..._state.currentRoomMessages,
@@ -286,10 +557,10 @@ class ChatNotifier extends ChangeNotifier {
       );
       notifyListeners();
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      final response = await ChatService.sendRoomMessage(
+      final response = await _sendRoomMessage(
         token: token,
         roomId: _state.selectedRoomId!,
         content: content,
@@ -303,6 +574,8 @@ class ChatNotifier extends ChangeNotifier {
           currentRoomMessages: [response.data!, ...messages],
           isSendingMessage: false,
         );
+      } else {
+        _state = _state.copyWith(isSendingMessage: false);
       }
 
       notifyListeners();
@@ -335,14 +608,14 @@ class ChatNotifier extends ChangeNotifier {
       );
       notifyListeners();
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
       // Simulate progress tracking (backend doesn't support real progress)
       _state = _state.copyWith(uploadProgress: 0.3);
       notifyListeners();
 
-      final response = await ChatService.sendMediaMessage(
+      final response = await _sendMediaMessage(
         token: token,
         roomId: _state.selectedRoomId!,
         file: file,
@@ -361,6 +634,12 @@ class ChatNotifier extends ChangeNotifier {
           uploadProgress: 0.0,
           successMessage: 'Media sent successfully',
         );
+      } else {
+        _state = _state.copyWith(
+          isUploadingMedia: false,
+          uploadingFileName: null,
+          uploadProgress: 0.0,
+        );
       }
 
       notifyListeners();
@@ -378,10 +657,10 @@ class ChatNotifier extends ChangeNotifier {
   /// Delete a message
   Future<void> deleteMessage(String messageId) async {
     try {
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      await ChatService.deleteMessage(token: token, messageId: messageId);
+      await _deleteMessage(token: token, messageId: messageId);
 
       // Update local message state
       final updatedMessages = _state.currentRoomMessages
@@ -412,10 +691,10 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(error: null);
       notifyListeners();
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      final result = await ChatService.createGroup(
+      await _createGroup(
         token: token,
         name: name,
         memberIds: memberIds,
@@ -440,10 +719,10 @@ class ChatNotifier extends ChangeNotifier {
   /// Add a member to a group
   Future<void> addGroupMember(String groupId, String userId) async {
     try {
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      await ChatService.addGroupMember(
+      await _addGroupMember(
         token: token,
         groupId: groupId,
         userId: userId,
@@ -464,10 +743,10 @@ class ChatNotifier extends ChangeNotifier {
   /// Leave a group
   Future<void> leaveGroup(String groupId) async {
     try {
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      await ChatService.leaveGroup(token: token, groupId: groupId);
+      await _leaveGroup(token: token, groupId: groupId);
 
       // Remove from local list
       final updatedRooms =
@@ -490,10 +769,10 @@ class ChatNotifier extends ChangeNotifier {
   /// Delete a group (admin only)
   Future<void> deleteGroup(String groupId) async {
     try {
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      await ChatService.deleteGroup(token: token, groupId: groupId);
+      await _deleteGroup(token: token, groupId: groupId);
 
       // Remove from local list
       final updatedRooms =
@@ -523,7 +802,7 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(isLoadingUsers: true, error: null);
       notifyListeners();
 
-      final response = await ChatService.getCompanyUsers(token: token);
+      final response = await _getCompanyUsers(token: token);
       _state = _state.copyWith(
         companyUsers: response.data,
         isLoadingUsers: false,
@@ -552,10 +831,10 @@ class ChatNotifier extends ChangeNotifier {
       _state = _state.copyWith(isLoadingUsers: true, error: null);
       notifyListeners();
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      final response = await ChatService.searchUsers(
+      final response = await _searchUsers(
         token: token,
         query: query,
       );
@@ -598,10 +877,10 @@ class ChatNotifier extends ChangeNotifier {
     try {
       if (_state.selectedRoomId == null) return;
 
-      final token = await _secureStorage.getToken();
+      final token = await _getToken();
       if (token == null) throw Exception('Token not found');
 
-      await ChatService.markRoomAsRead(
+      await _markRoomAsRead(
         token: token,
         roomId: _state.selectedRoomId!,
       );
@@ -620,7 +899,7 @@ class ChatNotifier extends ChangeNotifier {
   /// Load unread counts for all rooms
   Future<void> _loadUnreadCounts(String token) async {
     try {
-      final response = await ChatService.getUnreadCount(token: token);
+      final response = await _getUnreadCount(token: token);
 
       final countMap = <String, int>{};
       for (final room in _state.chatRooms) {
@@ -634,6 +913,107 @@ class ChatNotifier extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       // Silent fail for unread loads
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // SOCKET EVENT HANDLERS (Real-time Messages)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /// Handle incoming message from socket
+  /// Called when a new message arrives in real-time
+  void receiveNewMessage(ChatMessage message) {
+    try {
+      // Only add if it's not a duplicate (check by ID) and for the current room
+      if (_state.selectedRoomId == message.chatRoom &&
+          !_state.currentRoomMessages.any((m) => m.id == message.id)) {
+        _state = _state.copyWith(
+          currentRoomMessages: [message, ..._state.currentRoomMessages],
+        );
+        notifyListeners();
+      }
+
+      // Update unread count for rooms other than current selection
+      if (_state.selectedRoomId != message.chatRoom) {
+        final unreadCounts = {..._state.unreadCounts};
+        final current = unreadCounts[message.chatRoom] ?? 0;
+        unreadCounts[message.chatRoom] = current + 1;
+
+        _state = _state.copyWith(
+          unreadCounts: unreadCounts,
+          totalUnreadMessages: _state.totalUnreadMessages + 1,
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error handling received message: $e');
+    }
+  }
+
+  /// Handle message-sent confirmation from socket
+  /// Replaces temporary message with server-confirmed message
+  void receiveMessageSent({
+    required String tempId,
+    required ChatMessage serverMessage,
+  }) {
+    try {
+      // Replace temp message with real one
+      final messages = _state.currentRoomMessages.where((m) => m.id != tempId).toList();
+      if (!messages.any((m) => m.id == serverMessage.id)) {
+        _state = _state.copyWith(
+          currentRoomMessages: [serverMessage, ...messages],
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error handling message-sent: $e');
+    }
+  }
+
+  /// Handle messages-read event from socket
+  /// Updates unread count for a room when other users mark messages as read
+  void receiveMessagesRead({
+    required String roomId,
+    required int count,
+  }) {
+    try {
+      final unreadCounts = {..._state.unreadCounts};
+      unreadCounts[roomId] = count;
+
+      _state = _state.copyWith(unreadCounts: unreadCounts);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error handling messages-read: $e');
+    }
+  }
+
+  /// Update list of online users
+  /// Received once on connection and during status changes
+  void updateOnlineUsers(List<String> userIds) {
+    try {
+      // Update user presence map to show they're online
+      final presenceMap = {..._state.userPresence};
+      for (final userId in userIds) {
+        presenceMap[userId] = 'online';
+      }
+
+      _state = _state.copyWith(userPresence: presenceMap);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating online users: $e');
+    }
+  }
+
+  /// Handle socket connection/disconnection status
+  void setConnectionStatus({required bool isConnected, bool isReconnecting = false}) {
+    try {
+      _state = _state.copyWith(
+        isConnected: isConnected,
+        isReconnecting: isReconnecting,
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating connection status: $e');
     }
   }
 
@@ -661,7 +1041,7 @@ class ChatNotifier extends ChangeNotifier {
 
   /// Reset to initial state
   void reset() {
-    _state = ChatState();
+    _state = const ChatState();
     notifyListeners();
   }
 

@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:hrms_app/features/profile/data/models/profile_model.dart';
-import 'package:hrms_app/features/profile/data/services/profile_service.dart';
 import 'package:hrms_app/features/profile/presentation/providers/profile_notifier.dart';
-import 'package:hrms_app/features/profile/presentation/providers/profile_providers.dart';
+import 'package:hrms_app/features/profile/presentation/providers/profile_state.dart';
 import 'package:hrms_app/core/utils/responsive_utils.dart';
 // import 'employee_api_test_screen.dart';
 
@@ -36,8 +35,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _emergencyPhoneController;
   late TextEditingController _dobController;
 
-  final ProfileService _profileService = ProfileService();
-
   @override
   void initState() {
     super.initState();
@@ -66,7 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     debugPrint('  Initial Email: ${_emailController.text}');
     
     // Initialize Provider state & fetch fresh profile
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final profileNotifier = context.read<ProfileNotifier>();
       
       // Initialize with passed user
@@ -76,7 +73,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       // Fetch fresh data from API
       if (widget.token != null && widget.token!.isNotEmpty) {
-        profileNotifier.fetchProfile(widget.token!, role: widget.role);
+        await profileNotifier.fetchProfile(widget.token!, role: widget.role);
+        
+        // CRITICAL: Sync controllers with freshly fetched data
+        if (mounted && profileNotifier.state.currentUser != null) {
+          _applyUserToControllers(profileNotifier.state.currentUser!);
+          debugPrint('✅ Controllers synced with fetched profile data');
+        }
       }
     });
   }
@@ -315,7 +318,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    final result = await _profileService.uploadProfilePhoto(
+    final result = await context.read<ProfileNotifier>().uploadProfilePhoto(
       token: widget.token!,
       imagePath: imagePath,
     );
@@ -387,26 +390,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Padding(
             padding: EdgeInsets.only(right: responsive.spacing),
             child: profileState.isEditing
-                ? TextButton(
-                    onPressed: profileState.isSaving
-                        ? null
-                        : () => _saveProfile(profileNotifier),
-                    child: profileState.isSaving
-                        ? SizedBox(
-                            height: responsive.smallIconSize,
-                            width: responsive.smallIconSize,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : Text(
-                            "Save",
-                            style: TextStyle(
-                              color: primaryColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: responsive.bodyFontSize,
-                            ),
+                ? Row(
+                    children: [
+                      // Cancel button
+                      TextButton(
+                        onPressed: profileState.isSaving
+                            ? null
+                            : () {
+                                profileNotifier.cancelEditMode();
+                                // Sync controllers back to current (original) profile data
+                                if (profileNotifier.state.currentUser != null) {
+                                  _applyUserToControllers(profileNotifier.state.currentUser!);
+                                }
+                              },
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.bold,
+                            fontSize: responsive.bodyFontSize,
                           ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Save button
+                      TextButton(
+                        onPressed: profileState.isSaving
+                            ? null
+                            : () => _saveProfile(profileNotifier),
+                        child: profileState.isSaving
+                            ? SizedBox(
+                                height: responsive.smallIconSize,
+                                width: responsive.smallIconSize,
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                "Save",
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: responsive.bodyFontSize,
+                                ),
+                              ),
+                      ),
+                    ],
                   )
                 : IconButton(
                     icon: Icon(

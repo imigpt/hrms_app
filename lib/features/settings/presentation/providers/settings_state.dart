@@ -1,6 +1,9 @@
 import 'package:equatable/equatable.dart';
+import 'package:hrms_app/features/attendance/data/models/update_location_model.dart';
 
 class SettingsState extends Equatable {
+  static const Object _sentinel = Object();
+
   final Map<String, dynamic> allSettings;
   final Map<String, dynamic> companySettings;
   final Map<String, dynamic> translationSettings;
@@ -19,8 +22,15 @@ class SettingsState extends Equatable {
   final String? error;
   final String? successMessage;
   final String currentSettingsSection;
+  final String searchQuery;
   final Set<String> unsavedSections;
   final Map<String, DateTime> lastUpdatedTimes;
+  final bool preferencesLoaded;
+  final bool notificationsEnabled;
+  final bool biometricEnabled;
+  final bool locationTrackingEnabled;
+  final bool isUpdatingLocation;
+  final UpdateLocation? lastLocationUpdate;
 
   const SettingsState({
     this.allSettings = const {},
@@ -41,8 +51,15 @@ class SettingsState extends Equatable {
     this.error,
     this.successMessage,
     this.currentSettingsSection = 'company',
+    this.searchQuery = '',
     this.unsavedSections = const {},
     this.lastUpdatedTimes = const {},
+    this.preferencesLoaded = false,
+    this.notificationsEnabled = true,
+    this.biometricEnabled = false,
+    this.locationTrackingEnabled = true,
+    this.isUpdatingLocation = false,
+    this.lastLocationUpdate,
   });
 
   // ── Computed Getters ─────────────────────────────────────────────────────
@@ -89,8 +106,7 @@ class SettingsState extends Equatable {
       unsavedSections.contains(currentSettingsSection);
 
   /// Get list of all sections with unsaved changes
-  List<String> get sectionsWithChanges =>
-      unsavedSections.toList();
+  List<String> get sectionsWithChanges => unsavedSections.toList();
 
   /// Get company name if available
   String get companyName =>
@@ -109,9 +125,15 @@ class SettingsState extends Equatable {
   /// Check if any settings are being saved
   bool get isSavingAny => isSaving;
 
+    /// Check if local preferences have been loaded from persistent storage
+    bool get isReady => preferencesLoaded;
+
+    /// Whether location can be refreshed right now
+    bool get canUpdateLocation =>
+      locationTrackingEnabled && !isUpdatingLocation;
+
   /// Get last update time for a section
-  DateTime? getLastUpdatedTime(String section) =>
-      lastUpdatedTimes[section];
+    DateTime? getLastUpdatedTime(String section) => lastUpdatedTimes[section];
 
   @override
   List<Object?> get props => [
@@ -133,8 +155,15 @@ class SettingsState extends Equatable {
     error,
     successMessage,
     currentSettingsSection,
+    searchQuery,
     unsavedSections,
     lastUpdatedTimes,
+    preferencesLoaded,
+    notificationsEnabled,
+    biometricEnabled,
+    locationTrackingEnabled,
+    isUpdatingLocation,
+    lastLocationUpdate,
   ];
 
   SettingsState copyWith({
@@ -153,11 +182,18 @@ class SettingsState extends Equatable {
     bool? isLoading,
     bool? isRefreshing,
     bool? isSaving,
-    String? error,
-    String? successMessage,
+    Object? error = _sentinel,
+    Object? successMessage = _sentinel,
     String? currentSettingsSection,
+    String? searchQuery,
     Set<String>? unsavedSections,
     Map<String, DateTime>? lastUpdatedTimes,
+    bool? preferencesLoaded,
+    bool? notificationsEnabled,
+    bool? biometricEnabled,
+    bool? locationTrackingEnabled,
+    bool? isUpdatingLocation,
+    Object? lastLocationUpdate = _sentinel,
   }) {
     return SettingsState(
       allSettings: allSettings ?? this.allSettings,
@@ -175,12 +211,24 @@ class SettingsState extends Equatable {
       isLoading: isLoading ?? this.isLoading,
       isRefreshing: isRefreshing ?? this.isRefreshing,
       isSaving: isSaving ?? this.isSaving,
-      error: error ?? this.error,
-      successMessage: successMessage ?? this.successMessage,
+        error: identical(error, _sentinel) ? this.error : error as String?,
+        successMessage: identical(successMessage, _sentinel)
+          ? this.successMessage
+          : successMessage as String?,
       currentSettingsSection:
           currentSettingsSection ?? this.currentSettingsSection,
+        searchQuery: searchQuery ?? this.searchQuery,
       unsavedSections: unsavedSections ?? this.unsavedSections,
       lastUpdatedTimes: lastUpdatedTimes ?? this.lastUpdatedTimes,
+        preferencesLoaded: preferencesLoaded ?? this.preferencesLoaded,
+        notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+        biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+        locationTrackingEnabled:
+          locationTrackingEnabled ?? this.locationTrackingEnabled,
+        isUpdatingLocation: isUpdatingLocation ?? this.isUpdatingLocation,
+        lastLocationUpdate: identical(lastLocationUpdate, _sentinel)
+          ? this.lastLocationUpdate
+          : lastLocationUpdate as UpdateLocation?,
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,10 +10,13 @@ import 'camera_screen.dart';
 import 'attendance_history_screen.dart';
 import 'package:hrms_app/shared/widgets/common/bod_eod_dialogs.dart';
 import 'package:hrms_app/features/attendance/data/services/attendance_service.dart';
+import 'package:hrms_app/features/attendance/presentation/providers/attendance_notifier.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/features/profile/data/services/profile_service.dart';
 import 'package:hrms_app/features/profile/data/models/profile_model.dart';
 import 'package:hrms_app/features/attendance/data/models/attendance_summary_model.dart';
+import 'package:hrms_app/features/attendance/data/models/attendance_history_model.dart'
+  as history_model;
 import 'package:hrms_app/features/attendance/data/models/attendance_records_model.dart' as records;
 import 'package:hrms_app/features/attendance/data/models/attendance_edit_request_model.dart';
 import 'package:hrms_app/shared/widgets/common/welcome_card.dart';
@@ -70,7 +74,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   // Attendance History Data for the Calendar
   Map<DateTime, AttendanceStatus> _attendanceData = {};
-  List<records.AttendanceRecord> _monthAttendanceData = [];
+  List<history_model.AttendanceRecord> _monthAttendanceData = [];
   bool _isLoadingHistory = false;
 
   // Latest Attendance Records (max 5)
@@ -120,81 +124,80 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _token = token;
       });
 
-      final todayAttendance = await AttendanceService.getTodayAttendance(
-        token: token,
-      );
+      final notifier = context.read<AttendanceNotifier>();
+      await notifier.loadTodayAttendance(token);
+      final data = notifier.state.todayAttendance;
 
-      if (mounted && todayAttendance != null && todayAttendance.data != null) {
-        setState(() {
-          final data = todayAttendance.data!;
-          // Derive checked-in state: prefer model flags, fallback to actual data presence
-          final hasCheckedIn =
-              data.hasCheckedIn || (data.checkIn?.time != null);
-          final hasCheckedOut =
-              data.hasCheckedOut || (data.checkOut?.time != null);
-          _isCheckedIn = hasCheckedIn && !hasCheckedOut;
+      if (!mounted) return;
 
-          // Parse check-in and check-out times from AttendanceCheckPoint objects
-          try {
-            if (data.checkIn != null && data.checkIn!.time != null) {
-              final checkInTime =
-                  (DateTime.tryParse(data.checkIn!.time!) ?? DateTime.now())
-                      .toLocal();
-              _checkInDateTime = checkInTime;
-            }
+      setState(() {
+        if (data == null) {
+          _isCheckedIn = false;
+          _checkInDateTime = null;
+          _checkOutDateTime = null;
+          _checkInLocation = null;
+          _checkOutLocation = null;
+          _workedDuration = Duration.zero;
+          return;
+        }
 
-            if (data.checkOut != null && data.checkOut!.time != null) {
-              final checkOutTime =
-                  (DateTime.tryParse(data.checkOut!.time!) ?? DateTime.now())
-                      .toLocal();
-              _checkOutDateTime = checkOutTime;
-            }
+        // Derive checked-in state: prefer model flags, fallback to actual data presence
+        final hasCheckedIn = data.hasCheckedIn || (data.checkIn?.time != null);
+        final hasCheckedOut = data.hasCheckedOut || (data.checkOut?.time != null);
+        _isCheckedIn = hasCheckedIn && !hasCheckedOut;
 
-            // Set location labels based on distance from office
-            if (data.checkIn?.location != null) {
-              final lat = (data.checkIn!.location!['latitude'] as num)
-                  .toDouble();
-              final lng = (data.checkIn!.location!['longitude'] as num)
-                  .toDouble();
-              final d = Geolocator.distanceBetween(
-                lat,
-                lng,
-                26.816224,
-                75.845444,
-              );
-              _checkInLocation = d <= 100
-                  ? 'Main Building'
-                  : 'Outside Building';
-            }
-            if (data.checkOut?.location != null) {
-              final lat = (data.checkOut!.location!['latitude'] as num)
-                  .toDouble();
-              final lng = (data.checkOut!.location!['longitude'] as num)
-                  .toDouble();
-              final d = Geolocator.distanceBetween(
-                lat,
-                lng,
-                26.816224,
-                75.845444,
-              );
-              _checkOutLocation = d <= 100
-                  ? 'Main Building'
-                  : 'Outside Building';
-            }
-
-            // Calculate worked duration
-            if (_isCheckedIn && _checkInDateTime != null) {
-              _workedDuration = DateTime.now().difference(_checkInDateTime!);
-            } else if (_checkOutDateTime != null && _checkInDateTime != null) {
-              _workedDuration = _checkOutDateTime!.difference(
-                _checkInDateTime!,
-              );
-            }
-          } catch (e) {
-            print('Error parsing attendance data: $e');
+        // Parse check-in and check-out times from AttendanceCheckPoint objects
+        try {
+          if (data.checkIn != null && data.checkIn!.time != null) {
+            final checkInTime =
+                (DateTime.tryParse(data.checkIn!.time!) ?? DateTime.now())
+                    .toLocal();
+            _checkInDateTime = checkInTime;
           }
-        });
-      }
+
+          if (data.checkOut != null && data.checkOut!.time != null) {
+            final checkOutTime =
+                (DateTime.tryParse(data.checkOut!.time!) ?? DateTime.now())
+                    .toLocal();
+            _checkOutDateTime = checkOutTime;
+          }
+
+          // Set location labels based on distance from office
+          if (data.checkIn?.location != null) {
+            final lat = (data.checkIn!.location!['latitude'] as num).toDouble();
+            final lng = (data.checkIn!.location!['longitude'] as num).toDouble();
+            final d = Geolocator.distanceBetween(
+              lat,
+              lng,
+              26.816224,
+              75.845444,
+            );
+            _checkInLocation = d <= 100 ? 'Main Building' : 'Outside Building';
+          }
+          if (data.checkOut?.location != null) {
+            final lat = (data.checkOut!.location!['latitude'] as num)
+                .toDouble();
+            final lng = (data.checkOut!.location!['longitude'] as num)
+                .toDouble();
+            final d = Geolocator.distanceBetween(
+              lat,
+              lng,
+              26.816224,
+              75.845444,
+            );
+            _checkOutLocation = d <= 100 ? 'Main Building' : 'Outside Building';
+          }
+
+          // Calculate worked duration
+          if (_isCheckedIn && _checkInDateTime != null) {
+            _workedDuration = DateTime.now().difference(_checkInDateTime!);
+          } else if (_checkOutDateTime != null && _checkInDateTime != null) {
+            _workedDuration = _checkOutDateTime!.difference(_checkInDateTime!);
+          }
+        } catch (e) {
+          print('Error parsing attendance data: $e');
+        }
+      });
     } catch (e) {
       print('Error fetching today attendance: $e');
       // Don't show error to user, just use default values
@@ -236,15 +239,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         throw Exception('No token found');
       }
 
-      final summary = await AttendanceService.getAttendanceSummary(
-        token: token,
+      final notifier = context.read<AttendanceNotifier>();
+      await notifier.loadAttendanceSummary(
+        token,
         month: _focusedDay.month,
         year: _focusedDay.year,
       );
 
       if (mounted) {
         setState(() {
-          _summaryData = summary.data;
+          _summaryData = notifier.state.attendanceSummary?.data;
           _isLoadingSummary = false;
         });
       }
@@ -276,21 +280,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         throw Exception('No token found');
       }
 
-      final history = await AttendanceService.getAttendanceHistory(
-        token: token,
+      final notifier = context.read<AttendanceNotifier>();
+      await notifier.loadAttendanceHistory(
+        token,
         month: _selectedMonth,
         year: _selectedYear,
       );
+      final historyData = notifier.state.attendanceHistory ?? const [];
 
       print(
-        '📅 Attendance history response: success=${history.success}, count=${history.data.length}',
+        '📅 Attendance history response: count=${historyData.length}',
       );
 
       if (mounted) {
         final Map<DateTime, AttendanceStatus> attendanceMap = {};
 
-        if (history.success && history.data.isNotEmpty) {
-          for (var record in history.data) {
+        if (historyData.isNotEmpty) {
+          for (var record in historyData) {
             // Normalize the date to UTC midnight to avoid timezone issues
             final recordDate = record.date;
             final normalizedDate = DateTime.utc(
@@ -334,15 +340,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           print(
             '📅 Total attendance data loaded: ${attendanceMap.length} entries',
           );
-        } else if (!history.success) {
-          print('⚠️ API returned success=false');
         } else {
           print('⚠️ API returned empty data');
         }
 
         setState(() {
           _attendanceData = attendanceMap;
-          _monthAttendanceData = history.data.cast<records.AttendanceRecord>();
+          _monthAttendanceData = historyData;
           _isLoadingHistory = false;
         });
       }
@@ -436,9 +440,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         return;
       }
 
-      final response = await AttendanceService.checkIn(
-        token: token,
-        photoFile: photoFile,
+      final notifier = context.read<AttendanceNotifier>();
+      final response = await notifier.checkInWithCoordinates(
+        token,
+        photoFile,
         latitude: lat,
         longitude: lng,
       );
@@ -781,8 +786,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       double lat = position?.latitude ?? 26.816224;
       double lng = position?.longitude ?? 75.845444;
 
-      final response = await AttendanceService.checkOut(
-        token: _token!,
+      final notifier = context.read<AttendanceNotifier>();
+      final response = await notifier.checkOutWithCoordinates(
+        _token!,
         latitude: lat,
         longitude: lng,
       );
@@ -854,7 +860,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   // --- React-compatible helper methods ---
 
   /// Get attendance record for a specific day
-  records.AttendanceRecord? _getAttendanceForDay(DateTime day) {
+  history_model.AttendanceRecord? _getAttendanceForDay(DateTime day) {
     for (var record in _monthAttendanceData) {
       if (record.date.year == day.year &&
           record.date.month == day.month &&

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:hrms_app/features/payroll/data/models/payroll_model.dart';
 import 'package:hrms_app/features/profile/data/models/profile_model.dart';
-import 'package:hrms_app/features/payroll/data/services/payroll_service.dart';
+import 'package:hrms_app/features/payroll/presentation/providers/payroll_notifier.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/features/admin/data/services/admin_employees_service.dart';
 import 'package:hrms_app/core/utils/responsive_utils.dart';
@@ -18,7 +19,6 @@ class PrePaymentsScreen extends StatefulWidget {
 class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
   String? _token;
   String? _userRole;
-  List<PrePayment> _prePayments = [];
   List<ProfileUser> _employees = [];
   bool _isLoading = true;
   bool _isSubmitting = false;
@@ -79,14 +79,14 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
   Future<void> _fetchPrePayments(String token) async {
     try {
       debugPrint('🔄 Fetching pre-payments...');
-      final res = await PayrollService.getPrePayments(token: token);
-      debugPrint('✅ Pre-payments fetched: ${res.data.length} records');
+      await context.read<PayrollNotifier>().loadPrePayments(token);
+      final prePayments = context.read<PayrollNotifier>().state.prePayments;
+      debugPrint('✅ Pre-payments fetched: ${prePayments.length} records');
       if (mounted) {
         setState(() {
-          _prePayments = res.data;
           _isLoading = false;
         });
-        debugPrint('✓ UI updated with ${_prePayments.length} pre-payments');
+        debugPrint('✓ UI updated with ${prePayments.length} pre-payments');
       }
     } catch (e) {
       debugPrint('❌ Pre-payments fetch error: $e');
@@ -115,8 +115,8 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
     }
   }
 
-  List<PrePayment> _getFilteredPayments() {
-    return _prePayments.where((p) {
+  List<PrePayment> _getFilteredPayments(List<PrePayment> prePayments) {
+    return prePayments.where((p) {
       // Filter by user
       if (_selectedFilterUser != 'all' && p.user?.id != _selectedFilterUser) {
         return false;
@@ -216,14 +216,14 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
       };
 
       if (_isEditMode && _selectedRecord != null) {
-        await PayrollService.updatePrePayment(
+        await context.read<PayrollNotifier>().updatePrePayment(
           token: _token!,
           id: _selectedRecord!.id,
           data: payload,
         );
         _showSnackBar('Pre-payment updated successfully', Colors.green);
       } else {
-        await PayrollService.createPrePayment(token: _token!, data: payload);
+        await context.read<PayrollNotifier>().createPrePayment(token: _token!, data: payload);
         _showSnackBar('Pre-payment created successfully', Colors.green);
       }
 
@@ -245,7 +245,7 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
     if (!confirm) return;
 
     try {
-      await PayrollService.deletePrePayment(token: _token!, id: id);
+      await context.read<PayrollNotifier>().deletePrePayment(token: _token!, id: id);
       _showSnackBar('Pre-payment deleted successfully', Colors.green);
       await _fetchPrePayments(_token!);
     } catch (e) {
@@ -294,7 +294,8 @@ class _PrePaymentsScreenState extends State<PrePaymentsScreen> {
   @override
   Widget build(BuildContext context) {
     final isAdmin = _userRole?.toLowerCase() == 'admin';
-    final filtered = _getFilteredPayments();
+    final prePayments = context.watch<PayrollNotifier>().state.prePayments;
+    final filtered = _getFilteredPayments(prePayments);
 
     return Scaffold(
       backgroundColor: const Color(0xFF050505),

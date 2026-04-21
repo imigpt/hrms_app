@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:provider/provider.dart';
 import 'package:hrms_app/features/payroll/data/models/payroll_model.dart';
 import 'package:hrms_app/features/payroll/data/services/payroll_service.dart';
+import 'package:hrms_app/features/payroll/presentation/providers/payroll_notifier.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/features/admin/data/services/admin_employees_service.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
@@ -72,7 +74,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   // Filters
   String _filterUserId = 'all';
-  String _filterYear = DateTime.now().year.toString();
+  String _filterYear = 'all';
   String _filterMonth = 'all';
   bool _isGenerateOpen = false;
   bool _isViewOpen = false;
@@ -86,10 +88,6 @@ class _PayrollScreenState extends State<PayrollScreen> {
   EmployeeSalary? _salary;
   bool _isLoadingSalary = true;
 
-  // Payrolls (payslips)
-  List<Payroll> _payrolls = [];
-  List<Payroll> _filteredPayrolls = [];
-  bool _isLoadingPayrolls = true;
   Payroll? _selectedPayroll;
 
   // Pre-Payments
@@ -135,10 +133,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   Future<void> _fetchSalary(String token) async {
     try {
-      final res = await PayrollService.getMySalary(token: token);
+      await context.read<PayrollNotifier>().loadMySalary(token);
+      final res = context.read<PayrollNotifier>().state.mySalary;
       if (mounted)
         setState(() {
-          _salary = res.data;
+          _salary = res;
           _isLoadingSalary = false;
         });
     } catch (e) {
@@ -149,26 +148,24 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   Future<void> _fetchPayrolls(String token) async {
     try {
-      final res = await PayrollService.getMyPayrolls(token: token);
-      if (mounted) {
-        setState(() {
-          _payrolls = res.data;
-          _isLoadingPayrolls = false;
-        });
-        _applyFilters();
+      if (_isAdmin) {
+        await context.read<PayrollNotifier>().loadAllPayrolls(token);
+      } else {
+        await context.read<PayrollNotifier>().loadMyPayrolls(token);
       }
+      _applyFilters();
     } catch (e) {
       print('Payrolls fetch error: $e');
-      if (mounted) setState(() => _isLoadingPayrolls = false);
     }
   }
 
   Future<void> _fetchPrePayments(String token) async {
     try {
-      final res = await PayrollService.getPrePayments(token: token);
+      await context.read<PayrollNotifier>().loadPrePayments(token);
+      final res = context.read<PayrollNotifier>().state.prePayments;
       if (mounted)
         setState(() {
-          _prePayments = res.data;
+          _prePayments = res;
           _isLoadingPrePayments = false;
         });
     } catch (e) {
@@ -179,10 +176,11 @@ class _PayrollScreenState extends State<PayrollScreen> {
 
   Future<void> _fetchIncrements(String token) async {
     try {
-      final res = await PayrollService.getIncrements(token: token);
+      await context.read<PayrollNotifier>().loadIncrements(token);
+      final res = context.read<PayrollNotifier>().state.increments;
       if (mounted)
         setState(() {
-          _increments = res.data;
+          _increments = res;
           _isLoadingIncrements = false;
         });
     } catch (e) {
@@ -209,16 +207,14 @@ class _PayrollScreenState extends State<PayrollScreen> {
   }
 
   void _applyFilters() {
-    setState(() {
-      _filteredPayrolls = _payrolls.where((p) {
-        if (_filterUserId != 'all' && p.userId != _filterUserId) return false;
-        if (_filterYear != 'all' && p.year.toString() != _filterYear)
-          return false;
-        if (_filterMonth != 'all' && p.month.toString() != _filterMonth)
-          return false;
-        return true;
-      }).toList();
-    });
+    final notifier = context.read<PayrollNotifier>();
+    notifier.filterByYear(_filterYear == 'all' ? null : int.tryParse(_filterYear));
+    notifier.filterByMonth(_filterMonth == 'all' ? null : int.tryParse(_filterMonth));
+  }
+
+  List<Payroll> _applyUserFilter(List<Payroll> payrolls) {
+    if (_filterUserId == 'all') return payrolls;
+    return payrolls.where((p) => p.userId == _filterUserId).toList();
   }
 
   Future<void> _generatePayroll() async {
@@ -234,7 +230,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (_token == null) return;
 
     try {
-      final payroll = await PayrollService.generatePayroll(
+      await context.read<PayrollNotifier>().generatePayroll(
         token: _token!,
         userId: _genUserId,
         month: int.parse(_genMonth),
@@ -265,13 +261,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
   Future<void> _markPayrollAsPaid(Payroll payroll) async {
     if (_token == null) return;
     try {
-      await PayrollService.updatePayroll(
+      await context.read<PayrollNotifier>().markPayrollAsPaid(
         token: _token!,
-        id: payroll.id,
-        data: {
-          'status': 'paid',
-          'paymentDate': DateTime.now().toIso8601String(),
-        },
+        payrollId: payroll.id,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -320,9 +312,9 @@ class _PayrollScreenState extends State<PayrollScreen> {
     if (confirm != true || _token == null) return;
 
     try {
-      await PayrollService.deletePayroll(
+      await context.read<PayrollNotifier>().deletePayroll(
         token: _token!,
-        id: payrollId,
+        payrollId: payrollId,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -548,6 +540,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
   Widget _buildAdminView() {
     final responsive = ResponsiveUtils(context);
     final isMobile = responsive.screenWidth < 600;
+    final payrollState = context.watch<PayrollNotifier>().state;
+    final payrollRows = _applyUserFilter(payrollState.filteredPayrolls);
 
     return RefreshIndicator(
       onRefresh: () => _fetchPayrolls(_token ?? ''),
@@ -618,17 +612,17 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   Divider(color: Colors.white.withOpacity(0.04), height: 1),
 
                   // Table Rows
-                  if (_isLoadingPayrolls)
+                  if (payrollState.isLoading)
                     Padding(
                       padding: const EdgeInsets.all(32),
                       child: _loader(),
                     )
-                  else if (_filteredPayrolls.isEmpty)
+                  else if (payrollRows.isEmpty)
                     _emptyState('No payrolls found')
                   else
                     Column(
-                      children: _filteredPayrolls.map((p) {
-                        final isLast = p == _filteredPayrolls.last;
+                      children: payrollRows.map((p) {
+                        final isLast = p == payrollRows.last;
                         return Column(
                           children: [
                             _buildPayrollTableRow(p, isMobile: isMobile),
@@ -1550,11 +1544,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
   Widget _buildStatisticsCards() {
     final responsive = ResponsiveUtils(context);
     final isMobile = responsive.screenWidth < 600;
+    final payrolls = context.watch<PayrollNotifier>().state.payrolls;
     
-    int generated = _payrolls.where((p) => p.status == 'generated').length;
-    int paid = _payrolls.where((p) => p.status == 'paid').length;
-    int pending = _payrolls.where((p) => p.status == 'pending').length;
-    double totalPaid = _payrolls
+    int generated = payrolls.where((p) => p.status == 'generated').length;
+    int paid = payrolls.where((p) => p.status == 'paid').length;
+    int pending = payrolls.where((p) => p.status == 'pending').length;
+    double totalPaid = payrolls
         .where((p) => p.status == 'paid')
         .fold<double>(0, (sum, p) => sum + (p.netSalary ?? 0));
 
@@ -1951,16 +1946,18 @@ class _PayrollScreenState extends State<PayrollScreen> {
   // ── Payslips Tab ──────────────────────────────────────────────────────────
 
   Widget _buildPayslipsTab() {
-    if (_isLoadingPayrolls) return _loader();
-    if (_payrolls.isEmpty) return _emptyState('No payslips generated yet');
+    final payrollState = context.watch<PayrollNotifier>().state;
+    final payrolls = payrollState.payrolls;
+    if (payrollState.isLoading) return _loader();
+    if (payrolls.isEmpty) return _emptyState('No payslips generated yet');
 
     return RefreshIndicator(
       onRefresh: () => _fetchPayrolls(_token!),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _payrolls.length,
+        itemCount: payrolls.length,
         itemBuilder: (_, i) {
-          final p = _payrolls[i];
+          final p = payrolls[i];
           final statusColor = _payrollStatusColor(p.status);
 
           return _card(

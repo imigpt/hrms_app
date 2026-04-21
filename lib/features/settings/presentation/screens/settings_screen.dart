@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hrms_app/features/profile/data/models/profile_model.dart';
 import 'package:hrms_app/features/admin/data/services/admin_service.dart';
 import 'package:hrms_app/features/profile/data/services/profile_service.dart';
-import 'package:hrms_app/shared/services/core/settings_service.dart';
+import 'package:hrms_app/features/settings/presentation/providers/settings_notifier.dart';
+import 'package:hrms_app/features/settings/presentation/screens/location_settings_screen.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
 import 'package:hrms_app/features/admin/presentation/screens/company_settings/company_settings_screen.dart';
@@ -18,7 +19,7 @@ import 'package:hrms_app/features/admin/presentation/screens/hrm_settings/storag
 import 'package:hrms_app/features/admin/presentation/screens/hrm_settings/translations_screen.dart';
 import 'package:hrms_app/features/admin/presentation/screens/hrm_settings/user_credentials_screen.dart';
 import 'package:hrms_app/features/admin/presentation/screens/hrm_settings/work_status_screen.dart';
-import 'package:hrms_app/features/admin/presentation/screens/employee_management/hr_accounts_screen.dart';
+import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point
@@ -38,7 +39,14 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SettingsNotifier>().initialize();
+    });
+  }
 
   // ── All settings items (title, subtitle, icon, section) ──────────────────
   static const List<_SettingsItem> _baseItems = [
@@ -57,6 +65,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       icon: Icons.lock_rounded,
       color: Color(0xFFEC4899),
       route: 'password',
+    ),
+    _SettingsItem(
+      section: 'Preferences',
+      title: 'Location Settings',
+      subtitle: 'Control location updates used for attendance',
+      icon: Icons.my_location_rounded,
+      color: Color(0xFF10B981),
+      route: 'location_settings',
     ),
     // _SettingsItem(
     //   section: 'Preferences',
@@ -224,9 +240,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ..._baseItems,
   ];
 
-  List<_SettingsItem> get _filtered {
-    if (_searchQuery.isEmpty) return _allItems;
-    final q = _searchQuery.toLowerCase();
+  List<_SettingsItem> _filtered(String searchQuery) {
+    if (searchQuery.isEmpty) return _allItems;
+    final q = searchQuery.toLowerCase();
     return _allItems
         .where(
           (i) =>
@@ -237,9 +253,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .toList();
   }
 
-  Map<String, List<_SettingsItem>> get _grouped {
+  Map<String, List<_SettingsItem>> _grouped(String searchQuery) {
     final map = <String, List<_SettingsItem>>{};
-    for (final item in _filtered) {
+    for (final item in _filtered(searchQuery)) {
       map.putIfAbsent(item.section, () => []).add(item);
     }
     return map;
@@ -265,6 +281,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Navigator.of(
           context,
         ).push(_route(_ChangePasswordScreen(token: widget.token)));
+        break;
+      case 'location_settings':
+        Navigator.of(context).push(_route(const LocationSettingsScreen()));
         break;
       // ── System Settings routes ────────────────────────────────────────
       case 'settings_company':
@@ -347,14 +366,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   PageRouteBuilder _route(Widget page) => PageRouteBuilder(
-    pageBuilder: (_, a, __) => page,
-    transitionsBuilder: (_, a, __, child) => FadeTransition(
-      opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
+    pageBuilder: (context, animation, secondaryAnimation) => page,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) => FadeTransition(
+      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
       child: SlideTransition(
         position: Tween(
           begin: const Offset(0.04, 0),
           end: Offset.zero,
-        ).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
         child: child,
       ),
     ),
@@ -363,7 +382,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final grouped = _grouped;
+    final settingsState = context.watch<SettingsNotifier>().state;
+    final searchQuery = settingsState.searchQuery;
+    final grouped = _grouped(searchQuery);
+
+    if (_searchController.text != searchQuery) {
+      _searchController.value = _searchController.value.copyWith(
+        text: searchQuery,
+        selection: TextSelection.collapsed(offset: searchQuery.length),
+        composing: TextRange.empty,
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -386,7 +415,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: TextField(
                   controller: _searchController,
-                  onChanged: (v) => setState(() => _searchQuery = v.trim()),
+                  onChanged: (v) {
+                    context.read<SettingsNotifier>().setSearchQuery(v);
+                  },
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Search settings…',
@@ -396,7 +427,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: Colors.grey[600],
                       size: 20,
                     ),
-                    suffixIcon: _searchQuery.isNotEmpty
+                    suffixIcon: searchQuery.isNotEmpty
                         ? IconButton(
                             icon: Icon(
                               Icons.close_rounded,
@@ -405,7 +436,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             onPressed: () {
                               _searchController.clear();
-                              setState(() => _searchQuery = '');
+                              context.read<SettingsNotifier>().setSearchQuery('');
                             },
                           )
                         : null,

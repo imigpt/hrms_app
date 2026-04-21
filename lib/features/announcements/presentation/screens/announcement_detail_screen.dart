@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:hrms_app/features/announcements/data/models/announcement_model.dart';
-import 'package:hrms_app/features/announcements/data/services/announcement_service.dart';
+import 'package:hrms_app/features/announcements/presentation/providers/announcements_notifier.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 
 class AnnouncementDetailScreen extends StatefulWidget {
@@ -50,13 +51,12 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
         if (mounted) setState(() => _isLoading = false);
         return;
       }
-      final detail = await AnnouncementService.getAnnouncementById(
-        token: token,
-        announcementId: widget.announcement.id,
-      );
+      final notifier = context.read<AnnouncementsNotifier>();
+      await notifier.loadAnnouncementById(token, widget.announcement.id);
+      final detail = notifier.state.selectedAnnouncement;
       if (mounted) {
         setState(() {
-          _detail = detail;
+          _detail = detail ?? widget.announcement;
           _isLoading = false;
         });
       }
@@ -70,9 +70,10 @@ class _AnnouncementDetailScreenState extends State<AnnouncementDetailScreen> {
     try {
       final token = await TokenStorageService().getToken();
       if (token == null) return;
-      final success = await AnnouncementService.markAsRead(
-        token: token,
-        announcementId: widget.announcement.id,
+      final notifier = context.read<AnnouncementsNotifier>();
+      await notifier.markAsRead(token, widget.announcement.id);
+      final success = notifier.state.readAnnouncementIds.contains(
+        widget.announcement.id,
       );
       if (success) {
         if (mounted) setState(() => _markedRead = true);

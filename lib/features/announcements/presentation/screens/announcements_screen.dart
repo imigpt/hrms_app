@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hrms_app/features/announcements/data/models/announcement_model.dart';
-import 'package:hrms_app/features/announcements/data/services/announcement_service.dart';
+import 'package:hrms_app/features/announcements/presentation/providers/announcements_notifier.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
 import 'announcement_detail_screen.dart';
@@ -22,16 +23,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       widget.role?.toLowerCase() == 'admin' ||
       widget.role?.toLowerCase() == 'hr';
 
-  List<Announcement> _allAnnouncements = [];
-  bool _isLoading = true;
-  String? _error;
-  String _selectedFilter = 'All';
   String? _currentUserId;
   String? _authToken;
-  // Track which IDs have been read (persisted across sessions)
-  Set<String> _readIds = {};
-  // Track which announcements have been notified
-  Set<String> _notifiedAnnouncementIds = {};
 
   @override
   void initState() {
@@ -70,11 +63,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
       final prefs = await SharedPreferences.getInstance();
       final userSpecificKey = 'read_announcement_ids_$_currentUserId';
       final ids = prefs.getStringList(userSpecificKey) ?? [];
-      if (mounted) {
-        setState(() {
-          _readIds = Set<String>.from(ids);
-        });
-      }
+      if (!mounted) return;
+      context.read<AnnouncementsNotifier>().syncReadIds(Set<String>.from(ids));
     } catch (e) {
       print('Error loading persisted read IDs: $e');
     }
@@ -98,67 +88,49 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
   Future<void> _fetchAnnouncements() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-      // Get token
       final token = widget.token ?? await TokenStorageService().getToken();
       if (token == null) {
         throw Exception('No authentication token found');
       }
       _authToken = token;
 
-      // Fetch announcements
-      final response = await AnnouncementService.getAnnouncements(token: token);
+      final notifier = context.read<AnnouncementsNotifier>();
+      await notifier.loadAnnouncements(token);
 
-      if (mounted) {
-        setState(() {
-          _allAnnouncements = response.data
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          _isLoading = false;
-        });
+      if (!mounted) return;
 
-        // Show notifications for new announcements
-        for (final announcement in response.data) {
-          if (!_notifiedAnnouncementIds.contains(announcement.id)) {
-            await NotificationService().showAnnouncementNotification(
-              title: 'New Announcement',
-              message: announcement.title ?? 'New announcement from management',
-              body:
-                  announcement.content ??
-                  announcement.title ??
-                  'Check the announcements section for details',
-              payload: {'id': announcement.id},
-            );
-            _notifiedAnnouncementIds.add(announcement.id);
-          }
+      // Show notifications for newly fetched announcements once.
+      for (final announcement in notifier.state.announcements) {
+        if (!notifier.isNotified(announcement.id)) {
+          await NotificationService().showAnnouncementNotification(
+            title: 'New Announcement',
+            message: announcement.title.isEmpty
+                ? 'New announcement from management'
+                : announcement.title,
+            body: announcement.content.isEmpty
+                ? (announcement.title.isEmpty
+                      ? 'Check the announcements section for details'
+                      : announcement.title)
+                : announcement.content,
+            payload: {'id': announcement.id},
+          );
+          notifier.markAsNotified(announcement.id);
         }
       }
     } catch (e) {
       print('Error fetching announcements: $e');
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _isLoading = false;
-        });
-      }
     }
   }
 
   Future<void> _markAsRead(String announcementId) async {
-    if (_readIds.contains(announcementId)) return;
-    setState(() => _readIds.add(announcementId));
-    // Persist so read state survives app restarts
-    _persistReadId(announcementId);
+    final notifier = context.read<AnnouncementsNotifier>();
+    if (notifier.state.readAnnouncementIds.contains(announcementId)) return;
+
     try {
-      final token = await TokenStorageService().getToken();
+      final token = _authToken ?? widget.token ?? await TokenStorageService().getToken();
       if (token != null) {
-        await AnnouncementService.markAsRead(
-          token: token,
-          announcementId: announcementId,
-        );
+        await notifier.markAsRead(token, announcementId);
+        await _persistReadId(announcementId);
       }
     } catch (e) {
       print('Mark as read error: $e');
@@ -167,6 +139,8 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final announcementsState = context.watch<AnnouncementsNotifier>().state;
+
     // Colors based on your image
     final kBgColor = const Color(0xFF050505);
     final kCardColor = const Color(0xFF141414);
@@ -174,24 +148,19 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     final kYellowAccent = const Color(0xFFFBC02D);
     final kPurpleAccent = const Color(0xFF7B1FA2);
 
-    // Filter Logic - filter by displayType
-    List<Announcement> filteredList = _selectedFilter == 'All'
-        ? _allAnnouncements
-        : _allAnnouncements
-              .where((item) => item.displayType == _selectedFilter)
-              .toList();
+    final filteredList = announcementsState.filteredAnnouncements;
 
     // Stats Calculation
-    int urgentCount = _allAnnouncements
+    int urgentCount = announcementsState.announcements
         .where((i) => i.displayType == 'Urgent')
         .length;
-    int importantCount = _allAnnouncements
+    int importantCount = announcementsState.announcements
         .where((i) => i.displayType == 'Important')
         .length;
-    int infoCount = _allAnnouncements
+    int infoCount = announcementsState.announcements
         .where((i) => i.displayType == 'Info')
         .length;
-    int totalCount = _allAnnouncements.length;
+    int totalCount = announcementsState.announcements.length;
 
     return Scaffold(
       backgroundColor: kBgColor,
@@ -335,7 +304,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         dropdownColor: kCardColor,
-                        value: _selectedFilter,
+                        value: announcementsState.selectedFilter,
                         icon: const Icon(
                           Icons.keyboard_arrow_down,
                           color: Colors.white70,
@@ -346,11 +315,13 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                           fontSize: 13,
                         ),
                         onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedFilter = newValue!;
-                          });
+                          if (newValue != null) {
+                            context
+                                .read<AnnouncementsNotifier>()
+                                .setSelectedFilter(newValue);
+                          }
                         },
-                        items: ['All', 'Urgent', 'Important', 'Info']
+                        items: ['All', 'Unread', 'Urgent', 'Important', 'Info']
                             .map<DropdownMenuItem<String>>((String value) {
                               return DropdownMenuItem<String>(
                                 value: value,
@@ -368,10 +339,10 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
 
               // 3. The List
               Expanded(
-                child: _isLoading
+                child: announcementsState.isLoading
                     ? const Center(child: CircularProgressIndicator())
-                    : _error != null
-                    ? _buildErrorState()
+                    : announcementsState.error != null
+                    ? _buildErrorState(announcementsState.error)
                     : filteredList.isEmpty
                     ? _buildEmptyState()
                     : RefreshIndicator(
@@ -387,6 +358,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                             return _buildAnnouncementCard(
                               filteredList[index],
                               kCardColor,
+                              announcementsState.readAnnouncementIds,
                             );
                           },
                         ),
@@ -688,8 +660,10 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                               if (token == null) return;
                               ss(() => submitting = true);
                               try {
-                                await AnnouncementService.createAnnouncement(
-                                  token: token,
+                                await context
+                                    .read<AnnouncementsNotifier>()
+                                    .createAnnouncement(
+                                  token,
                                   title: title,
                                   content: content,
                                   priority: selectedPriority,
@@ -796,7 +770,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     );
   }
 
-  Widget _buildAnnouncementCard(Announcement item, Color cardColor) {
+  Widget _buildAnnouncementCard(
+    Announcement item,
+    Color cardColor,
+    Set<String> readIds,
+  ) {
     Color typeColor = Colors.blue;
     if (item.displayType == 'Urgent') typeColor = const Color(0xFFD32F2F);
     if (item.displayType == 'Important') typeColor = const Color(0xFFFBC02D);
@@ -805,7 +783,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     // Format date
     String formattedDate = DateFormat('MMM d, yyyy').format(item.createdAt);
 
-    final bool isRead = _readIds.contains(item.id);
+    final bool isRead = readIds.contains(item.id);
 
     return GestureDetector(
       onTap: () {
@@ -936,7 +914,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(String? error) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -947,11 +925,11 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             "Failed to load announcements",
             style: TextStyle(color: Colors.grey[600], fontSize: 14),
           ),
-          if (_error != null && _error!.isNotEmpty)
+          if (error != null && error.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                _error!.replaceFirst('Exception: ', ''),
+                error.replaceFirst('Exception: ', ''),
                 style: TextStyle(color: Colors.red[400], fontSize: 12),
                 textAlign: TextAlign.center,
               ),

@@ -2,9 +2,9 @@
 // Example screen showing how to use location update functionality
 
 import 'package:flutter/material.dart';
-import 'package:hrms_app/features/attendance/data/services/location_update_service.dart';
-import 'package:hrms_app/shared/mixins/location_update_mixin.dart';
 import 'package:hrms_app/features/attendance/data/models/update_location_model.dart';
+import 'package:hrms_app/features/settings/presentation/providers/settings_notifier.dart';
+import 'package:provider/provider.dart';
 
 class LocationSettingsScreen extends StatefulWidget {
   const LocationSettingsScreen({super.key});
@@ -13,13 +13,19 @@ class LocationSettingsScreen extends StatefulWidget {
   State<LocationSettingsScreen> createState() => _LocationSettingsScreenState();
 }
 
-class _LocationSettingsScreenState extends State<LocationSettingsScreen>
-    with LocationUpdateMixin {
-  final LocationUpdateService _locationService = LocationUpdateService();
-  UpdateLocation? _lastLocationUpdate;
+class _LocationSettingsScreenState extends State<LocationSettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SettingsNotifier>().initialize();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final settingsState = context.watch<SettingsNotifier>().state;
+
     return Scaffold(
       backgroundColor: const Color(0xFF050505),
       appBar: AppBar(
@@ -55,7 +61,7 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
                 decoration: BoxDecoration(
                   color: const Color(0xFF141414),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,24 +99,97 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
 
               const SizedBox(height: 24),
 
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF141414),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                ),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Location Tracking',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Allow location updates for attendance workflows.',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch.adaptive(
+                      value: settingsState.locationTrackingEnabled,
+                      onChanged: (value) {
+                        context.read<SettingsNotifier>().setLocationTrackingEnabled(value);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               // Current Location Card
-              if (_lastLocationUpdate != null) ...[
-                _buildLocationCard(_lastLocationUpdate!),
+              if (settingsState.lastLocationUpdate != null) ...[
+                _buildLocationCard(settingsState.lastLocationUpdate!),
                 const SizedBox(height: 24),
               ],
 
-              // Update Location Button (using mixin)
-              buildLocationUpdateButton(
-                label: 'Update My Location',
-                icon: Icons.my_location,
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: settingsState.canUpdateLocation
+                      ? _updateLocationManually
+                      : null,
+                  icon: settingsState.isUpdatingLocation
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.my_location, size: 18),
+                  label: Text(
+                    settingsState.isUpdatingLocation
+                        ? 'Updating...'
+                        : 'Update My Location',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
               ),
 
               const SizedBox(height: 16),
 
               // Manual Update Button with custom handling
               OutlinedButton.icon(
-                onPressed: isUpdatingLocation ? null : _updateLocationManually,
-                icon: isUpdatingLocation
+                onPressed: settingsState.canUpdateLocation
+                    ? _updateLocationManually
+                    : null,
+                icon: settingsState.isUpdatingLocation
                     ? const SizedBox(
                         width: 16,
                         height: 16,
@@ -121,12 +200,14 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
                       )
                     : const Icon(Icons.refresh, size: 18),
                 label: Text(
-                  isUpdatingLocation ? 'Updating...' : 'Refresh Location',
+                  settingsState.isUpdatingLocation
+                      ? 'Updating...'
+                      : 'Refresh Location',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -159,7 +240,7 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
       decoration: BoxDecoration(
         color: const Color(0xFF141414),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green.withOpacity(0.3)),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +250,7 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -197,7 +278,6 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
             location.currentLocation.address,
             Icons.map,
           ),
-          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -273,15 +353,12 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
   }
 
   Future<void> _updateLocationManually() async {
-    final result = await _locationService.updateCurrentLocation();
+    final notifier = context.read<SettingsNotifier>();
+    final isSuccess = await notifier.updateCurrentLocation();
 
     if (!mounted) return;
 
-    if (result != null && result.success) {
-      setState(() {
-        _lastLocationUpdate = result;
-      });
-
+    if (isSuccess) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Location updated successfully'),
@@ -289,9 +366,10 @@ class _LocationSettingsScreenState extends State<LocationSettingsScreen>
         ),
       );
     } else {
+      final message = notifier.state.error ?? 'Failed to update location';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update location'),
+        SnackBar(
+          content: Text(message),
           backgroundColor: Colors.red,
         ),
       );

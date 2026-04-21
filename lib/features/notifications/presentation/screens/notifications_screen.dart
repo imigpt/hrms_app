@@ -1,47 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:hrms_app/features/announcements/data/services/announcement_service.dart';
-import 'package:hrms_app/features/notifications/data/services/api_notification_service.dart';
-import 'package:hrms_app/shared/services/core/token_storage_service.dart';
-import 'package:hrms_app/features/leave/data/services/leave_service.dart';
-import 'package:hrms_app/features/expenses/data/services/expense_service.dart';
-import 'package:hrms_app/features/attendance/data/services/attendance_service.dart';
-import 'package:hrms_app/features/tasks/data/services/task_service.dart';
-import 'package:hrms_app/features/chat/data/services/chat_service.dart';
+import 'package:provider/provider.dart';
 import 'package:hrms_app/features/announcements/presentation/screens/announcement_detail_screen.dart';
+import 'package:hrms_app/features/notifications/data/services/api_notification_service.dart';
+import 'package:hrms_app/features/notifications/presentation/providers/notifications_notifier.dart';
+import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
-
-//  Notification model
-class _AppNotif {
-  final String id;
-  final bool isBackend;
-  final String type;
-  final String title;
-  final String message;
-  final DateTime time;
-  bool read;
-
-  _AppNotif({
-    required this.id,
-    this.isBackend = false,
-    required this.type,
-    required this.title,
-    required this.message,
-    required this.time,
-    this.read = false,
-  });
-
-  factory _AppNotif.fromBackend(NotificationItem item) => _AppNotif(
-    id: item.id,
-    isBackend: true,
-    type: item.type,
-    title: item.title,
-    message: item.message,
-    time: item.createdAt,
-    read: item.isRead,
-  );
-}
 
 //  Type config
 class _TypeCfg {
@@ -166,18 +130,9 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<_AppNotif> _all = [];
-  bool _isLoading = true;
-  bool _isLoadingMore = false;
-  String? _error;
-  String _selectedTab = 'all';
   String? _token;
   String? _userId;
   String _role = 'employee';
-
-  int _currentPage = 1;
-  bool _hasMore = false;
-  bool _usingBackend = false;
 
   static const _tabs = [
     ('all', 'All'),
@@ -198,361 +153,71 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     ('chat', 'Chat'),
   ];
 
-  String get _storageKey => 'notif_read_ids_${_userId ?? ''}';
-
-  Future<Set<String>> _getReadIds() async {
-    final prefs = await SharedPreferences.getInstance();
-    return Set<String>.from(prefs.getStringList(_storageKey) ?? []);
-  }
-
-  Future<void> _saveReadIds(Set<String> ids) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_storageKey, ids.toList());
-  }
-
-  int get _total => _all.length;
-  int get _unread => _all.where((n) => !n.read).length;
-  int get _approvals => _all
-      .where((n) => n.type.contains('approved') || n.type == 'approval')
-      .length;
-  int get _rejections => _all.where((n) => n.type.contains('rejected')).length;
-  int get _tasks => _all
-      .where((n) => n.type.startsWith('task_') || n.type == 'task_assigned')
-      .length;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _initAndLoad();
   }
-
-  Future<void> _load() async {
-    if (mounted)
-      setState(() {
-        _isLoading = true;
-        _error = null;
-        _currentPage = 1;
-        _hasMore = false;
-        _usingBackend = false;
-      });
-    try {
+  Future<void> _initAndLoad({bool force = false}) async {
+    if (force || _token == null || _userId == null) {
       final storage = TokenStorageService();
       _token = await storage.getToken();
       _userId = await storage.getUserId();
       _role = (await storage.getUserRole()) ?? 'employee';
-      if (_token == null || _userId == null)
-        throw Exception('Not authenticated');
-      final readIds = await _getReadIds();
-
-      // Try backend API first
-      try {
-        final page = await ApiNotificationService.getNotifications(
-          authToken: _token!,
-          userId: _userId!,
-          page: 1,
-          limit: 30,
-        );
-        // Backend API call succeeded - use it even if empty (success case)
-        final items = page.items.map((item) {
-          final n = _AppNotif.fromBackend(item);
-          if (readIds.contains(item.id)) n.read = true;
-          return n;
-        }).toList();
-        _usingBackend = true;
-        _hasMore = page.pagination.hasMore;
-        if (mounted)
-          setState(() {
-            _all = items;
-            _isLoading = false;
-          });
-        return;
-      } catch (e) {
-        debugPrint('⚠️ Backend notification API failed: $e');
-        // Only fallback if API call actually failed (network error, auth error, etc)
-      }
-
-      // Fallback: aggregate from services
-      await _loadFromServices(readIds);
-    } catch (e) {
-      if (mounted)
-        setState(() {
-          _error = e.toString().replaceAll('Exception: ', '');
-          _isLoading = false;
-        });
     }
+
+    if (!mounted) return;
+
+    if (_token == null || _userId == null) {
+      context.read<NotificationsNotifier>().setError('Not authenticated');
+      return;
+    }
+
+    await context.read<NotificationsNotifier>().loadNotifications(
+      _token!,
+      userId: _userId!,
+      role: _role,
+    );
   }
 
   Future<void> _loadMore() async {
-    if (_isLoadingMore || !_hasMore || !_usingBackend) return;
-    setState(() => _isLoadingMore = true);
-    try {
-      final nextPage = _currentPage + 1;
-      final page = await ApiNotificationService.getNotifications(
-        authToken: _token!,
-        userId: _userId!,
-        page: nextPage,
-        limit: 30,
-      );
-      final readIds = await _getReadIds();
-      final newItems = page.items.map((item) {
-        final n = _AppNotif.fromBackend(item);
-        if (readIds.contains(item.id)) n.read = true;
-        return n;
-      }).toList();
-      setState(() {
-        _all.addAll(newItems);
-        _currentPage = nextPage;
-        _hasMore = page.pagination.hasMore;
-        _isLoadingMore = false;
-      });
-    } catch (_) {
-      setState(() => _isLoadingMore = false);
-    }
+    if (_token == null || _userId == null) return;
+    await context
+        .read<NotificationsNotifier>()
+        .loadMore(_token!, _userId!);
   }
 
-  Future<void> _loadFromServices(Set<String> readIds) async {
-    bool isRead(String id) => readIds.contains(id);
-    final List<_AppNotif> result = [];
+  int _total(List<NotificationItem> all) => all.length;
+  int _unread(List<NotificationItem> all) => all.where((n) => !n.isRead).length;
+  int _approvals(List<NotificationItem> all) => all
+      .where((n) => n.type.contains('approved') || n.type == 'approval')
+      .length;
+  int _rejections(List<NotificationItem> all) =>
+      all.where((n) => n.type.contains('rejected')).length;
+  int _tasks(List<NotificationItem> all) => all
+      .where((n) => n.type.startsWith('task_') || n.type == 'task_assigned')
+      .length;
 
-    try {
-      final res = await AnnouncementService.getAnnouncements(token: _token!);
-      for (final a in res.data.take(5)) {
-        final id = 'ann_${a.id}';
-        result.add(
-          _AppNotif(
-            id: id,
-            type: 'announcement',
-            title: 'New Announcement',
-            message: a.title ?? 'Company announcement',
-            time: a.createdAt,
-            read: isRead(id),
-          ),
-        );
-      }
-    } catch (_) {}
+  List<NotificationItem> _filtered(
+    List<NotificationItem> all,
+    String selectedTab,
+  ) {
+    final baseline = _role == 'client'
+        ? all.where((n) => n.type == 'chat').toList()
+        : all;
 
-    try {
-      final res = await ChatService.getUnreadCount(token: _token!);
-      if (res.count > 0) {
-        const id = 'chat_unread_bulk';
-        result.add(
-          _AppNotif(
-            id: id,
-            type: 'chat',
-            title: 'Unread Messages',
-            message:
-                'You have ${res.count} unread message${res.count > 1 ? 's' : ''}',
-            time: DateTime.now(),
-            read: isRead(id),
-          ),
-        );
-      }
-    } catch (_) {}
-
-    if (_role == 'employee' || _role == 'hr' || _role == 'admin') {
-      try {
-        final res = await LeaveService.getMyLeaves(token: _token!);
-        final allLeaves = ((res['data'] as List<dynamic>?) ?? []);
-        print('DEBUG: All leaves from API: ${allLeaves.length} items');
-        for (var i = 0; i < allLeaves.length; i++) {
-          print('  Leave $i: status=${allLeaves[i]['status']}, startDate=${allLeaves[i]['startDate']}, updatedAt=${allLeaves[i]['updatedAt']}, createdAt=${allLeaves[i]['createdAt']}');
-        }
-        final filtered = allLeaves.where(
-          (l) => l['status'] == 'approved' || l['status'] == 'rejected',
-        ).toList();
-        print('DEBUG: Filtered leaves (approved+rejected): ${filtered.length} items');
-        for (final l in filtered.take(5)) {
-          final id = 'leave_${l['_id'] ?? l['id']}_${l['status']}';
-          final s = l['status'] as String;
-          result.add(
-            _AppNotif(
-              id: id,
-              type: s == 'approved' ? 'leave_approved' : 'leave_rejected',
-              title: s == 'approved' ? 'Leave Approved' : 'Leave Rejected',
-              message:
-                  'Your ${l['leaveType'] ?? 'leave'} (${_fmtDate(l['startDate'])}) was $s',
-              time: _parseDate(l['updatedAt'] ?? l['createdAt']),
-              read: isRead(id),
-            ),
-          );
-        }
-      } catch (_) {}
-
-      try {
-        final res = await ExpenseService.getExpenses(token: _token!);
-        for (final e
-            in res.data
-                .where((e) => e.status == 'approved' || e.status == 'rejected')
-                .take(5)) {
-          final id = 'exp_${e.id}_${e.status}';
-          result.add(
-            _AppNotif(
-              id: id,
-              type: e.status == 'approved'
-                  ? 'expense_approved'
-                  : 'expense_rejected',
-              title: e.status == 'approved'
-                  ? 'Expense Approved'
-                  : 'Expense Rejected',
-              message: 'Your expense "${e.category}" was ${e.status}',
-              time: e.updatedAt,
-              read: isRead(id),
-            ),
-          );
-        }
-      } catch (_) {}
-
-      try {
-        final res = await AttendanceService.getEditRequests(token: _token!);
-        for (final r
-            in res.data
-                .where((r) => r.status == 'approved' || r.status == 'rejected')
-                .take(5)) {
-          final id = 'attedit_${r.id}_${r.status}';
-          result.add(
-            _AppNotif(
-              id: id,
-              type: r.status == 'approved'
-                  ? 'attendance_edit_approved'
-                  : 'attendance_edit_rejected',
-              title: r.status == 'approved'
-                  ? 'Attendance Approved'
-                  : 'Attendance Rejected',
-              message: 'Your attendance correction was ${r.status}',
-              time: r.updatedAt,
-              read: isRead(id),
-            ),
-          );
-        }
-      } catch (_) {}
-    }
-
-    if (_role == 'hr' || _role == 'admin') {
-      try {
-        final res = await LeaveService.getAdminLeaves(
-          token: _token!,
-          status: 'pending',
-        );
-        for (final l in res.data.take(3)) {
-          final id = 'pending_leave_${l.id}';
-          result.add(
-            _AppNotif(
-              id: id,
-              type: 'leave_pending',
-              title: 'Leave Request Pending',
-              message:
-                  '${l.user?.name ?? 'An employee'} requested ${l.leaveType} — awaiting review',
-              time: l.createdAt,
-              read: isRead(id),
-            ),
-          );
-        }
-      } catch (_) {}
-
-      try {
-        final res = await AttendanceService.getPendingAdminEditRequests(
-          token: _token!,
-        );
-        for (final r in res.data.take(3)) {
-          final id = 'pending_edit_${r.id}';
-          result.add(
-            _AppNotif(
-              id: id,
-              type: 'attendance_edit_pending',
-              title: 'Attendance Edit Request',
-              message:
-                  '${r.employee?.name ?? 'An employee'} requested attendance correction',
-              time: r.createdAt,
-              read: isRead(id),
-            ),
-          );
-        }
-      } catch (_) {}
-    }
-
-    try {
-      final res = await TaskService.getTasks(_token!);
-      final tasks =
-          (res['tasks'] ?? res['data']?['tasks'] ?? []) as List<dynamic>;
-      // Show assigned tasks for all roles
-      for (final t in tasks.take(5)) {
-        final id = 'task_assigned_${t['_id'] ?? t['id']}';
-        result.add(
-          _AppNotif(
-            id: id,
-            type: 'task_assigned',
-            title: 'New Task Assigned',
-            message:
-                '"${t['title']}" — Priority: ${t['priority'] ?? 'N/A'}, Due: ${_fmtDate(t['dueDate'])}',
-            time: _parseDate(t['createdAt'] ?? t['createdDate']),
-            read: isRead(id),
-          ),
-        );
-      }
-      // Show task reviews for employees
-      if (_role == 'employee') {
-        for (final t
-            in tasks.where((t) => t['review']?['comment'] != null).take(5)) {
-          final id = 'task_reviewed_${t['_id'] ?? t['id']}';
-          result.add(
-            _AppNotif(
-              id: id,
-              type: 'task_reviewed',
-              title: 'Task Reviewed',
-              message:
-                  'Your task "${t['title']}" received a review${t['review']['rating'] != null ? ' (${t['review']['rating']}/5)' : ''}',
-              time: _parseDate(t['review']['reviewedAt'] ?? t['updatedAt']),
-              read: isRead(id),
-            ),
-          );
-        }
-      }
-      // Show task progress for admins/hr and employees with progressing tasks
-      for (final t
-          in tasks
-              .where(
-                (t) => (t['progress'] ?? 0) > 0 && t['status'] != 'completed',
-              )
-              .take(5)) {
-        final id = 'task_progress_${t['_id'] ?? t['id']}_${t['progress']}';
-        result.add(
-          _AppNotif(
-            id: id,
-            type: 'task_progress',
-            title: 'Task Progress Updated',
-            message:
-                '"${t['title']}" — ${t['assignedTo']?['name'] ?? 'Employee'} updated progress to ${t['progress']}%',
-            time: _parseDate(t['updatedAt']),
-            read: isRead(id),
-          ),
-        );
-      }
-    } catch (_) {}
-
-    result.sort((a, b) => b.time.compareTo(a.time));
-    if (mounted)
-      setState(() {
-        _all = result;
-        _isLoading = false;
-      });
-  }
-
-  List<_AppNotif> get _filtered {
-    // When user is a client, restrict baseline notifications to chat only
-    final baseline = _role == 'client' ? _all.where((n) => n.type == 'chat').toList() : _all;
-
-    switch (_selectedTab) {
+    switch (selectedTab) {
       case 'unread':
-        return baseline.where((n) => !n.read).toList();
+        return baseline.where((n) => !n.isRead).toList();
       case 'announcement':
         return baseline.where((n) => n.type == 'announcement').toList();
       case 'chat':
         return baseline.where((n) => n.type == 'chat').toList();
       case 'leave':
-        final leaveNotifs = baseline
+        return baseline
             .where((n) => n.type == 'leave' || n.type.startsWith('leave_'))
             .toList();
-        return leaveNotifs;
       case 'expense':
         return baseline
             .where((n) => n.type == 'expense' || n.type.startsWith('expense_'))
@@ -576,7 +241,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  String get _listHeader => switch (_selectedTab) {
+  String _listHeader(String selectedTab) => switch (selectedTab) {
     'unread' => 'Unread Notifications',
     'announcement' => 'Announcements',
     'chat' => 'Chat Notifications',
@@ -588,75 +253,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _ => 'All Notifications',
   };
 
-  Future<void> _markRead(_AppNotif n) async {
-    if (n.read) return;
-    setState(() => n.read = true);
-    final ids = await _getReadIds();
-    ids.add(n.id);
-    await _saveReadIds(ids);
-
-    if (n.isBackend && _token != null) {
-      try {
-        await ApiNotificationService.markAsRead(
-          authToken: _token!,
-          notificationId: n.id,
-        );
-      } catch (_) {}
-    } else if (n.type == 'announcement' && _token != null) {
-      final annId = n.id.replaceFirst('ann_', '');
-      try {
-        await AnnouncementService.markAsRead(
-          token: _token!,
-          announcementId: annId,
-        );
-      } catch (_) {}
-    }
+  bool _isBackend(NotificationItem n) {
+    return (n.metadata?['source'] as String?) != 'local';
   }
 
-  Future<void> _markAllRead() async {
-    final ids = await _getReadIds();
-    for (final n in _all) {
-      n.read = true;
-      ids.add(n.id);
-    }
-    await _saveReadIds(ids);
-    if (mounted) setState(() {});
-
-    if (_usingBackend && _token != null && _userId != null) {
-      try {
-        await ApiNotificationService.markAllAsRead(
-          authToken: _token!,
-          userId: _userId!,
-        );
-      } catch (_) {}
-    } else if (_token != null) {
-      for (final n in _all.where((n) => n.type == 'announcement')) {
-        try {
-          await AnnouncementService.markAsRead(
-            token: _token!,
-            announcementId: n.id.replaceFirst('ann_', ''),
-          );
-        } catch (_) {}
-      }
-    }
+  Future<void> _markRead(
+    NotificationsNotifier notifier,
+    NotificationItem n,
+  ) async {
+    if (n.isRead || _token == null) return;
+    await notifier.markAsRead(_token!, n.id, userId: _userId);
   }
 
-  String _fmtDate(dynamic raw) {
-    if (raw == null) return 'N/A';
-    try {
-      return DateFormat('MMM d').format(DateTime.parse(raw.toString()));
-    } catch (_) {
-      return raw.toString();
-    }
-  }
-
-  DateTime _parseDate(dynamic raw) {
-    if (raw == null) return DateTime.now();
-    try {
-      return DateTime.parse(raw.toString());
-    } catch (_) {
-      return DateTime.now();
-    }
+  Future<void> _markAllRead(NotificationsNotifier notifier) async {
+    if (_token == null) return;
+    await notifier.markAllAsRead(_token!, userId: _userId);
   }
 
   String _timeAgo(DateTime dt) {
@@ -679,6 +290,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final notifier = context.watch<NotificationsNotifier>();
+    final state = notifier.state;
+    final selectedTab = state.selectedTab;
+    final all = state.notifications;
+    final unread = _unread(all);
+    final filtered = _filtered(all, selectedTab);
     // Role-aware tabs list (compute once at build-time)
     final tabs = _role == 'client' ? _clientTabs : _tabs;
     return Scaffold(
@@ -718,10 +335,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ],
             ),
             Text(
-              _isLoading
+              state.isLoading
                   ? 'Loading...'
-                  : _unread > 0
-                  ? '$_unread unread notification${_unread > 1 ? 's' : ''}'
+                  : unread > 0
+                  ? '$unread unread notification${unread > 1 ? 's' : ''}'
                   : 'All caught up!',
               style: TextStyle(
                 color: AppTheme.onSurface.withValues(alpha: 0.6),
@@ -731,9 +348,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ],
         ),
         actions: [
-          if (_unread > 0)
+          if (unread > 0)
             TextButton(
-              onPressed: _markAllRead,
+              onPressed: () => _markAllRead(notifier),
               child: const Text(
                 'Mark All Read',
                 style: TextStyle(color: AppTheme.primaryColor, fontSize: 12),
@@ -741,19 +358,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 20),
-            onPressed: _load,
+            onPressed: () => _initAndLoad(force: true),
             tooltip: 'Refresh',
           ),
         ],
       ),
-      body: _isLoading
+      body: state.isLoading
           ? const Center(
               child: CircularProgressIndicator(
                 color: AppTheme.primaryColor,
                 strokeWidth: 2.5,
               ),
             )
-          : _error != null
+          : state.errorMessage != null
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
@@ -767,13 +384,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      _error!,
+                      state.errorMessage!,
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: AppTheme.errorColor),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: _load,
+                      onPressed: () => _initAndLoad(force: true),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                       ),
@@ -783,8 +400,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
               ),
             )
-          : RefreshIndicator(
-              onRefresh: _load,
+            : RefreshIndicator(
+              onRefresh: () => _initAndLoad(force: true),
               color: AppTheme.primaryColor,
               child: ListView(
                 padding: EdgeInsets.symmetric(
@@ -796,7 +413,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      if (_usingBackend)
+                      if (state.usingBackend)
                         Container(
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.symmetric(
@@ -866,32 +483,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   _statCard(
                                     Icons.notifications_outlined,
                                     'Total',
-                                    _total,
+                                    _total(all),
                                     AppTheme.primaryColor,
                                   ),
                                   _statCard(
                                     Icons.mark_email_unread_outlined,
                                     'Unread',
-                                    _unread,
+                                    unread,
                                     const Color(0xFF4ADE80),
                                   ),
                                   if (_role != 'client') ...[
                                     _statCard(
                                       Icons.check_circle_outline,
                                       'Approvals',
-                                      _approvals,
+                                      _approvals(all),
                                       Colors.tealAccent,
                                     ),
                                     _statCard(
                                       Icons.cancel_outlined,
                                       'Rejections',
-                                      _rejections,
+                                      _rejections(all),
                                       Colors.redAccent,
                                     ),
                                     _statCard(
                                       Icons.assignment_outlined,
                                       'Tasks',
-                                      _tasks,
+                                      _tasks(all),
                                       const Color(0xFFFB923C),
                                     ),
                                   ],
@@ -902,14 +519,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               _statCard(
                                 Icons.notifications_outlined,
                                 'Total',
-                                _total,
+                                _total(all),
                                 AppTheme.primaryColor,
                               ),
                               const SizedBox(width: 10),
                               _statCard(
                                 Icons.mark_email_unread_outlined,
                                 'Unread',
-                                _unread,
+                                unread,
                                 const Color(0xFF4ADE80),
                               ),
                               if (_role != 'client') ...[
@@ -917,21 +534,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 _statCard(
                                   Icons.check_circle_outline,
                                   'Approvals',
-                                  _approvals,
+                                  _approvals(all),
                                   Colors.tealAccent,
                                 ),
                                 const SizedBox(width: 10),
                                 _statCard(
                                   Icons.cancel_outlined,
                                   'Rejections',
-                                  _rejections,
+                                  _rejections(all),
                                   Colors.redAccent,
                                 ),
                                 const SizedBox(width: 10),
                                 _statCard(
                                   Icons.assignment_outlined,
                                   'Tasks',
-                                  _tasks,
+                                  _tasks(all),
                                   const Color(0xFFFB923C),
                                 ),
                               ],
@@ -949,9 +566,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (_, i) {
                         final (key, label) = tabs[i];
-                        final sel = key == _selectedTab;
+                        final sel = key == selectedTab;
                         return GestureDetector(
-                          onTap: () => setState(() => _selectedTab = key),
+                          onTap: () => notifier.selectTab(key),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             decoration: BoxDecoration(
@@ -967,7 +584,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ),
                             alignment: Alignment.center,
                             child: Text(
-                              key == 'unread' ? 'Unread ($_unread)' : label,
+                              key == 'unread' ? 'Unread ($unread)' : label,
                               style: TextStyle(
                                 color: sel
                                     ? Colors.white
@@ -987,7 +604,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                   // List header
                   Text(
-                    '$_listHeader (${_filtered.length})',
+                    '${_listHeader(selectedTab)} (${filtered.length})',
                     style: TextStyle(
                       color: AppTheme.onSurface.withValues(alpha: 0.6),
                       fontSize: _bodyFontSize,
@@ -997,15 +614,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  if (_filtered.isEmpty) _buildEmpty(),
-                  ..._filtered.map(_buildTile),
+                  if (filtered.isEmpty) _buildEmpty(),
+                  ...filtered.map(_buildTile),
 
                   // Load more
-                  if (_hasMore && _usingBackend && _selectedTab == 'all')
+                  if (state.hasMore && state.usingBackend && selectedTab == 'all')
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Center(
-                        child: _isLoadingMore
+                        child: state.isLoadingMore
                             ? const SizedBox(
                                 width: 24,
                                 height: 24,
@@ -1131,18 +748,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildTile(_AppNotif n) {
+  Widget _buildTile(NotificationItem n) {
     final cfg = _cfgFor(n.type);
     return GestureDetector(
       onTap: () async {
-        await _markRead(n);
-        if (n.type == 'announcement' && mounted) {
-          final annId = n.isBackend ? n.id : n.id.replaceFirst('ann_', '');
+        await _markRead(context.read<NotificationsNotifier>(), n);
+        if (n.type == 'announcement' && mounted && _token != null) {
+          final annId = _isBackend(n) ? n.id : n.id.replaceFirst('ann_', '');
           try {
-            final res = await AnnouncementService.getAnnouncements(
-              token: _token!,
+            final ann = await context.read<NotificationsNotifier>().getAnnouncementById(
+              _token!,
+              annId,
             );
-            final ann = res.data.where((a) => a.id == annId).firstOrNull;
             if (ann != null && mounted) {
               Navigator.push(
                 context,
@@ -1158,12 +775,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: n.read
+          color: n.isRead
               ? AppTheme.surfaceVariant.withValues(alpha: 0.5)
               : AppTheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: n.read
+            color: n.isRead
                 ? AppTheme.outline.withValues(alpha: 0.2)
                 : cfg.color.withValues(alpha: 0.3),
           ),
@@ -1195,17 +812,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         child: Text(
                           n.title,
                           style: TextStyle(
-                            color: n.read
+                            color: n.isRead
                                 ? AppTheme.onSurface.withValues(alpha: 0.7)
                                 : AppTheme.onSurface,
                             fontSize: _isTablet ? 14 : 13,
-                            fontWeight: n.read
+                            fontWeight: n.isRead
                                 ? FontWeight.normal
                                 : FontWeight.w600,
                           ),
                         ),
                       ),
-                      if (!n.read)
+                      if (!n.isRead)
                         Container(
                           width: 8,
                           height: 8,
@@ -1252,7 +869,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                       SizedBox(width: _isTablet ? 10 : 8),
                       Text(
-                        _timeAgo(n.time),
+                        _timeAgo(n.createdAt),
                         style: TextStyle(
                           color: AppTheme.onSurface.withValues(alpha: 0.5),
                           fontSize: _isTablet ? 11 : 10,

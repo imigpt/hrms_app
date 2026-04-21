@@ -1,11 +1,28 @@
 import 'package:flutter/foundation.dart';
 import 'package:hrms_app/shared/services/core/settings_service.dart';
+import 'package:hrms_app/shared/services/device/location_update_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'settings_state.dart';
 
 class SettingsNotifier extends ChangeNotifier {
+  static const String _kSearchQuery = 'settings.search_query';
+  static const String _kCurrentSection = 'settings.current_section';
+  static const String _kNotificationsEnabled =
+      'settings.notifications_enabled';
+  static const String _kBiometricEnabled = 'settings.biometric_enabled';
+  static const String _kLocationTrackingEnabled =
+      'settings.location_tracking_enabled';
+
+  final LocationUpdateService _locationService;
+  final Future<SharedPreferences> Function() _prefsFactory;
+
   SettingsState _state = const SettingsState();
 
-  SettingsNotifier();
+  SettingsNotifier({
+    LocationUpdateService? locationService,
+    Future<SharedPreferences> Function()? prefsFactory,
+  }) : _locationService = locationService ?? LocationUpdateService(),
+       _prefsFactory = prefsFactory ?? SharedPreferences.getInstance;
 
   SettingsState get state => _state;
 
@@ -14,6 +31,124 @@ class SettingsNotifier extends ChangeNotifier {
   void _setState(SettingsState newState) {
     _state = newState;
     notifyListeners();
+  }
+
+  Map<String, dynamic> _extractData(Map<String, dynamic> response) {
+    final data = response['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    return response;
+  }
+
+  Future<void> _persistString(String key, String value) async {
+    try {
+      final prefs = await _prefsFactory();
+      await prefs.setString(key, value);
+    } catch (e) {
+      debugPrint('SettingsNotifier: Failed to persist string "$key": $e');
+    }
+  }
+
+  Future<void> _persistBool(String key, bool value) async {
+    try {
+      final prefs = await _prefsFactory();
+      await prefs.setBool(key, value);
+    } catch (e) {
+      debugPrint('SettingsNotifier: Failed to persist bool "$key": $e');
+    }
+  }
+
+  // ── Initialization & Local Preferences ──────────────────────────────────
+
+  Future<void> initialize() async {
+    if (_state.preferencesLoaded) return;
+
+    try {
+      final prefs = await _prefsFactory();
+
+      _setState(_state.copyWith(
+        searchQuery: prefs.getString(_kSearchQuery) ?? '',
+        currentSettingsSection:
+            prefs.getString(_kCurrentSection) ?? _state.currentSettingsSection,
+        notificationsEnabled: prefs.getBool(_kNotificationsEnabled) ?? true,
+        biometricEnabled: prefs.getBool(_kBiometricEnabled) ?? false,
+        locationTrackingEnabled:
+            prefs.getBool(_kLocationTrackingEnabled) ?? true,
+        preferencesLoaded: true,
+      ));
+    } catch (e) {
+      _setState(_state.copyWith(
+        error: 'Failed to load local settings preferences',
+      ));
+    }
+  }
+
+  Future<void> setSearchQuery(String query) async {
+    final normalized = query.trim();
+    _setState(_state.copyWith(searchQuery: normalized));
+    await _persistString(_kSearchQuery, normalized);
+  }
+
+  Future<void> setNotificationsEnabled(bool value) async {
+    _setState(_state.copyWith(notificationsEnabled: value));
+    await _persistBool(_kNotificationsEnabled, value);
+  }
+
+  Future<void> setBiometricEnabled(bool value) async {
+    _setState(_state.copyWith(biometricEnabled: value));
+    await _persistBool(_kBiometricEnabled, value);
+  }
+
+  Future<void> setLocationTrackingEnabled(bool value) async {
+    _setState(_state.copyWith(locationTrackingEnabled: value));
+    await _persistBool(_kLocationTrackingEnabled, value);
+  }
+
+  Future<bool> updateCurrentLocation() async {
+    if (_state.isUpdatingLocation) return false;
+
+    if (!_state.locationTrackingEnabled) {
+      _setState(_state.copyWith(
+        error: 'Location tracking is disabled in settings',
+      ));
+      return false;
+    }
+
+    _setState(_state.copyWith(
+      isUpdatingLocation: true,
+      error: null,
+      successMessage: null,
+    ));
+
+    try {
+      final result = await _locationService.updateCurrentLocation();
+
+      if (result != null && result.success) {
+        _setState(_state.copyWith(
+          isUpdatingLocation: false,
+          lastLocationUpdate: result,
+          successMessage: 'Location updated successfully',
+          lastUpdatedTimes: {
+            ..._state.lastUpdatedTimes,
+            'location': DateTime.now(),
+          },
+        ));
+        return true;
+      }
+
+      _setState(_state.copyWith(
+        isUpdatingLocation: false,
+        error: 'Failed to update location',
+      ));
+      return false;
+    } catch (e) {
+      _setState(_state.copyWith(
+        isUpdatingLocation: false,
+        error: e.toString().replaceFirst('Exception: ', ''),
+      ));
+      return false;
+    }
   }
 
   // ── Load Data Methods ───────────────────────────────────────────────────
@@ -26,10 +161,10 @@ class SettingsNotifier extends ChangeNotifier {
       final response = await SettingsService.getCompanySettings(token);
 
       if (response['success'] == true) {
-        final data = response['data'] ?? response;
+        final data = _extractData(response);
 
         _setState(_state.copyWith(
-          companySettings: data is Map<String, dynamic> ? data as Map<String, dynamic> : <String, dynamic>{},
+          companySettings: data,
           isLoading: false,
           lastUpdatedTimes: {
             ..._state.lastUpdatedTimes,
@@ -58,10 +193,10 @@ class SettingsNotifier extends ChangeNotifier {
       final response = await SettingsService.getHRMSettings(token);
 
       if (response['success'] == true) {
-        final data = response['data'] ?? response;
+        final data = _extractData(response);
 
         _setState(_state.copyWith(
-          hrmSettings: data is Map<String, dynamic> ? data as Map<String, dynamic> : <String, dynamic>{},
+          hrmSettings: data,
           isLoading: false,
           lastUpdatedTimes: {
             ..._state.lastUpdatedTimes,
@@ -90,10 +225,10 @@ class SettingsNotifier extends ChangeNotifier {
       final response = await SettingsService.getPayrollSettings(token);
 
       if (response['success'] == true) {
-        final data = response['data'] ?? response;
+        final data = _extractData(response);
 
         _setState(_state.copyWith(
-          payrollSettings: data is Map<String, dynamic> ? data as Map<String, dynamic> : <String, dynamic>{},
+          payrollSettings: data,
           isLoading: false,
           lastUpdatedTimes: {
             ..._state.lastUpdatedTimes,
@@ -122,10 +257,10 @@ class SettingsNotifier extends ChangeNotifier {
       final response = await SettingsService.getLocalizationSettings(token);
 
       if (response['success'] == true) {
-        final data = response['data'] ?? response;
+        final data = _extractData(response);
 
         _setState(_state.copyWith(
-          translationSettings: data is Map<String, dynamic> ? data as Map<String, dynamic> : <String, dynamic>{},
+          translationSettings: data,
           isLoading: false,
           lastUpdatedTimes: {
             ..._state.lastUpdatedTimes,
@@ -354,11 +489,13 @@ class SettingsNotifier extends ChangeNotifier {
   // ── Section Navigation ──────────────────────────────────────────────────
 
   /// Switch to a different settings section
-  void switchSection(String section) {
+  Future<void> switchSection(String section) async {
     _setState(_state.copyWith(
       currentSettingsSection: section,
       successMessage: null,
     ));
+
+    await _persistString(_kCurrentSection, section);
   }
 
   // ── Change Tracking ────────────────────────────────────────────────────

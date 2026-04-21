@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 
 class TasksState extends Equatable {
+  static const Object _unset = Object();
+
   final List<dynamic> tasks;
   final Map<String, dynamic> statistics;
   final List<dynamic> projects;
@@ -90,15 +92,15 @@ class TasksState extends Equatable {
     // Apply search query
     if (searchQuery.isNotEmpty) {
       filtered = filtered
-          .where((task) =>
-              task['title']
-                  .toString()
-                  .toLowerCase()
-                  .contains(searchQuery.toLowerCase()) ||
-              task['description']
-                  .toString()
-                  .toLowerCase()
-                  .contains(searchQuery.toLowerCase()))
+          .where(
+            (task) =>
+                task['title'].toString().toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                ) ||
+                task['description'].toString().toLowerCase().contains(
+                  searchQuery.toLowerCase(),
+                ),
+          )
           .toList();
     }
 
@@ -115,9 +117,11 @@ class TasksState extends Equatable {
           break;
         case 'high-priority':
           filtered = filtered
-              .where((task) =>
-                  task['priority'] == 'high' ||
-                  task['priority'] == 'critical')
+              .where(
+                (task) =>
+                    task['priority'] == 'high' ||
+                    task['priority'] == 'critical',
+              )
               .toList();
           break;
         case 'in-progress':
@@ -151,20 +155,16 @@ class TasksState extends Equatable {
       quickFilter != null;
 
   /// Total tasks waiting for review
-  int get tasksUnderReview =>
-      statistics['underReview'] ?? 0;
+  int get tasksUnderReview => statistics['underReview'] ?? 0;
 
   /// Total overdue tasks
-  int get overdueTasks =>
-      statistics['overdue'] ?? 0;
+  int get overdueTasks => statistics['overdue'] ?? 0;
 
   /// In-progress task count
-  int get inProgressCount =>
-      statistics['inProgress'] ?? 0;
+  int get inProgressCount => statistics['inProgress'] ?? 0;
 
   /// Completed task count
-  int get completedCount =>
-      statistics['completed'] ?? 0;
+  int get completedCount => statistics['completed'] ?? 0;
 
   @override
   List<Object?> get props => [
@@ -196,17 +196,17 @@ class TasksState extends Equatable {
     List<dynamic>? employees,
     bool? isLoading,
     bool? isRefreshing,
-    String? error,
-    String? statusFilter,
-    String? priorityFilter,
-    String? employeeFilter,
-    String? projectFilter,
+    Object? error = _unset,
+    Object? statusFilter = _unset,
+    Object? priorityFilter = _unset,
+    Object? employeeFilter = _unset,
+    Object? projectFilter = _unset,
     String? searchQuery,
-    String? quickFilter,
-    dynamic selectedTask,
+    Object? quickFilter = _unset,
+    Object? selectedTask = _unset,
     List<dynamic>? timeLogs,
-    Map<String, dynamic>? runningTimer,
-    Map<String, dynamic>? analyticsData,
+    Object? runningTimer = _unset,
+    Object? analyticsData = _unset,
     int? selectedEmployeeTab,
     int? selectedAdminTab,
   }) {
@@ -217,17 +217,33 @@ class TasksState extends Equatable {
       employees: employees ?? this.employees,
       isLoading: isLoading ?? this.isLoading,
       isRefreshing: isRefreshing ?? this.isRefreshing,
-      error: error ?? this.error,
-      statusFilter: statusFilter ?? this.statusFilter,
-      priorityFilter: priorityFilter ?? this.priorityFilter,
-      employeeFilter: employeeFilter ?? this.employeeFilter,
-      projectFilter: projectFilter ?? this.projectFilter,
+      error: identical(error, _unset) ? this.error : error as String?,
+      statusFilter: identical(statusFilter, _unset)
+          ? this.statusFilter
+          : statusFilter as String?,
+      priorityFilter: identical(priorityFilter, _unset)
+          ? this.priorityFilter
+          : priorityFilter as String?,
+      employeeFilter: identical(employeeFilter, _unset)
+          ? this.employeeFilter
+          : employeeFilter as String?,
+      projectFilter: identical(projectFilter, _unset)
+          ? this.projectFilter
+          : projectFilter as String?,
       searchQuery: searchQuery ?? this.searchQuery,
-      quickFilter: quickFilter ?? this.quickFilter,
-      selectedTask: selectedTask ?? this.selectedTask,
+      quickFilter: identical(quickFilter, _unset)
+          ? this.quickFilter
+          : quickFilter as String?,
+      selectedTask: identical(selectedTask, _unset)
+          ? this.selectedTask
+          : selectedTask,
       timeLogs: timeLogs ?? this.timeLogs,
-      runningTimer: runningTimer ?? this.runningTimer,
-      analyticsData: analyticsData ?? this.analyticsData,
+      runningTimer: identical(runningTimer, _unset)
+          ? this.runningTimer
+          : runningTimer as Map<String, dynamic>?,
+      analyticsData: identical(analyticsData, _unset)
+          ? this.analyticsData
+          : analyticsData as Map<String, dynamic>?,
       selectedEmployeeTab: selectedEmployeeTab ?? this.selectedEmployeeTab,
       selectedAdminTab: selectedAdminTab ?? this.selectedAdminTab,
     );

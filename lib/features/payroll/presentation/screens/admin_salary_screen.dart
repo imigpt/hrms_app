@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:hrms_app/features/payroll/data/services/payroll_service.dart';
+import 'package:provider/provider.dart';
+import 'package:hrms_app/features/payroll/presentation/providers/payroll_notifier.dart';
 import 'package:hrms_app/features/admin/data/services/admin_employees_service.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
@@ -68,10 +69,11 @@ class _AdminSalaryScreenState extends State<AdminSalaryScreen> {
 
   Future<void> _fetchSalaries(String token) async {
     try {
-      final result = await PayrollService.getSalaries(token: token);
+      await context.read<PayrollNotifier>().loadAllSalaries(token);
+      final salaries = context.read<PayrollNotifier>().state.allSalaries ?? const [];
       if (mounted) {
         setState(() {
-          _salaries = result.data
+          _salaries = salaries
               .map((e) => SalaryRecord(
                     id: e.id,
                     user: SalaryUser(
@@ -606,7 +608,7 @@ class _AdminSalaryScreenState extends State<AdminSalaryScreen> {
       };
 
       if (_isEditMode && _selectedRecord != null) {
-        await PayrollService.updateSalary(
+        await context.read<PayrollNotifier>().updateSalary(
           token: _token,
           id: _selectedRecord!.id,
           data: payload,
@@ -621,7 +623,7 @@ class _AdminSalaryScreenState extends State<AdminSalaryScreen> {
         }
       } else if (_selectedEmployee.isNotEmpty) {
         payload['user'] = _selectedEmployee;
-        await PayrollService.createSalary(
+        await context.read<PayrollNotifier>().createSalary(
           token: _token,
           data: payload,
         );
@@ -656,7 +658,7 @@ class _AdminSalaryScreenState extends State<AdminSalaryScreen> {
   Future<void> _deleteSalary(String id) async {
     if (!await _showConfirmDialog('Delete this salary record?')) return;
     try {
-      await PayrollService.deleteSalary(
+      await context.read<PayrollNotifier>().deleteSalary(
         token: _token,
         id: id,
       );

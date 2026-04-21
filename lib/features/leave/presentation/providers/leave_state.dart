@@ -4,6 +4,8 @@ import 'package:hrms_app/features/leave/data/models/leave_management_model.dart'
 
 /// Immutable state for leave feature
 class LeaveState extends Equatable {
+  static const Object _unset = Object();
+
   final Map<String, dynamic>? userBalance; // Current user's balance
   final List<LeaveBalanceEntry> leaveBalances; // Admin balance management list
   final List<AdminLeaveData> leaves;
@@ -37,15 +39,15 @@ class LeaveState extends Equatable {
   });
 
   LeaveState copyWith({
-    Map<String, dynamic>? userBalance,
+    Object? userBalance = _unset,
     List<LeaveBalanceEntry>? leaveBalances,
     List<AdminLeaveData>? leaves,
     bool? isLoading,
     bool? isLoadingBalance,
     bool? isLoadingLeaveBalances,
     bool? isLoadingLeaves,
-    String? errorMessage,
-    String? errorType,
+    Object? errorMessage = _unset,
+    Object? errorType = _unset,
     String? selectedFilter,
     String? roleFilter,
     String? statusFilter,
@@ -53,7 +55,9 @@ class LeaveState extends Equatable {
     String? searchQuery,
   }) {
     return LeaveState(
-      userBalance: userBalance ?? this.userBalance,
+      userBalance: identical(userBalance, _unset)
+        ? this.userBalance
+        : userBalance as Map<String, dynamic>?,
       leaveBalances: leaveBalances ?? this.leaveBalances,
       leaves: leaves ?? this.leaves,
       isLoading: isLoading ?? this.isLoading,
@@ -61,8 +65,12 @@ class LeaveState extends Equatable {
       isLoadingLeaveBalances:
           isLoadingLeaveBalances ?? this.isLoadingLeaveBalances,
       isLoadingLeaves: isLoadingLeaves ?? this.isLoadingLeaves,
-      errorMessage: errorMessage ?? this.errorMessage,
-      errorType: errorType ?? this.errorType,
+      errorMessage: identical(errorMessage, _unset)
+        ? this.errorMessage
+        : errorMessage as String?,
+      errorType: identical(errorType, _unset)
+        ? this.errorType
+        : errorType as String?,
       selectedFilter: selectedFilter ?? this.selectedFilter,
       roleFilter: roleFilter ?? this.roleFilter,
       statusFilter: statusFilter ?? this.statusFilter,

@@ -288,7 +288,7 @@ class _AddMeetingDialogState extends State<AddMeetingDialog> {
     try {
       if (!mounted) return;
 
-      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      final notifier = context.read<CalendarNotifier>();
       final startTime = _startTime ?? DateTime.now();
       final endTime = _endTime ?? DateTime.now().add(const Duration(hours: 1));
       

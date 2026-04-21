@@ -100,7 +100,7 @@ class _AllCompaniesScreenState extends State<AllCompaniesScreen> {
         website: websiteCtrl.text,
         industry: industryCtrl.text,
         size: sizeCtrl.text,
-        companySize: int.tryParse(companySizeCtrl.text),
+        companySize: int.tryParse(companySizeCtrl.text), password: '',
       );
 
       print('[API DEBUG] _createCompany: Company created successfully!');

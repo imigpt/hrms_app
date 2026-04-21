@@ -3,10 +3,9 @@ import 'package:hrms_app/features/tasks/data/services/task_service.dart';
 import 'tasks_state.dart';
 
 class TasksNotifier extends ChangeNotifier {
-  final TaskService _taskService;
   TasksState _state = const TasksState();
 
-  TasksNotifier({required TaskService taskService}) : _taskService = taskService;
+  TasksNotifier();
 
   TasksState get state => _state;
 
@@ -23,19 +22,21 @@ class TasksNotifier extends ChangeNotifier {
   Future<void> loadMyTasks(String token) async {
     try {
       _setState(_state.copyWith(isLoading: true, error: null));
-      
+
       final response = await TaskService.getMyTasks(token);
-      final tasks = response is List ? response : response['data'] ?? [];
-      
-      _setState(_state.copyWith(
-        tasks: tasks,
-        isLoading: false,
-      ));
+      // Extract data field if API returns {success: true, data: [...]}
+      final tasks = (response is Map && response['data'] != null)
+          ? (response['data'] as List)
+          : (response is List ? response : []);
+
+      _setState(_state.copyWith(tasks: tasks, isLoading: false));
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-        isLoading: false,
-      ));
+      _setState(
+        _state.copyWith(
+          error: e.toString().replaceFirst('Exception: ', ''),
+          isLoading: false,
+        ),
+      );
     }
   }
 
@@ -50,7 +51,7 @@ class TasksNotifier extends ChangeNotifier {
   }) async {
     try {
       _setState(_state.copyWith(isLoading: true, error: null));
-      
+
       final response = await TaskService.getTasks(
         token,
         status: status,
@@ -59,17 +60,19 @@ class TasksNotifier extends ChangeNotifier {
         page: page,
         limit: limit,
       );
-      final tasks = response is List ? response : response['data'] ?? [];
-      
-      _setState(_state.copyWith(
-        tasks: tasks,
-        isLoading: false,
-      ));
+      // Extract data field if API returns {success: true, data: [...]}
+      final tasks = (response is Map && response['data'] != null)
+          ? (response['data'] as List)
+          : (response is List ? response : []);
+
+      _setState(_state.copyWith(tasks: tasks, isLoading: false));
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-        isLoading: false,
-      ));
+      _setState(
+        _state.copyWith(
+          error: e.toString().replaceFirst('Exception: ', ''),
+          isLoading: false,
+        ),
+      );
     }
   }
 
@@ -77,14 +80,21 @@ class TasksNotifier extends ChangeNotifier {
   Future<void> loadTaskStatistics(String token) async {
     try {
       final response = await TaskService.getTaskStatistics(token);
-      final stats = response is Map ? response : response['data'] ?? {};
-      
+      // Extract data field if API returns {success: true, data: {...}}
+      final stats = (response is Map && response['data'] != null)
+          ? (response['data'] as Map<String, dynamic>)
+          : (response is Map
+              ? (response as Map<String, dynamic>)
+              : <String, dynamic>{});
+
       _setState(_state.copyWith(statistics: stats));
     } catch (e) {
       // Non-blocking error for statistics
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(
+          error: e.toString().replaceFirst('Exception: ', ''),
+        ),
+      );
     }
   }
 
@@ -92,28 +102,30 @@ class TasksNotifier extends ChangeNotifier {
   Future<void> refreshTasks(String token, {bool isAdmin = false}) async {
     try {
       _setState(_state.copyWith(isRefreshing: true, error: null));
-      
+
       if (isAdmin) {
         await loadAllTasks(token);
       } else {
         await loadMyTasks(token);
       }
-      
+
       await loadTaskStatistics(token);
-      
+
       _setState(_state.copyWith(isRefreshing: false));
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-        isRefreshing: false,
-      ));
+      _setState(
+        _state.copyWith(
+          error: e.toString().replaceFirst('Exception: ', ''),
+          isRefreshing: false,
+        ),
+      );
     }
   }
 
   // ── Task CRUD Operations ────────────────────────────────────────────────
 
   /// Create a new task
-  Future<void> createTask(
+  Future<String?> createTask(
     String token, {
     required String title,
     required String description,
@@ -127,7 +139,7 @@ class TasksNotifier extends ChangeNotifier {
   }) async {
     try {
       _setState(_state.copyWith(error: null));
-      
+
       final response = await TaskService.createTask(
         token,
         title: title,
@@ -140,15 +152,20 @@ class TasksNotifier extends ChangeNotifier {
         projectId: projectId,
         tags: tags,
       );
-      
-      final newTask = response is Map ? response : response['data'] ?? {};
+
+      // Extract data field if API returns {success: true, data: {...}}
+      final newTask = (response is Map && response['data'] != null)
+          ? (response['data'] as Map<String, dynamic>)
+          : (response is Map ? (response as Map<String, dynamic>) : {});
       final updatedTasks = [..._state.tasks, newTask];
-      
+      final taskId = (newTask['_id'] ?? newTask['id'])?.toString();
+
       _setState(_state.copyWith(tasks: updatedTasks));
+      return taskId;
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
       rethrow;
     }
   }
@@ -168,7 +185,7 @@ class TasksNotifier extends ChangeNotifier {
   }) async {
     try {
       _setState(_state.copyWith(error: null));
-      
+
       await TaskService.updateTask(
         token,
         taskId,
@@ -181,13 +198,13 @@ class TasksNotifier extends ChangeNotifier {
         tags: tags,
         status: status,
       );
-      
+
       // Reload tasks to reflect changes
       await loadMyTasks(token);
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
       rethrow;
     }
   }
@@ -202,7 +219,7 @@ class TasksNotifier extends ChangeNotifier {
   }) async {
     try {
       _setState(_state.copyWith(error: null));
-      
+
       await TaskService.updateTaskProgress(
         token,
         taskId,
@@ -210,13 +227,13 @@ class TasksNotifier extends ChangeNotifier {
         completionPercentage: completionPercentage,
         notes: notes,
       );
-      
+
       // Reload tasks to reflect changes
       await loadMyTasks(token);
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
       rethrow;
     }
   }
@@ -225,19 +242,19 @@ class TasksNotifier extends ChangeNotifier {
   Future<void> deleteTask(String token, String taskId) async {
     try {
       _setState(_state.copyWith(error: null));
-      
+
       await TaskService.deleteTask(token, taskId);
-      
+
       final updatedTasks = _state.tasks
           .whereType<Map<String, dynamic>>()
           .where((task) => task['_id'] != taskId)
           .toList();
-      
+
       _setState(_state.copyWith(tasks: updatedTasks));
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
       rethrow;
     }
   }
@@ -276,14 +293,16 @@ class TasksNotifier extends ChangeNotifier {
 
   /// Clear all filters
   void clearFilters() {
-    _setState(_state.copyWith(
-      statusFilter: null,
-      priorityFilter: null,
-      employeeFilter: null,
-      projectFilter: null,
-      quickFilter: null,
-      searchQuery: '',
-    ));
+    _setState(
+      _state.copyWith(
+        statusFilter: null,
+        priorityFilter: null,
+        employeeFilter: null,
+        projectFilter: null,
+        quickFilter: null,
+        searchQuery: '',
+      ),
+    );
   }
 
   // ── Tab Management ──────────────────────────────────────────────────────
@@ -304,19 +323,19 @@ class TasksNotifier extends ChangeNotifier {
   Future<void> startTimer(String token, String taskId) async {
     try {
       _setState(_state.copyWith(error: null));
-      
+
       // Simulated timer start - in real implementation would call API
       final runningTimer = {
         'taskId': taskId,
         'startTime': DateTime.now().toIso8601String(),
         'elapsed': 0,
       };
-      
+
       _setState(_state.copyWith(runningTimer: runningTimer));
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
     }
   }
 
@@ -324,28 +343,24 @@ class TasksNotifier extends ChangeNotifier {
   Future<void> stopTimer(String token) async {
     try {
       _setState(_state.copyWith(error: null));
-      
+
       if (_state.runningTimer == null) return;
-      
+
       final startTime = DateTime.parse(_state.runningTimer!['startTime']);
-      final elapsed =
-          DateTime.now().difference(startTime).inSeconds;
-      
+      final elapsed = DateTime.now().difference(startTime).inSeconds;
+
       final timeLogs = [..._state.timeLogs];
       timeLogs.add({
         'taskId': _state.runningTimer!['taskId'],
         'elapsed': elapsed,
         'loggedAt': DateTime.now().toIso8601String(),
       });
-      
-      _setState(_state.copyWith(
-        runningTimer: null,
-        timeLogs: timeLogs,
-      ));
+
+      _setState(_state.copyWith(runningTimer: null, timeLogs: timeLogs));
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
     }
   }
 
@@ -355,9 +370,9 @@ class TasksNotifier extends ChangeNotifier {
       // In real implementation would fetch from API
       _setState(_state.copyWith(error: null));
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
     }
   }
 
@@ -367,7 +382,7 @@ class TasksNotifier extends ChangeNotifier {
   Future<void> loadAnalytics(String token) async {
     try {
       _setState(_state.copyWith(error: null));
-      
+
       // Build analytics from task data
       final analytics = {
         'totalTasks': _state.tasks.length,
@@ -376,8 +391,10 @@ class TasksNotifier extends ChangeNotifier {
         'overdueTasks': _state.statistics['overdue'] ?? 0,
         'completionRate': _state.tasks.isEmpty
             ? 0
-            : ((_state.statistics['completed'] ?? 0) / _state.tasks.length * 100)
-                .toStringAsFixed(2),
+            : ((_state.statistics['completed'] ?? 0) /
+                      _state.tasks.length *
+                      100)
+                  .toStringAsFixed(2),
         'productivityByStatus': {
           'pending': _state.statistics['pending'] ?? 0,
           'inProgress': _state.statistics['inProgress'] ?? 0,
@@ -402,12 +419,12 @@ class TasksNotifier extends ChangeNotifier {
               .length,
         },
       };
-      
+
       _setState(_state.copyWith(analyticsData: analytics));
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
     }
   }
 
@@ -423,7 +440,7 @@ class TasksNotifier extends ChangeNotifier {
   }) async {
     try {
       _setState(_state.copyWith(error: null));
-      
+
       await TaskService.addAttachment(
         token,
         taskId,
@@ -432,9 +449,9 @@ class TasksNotifier extends ChangeNotifier {
         fileType: fileType,
       );
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
       rethrow;
     }
   }
@@ -447,12 +464,12 @@ class TasksNotifier extends ChangeNotifier {
   ) async {
     try {
       _setState(_state.copyWith(error: null));
-      
+
       await TaskService.deleteAttachment(token, taskId, attachmentId);
     } catch (e) {
-      _setState(_state.copyWith(
-        error: e.toString().replaceFirst('Exception: ', ''),
-      ));
+      _setState(
+        _state.copyWith(error: e.toString().replaceFirst('Exception: ', '')),
+      );
       rethrow;
     }
   }

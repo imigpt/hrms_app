@@ -2,6 +2,8 @@ import 'package:equatable/equatable.dart';
 import 'package:hrms_app/features/chat/data/models/chat_room_model.dart';
 
 class ChatState extends Equatable {
+  static const Object _unset = Object();
+
   // ── Core Lists ───────────────────────────────────────────────────────────
   final List<ChatRoom> chatRooms;
   final List<ChatMessage> currentRoomMessages;
@@ -44,7 +46,7 @@ class ChatState extends Equatable {
   final bool isConnected;
   final bool isReconnecting;
 
-  ChatState({
+  const ChatState({
     this.chatRooms = const [],
     this.currentRoomMessages = const [],
     this.companyUsers = const [],
@@ -251,8 +253,8 @@ class ChatState extends Equatable {
     List<ChatRoom>? chatRooms,
     List<ChatMessage>? currentRoomMessages,
     List<ChatUser>? companyUsers,
-    ChatRoom? selectedChatRoom,
-    String? selectedRoomId,
+    Object? selectedChatRoom = _unset,
+    Object? selectedRoomId = _unset,
     bool? hasMoreMessages,
     int? messagesPageIndex,
     bool? isLoadingRooms,
@@ -266,10 +268,10 @@ class ChatState extends Equatable {
     Map<String, String>? userPresence,
     Map<String, int>? unreadCounts,
     int? totalUnreadMessages,
-    String? error,
-    String? successMessage,
-    String? searchQuery,
-    String? uploadingFileName,
+    Object? error = _unset,
+    Object? successMessage = _unset,
+    Object? searchQuery = _unset,
+    Object? uploadingFileName = _unset,
     double? uploadProgress,
     List<ChatAttachment>? selectedAttachments,
     bool? isConnected,
@@ -279,8 +281,12 @@ class ChatState extends Equatable {
       chatRooms: chatRooms ?? this.chatRooms,
       currentRoomMessages: currentRoomMessages ?? this.currentRoomMessages,
       companyUsers: companyUsers ?? this.companyUsers,
-      selectedChatRoom: selectedChatRoom ?? this.selectedChatRoom,
-      selectedRoomId: selectedRoomId ?? this.selectedRoomId,
+      selectedChatRoom: identical(selectedChatRoom, _unset)
+          ? this.selectedChatRoom
+          : selectedChatRoom as ChatRoom?,
+      selectedRoomId: identical(selectedRoomId, _unset)
+          ? this.selectedRoomId
+          : selectedRoomId as String?,
       hasMoreMessages: hasMoreMessages ?? this.hasMoreMessages,
       messagesPageIndex: messagesPageIndex ?? this.messagesPageIndex,
       isLoadingRooms: isLoadingRooms ?? this.isLoadingRooms,
@@ -294,10 +300,16 @@ class ChatState extends Equatable {
       userPresence: userPresence ?? this.userPresence,
       unreadCounts: unreadCounts ?? this.unreadCounts,
       totalUnreadMessages: totalUnreadMessages ?? this.totalUnreadMessages,
-      error: error,
-      successMessage: successMessage,
-      searchQuery: searchQuery,
-      uploadingFileName: uploadingFileName,
+      error: identical(error, _unset) ? this.error : error as String?,
+      successMessage: identical(successMessage, _unset)
+          ? this.successMessage
+          : successMessage as String?,
+      searchQuery: identical(searchQuery, _unset)
+          ? this.searchQuery
+          : searchQuery as String?,
+      uploadingFileName: identical(uploadingFileName, _unset)
+          ? this.uploadingFileName
+          : uploadingFileName as String?,
       uploadProgress: uploadProgress ?? this.uploadProgress,
       selectedAttachments: selectedAttachments ?? this.selectedAttachments,
       isConnected: isConnected ?? this.isConnected,

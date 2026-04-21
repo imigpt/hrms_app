@@ -3,10 +3,14 @@ import 'package:hrms_app/features/payroll/data/models/payroll_model.dart';
 
 /// Immutable Payroll State using Equatable for proper comparison
 class PayrollState extends Equatable {
+  static const Object _unset = Object();
+
   final List<Payroll> payrolls;
   final Payroll? selectedPayroll;
   final EmployeeSalary? mySalary;
   final List<EmployeeSalary>? allSalaries;
+  final List<PrePayment> prePayments;
+  final List<IncrementPromotion> increments;
   final bool isLoading;
   final bool isLoadingMore;
   final String? errorMessage;
@@ -35,6 +39,8 @@ class PayrollState extends Equatable {
     this.selectedPayroll,
     this.mySalary,
     this.allSalaries,
+    this.prePayments = const [],
+    this.increments = const [],
     this.isLoading = false,
     this.isLoadingMore = false,
     this.errorMessage,
@@ -58,18 +64,20 @@ class PayrollState extends Equatable {
   /// Create a copy of this state with optional property overrides
   PayrollState copyWith({
     List<Payroll>? payrolls,
-    Payroll? selectedPayroll,
-    EmployeeSalary? mySalary,
-    List<EmployeeSalary>? allSalaries,
+    Object? selectedPayroll = _unset,
+    Object? mySalary = _unset,
+    Object? allSalaries = _unset,
+    List<PrePayment>? prePayments,
+    List<IncrementPromotion>? increments,
     bool? isLoading,
     bool? isLoadingMore,
-    String? errorMessage,
+    Object? errorMessage = _unset,
     DateTime? lastUpdated,
     int? currentPage,
     int? totalCount,
     bool? hasMore,
-    int? filterYear,
-    int? filterMonth,
+    Object? filterYear = _unset,
+    Object? filterMonth = _unset,
     String? selectedStatus,
     String? searchQuery,
     double? totalNetSalaryPaid,
@@ -82,18 +90,32 @@ class PayrollState extends Equatable {
   }) {
     return PayrollState(
       payrolls: payrolls ?? this.payrolls,
-      selectedPayroll: selectedPayroll ?? this.selectedPayroll,
-      mySalary: mySalary ?? this.mySalary,
-      allSalaries: allSalaries ?? this.allSalaries,
+      selectedPayroll: identical(selectedPayroll, _unset)
+        ? this.selectedPayroll
+        : selectedPayroll as Payroll?,
+      mySalary: identical(mySalary, _unset)
+        ? this.mySalary
+        : mySalary as EmployeeSalary?,
+      allSalaries: identical(allSalaries, _unset)
+        ? this.allSalaries
+        : allSalaries as List<EmployeeSalary>?,
+      prePayments: prePayments ?? this.prePayments,
+      increments: increments ?? this.increments,
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: identical(errorMessage, _unset)
+        ? this.errorMessage
+        : errorMessage as String?,
       lastUpdated: lastUpdated ?? this.lastUpdated,
       currentPage: currentPage ?? this.currentPage,
       totalCount: totalCount ?? this.totalCount,
       hasMore: hasMore ?? this.hasMore,
-      filterYear: filterYear ?? this.filterYear,
-      filterMonth: filterMonth ?? this.filterMonth,
+      filterYear: identical(filterYear, _unset)
+        ? this.filterYear
+        : filterYear as int?,
+      filterMonth: identical(filterMonth, _unset)
+        ? this.filterMonth
+        : filterMonth as int?,
       selectedStatus: selectedStatus ?? this.selectedStatus,
       searchQuery: searchQuery ?? this.searchQuery,
       totalNetSalaryPaid: totalNetSalaryPaid ?? this.totalNetSalaryPaid,
@@ -151,6 +173,8 @@ class PayrollState extends Equatable {
     selectedPayroll,
     mySalary,
     allSalaries,
+    prePayments,
+    increments,
     isLoading,
     isLoadingMore,
     errorMessage,

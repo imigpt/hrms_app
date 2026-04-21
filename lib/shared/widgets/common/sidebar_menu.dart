@@ -162,12 +162,12 @@ class _SidebarMenuState extends State<SidebarMenu> {
   ];
 
   late final List<Map<String, dynamic>> _adminTasksSubItems = [
-    {"title": "Task Management", "icon": Icons.assignment_rounded},
     {"title": "Tasks", "icon": Icons.task_alt_rounded},
     {"title": "BOD/EOD", "icon": Icons.event_note_rounded},
   ];
 
   late final List<Map<String, dynamic>> _employeeTasksSubItems = [
+    {"title": "Task Management", "icon": Icons.assignment_rounded},
     {"title": "Tasks", "icon": Icons.task_alt_rounded},
     {"title": "BOD/EOD", "icon": Icons.event_note_rounded},
   ];

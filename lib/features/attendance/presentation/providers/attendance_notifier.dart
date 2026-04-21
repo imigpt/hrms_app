@@ -2,17 +2,63 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:hrms_app/features/attendance/presentation/providers/attendance_state.dart';
+import 'package:hrms_app/features/attendance/data/models/attendance_checkin_model.dart';
+import 'package:hrms_app/features/attendance/data/models/attendance_history_model.dart'
+    as history_model;
+import 'package:hrms_app/features/attendance/data/models/attendance_summary_model.dart';
 import 'package:hrms_app/features/attendance/data/models/today_attendance_model.dart';
 import 'package:hrms_app/features/attendance/data/services/attendance_service.dart';
+
+typedef _GetTodayAttendanceFn = Future<TodayAttendance?> Function({
+  required String token,
+});
+typedef _GetAttendanceHistoryFn = Future<history_model.AttendanceHistory>
+    Function({
+      required String token,
+      required int month,
+      required int year,
+    });
+typedef _GetAttendanceSummaryFn = Future<AttendanceSummary> Function({
+  required String token,
+  required int month,
+  required int year,
+});
+typedef _CheckInFn = Future<CheckInResponse> Function({
+  required String token,
+  required File photoFile,
+  required double latitude,
+  required double longitude,
+});
+typedef _CheckOutFn = Future<CheckInResponse> Function({
+  required String token,
+  required double latitude,
+  required double longitude,
+});
 
 /// Attendance Notifier - Manages all attendance state and business logic
 class AttendanceNotifier extends ChangeNotifier {
   AttendanceState _state = const AttendanceState();
 
-  final AttendanceService _attendanceService;
+  final _GetTodayAttendanceFn _getTodayAttendance;
+  final _GetAttendanceHistoryFn _getAttendanceHistory;
+  final _GetAttendanceSummaryFn _getAttendanceSummary;
+  final _CheckInFn _checkIn;
+  final _CheckOutFn _checkOut;
 
-  AttendanceNotifier({required AttendanceService attendanceService})
-      : _attendanceService = attendanceService;
+  AttendanceNotifier({
+    _GetTodayAttendanceFn? getTodayAttendance,
+    _GetAttendanceHistoryFn? getAttendanceHistory,
+    _GetAttendanceSummaryFn? getAttendanceSummary,
+    _CheckInFn? checkIn,
+    _CheckOutFn? checkOut,
+  }) : _getTodayAttendance =
+           getTodayAttendance ?? AttendanceService.getTodayAttendance,
+       _getAttendanceHistory =
+           getAttendanceHistory ?? AttendanceService.getAttendanceHistory,
+       _getAttendanceSummary =
+           getAttendanceSummary ?? AttendanceService.getAttendanceSummary,
+       _checkIn = checkIn ?? AttendanceService.checkIn,
+       _checkOut = checkOut ?? AttendanceService.checkOut;
 
   AttendanceState get state => _state;
 
@@ -31,7 +77,7 @@ class AttendanceNotifier extends ChangeNotifier {
     _setState(_state.copyWith(isLoading: true, errorMessage: null));
 
     try {
-      final response = await AttendanceService.getTodayAttendance(token: token);
+      final response = await _getTodayAttendance(token: token);
 
       if (response != null) {
         _setState(_state.copyWith(
@@ -62,16 +108,22 @@ class AttendanceNotifier extends ChangeNotifier {
   }
 
   /// Load attendance history
-  Future<void> loadAttendanceHistory(String token) async {
+  Future<void> loadAttendanceHistory(
+    String token, {
+    int? month,
+    int? year,
+  }) async {
     debugPrint('📊 AttendanceNotifier: Loading attendance history...');
     _setState(_state.copyWith(isLoading: true, errorMessage: null));
 
     try {
       final now = DateTime.now();
-      final response = await AttendanceService.getAttendanceHistory(
+      final resolvedMonth = month ?? now.month;
+      final resolvedYear = year ?? now.year;
+      final response = await _getAttendanceHistory(
         token: token,
-        month: now.month,
-        year: now.year,
+        month: resolvedMonth,
+        year: resolvedYear,
       );
 
       _calculateStatistics(response.data);
@@ -93,15 +145,21 @@ class AttendanceNotifier extends ChangeNotifier {
   }
 
   /// Load attendance summary
-  Future<void> loadAttendanceSummary(String token) async {
+  Future<void> loadAttendanceSummary(
+    String token, {
+    int? month,
+    int? year,
+  }) async {
     debugPrint('📈 AttendanceNotifier: Loading attendance summary...');
 
     try {
       final now = DateTime.now();
-      final response = await AttendanceService.getAttendanceSummary(
+      final resolvedMonth = month ?? now.month;
+      final resolvedYear = year ?? now.year;
+      final response = await _getAttendanceSummary(
         token: token,
-        month: now.month,
-        year: now.year,
+        month: resolvedMonth,
+        year: resolvedYear,
       );
 
       _setState(_state.copyWith(
@@ -127,15 +185,19 @@ class AttendanceNotifier extends ChangeNotifier {
   }
 
   /// Refresh all attendance data
-  Future<void> refreshAttendance(String token) async {
+  Future<void> refreshAttendance(
+    String token, {
+    int? month,
+    int? year,
+  }) async {
     debugPrint('🔄 AttendanceNotifier: Refreshing attendance data...');
     _setState(_state.copyWith(isLoading: true, errorMessage: null));
 
     try {
       await Future.wait([
         loadTodayAttendance(token),
-        loadAttendanceHistory(token),
-        loadAttendanceSummary(token),
+        loadAttendanceHistory(token, month: month, year: year),
+        loadAttendanceSummary(token, month: month, year: year),
       ]);
 
       debugPrint('✅ Attendance refreshed successfully');
@@ -153,39 +215,92 @@ class AttendanceNotifier extends ChangeNotifier {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Check in with photo and location
-  Future<void> checkIn(
+  Future<CheckInResponse> checkInWithCoordinates(
     String token,
-    File photoFile,
-    Position position,
-  ) async {
+    File photoFile, {
+    required double latitude,
+    required double longitude,
+  }) async {
     debugPrint('➡️  AttendanceNotifier: Checking in...');
     _setState(_state.copyWith(isCheckingIn: true, errorMessage: null));
 
     try {
-      final response = await AttendanceService.checkIn(
+      final response = await _checkIn(
         token: token,
         photoFile: photoFile,
-        latitude: position.latitude,
-        longitude: position.longitude,
+        latitude: latitude,
+        longitude: longitude,
       );
 
       // Reload today's attendance to get the updated state
       await loadTodayAttendance(token);
-      
+
       _setState(_state.copyWith(
         isCheckingIn: false,
-        currentLatitude: position.latitude,
-        currentLongitude: position.longitude,
+        currentLatitude: latitude,
+        currentLongitude: longitude,
         lastUpdated: DateTime.now(),
       ));
 
       debugPrint('✅ Check in successful');
+      return response;
     } catch (e) {
       debugPrint('❌ Error checking in: $e');
       _setState(_state.copyWith(
         isCheckingIn: false,
         errorMessage: 'Failed to check in: $e',
       ));
+      rethrow;
+    }
+  }
+
+  Future<void> checkIn(
+    String token,
+    File photoFile,
+    Position position,
+  ) async {
+    await checkInWithCoordinates(
+      token,
+      photoFile,
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
+  }
+
+  Future<CheckInResponse> checkOutWithCoordinates(
+    String token, {
+    required double latitude,
+    required double longitude,
+  }) async {
+    debugPrint('⬅️  AttendanceNotifier: Checking out...');
+    _setState(_state.copyWith(isCheckingOut: true, errorMessage: null));
+
+    try {
+      final response = await _checkOut(
+        token: token,
+        latitude: latitude,
+        longitude: longitude,
+      );
+
+      // Reload today's attendance to get the updated state
+      await loadTodayAttendance(token);
+
+      _setState(_state.copyWith(
+        isCheckingOut: false,
+        currentLatitude: latitude,
+        currentLongitude: longitude,
+        lastUpdated: DateTime.now(),
+      ));
+
+      debugPrint('✅ Check out successful');
+      return response;
+    } catch (e) {
+      debugPrint('❌ Error checking out: $e');
+      _setState(_state.copyWith(
+        isCheckingOut: false,
+        errorMessage: 'Failed to check out: $e',
+      ));
+      rethrow;
     }
   }
 
@@ -195,35 +310,12 @@ class AttendanceNotifier extends ChangeNotifier {
     File photoFile,
     Position position,
   ) async {
-    debugPrint('⬅️  AttendanceNotifier: Checking out...');
-    _setState(_state.copyWith(isCheckingOut: true, errorMessage: null));
-
-    try {
-      // Note: photoFile parameter is not used by checkOut API
-      final response = await AttendanceService.checkOut(
-        token: token,
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-
-      // Reload today's attendance to get the updated state
-      await loadTodayAttendance(token);
-
-      _setState(_state.copyWith(
-        isCheckingOut: false,
-        currentLatitude: position.latitude,
-        currentLongitude: position.longitude,
-        lastUpdated: DateTime.now(),
-      ));
-
-      debugPrint('✅ Check out successful');
-    } catch (e) {
-      debugPrint('❌ Error checking out: $e');
-      _setState(_state.copyWith(
-        isCheckingOut: false,
-        errorMessage: 'Failed to check out: $e',
-      ));
-    }
+    // Note: photoFile parameter is not used by checkOut API.
+    await checkOutWithCoordinates(
+      token,
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -280,13 +372,13 @@ class AttendanceNotifier extends ChangeNotifier {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Calculate attendance statistics from history
-  void _calculateStatistics(List<dynamic> records) {
+  void _calculateStatistics(List<history_model.AttendanceRecord> records) {
     int present = 0;
     int absent = 0;
     int late = 0;
 
     for (var record in records) {
-      final status = record.status?.toLowerCase() ?? '';
+      final status = record.status.toLowerCase();
       if (status == 'present') {
         present++;
       } else if (status == 'absent') {

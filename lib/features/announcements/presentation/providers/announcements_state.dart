@@ -34,6 +34,8 @@ class AnnouncementsState extends Equatable {
     this.isCreating = false,
   });
 
+  static const _unset = Object();
+
   // ── Computed Getters ─────────────────────────────────────────────────────
 
   /// Total number of announcements
@@ -59,11 +61,7 @@ class AnnouncementsState extends Equatable {
   /// Recently added announcements (sorted by creation date)
   List<Announcement> get recentAnnouncements {
     final sorted = List<Announcement>.from(announcements);
-    sorted.sort((a, b) {
-      final dateA = DateTime.tryParse((a.createdAt ?? '') as String) ?? DateTime.now();
-      final dateB = DateTime.tryParse((b.createdAt ?? '') as String) ?? DateTime.now();
-      return dateB.compareTo(dateA);
-    });
+    sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return sorted;
   }
 
@@ -106,15 +104,15 @@ class AnnouncementsState extends Equatable {
     List<Announcement>? filteredAnnouncements,
     bool? isLoading,
     bool? isRefreshing,
-    String? error,
+    Object? error = _unset,
     String? selectedFilter,
-    String? priorityFilter,
-    String? departmentFilter,
+    Object? priorityFilter = _unset,
+    Object? departmentFilter = _unset,
     String? searchQuery,
     Set<String>? readAnnouncementIds,
     Set<String>? notifiedAnnouncementIds,
     int? unreadCount,
-    Announcement? selectedAnnouncement,
+    Object? selectedAnnouncement = _unset,
     bool? isCreating,
   }) {
     return AnnouncementsState(
@@ -122,15 +120,21 @@ class AnnouncementsState extends Equatable {
       filteredAnnouncements: filteredAnnouncements ?? this.filteredAnnouncements,
       isLoading: isLoading ?? this.isLoading,
       isRefreshing: isRefreshing ?? this.isRefreshing,
-      error: error ?? this.error,
+      error: identical(error, _unset) ? this.error : error as String?,
       selectedFilter: selectedFilter ?? this.selectedFilter,
-      priorityFilter: priorityFilter ?? this.priorityFilter,
-      departmentFilter: departmentFilter ?? this.departmentFilter,
+      priorityFilter: identical(priorityFilter, _unset)
+          ? this.priorityFilter
+          : priorityFilter as String?,
+      departmentFilter: identical(departmentFilter, _unset)
+          ? this.departmentFilter
+          : departmentFilter as String?,
       searchQuery: searchQuery ?? this.searchQuery,
       readAnnouncementIds: readAnnouncementIds ?? this.readAnnouncementIds,
       notifiedAnnouncementIds: notifiedAnnouncementIds ?? this.notifiedAnnouncementIds,
       unreadCount: unreadCount ?? this.unreadCount,
-      selectedAnnouncement: selectedAnnouncement ?? this.selectedAnnouncement,
+      selectedAnnouncement: identical(selectedAnnouncement, _unset)
+          ? this.selectedAnnouncement
+          : selectedAnnouncement as Announcement?,
       isCreating: isCreating ?? this.isCreating,
     );
   }

@@ -4,14 +4,51 @@ import 'package:hrms_app/features/expenses/presentation/providers/expenses_state
 import 'package:hrms_app/features/expenses/data/models/expense_model.dart';
 import 'package:hrms_app/features/expenses/data/services/expense_service.dart';
 
+typedef _GetExpensesFn = Future<ExpenseListResponse> Function({
+  required String token,
+});
+typedef _SubmitExpenseFn = Future<ExpenseSubmitResponse> Function({
+  required String token,
+  required String category,
+  required double amount,
+  required String currency,
+  required DateTime date,
+  required String description,
+  File? receiptFile,
+});
+typedef _UpdateExpenseFn = Future<ExpenseSubmitResponse> Function({
+  required String token,
+  required String expenseId,
+  required String category,
+  required double amount,
+  required String currency,
+  required DateTime date,
+  required String description,
+  File? receiptFile,
+});
+typedef _DeleteExpenseFn = Future<void> Function({
+  required String token,
+  required String expenseId,
+});
+
 /// Expenses Notifier - Manages all expenses state and business logic
 class ExpensesNotifier extends ChangeNotifier {
   ExpensesState _state = const ExpensesState();
 
-  final ExpenseService _expenseService;
+  final _GetExpensesFn _getExpenses;
+  final _SubmitExpenseFn _submitExpense;
+  final _UpdateExpenseFn _updateExpense;
+  final _DeleteExpenseFn _deleteExpense;
 
-  ExpensesNotifier({required ExpenseService expenseService})
-      : _expenseService = expenseService;
+  ExpensesNotifier({
+    _GetExpensesFn? getExpenses,
+    _SubmitExpenseFn? submitExpense,
+    _UpdateExpenseFn? updateExpense,
+    _DeleteExpenseFn? deleteExpense,
+  })  : _getExpenses = getExpenses ?? ExpenseService.getExpenses,
+        _submitExpense = submitExpense ?? ExpenseService.submitExpense,
+        _updateExpense = updateExpense ?? ExpenseService.updateExpense,
+        _deleteExpense = deleteExpense ?? ExpenseService.deleteExpense;
 
   ExpensesState get state => _state;
 
@@ -30,18 +67,27 @@ class ExpensesNotifier extends ChangeNotifier {
     _setState(_state.copyWith(isLoading: true, errorMessage: null));
 
     try {
-      final response = await ExpenseService.getExpenses(token: token);
+      final response = await _getExpenses(token: token);
 
-      _calculateStatistics(response.data);
-
-      _setState(_state.copyWith(
-        expenses: response.data,
-        totalCount: response.count,
-        currentPage: 1,
-        hasMore: false,
-        isLoading: false,
-        lastUpdated: DateTime.now(),
-      ));
+      _setState(
+        _state
+            .copyWith(
+              expenses: response.data,
+              totalCount: response.count,
+              currentPage: 1,
+              hasMore: false,
+              isLoading: false,
+              lastUpdated: DateTime.now(),
+            )
+            .copyWith(
+              totalSubmittedAmount: _stats(response.data).totalSubmitted,
+              totalApprovedAmount: _stats(response.data).totalApproved,
+              totalRejectedAmount: _stats(response.data).totalRejected,
+              pendingExpenseCount: _stats(response.data).pending,
+              approvedExpenseCount: _stats(response.data).approved,
+              rejectedExpenseCount: _stats(response.data).rejected,
+            ),
+      );
 
       debugPrint('✅ Expenses loaded: ${response.data.length}');
     } catch (e) {
@@ -59,16 +105,25 @@ class ExpensesNotifier extends ChangeNotifier {
     _setState(_state.copyWith(isLoading: true, errorMessage: null));
 
     try {
-      final response = await ExpenseService.getExpenses(token: token);
+      final response = await _getExpenses(token: token);
 
-      _calculateStatistics(response.data);
-
-      _setState(_state.copyWith(
-        expenses: response.data,
-        totalCount: response.count,
-        isLoading: false,
-        lastUpdated: DateTime.now(),
-      ));
+      _setState(
+        _state
+            .copyWith(
+              expenses: response.data,
+              totalCount: response.count,
+              isLoading: false,
+              lastUpdated: DateTime.now(),
+            )
+            .copyWith(
+              totalSubmittedAmount: _stats(response.data).totalSubmitted,
+              totalApprovedAmount: _stats(response.data).totalApproved,
+              totalRejectedAmount: _stats(response.data).totalRejected,
+              pendingExpenseCount: _stats(response.data).pending,
+              approvedExpenseCount: _stats(response.data).approved,
+              rejectedExpenseCount: _stats(response.data).rejected,
+            ),
+      );
 
       debugPrint('✅ Expenses refreshed successfully');
     } catch (e) {
@@ -98,7 +153,7 @@ class ExpensesNotifier extends ChangeNotifier {
     _setState(_state.copyWith(isSubmitting: true, errorMessage: null));
 
     try {
-      final response = await ExpenseService.submitExpense(
+      final response = await _submitExpense(
         token: token,
         category: category,
         amount: amount,
@@ -111,14 +166,23 @@ class ExpensesNotifier extends ChangeNotifier {
       // Add new expense to list
       final updatedExpenses = [response.data, ..._state.expenses];
 
-      _calculateStatistics(updatedExpenses);
-
-      _setState(_state.copyWith(
-        expenses: updatedExpenses,
-        totalCount: _state.totalCount + 1,
-        isSubmitting: false,
-        lastUpdated: DateTime.now(),
-      ));
+      _setState(
+        _state
+            .copyWith(
+              expenses: updatedExpenses,
+              totalCount: _state.totalCount + 1,
+              isSubmitting: false,
+              lastUpdated: DateTime.now(),
+            )
+            .copyWith(
+              totalSubmittedAmount: _stats(updatedExpenses).totalSubmitted,
+              totalApprovedAmount: _stats(updatedExpenses).totalApproved,
+              totalRejectedAmount: _stats(updatedExpenses).totalRejected,
+              pendingExpenseCount: _stats(updatedExpenses).pending,
+              approvedExpenseCount: _stats(updatedExpenses).approved,
+              rejectedExpenseCount: _stats(updatedExpenses).rejected,
+            ),
+      );
 
       debugPrint('✅ Expense submitted successfully');
     } catch (e) {
@@ -127,6 +191,108 @@ class ExpensesNotifier extends ChangeNotifier {
         isSubmitting: false,
         errorMessage: 'Failed to submit expense: $e',
       ));
+    }
+  }
+
+  /// Update an existing expense and sync local state.
+  Future<void> updateExpense({
+    required String token,
+    required String expenseId,
+    required String category,
+    required double amount,
+    required String currency,
+    required DateTime date,
+    required String description,
+    File? receiptFile,
+  }) async {
+    debugPrint('✏️ ExpensesNotifier: Updating expense $expenseId');
+    _setState(_state.copyWith(isSubmitting: true, errorMessage: null));
+
+    try {
+      final response = await _updateExpense(
+        token: token,
+        expenseId: expenseId,
+        category: category,
+        amount: amount,
+        currency: currency,
+        date: date,
+        description: description,
+        receiptFile: receiptFile,
+      );
+
+      final updatedExpenses = _state.expenses
+          .map((e) => e.id == expenseId ? response.data : e)
+          .toList();
+
+      final stats = _stats(updatedExpenses);
+      _setState(
+        _state.copyWith(
+          expenses: updatedExpenses,
+          isSubmitting: false,
+          lastUpdated: DateTime.now(),
+          totalSubmittedAmount: stats.totalSubmitted,
+          totalApprovedAmount: stats.totalApproved,
+          totalRejectedAmount: stats.totalRejected,
+          pendingExpenseCount: stats.pending,
+          approvedExpenseCount: stats.approved,
+          rejectedExpenseCount: stats.rejected,
+        ),
+      );
+
+      debugPrint('✅ Expense updated successfully');
+    } catch (e) {
+      debugPrint('❌ Error updating expense: $e');
+      _setState(
+        _state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'Failed to update expense: $e',
+        ),
+      );
+      rethrow;
+    }
+  }
+
+  /// Delete an existing expense and sync local state.
+  Future<void> deleteExpense({
+    required String token,
+    required String expenseId,
+  }) async {
+    debugPrint('🗑️ ExpensesNotifier: Deleting expense $expenseId');
+    _setState(_state.copyWith(isSubmitting: true, errorMessage: null));
+
+    try {
+      await _deleteExpense(token: token, expenseId: expenseId);
+
+      final updatedExpenses = _state.expenses
+          .where((e) => e.id != expenseId)
+          .toList();
+
+      final stats = _stats(updatedExpenses);
+      _setState(
+        _state.copyWith(
+          expenses: updatedExpenses,
+          totalCount: updatedExpenses.length,
+          isSubmitting: false,
+          lastUpdated: DateTime.now(),
+          totalSubmittedAmount: stats.totalSubmitted,
+          totalApprovedAmount: stats.totalApproved,
+          totalRejectedAmount: stats.totalRejected,
+          pendingExpenseCount: stats.pending,
+          approvedExpenseCount: stats.approved,
+          rejectedExpenseCount: stats.rejected,
+        ),
+      );
+
+      debugPrint('✅ Expense deleted successfully');
+    } catch (e) {
+      debugPrint('❌ Error deleting expense: $e');
+      _setState(
+        _state.copyWith(
+          isSubmitting: false,
+          errorMessage: 'Failed to delete expense: $e',
+        ),
+      );
+      rethrow;
     }
   }
 
@@ -197,7 +363,7 @@ class ExpensesNotifier extends ChangeNotifier {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Calculate expense statistics
-  void _calculateStatistics(List<Expense> expensesList) {
+  _ExpenseStats _stats(List<Expense> expensesList) {
     double totalSubmitted = 0;
     double totalApproved = 0;
     double totalRejected = 0;
@@ -223,14 +389,14 @@ class ExpensesNotifier extends ChangeNotifier {
       }
     }
 
-    _setState(_state.copyWith(
-      totalSubmittedAmount: totalSubmitted,
-      totalApprovedAmount: totalApproved,
-      totalRejectedAmount: totalRejected,
-      pendingExpenseCount: pending,
-      approvedExpenseCount: approved,
-      rejectedExpenseCount: rejected,
-    ));
+    return _ExpenseStats(
+      totalSubmitted: totalSubmitted,
+      totalApproved: totalApproved,
+      totalRejected: totalRejected,
+      pending: pending,
+      approved: approved,
+      rejected: rejected,
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -246,4 +412,22 @@ class ExpensesNotifier extends ChangeNotifier {
   void reset() {
     _setState(const ExpensesState());
   }
+}
+
+class _ExpenseStats {
+  final double totalSubmitted;
+  final double totalApproved;
+  final double totalRejected;
+  final int pending;
+  final int approved;
+  final int rejected;
+
+  const _ExpenseStats({
+    required this.totalSubmitted,
+    required this.totalApproved,
+    required this.totalRejected,
+    required this.pending,
+    required this.approved,
+    required this.rejected,
+  });
 }

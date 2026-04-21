@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:provider/provider.dart';
 import 'dart:io';
 import 'package:hrms_app/features/policies/data/models/policy_model.dart';
 import 'package:hrms_app/features/policies/data/services/policy_service.dart';
+import 'package:hrms_app/features/policies/presentation/providers/policies_notifier.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
 
@@ -18,13 +20,8 @@ class PoliciesScreen extends StatefulWidget {
 }
 
 class _PoliciesScreenState extends State<PoliciesScreen> {
-  bool get _isAdmin =>
-      widget.role?.toLowerCase() == 'admin';
+  bool get _isAdmin => widget.role?.toLowerCase() == 'admin';
 
-  String? _token;
-  List<CompanyPolicy> _policies = [];
-  bool _isLoading = true;
-  String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -39,37 +36,28 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
     super.dispose();
   }
 
-  Future<void> _loadPolicies() async {
-    final token = widget.token ?? await TokenStorageService().getToken();
-    if (token == null || !mounted) return;
-    setState(() {
-      _token = token;
-      _isLoading = true;
-    });
-
-    try {
-      final res = await PolicyService.getPolicies(
-        token: token,
-        search: _searchQuery.isNotEmpty ? _searchQuery : null,
-      );
-      if (mounted)
-        setState(() {
-          _policies = res.data;
-          _isLoading = false;
-        });
-    } catch (e) {
-      print('Policies fetch error: $e');
-      if (mounted) setState(() => _isLoading = false);
-    }
+  Future<String?> _resolveToken() async {
+    return widget.token ?? await TokenStorageService().getToken();
   }
 
-  void _onSearch(String query) {
-    setState(() => _searchQuery = query);
-    _loadPolicies();
+  Future<void> _loadPolicies() async {
+    final token = await _resolveToken();
+    if (token == null || !mounted) return;
+    await context.read<PoliciesNotifier>().loadPolicies(token: token);
+  }
+
+  Future<void> _onSearch(String query) async {
+    final token = await _resolveToken();
+    if (token == null || !mounted) return;
+
+    await context.read<PoliciesNotifier>().searchPolicies(
+      token: token,
+      query: query,
+    );
   }
 
   Future<void> _downloadPolicy(CompanyPolicy policy) async {
-    if (!policy.hasFile || _token == null) return;
+    if (!policy.hasFile) return;
 
     // Open the download URL in a browser — backend handles streaming
     final url = PolicyService.getDownloadUrl(policy.id);
@@ -101,6 +89,8 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final state = context.watch<PoliciesNotifier>().state;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       floatingActionButton: _isAdmin
@@ -138,7 +128,7 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
                   Icons.search_rounded,
                   color: Color(0xFF8E8E93),
                 ),
-                suffixIcon: _searchQuery.isNotEmpty
+                suffixIcon: state.searchQuery.isNotEmpty
                     ? IconButton(
                         icon: const Icon(
                           Icons.clear,
@@ -164,10 +154,10 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
 
           // Content
           Expanded(
-            child: _isLoading
+            child: state.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _policies.isEmpty
-                ? _emptyState()
+                : state.policies.isEmpty
+                ? _emptyState(state.searchQuery)
                 : RefreshIndicator(
                     onRefresh: _loadPolicies,
                     child: ListView.builder(
@@ -175,8 +165,9 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
                         horizontal: 16,
                         vertical: 8,
                       ),
-                      itemCount: _policies.length,
-                      itemBuilder: (_, i) => _buildPolicyCard(_policies[i]),
+                      itemCount: state.policies.length,
+                      itemBuilder: (_, i) =>
+                          _buildPolicyCard(state.policies[i]),
                     ),
                   ),
           ),
@@ -470,13 +461,11 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
                                 return;
                               }
                               final token =
-                                  widget.token ??
-                                  _token ??
-                                  await TokenStorageService().getToken();
+                                  await _resolveToken();
                               if (token == null) return;
                               ss(() => submitting = true);
                               try {
-                                await PolicyService.createPolicy(
+                                await context.read<PoliciesNotifier>().createPolicy(
                                   token: token,
                                   title: title,
                                   description: descCtrl.text.trim(),
@@ -544,7 +533,6 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
           backgroundColor: Color(0xFF00C853),
         ),
       );
-      _loadPolicies();
     }
   }
 
@@ -588,12 +576,14 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
 
     if (confirmed != true || !mounted) return;
 
-    final token =
-        widget.token ?? _token ?? await TokenStorageService().getToken();
+    final token = await _resolveToken();
     if (token == null) return;
 
     try {
-      await PolicyService.deletePolicy(token: token, id: policy.id);
+      await context.read<PoliciesNotifier>().deletePolicy(
+        token: token,
+        id: policy.id,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -601,7 +591,6 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
             backgroundColor: Colors.redAccent,
           ),
         );
-        _loadPolicies();
       }
     } catch (e) {
       if (mounted) {
@@ -917,7 +906,7 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
     );
   }
 
-  Widget _emptyState() => Center(
+  Widget _emptyState(String searchQuery) => Center(
     child: Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -926,7 +915,7 @@ class _PoliciesScreenState extends State<PoliciesScreen> {
           Icon(Icons.policy_outlined, size: 48, color: Colors.grey[700]),
           const SizedBox(height: 12),
           Text(
-            _searchQuery.isNotEmpty
+            searchQuery.isNotEmpty
                 ? 'No policies match your search'
                 : 'No company policies found',
             style: TextStyle(color: Colors.grey[500], fontSize: 14),

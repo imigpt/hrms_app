@@ -25,7 +25,7 @@ class CompanyNotifier extends ChangeNotifier {
       _setState(_state.copyWith(companies: result, isLoading: false));
     } catch (e) {
       _setState(_state.copyWith(
-        error: e.toString(),
+        error: e.toString().replaceAll('Exception: ', ''),
         isLoading: false,
       ));
     }
@@ -39,7 +39,7 @@ class CompanyNotifier extends ChangeNotifier {
     String? address,
     String? website,
     String? industry,
-    String size = 'medium',
+    String? size,
     int? companySize,
     String? password,
   }) async {
@@ -52,25 +52,29 @@ class CompanyNotifier extends ChangeNotifier {
         address: address,
         website: website,
         industry: industry,
-        size: size,
+        size: size ?? 'medium',
         companySize: companySize,
+        // Provide a default password if your backend requires it and UI doesn't ask for it
+        password: password ?? 'Default@123', 
       );
+      
       _setState(_state.copyWith(
-        isSaving: false,
-        successMessage: 'Company created successfully',
+        isSaving: false, 
+        successMessage: 'Company created successfully'
       ));
-      await fetchCompanies();
+      
+      await fetchCompanies(); // Refresh the list automatically
       return true;
     } catch (e) {
       _setState(_state.copyWith(
-        error: e.toString(),
+        error: e.toString().replaceAll('Exception: ', ''),
         isSaving: false,
       ));
       return false;
     }
   }
 
-  /// Update a company
+  /// Update an existing company
   Future<bool> updateCompany({
     required String id,
     required String name,
@@ -97,15 +101,17 @@ class CompanyNotifier extends ChangeNotifier {
         companySize: companySize,
         status: status,
       );
+
       _setState(_state.copyWith(
-        isSaving: false,
-        successMessage: 'Company updated successfully',
+        isSaving: false, 
+        successMessage: 'Company updated successfully'
       ));
-      await fetchCompanies();
+      
+      await fetchCompanies(); // Refresh the list automatically
       return true;
     } catch (e) {
       _setState(_state.copyWith(
-        error: e.toString(),
+        error: e.toString().replaceAll('Exception: ', ''),
         isSaving: false,
       ));
       return false;
@@ -121,18 +127,18 @@ class CompanyNotifier extends ChangeNotifier {
         isSaving: false,
         successMessage: 'Company deleted successfully',
       ));
-      await fetchCompanies();
+      await fetchCompanies(); // Refresh the list
       return true;
     } catch (e) {
       _setState(_state.copyWith(
-        error: e.toString(),
+        error: e.toString().replaceAll('Exception: ', ''),
         isSaving: false,
       ));
       return false;
     }
   }
 
-  /// Update company status
+  /// Update company status (Approve/Reject/Suspend)
   Future<bool> updateCompanyStatus(String id, String status) async {
     _setState(_state.copyWith(isSaving: true, error: null));
     try {
@@ -141,34 +147,21 @@ class CompanyNotifier extends ChangeNotifier {
         isSaving: false,
         successMessage: 'Company status updated to $status',
       ));
-      await fetchCompanies();
+      await fetchCompanies(); // Refresh the list
       return true;
     } catch (e) {
       _setState(_state.copyWith(
-        error: e.toString(),
+        error: e.toString().replaceAll('Exception: ', ''),
         isSaving: false,
       ));
       return false;
     }
   }
 
-  /// Activate a company (change status to active)
-  Future<bool> activateCompany(String id) async {
-    return updateCompanyStatus(id, 'active');
-  }
-
-  /// Suspend a company (change status to suspended)
-  Future<bool> suspendCompany(String id) async {
-    return updateCompanyStatus(id, 'suspended');
-  }
-
-  /// Clear error message
-  void clearError() {
-    _setState(_state.copyWith(error: null));
-  }
-
-  /// Clear success message
-  void clearSuccess() {
-    _setState(_state.copyWith(successMessage: null));
+  /// Clear messages when needed
+  void clearMessages() {
+    if (_state.error != null || _state.successMessage != null) {
+      _setState(_state.copyWith(error: null, successMessage: null));
+    }
   }
 }

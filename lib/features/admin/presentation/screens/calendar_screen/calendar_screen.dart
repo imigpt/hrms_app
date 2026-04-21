@@ -90,7 +90,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
     // Fetch calendar data
     Future.microtask(() async {
       _activeToken = widget.token ?? await TokenStorageService().getToken();
-      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      final notifier = context.read<CalendarNotifier>();
       print('[CALENDAR API] initState: Starting to fetch calendar data...');
       print('[CALENDAR API] initState: Token: ${_activeToken != null}, CompanyId: ${widget.companyId}, UserId: ${widget.userId}');
       
@@ -378,7 +378,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
 
   void _refreshCalendarForCurrentRange() {
     Future.microtask(() {
-      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      final notifier = context.read<CalendarNotifier>();
       if (_activeToken != null && widget.companyId != null) {
         notifier.fetchHolidays(
           _activeToken!,
@@ -677,7 +677,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
     );
 
     if (result == true && mounted && _activeToken != null && widget.userId != null) {
-      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      final notifier = context.read<CalendarNotifier>();
       notifier.fetchEvents(
         _activeToken!,
         widget.userId!,
@@ -698,7 +698,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
     );
 
     if (result != null && mounted && _activeToken != null && widget.userId != null) {
-      final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+      final notifier = context.read<CalendarNotifier>();
       notifier.fetchEvents(
         _activeToken!,
         widget.userId!,
@@ -1400,7 +1400,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
           padding: const EdgeInsets.only(bottom: 10),
           child: GestureDetector(
             onTap: () {
-              final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+              final notifier = context.read<CalendarNotifier>();
               _showViewEventDialog(holiday, notifier);
             },
             child: Container(
@@ -1461,7 +1461,7 @@ class _AdminCalendarScreenState extends State<AdminCalendarScreen>
           padding: const EdgeInsets.only(bottom: 10),
           child: GestureDetector(
             onTap: () {
-              final notifier = Provider.of<CalendarNotifier>(context, listen: false);
+              final notifier = context.read<CalendarNotifier>();
               _showViewEventDialog(event, notifier);
             },
             child: Container(

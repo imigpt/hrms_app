@@ -1,72 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:equatable/equatable.dart';
 import 'package:hrms_app/features/profile/data/models/profile_model.dart';
 import 'package:hrms_app/features/profile/data/services/profile_service.dart';
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Profile State (Equatable for immutability)
-// ═══════════════════════════════════════════════════════════════════════════
-
-class ProfileState extends Equatable {
-  final ProfileUser? currentUser;
-  final bool isLoading;
-  final bool isSaving;
-  final bool isEditing;
-  final String? errorMessage;
-  final bool isInitialized;
-  final Map<String, String> employmentData;
-  final String profileImage;
-  final String dob;
-
-  const ProfileState({
-    this.currentUser,
-    this.isLoading = false,
-    this.isSaving = false,
-    this.isEditing = false,
-    this.errorMessage,
-    this.isInitialized = false,
-    this.employmentData = const {},
-    this.profileImage = "",
-    this.dob = "-",
-  });
-
-  ProfileState copyWith({
-    ProfileUser? currentUser,
-    bool? isLoading,
-    bool? isSaving,
-    bool? isEditing,
-    String? errorMessage,
-    bool? isInitialized,
-    Map<String, String>? employmentData,
-    String? profileImage,
-    String? dob,
-  }) {
-    return ProfileState(
-      currentUser: currentUser ?? this.currentUser,
-      isLoading: isLoading ?? this.isLoading,
-      isSaving: isSaving ?? this.isSaving,
-      isEditing: isEditing ?? this.isEditing,
-      errorMessage: errorMessage ?? this.errorMessage,
-      isInitialized: isInitialized ?? this.isInitialized,
-      employmentData: employmentData ?? this.employmentData,
-      profileImage: profileImage ?? this.profileImage,
-      dob: dob ?? this.dob,
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-    currentUser,
-    isLoading,
-    isSaving,
-    isEditing,
-    errorMessage,
-    isInitialized,
-    employmentData,
-    profileImage,
-    dob,
-  ];
-}
+import 'profile_state.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Profile Notifier (ChangeNotifier for state management)
@@ -77,7 +12,8 @@ class ProfileNotifier extends ChangeNotifier {
 
   ProfileState _state = const ProfileState();
 
-  ProfileNotifier(this._profileService);
+  ProfileNotifier({ProfileService? profileService})
+      : _profileService = profileService ?? ProfileService();
 
   ProfileState get state => _state;
 
@@ -222,10 +158,72 @@ class ProfileNotifier extends ChangeNotifier {
     }
   }
 
+  /// Upload profile photo and refresh local profile state.
+  Future<Map<String, dynamic>> uploadProfilePhoto({
+    required String token,
+    required String imagePath,
+  }) async {
+    _setState(_state.copyWith(
+      isSaving: true,
+      errorMessage: null,
+    ));
+
+    try {
+      final result = await _profileService.uploadProfilePhoto(
+        token: token,
+        imagePath: imagePath,
+      );
+
+      if (result['success'] == true) {
+        final updatedUser = result['user'] as ProfileUser?;
+        if (updatedUser != null) {
+          _setState(_state.copyWith(
+            currentUser: updatedUser,
+            isSaving: false,
+            profileImage: updatedUser.profilePhotoUrl,
+            dob: _formatDate(updatedUser.dateOfBirth) ?? '-',
+            employmentData: _buildEmploymentData(updatedUser),
+          ));
+        } else {
+          _setState(_state.copyWith(isSaving: false));
+        }
+      } else {
+        _setState(_state.copyWith(
+          isSaving: false,
+          errorMessage: (result['message'] ?? 'Failed to upload photo').toString(),
+        ));
+      }
+
+      return result;
+    } catch (e) {
+      final message = 'Error uploading photo: $e';
+      _setState(_state.copyWith(
+        isSaving: false,
+        errorMessage: message,
+      ));
+      return {
+        'success': false,
+        'message': message,
+      };
+    }
+  }
+
   /// Toggle edit mode
   void toggleEditMode() {
     _setState(_state.copyWith(isEditing: !_state.isEditing));
     debugPrint('🔄 ProfileNotifier: Edit mode = ${_state.isEditing}');
+  }
+
+  /// Cancel edit mode and discard changes (revert to last saved state)
+  void cancelEditMode() {
+    if (_state.currentUser == null) return;
+    
+    debugPrint('🔙 ProfileNotifier: Cancelling edit mode, reverting changes');
+    _setState(_state.copyWith(
+      isEditing: false,
+      dob: _formatDate(_state.currentUser!.dateOfBirth) ?? "-",
+      errorMessage: null,
+    ));
   }
 
   /// Clear error message

@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:hrms_app/features/tasks/data/services/task_service.dart';
+import 'package:hrms_app/features/tasks/presentation/providers/tasks_notifier.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/features/admin/data/services/admin_employees_service.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
@@ -18,7 +20,13 @@ class TasksScreen extends StatefulWidget {
   final String? role;
   final bool showOnlyCurrentUser;
   final bool isManagementView;
-  const TasksScreen({super.key, this.token, this.role, this.showOnlyCurrentUser = false, this.isManagementView = false});
+  const TasksScreen({
+    super.key,
+    this.token,
+    this.role,
+    this.showOnlyCurrentUser = false,
+    this.isManagementView = false,
+  });
 
   @override
   State<TasksScreen> createState() => _TasksScreenState();
@@ -66,7 +74,8 @@ class _TasksScreenState extends State<TasksScreen> {
 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Tab state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   int _employeeTab = 0; // 0=list, 1=kanban, 2=time
-  int _adminTab = 0; // 0=list, 1=kanban, 2=employees, 3=projects, 4=time, 5=analytics
+  int _adminTab =
+      0; // 0=list, 1=kanban, 2=employees, 3=projects, 4=time, 5=analytics
 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Employee priority filter Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   String? _employeePriorityFilter;
@@ -129,9 +138,11 @@ class _TasksScreenState extends State<TasksScreen> {
     if ((_userId == null || _userId!.isEmpty) && _token != null) {
       _userId = _decodeUserIdFromJwt(_token!);
     }
-    _isAdmin = (widget.role?.toLowerCase() == 'admin' || widget.role?.toLowerCase() == 'hr');
+    _isAdmin =
+        (widget.role?.toLowerCase() == 'admin' ||
+        widget.role?.toLowerCase() == 'hr');
     await _loadWorkflows();
-    
+
     // Priority: Check showOnlyCurrentUser first, then check role
     if (widget.showOnlyCurrentUser == true) {
       // "My Tasks" view - load only current user's tasks, ignore admin role
@@ -150,7 +161,8 @@ class _TasksScreenState extends State<TasksScreen> {
     try {
       final res = await AdminEmployeesService.getAllEmployees(
         _token!,
-        role: widget.role ?? 'admin', // Pass user's role to use correct endpoint
+        role:
+            widget.role ?? 'admin', // Pass user's role to use correct endpoint
       );
       if (res['success'] == true && mounted) {
         setState(() {
@@ -196,36 +208,60 @@ class _TasksScreenState extends State<TasksScreen> {
       if (!mounted) return;
       if (showLoading) setState(() => _isLoading = true);
 
-      final tasksRes = await TaskService.getMyTasks(_token!);
+      final notifier = context.read<TasksNotifier>();
+      await notifier.loadMyTasks(_token!);
+      final tasksRes = notifier.state.tasks;
 
       if (mounted) {
         setState(() {
-          _tasks = tasksRes is List ? tasksRes : (tasksRes['data'] as List<dynamic>? ?? []);
+          _tasks = tasksRes;
 
           // Compute stats from MY tasks only (not from API which includes all employees)
           _stats = {
             'total': _tasks.length,
-            'assigned': _tasks.where((t) => 
-              (t['status'] as String?)?.toLowerCase() == 'assigned').length,
-            'todo': _tasks.where((t) => 
-              (t['status'] as String?)?.toLowerCase() == 'todo').length,
-            'inProgress': _tasks.where((t) => 
-              (t['status'] as String?)?.toLowerCase() == 'in-progress').length,
-            'completed': _tasks.where((t) => 
-              (t['status'] as String?)?.toLowerCase() == 'completed').length,
+            'assigned': _tasks
+                .where(
+                  (t) => (t['status'] as String?)?.toLowerCase() == 'assigned',
+                )
+                .length,
+            'todo': _tasks
+                .where((t) => (t['status'] as String?)?.toLowerCase() == 'todo')
+                .length,
+            'inProgress': _tasks
+                .where(
+                  (t) =>
+                      (t['status'] as String?)?.toLowerCase() == 'in-progress',
+                )
+                .length,
+            'completed': _tasks
+                .where(
+                  (t) => (t['status'] as String?)?.toLowerCase() == 'completed',
+                )
+                .length,
             'overdue': _tasks.where((t) {
-              final dueDate = t['dueDate'] != null 
-                ? DateTime.tryParse(t['dueDate'].toString()) 
-                : null;
-              return dueDate != null && dueDate.isBefore(DateTime.now()) &&
+              final dueDate = t['dueDate'] != null
+                  ? DateTime.tryParse(t['dueDate'].toString())
+                  : null;
+              return dueDate != null &&
+                  dueDate.isBefore(DateTime.now()) &&
                   (t['status'] as String?)?.toLowerCase() != 'completed';
             }).length,
-            'cancelled': _tasks.where((t) => 
-              (t['status'] as String?)?.toLowerCase() == 'cancelled').length,
-            'pending': _tasks.where((t) => 
-              (t['status'] as String?)?.toLowerCase() == 'pending').length,
-            'underReview': _tasks.where((t) => 
-              (t['status'] as String?)?.toLowerCase() == 'under-review').length,
+            'cancelled': _tasks
+                .where(
+                  (t) => (t['status'] as String?)?.toLowerCase() == 'cancelled',
+                )
+                .length,
+            'pending': _tasks
+                .where(
+                  (t) => (t['status'] as String?)?.toLowerCase() == 'pending',
+                )
+                .length,
+            'underReview': _tasks
+                .where(
+                  (t) =>
+                      (t['status'] as String?)?.toLowerCase() == 'under-review',
+                )
+                .length,
           };
           _isLoading = false;
         });
@@ -552,11 +588,15 @@ class _TasksScreenState extends State<TasksScreen> {
           final statsRes = results[0] as Map<String, dynamic>;
           final prodRes = results[1] as Map<String, dynamic>;
           final workRes = results[2] as Map<String, dynamic>;
-          _analyticsStats = statsRes['success'] == true ? statsRes['data'] : null;
-          _analyticsProductivity =
-              prodRes['success'] == true ? (prodRes['data'] as List<dynamic>? ?? []) : [];
-          _analyticsWorkload =
-              workRes['success'] == true ? (workRes['data'] as List<dynamic>? ?? []) : [];
+          _analyticsStats = statsRes['success'] == true
+              ? statsRes['data']
+              : null;
+          _analyticsProductivity = prodRes['success'] == true
+              ? (prodRes['data'] as List<dynamic>? ?? [])
+              : [];
+          _analyticsWorkload = workRes['success'] == true
+              ? (workRes['data'] as List<dynamic>? ?? [])
+              : [];
           _analyticsLoading = false;
         });
       }
@@ -572,57 +612,71 @@ class _TasksScreenState extends State<TasksScreen> {
       print('[Workflows] No token available');
       return;
     }
-    
+
     if (mounted) {
       setState(() => _workflowsLoading = true);
     }
-    
+
     try {
       print('[Workflows] Fetching workflow templates...');
       final response = await WorkflowService.getTemplates(_token!);
-      
+
       print('[Workflows] API Response type: ${response.runtimeType}');
       print('[Workflows] API Response: $response');
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         _workflows = [];
-        
+
         // Try multiple response format interpretations
         if (response is Map<String, dynamic>) {
           // Format 1: { success: true, data: [...] }
           if (response['success'] == true && response['data'] != null) {
-            _workflows = (response['data'] as List<dynamic>?)?.cast<dynamic>() ?? [];
-            print('[Workflows] Parsed success response with ${_workflows.length} templates');
-          } 
+            _workflows =
+                (response['data'] as List<dynamic>?)?.cast<dynamic>() ?? [];
+            print(
+              '[Workflows] Parsed success response with ${_workflows.length} templates',
+            );
+          }
           // Format 2: { data: [...] } or wrapped response
           else if (response['data'] != null) {
-            _workflows = (response['data'] as List<dynamic>?)?.cast<dynamic>() ?? [];
-            print('[Workflows] Parsed data field with ${_workflows.length} templates');
+            _workflows =
+                (response['data'] as List<dynamic>?)?.cast<dynamic>() ?? [];
+            print(
+              '[Workflows] Parsed data field with ${_workflows.length} templates',
+            );
           }
           // Format 3: Response is directly the wrapper (check for expected fields)
-          else if (response.containsKey('_id') || response.containsKey('name') || response.containsKey('steps')) {
+          else if (response.containsKey('_id') ||
+              response.containsKey('name') ||
+              response.containsKey('steps')) {
             // Looks like a single workflow object, not a list
             _workflows = [response];
             print('[Workflows] Single workflow object detected');
           }
-        } 
+        }
         // Format 4: Response is directly a list
         else if (response is List<dynamic>) {
           _workflows = response.cast<dynamic>();
-          print('[Workflows] Parsed direct list with ${_workflows.length} templates');
+          print(
+            '[Workflows] Parsed direct list with ${_workflows.length} templates',
+          );
         }
-        
+
         _workflowsLoading = false;
-        
+
         if (_workflows.isEmpty) {
           print('[Workflows] WARNING: No workflows loaded after parsing');
         } else {
-          print('[Workflows] Successfully loaded ${_workflows.length} workflows');
+          print(
+            '[Workflows] Successfully loaded ${_workflows.length} workflows',
+          );
           // Debug first workflow structure
           if (_workflows.isNotEmpty) {
-            print('[Workflows] First workflow keys: ${(_workflows[0] as Map?)?.keys.toList()}');
+            print(
+              '[Workflows] First workflow keys: ${(_workflows[0] as Map?)?.keys.toList()}',
+            );
           }
         }
       });
@@ -637,7 +691,7 @@ class _TasksScreenState extends State<TasksScreen> {
   /// Display workflow templates dialog (uses new WorkflowTemplateManager widget)
   void _showWorkflowTemplatesDialog() {
     if (_token == null) return;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -668,7 +722,9 @@ class _TasksScreenState extends State<TasksScreen> {
     }
 
     // Validate at least one step with title
-    final validSteps = _workflowFormSteps.where((s) => (s['title'] as String?)?.trim().isNotEmpty == true).toList();
+    final validSteps = _workflowFormSteps
+        .where((s) => (s['title'] as String?)?.trim().isNotEmpty == true)
+        .toList();
     if (validSteps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -713,7 +769,9 @@ class _TasksScreenState extends State<TasksScreen> {
         setState(() => _editorPanel = 'list');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Workflow "${_workflowFormName.trim()}" ${_editingWorkflow == null ? 'created' : 'updated'}'),
+            content: Text(
+              'Workflow "${_workflowFormName.trim()}" ${_editingWorkflow == null ? 'created' : 'updated'}',
+            ),
             backgroundColor: _accentGreen,
           ),
         );
@@ -733,14 +791,21 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   /// API: Delete workflow template
-  Future<void> _deleteWorkflowTemplate(String templateId, String templateName) async {
+  Future<void> _deleteWorkflowTemplate(
+    String templateId,
+    String templateName,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: _cardDark,
         title: const Text(
           'Delete Workflow?',
-          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         content: Text(
           'Delete template "$templateName"? Tasks that already use it will keep their copy.',
@@ -753,7 +818,10 @@ class _TasksScreenState extends State<TasksScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF5350))),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Color(0xFFEF5350)),
+            ),
           ),
         ],
       ),
@@ -786,7 +854,10 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   /// API: Duplicate workflow template
-  Future<void> _duplicateWorkflowTemplate(String templateId, String templateName) async {
+  Future<void> _duplicateWorkflowTemplate(
+    String templateId,
+    String templateName,
+  ) async {
     if (_token == null) return;
     try {
       await WorkflowService.duplicateTemplate(_token!, templateId);
@@ -899,36 +970,34 @@ class _TasksScreenState extends State<TasksScreen> {
         setState(() => _isLoading = true);
       }
 
-      final results = await Future.wait([
-        TaskService.getTasks(_token!),
-        TaskService.getTaskStatistics(_token!),
-      ]);
+      final notifier = context.read<TasksNotifier>();
+      await notifier.loadAllTasks(_token!);
+      await notifier.loadTaskStatistics(_token!);
+      final tasksRes = notifier.state.tasks;
+      final statsData = notifier.state.statistics;
+
       if (mounted) {
         setState(() {
-          final tasksRes = results[0] as Map<String, dynamic>;
-          final statsRes = results[1] as Map<String, dynamic>;
-          _tasks = tasksRes['success'] == true
-              ? (tasksRes['data'] as List<dynamic>? ?? [])
-              : [];
+          _tasks = tasksRes;
 
-          if (statsRes['success'] == true && statsRes['data'] != null) {
+          if (statsData.isNotEmpty) {
             _stats = {
-              'total': (statsRes['data']['total'] ?? 0) as int,
-              'assigned': (statsRes['data']['assigned'] as int?) ??
+              'total': (statsData['total'] ?? 0) as int,
+              'assigned':
+                  (statsData['assigned'] as int?) ??
                   _tasks.where((t) => t['status'] == 'assigned').length,
-              'todo': (statsRes['data']['todo'] ?? 0) as int,
-              'inProgress': (statsRes['data']['inProgress'] ?? 0) as int,
-              'completed': (statsRes['data']['completed'] ?? 0) as int,
-              'overdue': (statsRes['data']['overdue'] ?? 0) as int,
-              'cancelled': (statsRes['data']['cancelled'] ?? 0) as int,
-              'pending': (statsRes['data']['pending'] ?? 0) as int,
-              'underReview': (statsRes['data']['underReview'] ?? 0) as int,
+              'todo': (statsData['todo'] ?? 0) as int,
+              'inProgress': (statsData['inProgress'] ?? 0) as int,
+              'completed': (statsData['completed'] ?? 0) as int,
+              'overdue': (statsData['overdue'] ?? 0) as int,
+              'cancelled': (statsData['cancelled'] ?? 0) as int,
+              'pending': (statsData['pending'] ?? 0) as int,
+              'underReview': (statsData['underReview'] ?? 0) as int,
             };
           } else {
             _stats = {
               'total': _tasks.length,
-              'assigned':
-                  _tasks.where((t) => t['status'] == 'assigned').length,
+              'assigned': _tasks.where((t) => t['status'] == 'assigned').length,
               'todo': _tasks.where((t) => t['status'] == 'todo').length,
               'inProgress': _tasks
                   .where((t) => t['status'] == 'in-progress')
@@ -980,12 +1049,21 @@ class _TasksScreenState extends State<TasksScreen> {
         if (due == null) return false;
         try {
           return DateTime.parse(due.toString()).isBefore(now) &&
-              t['status'] != 'completed' && t['status'] != 'closed';
-        } catch (_) { return false; }
+              t['status'] != 'completed' &&
+              t['status'] != 'closed';
+        } catch (_) {
+          return false;
+        }
       }).toList();
     } else if (_quickFilter == 'high-priority') {
-      list = list.where((t) =>
-        ['high', 'critical'].contains((t['priority'] ?? '').toString().toLowerCase())).toList();
+      list = list
+          .where(
+            (t) => [
+              'high',
+              'critical',
+            ].contains((t['priority'] ?? '').toString().toLowerCase()),
+          )
+          .toList();
     } else if (_quickFilter != null) {
       list = list.where((t) => t['status'] == _quickFilter).toList();
     }
@@ -1113,9 +1191,9 @@ class _TasksScreenState extends State<TasksScreen> {
     final due = task['dueDate'];
     if (due == null) return false;
     try {
-      return DateTime.parse(due.toString()).toLocal().isBefore(
-            DateTime.now().subtract(const Duration(hours: 1)),
-          );
+      return DateTime.parse(
+        due.toString(),
+      ).toLocal().isBefore(DateTime.now().subtract(const Duration(hours: 1)));
     } catch (_) {
       return false;
     }
@@ -1145,7 +1223,9 @@ class _TasksScreenState extends State<TasksScreen> {
     bool commentSubmitting = false;
 
     // Attachments state
-    List<dynamic> attachments = List<dynamic>.from(taskData['attachments'] ?? []);
+    List<dynamic> attachments = List<dynamic>.from(
+      taskData['attachments'] ?? [],
+    );
     bool attachmentUploading = false;
 
     String? sheetAction;
@@ -1176,23 +1256,36 @@ class _TasksScreenState extends State<TasksScreen> {
                   final updated = res['data'];
                   if (updated != null) {
                     ss(() {
-                      comments = List<dynamic>.from(updated['comments'] ?? comments);
+                      comments = List<dynamic>.from(
+                        updated['comments'] ?? comments,
+                      );
                       commentCtrl.clear();
                     });
                   } else {
                     // Optimistic update
                     ss(() {
-                      comments = [...comments, {'content': text, 'user': {'name': 'You'}, 'createdAt': DateTime.now().toIso8601String()}];
+                      comments = [
+                        ...comments,
+                        {
+                          'content': text,
+                          'user': {'name': 'You'},
+                          'createdAt': DateTime.now().toIso8601String(),
+                        },
+                      ];
                       commentCtrl.clear();
                     });
                   }
                   await _loadData(showLoading: false);
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(e.toString().replaceAll('Exception: ', '')),
-                      backgroundColor: Colors.red,
-                    ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceAll('Exception: ', ''),
+                        ),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                   }
                 } finally {
                   ss(() => commentSubmitting = false);
@@ -1202,8 +1295,16 @@ class _TasksScreenState extends State<TasksScreen> {
               void deleteCommentAction(String commentId) async {
                 if (_token == null) return;
                 try {
-                  await TaskService.deleteComment(_token!, taskData['_id'].toString(), commentId);
-                  ss(() => comments = comments.where((c) => c['_id']?.toString() != commentId).toList());
+                  await TaskService.deleteComment(
+                    _token!,
+                    taskData['_id'].toString(),
+                    commentId,
+                  );
+                  ss(
+                    () => comments = comments
+                        .where((c) => c['_id']?.toString() != commentId)
+                        .toList(),
+                  );
                   await _loadData(showLoading: false);
                 } catch (_) {}
               }
@@ -1229,19 +1330,29 @@ class _TasksScreenState extends State<TasksScreen> {
                     (t) => t['_id']?.toString() == taskData['_id']?.toString(),
                     orElse: () => taskData,
                   );
-                  ss(() => attachments = List<dynamic>.from(fresh['attachments'] ?? attachments));
+                  ss(
+                    () => attachments = List<dynamic>.from(
+                      fresh['attachments'] ?? attachments,
+                    ),
+                  );
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text('File uploaded'),
-                      backgroundColor: _accentGreen,
-                    ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('File uploaded'),
+                        backgroundColor: _accentGreen,
+                      ),
+                    );
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(e.toString().replaceAll('Exception: ', '')),
-                      backgroundColor: Colors.red,
-                    ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceAll('Exception: ', ''),
+                        ),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                   }
                 } finally {
                   ss(() => attachmentUploading = false);
@@ -1251,14 +1362,24 @@ class _TasksScreenState extends State<TasksScreen> {
               void deleteAttachmentAction(String attachmentId) async {
                 if (_token == null) return;
                 try {
-                  await TaskService.deleteAttachment(_token!, taskData['_id'].toString(), attachmentId);
-                  ss(() => attachments = attachments.where((a) => a['_id']?.toString() != attachmentId).toList());
+                  await TaskService.deleteAttachment(
+                    _token!,
+                    taskData['_id'].toString(),
+                    attachmentId,
+                  );
+                  ss(
+                    () => attachments = attachments
+                        .where((a) => a['_id']?.toString() != attachmentId)
+                        .toList(),
+                  );
                   await _loadData(showLoading: false);
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text('Attachment deleted'),
-                      backgroundColor: _accentGreen,
-                    ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Attachment deleted'),
+                        backgroundColor: _accentGreen,
+                      ),
+                    );
                   }
                 } catch (_) {}
               }
@@ -1272,7 +1393,8 @@ class _TasksScreenState extends State<TasksScreen> {
                     'icon': Icons.swap_horiz,
                     'iconColor': const Color(0xFF60A5FA),
                     'user': _getUserName(e['performedBy']),
-                    'action': '${_statusLabel(e['fromStatus'] ?? '')} Ã¢â€ â€™ ${_statusLabel(e['toStatus'] ?? '')}',
+                    'action':
+                        '${_statusLabel(e['fromStatus'] ?? '')} Ã¢â€ â€™ ${_statusLabel(e['toStatus'] ?? '')}',
                     'detail': e['comment'],
                     'time': e['timestamp'],
                   });
@@ -1283,14 +1405,21 @@ class _TasksScreenState extends State<TasksScreen> {
                     'icon': Icons.edit_outlined,
                     'iconColor': _textGrey,
                     'user': _getUserName(e['user']),
-                    'action': (e['action'] ?? '').toString().replaceAll('_', ' '),
+                    'action': (e['action'] ?? '').toString().replaceAll(
+                      '_',
+                      ' ',
+                    ),
                     'detail': e['details'],
                     'time': e['createdAt'],
                   });
                 }
                 items.sort((a, b) {
-                  final ta = DateTime.tryParse(a['time']?.toString() ?? '') ?? DateTime(0);
-                  final tb = DateTime.tryParse(b['time']?.toString() ?? '') ?? DateTime(0);
+                  final ta =
+                      DateTime.tryParse(a['time']?.toString() ?? '') ??
+                      DateTime(0);
+                  final tb =
+                      DateTime.tryParse(b['time']?.toString() ?? '') ??
+                      DateTime(0);
                   return tb.compareTo(ta);
                 });
                 return items;
@@ -1308,7 +1437,8 @@ class _TasksScreenState extends State<TasksScreen> {
                       padding: const EdgeInsets.only(top: 12, bottom: 4),
                       child: Center(
                         child: Container(
-                          width: 40, height: 4,
+                          width: 40,
+                          height: 4,
                           decoration: BoxDecoration(
                             color: Colors.white12,
                             borderRadius: BorderRadius.circular(2),
@@ -1338,27 +1468,57 @@ class _TasksScreenState extends State<TasksScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: _statusColor(taskData['status'] ?? 'todo').withValues(alpha: 0.15),
+                                        color: _statusColor(
+                                          taskData['status'] ?? 'todo',
+                                        ).withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: _statusColor(taskData['status'] ?? 'todo').withValues(alpha: 0.4)),
+                                        border: Border.all(
+                                          color: _statusColor(
+                                            taskData['status'] ?? 'todo',
+                                          ).withValues(alpha: 0.4),
+                                        ),
                                       ),
                                       child: Text(
-                                        _statusLabel(taskData['status'] ?? 'todo'),
-                                        style: TextStyle(color: _statusColor(taskData['status'] ?? 'todo'), fontSize: 10, fontWeight: FontWeight.bold),
+                                        _statusLabel(
+                                          taskData['status'] ?? 'todo',
+                                        ),
+                                        style: TextStyle(
+                                          color: _statusColor(
+                                            taskData['status'] ?? 'todo',
+                                          ),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 6),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: _priorityColor(taskData['priority'] ?? 'medium').withValues(alpha: 0.15),
+                                        color: _priorityColor(
+                                          taskData['priority'] ?? 'medium',
+                                        ).withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
-                                        (taskData['priority'] ?? 'medium').toString().toUpperCase(),
-                                        style: TextStyle(color: _priorityColor(taskData['priority'] ?? 'medium'), fontSize: 10, fontWeight: FontWeight.bold),
+                                        (taskData['priority'] ?? 'medium')
+                                            .toString()
+                                            .toUpperCase(),
+                                        style: TextStyle(
+                                          color: _priorityColor(
+                                            taskData['priority'] ?? 'medium',
+                                          ),
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -1368,8 +1528,15 @@ class _TasksScreenState extends State<TasksScreen> {
                           ),
                           IconButton(
                             tooltip: 'Edit task',
-                            onPressed: () { sheetAction = 'edit'; Navigator.pop(sheetContext); },
-                            icon: Icon(Icons.edit_outlined, color: _accentPink, size: 20),
+                            onPressed: () {
+                              sheetAction = 'edit';
+                              Navigator.pop(sheetContext);
+                            },
+                            icon: Icon(
+                              Icons.edit_outlined,
+                              color: _accentPink,
+                              size: 20,
+                            ),
                           ),
                         ],
                       ),
@@ -1386,47 +1553,118 @@ class _TasksScreenState extends State<TasksScreen> {
                         indicator: BoxDecoration(
                           color: _accentPink.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: _accentPink.withValues(alpha: 0.4)),
+                          border: Border.all(
+                            color: _accentPink.withValues(alpha: 0.4),
+                          ),
                         ),
                         labelColor: _accentPink,
                         unselectedLabelColor: _textGrey,
-                        labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                        labelStyle: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                         padding: const EdgeInsets.all(4),
                         tabs: [
                           const Tab(text: 'Details'),
-                          Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Text('Comments', style: TextStyle(fontSize: 11)),
-                            if (comments.isNotEmpty) ...[
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(color: _accentPink, borderRadius: BorderRadius.circular(8)),
-                                child: Text('${comments.length}', style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ])),
-                          Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Text('Files', style: TextStyle(fontSize: 11)),
-                            if (attachments.isNotEmpty) ...[
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(color: _accentOrange, borderRadius: BorderRadius.circular(8)),
-                                child: Text('${attachments.length}', style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ])),
-                          Tab(child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Text('Workflow', style: TextStyle(fontSize: 11)),
-                            if ((taskData['taskWorkflow']?['steps'] as List?)?.isNotEmpty == true) ...[
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(color: _accentPurple, borderRadius: BorderRadius.circular(8)),
-                                child: Text('${(taskData['taskWorkflow']?['steps'] as List?)?.length ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ])),
+                          Tab(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Comments',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                                if (comments.isNotEmpty) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _accentPink,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${comments.length}',
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Tab(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Files',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                                if (attachments.isNotEmpty) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _accentOrange,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${attachments.length}',
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Tab(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'Workflow',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                                if ((taskData['taskWorkflow']?['steps']
+                                            as List?)
+                                        ?.isNotEmpty ==
+                                    true) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _accentPurple,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '${(taskData['taskWorkflow']?['steps'] as List?)?.length ?? 0}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
                           const Tab(text: 'Activity'),
                         ],
                       ),
@@ -1440,19 +1678,31 @@ class _TasksScreenState extends State<TasksScreen> {
                             controller: scroll,
                             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                             children: [
-                              if ((taskData['description'] ?? '').toString().isNotEmpty) ...[
+                              if ((taskData['description'] ?? '')
+                                  .toString()
+                                  .isNotEmpty) ...[
                                 Text(
                                   taskData['description'].toString(),
-                                  style: TextStyle(color: _textGrey, fontSize: 13, height: 1.5),
+                                  style: TextStyle(
+                                    color: _textGrey,
+                                    fontSize: 13,
+                                    height: 1.5,
+                                  ),
                                 ),
                                 const SizedBox(height: 16),
                               ],
                               Wrap(
-                                spacing: 8, runSpacing: 8,
+                                spacing: 8,
+                                runSpacing: 8,
                                 children: [
                                   _metaChip(
-                                    label: (taskData['priority'] ?? 'medium').toString().toUpperCase(),
-                                    color: _priorityColor((taskData['priority'] ?? 'medium').toString()),
+                                    label: (taskData['priority'] ?? 'medium')
+                                        .toString()
+                                        .toUpperCase(),
+                                    color: _priorityColor(
+                                      (taskData['priority'] ?? 'medium')
+                                          .toString(),
+                                    ),
                                     icon: Icons.flag_outlined,
                                   ),
                                   _metaChip(
@@ -1464,24 +1714,59 @@ class _TasksScreenState extends State<TasksScreen> {
                               ),
                               const SizedBox(height: 20),
                               // Tags
-                              if ((taskData['tags'] as List?)?.isNotEmpty == true) ...[
-                                Text('Tags', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                              if ((taskData['tags'] as List?)?.isNotEmpty ==
+                                  true) ...[
+                                Text(
+                                  'Tags',
+                                  style: TextStyle(
+                                    color: _textGrey,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                                 const SizedBox(height: 6),
                                 Wrap(
-                                  spacing: 6, runSpacing: 6,
-                                  children: (taskData['tags'] as List).map((tag) => Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: _inputDark,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                                    ),
-                                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                      Icon(Icons.label_outline, size: 11, color: _accentPink),
-                                      const SizedBox(width: 4),
-                                      Text(tag.toString(), style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                    ]),
-                                  )).toList(),
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: (taskData['tags'] as List)
+                                      .map(
+                                        (tag) => Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _inputDark,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.1,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.label_outline,
+                                                size: 11,
+                                                color: _accentPink,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                tag.toString(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
                                 ),
                                 const SizedBox(height: 16),
                               ],
@@ -1490,12 +1775,34 @@ class _TasksScreenState extends State<TasksScreen> {
                               // Progress
                               Row(
                                 children: [
-                                  Text('Progress', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                                  Text(
+                                    'Progress',
+                                    style: TextStyle(
+                                      color: _textGrey,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   const Spacer(),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                                    decoration: BoxDecoration(color: _accentPink.withValues(alpha: 0.13), borderRadius: BorderRadius.circular(12)),
-                                    child: Text('${progress.toInt()}%', style: TextStyle(color: _accentPink, fontSize: 13, fontWeight: FontWeight.bold)),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _accentPink.withValues(
+                                        alpha: 0.13,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '${progress.toInt()}%',
+                                      style: TextStyle(
+                                        color: _accentPink,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1505,18 +1812,28 @@ class _TasksScreenState extends State<TasksScreen> {
                                   activeTrackColor: _accentPink,
                                   inactiveTrackColor: Colors.white12,
                                   thumbColor: _accentPink,
-                                  overlayColor: _accentPink.withValues(alpha: 0.15),
+                                  overlayColor: _accentPink.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   trackHeight: 4,
-                                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                                  thumbShape: const RoundSliderThumbShape(
+                                    enabledThumbRadius: 7,
+                                  ),
                                 ),
                                 child: Slider(
-                                  value: progress, min: 0, max: 100, divisions: 20,
+                                  value: progress,
+                                  min: 0,
+                                  max: 100,
+                                  divisions: 20,
                                   onChanged: (v) => ss(() => progress = v),
                                 ),
                               ),
                               Text(
                                 'Status updates automatically: 100% Ã¢â€ â€™ Completed, <100% Ã¢â€ â€™ In Progress',
-                                style: TextStyle(color: _textGrey.withValues(alpha: 0.55), fontSize: 11),
+                                style: TextStyle(
+                                  color: _textGrey.withValues(alpha: 0.55),
+                                  fontSize: 11,
+                                ),
                               ),
                               // Subtasks
                               if (subTasks.isNotEmpty) ...[
@@ -1525,7 +1842,11 @@ class _TasksScreenState extends State<TasksScreen> {
                                 const SizedBox(height: 12),
                                 Text(
                                   'Subtasks (${subTasks.where((s) => s['status'] == 'completed').length}/${subTasks.length})',
-                                  style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600),
+                                  style: TextStyle(
+                                    color: _textGrey,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 const SizedBox(height: 10),
                                 ...subTasks.map((sub) {
@@ -1535,24 +1856,38 @@ class _TasksScreenState extends State<TasksScreen> {
                                     decoration: BoxDecoration(
                                       color: _inputDark,
                                       borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.05,
+                                        ),
+                                      ),
                                     ),
                                     child: CheckboxListTile(
                                       dense: true,
                                       value: done,
                                       activeColor: _accentGreen,
                                       checkColor: Colors.black,
-                                      side: BorderSide(color: _textGrey.withValues(alpha: 0.4)),
+                                      side: BorderSide(
+                                        color: _textGrey.withValues(alpha: 0.4),
+                                      ),
                                       onChanged: (_) {
                                         Navigator.pop(sheetContext);
-                                        _toggleSubTask(taskData['_id'].toString(), sub['_id'].toString(), !done);
+                                        _toggleSubTask(
+                                          taskData['_id'].toString(),
+                                          sub['_id'].toString(),
+                                          !done,
+                                        );
                                       },
                                       title: Text(
                                         sub['title'] ?? '',
                                         style: TextStyle(
-                                          color: done ? _textGrey : Colors.white,
+                                          color: done
+                                              ? _textGrey
+                                              : Colors.white,
                                           fontSize: 13,
-                                          decoration: done ? TextDecoration.lineThrough : null,
+                                          decoration: done
+                                              ? TextDecoration.lineThrough
+                                              : null,
                                           decorationColor: _textGrey,
                                         ),
                                       ),
@@ -1563,7 +1898,9 @@ class _TasksScreenState extends State<TasksScreen> {
                               // Review card
                               if (taskData['review'] != null) ...[
                                 const SizedBox(height: 16),
-                                ..._buildReviewCard(taskData['review'] as Map<String, dynamic>),
+                                ..._buildReviewCard(
+                                  taskData['review'] as Map<String, dynamic>,
+                                ),
                               ],
                               const SizedBox(height: 16),
                               // Save button inline in scroll for details
@@ -1572,13 +1909,28 @@ class _TasksScreenState extends State<TasksScreen> {
                                 height: 50,
                                 child: ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _accentPink, foregroundColor: Colors.black,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                    backgroundColor: _accentPink,
+                                    foregroundColor: Colors.black,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
                                     elevation: 0,
                                   ),
-                                  onPressed: () { sheetAction = 'update'; Navigator.pop(sheetContext); },
-                                  icon: const Icon(Icons.check_circle_outline, size: 18),
-                                  label: const Text('Save Progress', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                  onPressed: () {
+                                    sheetAction = 'update';
+                                    Navigator.pop(sheetContext);
+                                  },
+                                  icon: const Icon(
+                                    Icons.check_circle_outline,
+                                    size: 18,
+                                  ),
+                                  label: const Text(
+                                    'Save Progress',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -1589,40 +1941,84 @@ class _TasksScreenState extends State<TasksScreen> {
                             children: [
                               // Add comment input
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  8,
+                                ),
                                 child: Row(
                                   children: [
                                     Expanded(
                                       child: TextField(
                                         controller: commentCtrl,
-                                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                        ),
                                         maxLines: null,
                                         decoration: InputDecoration(
                                           hintText: 'Add a comment...',
-                                          hintStyle: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 13),
+                                          hintStyle: TextStyle(
+                                            color: _textGrey.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            fontSize: 13,
+                                          ),
                                           filled: true,
                                           fillColor: _inputDark,
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 14,
+                                                vertical: 10,
+                                              ),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide.none,
+                                          ),
                                           focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(12),
-                                            borderSide: BorderSide(color: _accentPink.withValues(alpha: 0.5)),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            borderSide: BorderSide(
+                                              color: _accentPink.withValues(
+                                                alpha: 0.5,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     GestureDetector(
-                                      onTap: commentSubmitting ? null : addCommentAction,
+                                      onTap: commentSubmitting
+                                          ? null
+                                          : addCommentAction,
                                       child: Container(
-                                        width: 40, height: 40,
+                                        width: 40,
+                                        height: 40,
                                         decoration: BoxDecoration(
                                           color: _accentPink,
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                         child: commentSubmitting
-                                            ? const Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                                            : const Icon(Icons.send_rounded, color: Colors.black, size: 18),
+                                            ? const Padding(
+                                                padding: EdgeInsets.all(10),
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.black,
+                                                    ),
+                                              )
+                                            : const Icon(
+                                                Icons.send_rounded,
+                                                color: Colors.black,
+                                                size: 18,
+                                              ),
                                       ),
                                     ),
                                   ],
@@ -1632,58 +2028,149 @@ class _TasksScreenState extends State<TasksScreen> {
                               Expanded(
                                 child: comments.isEmpty
                                     ? Center(
-                                        child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                          Icon(Icons.chat_bubble_outline, size: 40, color: _textGrey.withValues(alpha: 0.3)),
-                                          const SizedBox(height: 8),
-                                          Text('No comments yet', style: TextStyle(color: _textGrey, fontSize: 13)),
-                                        ]),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.chat_bubble_outline,
+                                              size: 40,
+                                              color: _textGrey.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'No comments yet',
+                                              style: TextStyle(
+                                                color: _textGrey,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       )
                                     : ListView.builder(
-                                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                                        padding: const EdgeInsets.fromLTRB(
+                                          16,
+                                          0,
+                                          16,
+                                          20,
+                                        ),
                                         itemCount: comments.length,
                                         reverse: true,
                                         itemBuilder: (_, i) {
-                                          final c = comments[comments.length - 1 - i];
-                                          final userName = _getUserName(c['user']);
-                                          final initials = userName.isNotEmpty ? userName[0].toUpperCase() : '?';
-                                          final commentId = c['_id']?.toString();
+                                          final c =
+                                              comments[comments.length - 1 - i];
+                                          final userName = _getUserName(
+                                            c['user'],
+                                          );
+                                          final initials = userName.isNotEmpty
+                                              ? userName[0].toUpperCase()
+                                              : '?';
+                                          final commentId = c['_id']
+                                              ?.toString();
                                           return Container(
-                                            margin: const EdgeInsets.only(bottom: 10),
+                                            margin: const EdgeInsets.only(
+                                              bottom: 10,
+                                            ),
                                             padding: const EdgeInsets.all(12),
                                             decoration: BoxDecoration(
                                               color: _inputDark,
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.05,
+                                                ),
+                                              ),
                                             ),
                                             child: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 CircleAvatar(
                                                   radius: 16,
-                                                  backgroundColor: _accentPink.withValues(alpha: 0.2),
-                                                  child: Text(initials, style: TextStyle(color: _accentPink, fontSize: 12, fontWeight: FontWeight.bold)),
+                                                  backgroundColor: _accentPink
+                                                      .withValues(alpha: 0.2),
+                                                  child: Text(
+                                                    initials,
+                                                    style: TextStyle(
+                                                      color: _accentPink,
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
                                                 ),
                                                 const SizedBox(width: 10),
                                                 Expanded(
                                                   child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
                                                     children: [
                                                       Row(
                                                         children: [
-                                                          Text(userName, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                                                          Text(
+                                                            userName,
+                                                            style:
+                                                                const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                          ),
                                                           const Spacer(),
-                                                          Text(_formatDate(c['createdAt']), style: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 10)),
-                                                          if (commentId != null) ...[
-                                                            const SizedBox(width: 4),
+                                                          Text(
+                                                            _formatDate(
+                                                              c['createdAt'],
+                                                            ),
+                                                            style: TextStyle(
+                                                              color: _textGrey
+                                                                  .withValues(
+                                                                    alpha: 0.5,
+                                                                  ),
+                                                              fontSize: 10,
+                                                            ),
+                                                          ),
+                                                          if (commentId !=
+                                                              null) ...[
+                                                            const SizedBox(
+                                                              width: 4,
+                                                            ),
                                                             GestureDetector(
-                                                              onTap: () => deleteCommentAction(commentId),
-                                                              child: Icon(Icons.delete_outline, size: 14, color: _textGrey.withValues(alpha: 0.5)),
+                                                              onTap: () =>
+                                                                  deleteCommentAction(
+                                                                    commentId,
+                                                                  ),
+                                                              child: Icon(
+                                                                Icons
+                                                                    .delete_outline,
+                                                                size: 14,
+                                                                color: _textGrey
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.5,
+                                                                    ),
+                                                              ),
                                                             ),
                                                           ],
                                                         ],
                                                       ),
                                                       const SizedBox(height: 4),
-                                                      Text(c['content']?.toString() ?? '', style: TextStyle(color: _textGrey, fontSize: 13, height: 1.4)),
+                                                      Text(
+                                                        c['content']
+                                                                ?.toString() ??
+                                                            '',
+                                                        style: TextStyle(
+                                                          color: _textGrey,
+                                                          fontSize: 13,
+                                                          height: 1.4,
+                                                        ),
+                                                      ),
                                                     ],
                                                   ),
                                                 ),
@@ -1701,26 +2188,61 @@ class _TasksScreenState extends State<TasksScreen> {
                             children: [
                               // Upload button
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  8,
+                                ),
                                 child: GestureDetector(
-                                  onTap: attachmentUploading ? null : pickAndUploadFile,
+                                  onTap: attachmentUploading
+                                      ? null
+                                      : pickAndUploadFile,
                                   child: Container(
                                     width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: _accentPink.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: _accentPink.withValues(alpha: 0.3), style: BorderStyle.solid),
+                                      border: Border.all(
+                                        color: _accentPink.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        style: BorderStyle.solid,
+                                      ),
                                     ),
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         if (attachmentUploading)
-                                          const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.pinkAccent))
+                                          const SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.pinkAccent,
+                                            ),
+                                          )
                                         else
-                                          Icon(Icons.upload_file_outlined, color: _accentPink, size: 18),
+                                          Icon(
+                                            Icons.upload_file_outlined,
+                                            color: _accentPink,
+                                            size: 18,
+                                          ),
                                         const SizedBox(width: 8),
-                                        Text(attachmentUploading ? 'Uploading...' : 'Upload File', style: TextStyle(color: _accentPink, fontSize: 13, fontWeight: FontWeight.w600)),
+                                        Text(
+                                          attachmentUploading
+                                              ? 'Uploading...'
+                                              : 'Upload File',
+                                          style: TextStyle(
+                                            color: _accentPink,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -1730,75 +2252,210 @@ class _TasksScreenState extends State<TasksScreen> {
                               Expanded(
                                 child: attachments.isEmpty
                                     ? Center(
-                                        child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                          Icon(Icons.attach_file, size: 40, color: _textGrey.withValues(alpha: 0.3)),
-                                          const SizedBox(height: 8),
-                                          Text('No files attached', style: TextStyle(color: _textGrey, fontSize: 13)),
-                                          const SizedBox(height: 4),
-                                          Text('Tap "Upload File" to attach a file', style: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 11)),
-                                        ]),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.attach_file,
+                                              size: 40,
+                                              color: _textGrey.withValues(
+                                                alpha: 0.3,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'No files attached',
+                                              style: TextStyle(
+                                                color: _textGrey,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Tap "Upload File" to attach a file',
+                                              style: TextStyle(
+                                                color: _textGrey.withValues(
+                                                  alpha: 0.5,
+                                                ),
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       )
                                     : ListView.builder(
-                                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                                        padding: const EdgeInsets.fromLTRB(
+                                          16,
+                                          0,
+                                          16,
+                                          20,
+                                        ),
                                         itemCount: attachments.length,
                                         itemBuilder: (_, i) {
                                           final att = attachments[i];
-                                          final name = att['name']?.toString() ?? 'File';
-                                          final type = att['type']?.toString() ?? 'document';
+                                          final name =
+                                              att['name']?.toString() ?? 'File';
+                                          final type =
+                                              att['type']?.toString() ??
+                                              'document';
                                           final attId = att['_id']?.toString();
-                                          final uploadedBy = _getUserName(att['uploadedBy']);
+                                          final uploadedBy = _getUserName(
+                                            att['uploadedBy'],
+                                          );
                                           IconData typeIcon;
                                           Color typeColor;
                                           switch (type) {
-                                            case 'image': typeIcon = Icons.image_outlined; typeColor = const Color(0xFF60A5FA); break;
-                                            case 'video': typeIcon = Icons.videocam_outlined; typeColor = const Color(0xFFA78BFA); break;
-                                            default: typeIcon = Icons.insert_drive_file_outlined; typeColor = _accentOrange;
+                                            case 'image':
+                                              typeIcon = Icons.image_outlined;
+                                              typeColor = const Color(
+                                                0xFF60A5FA,
+                                              );
+                                              break;
+                                            case 'video':
+                                              typeIcon =
+                                                  Icons.videocam_outlined;
+                                              typeColor = const Color(
+                                                0xFFA78BFA,
+                                              );
+                                              break;
+                                            default:
+                                              typeIcon = Icons
+                                                  .insert_drive_file_outlined;
+                                              typeColor = _accentOrange;
                                           }
                                           return Container(
-                                            margin: const EdgeInsets.only(bottom: 10),
+                                            margin: const EdgeInsets.only(
+                                              bottom: 10,
+                                            ),
                                             padding: const EdgeInsets.all(12),
                                             decoration: BoxDecoration(
                                               color: _inputDark,
-                                              borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.05,
+                                                ),
+                                              ),
                                             ),
                                             child: Row(
                                               children: [
                                                 Container(
-                                                  width: 40, height: 40,
+                                                  width: 40,
+                                                  height: 40,
                                                   decoration: BoxDecoration(
-                                                    color: typeColor.withValues(alpha: 0.15),
-                                                    borderRadius: BorderRadius.circular(10),
+                                                    color: typeColor.withValues(
+                                                      alpha: 0.15,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
                                                   ),
-                                                  child: Icon(typeIcon, color: typeColor, size: 20),
+                                                  child: Icon(
+                                                    typeIcon,
+                                                    color: typeColor,
+                                                    size: 20,
+                                                  ),
                                                 ),
                                                 const SizedBox(width: 10),
                                                 Expanded(
                                                   child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
                                                     children: [
-                                                      Text(name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                                      Row(children: [
-                                                        Container(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                          decoration: BoxDecoration(color: typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                                                          child: Text(type.toUpperCase(), style: TextStyle(color: typeColor, fontSize: 9, fontWeight: FontWeight.bold)),
+                                                      Text(
+                                                        name,
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 13,
+                                                          fontWeight:
+                                                              FontWeight.w500,
                                                         ),
-                                                        if (uploadedBy.isNotEmpty) ...[
-                                                          const SizedBox(width: 6),
-                                                          Text('by $uploadedBy', style: TextStyle(color: _textGrey.withValues(alpha: 0.5), fontSize: 10)),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                      Row(
+                                                        children: [
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal: 6,
+                                                                  vertical: 2,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color: typeColor
+                                                                  .withValues(
+                                                                    alpha: 0.1,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    4,
+                                                                  ),
+                                                            ),
+                                                            child: Text(
+                                                              type.toUpperCase(),
+                                                              style: TextStyle(
+                                                                color:
+                                                                    typeColor,
+                                                                fontSize: 9,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                          if (uploadedBy
+                                                              .isNotEmpty) ...[
+                                                            const SizedBox(
+                                                              width: 6,
+                                                            ),
+                                                            Text(
+                                                              'by $uploadedBy',
+                                                              style: TextStyle(
+                                                                color: _textGrey
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.5,
+                                                                    ),
+                                                                fontSize: 10,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                          const SizedBox(
+                                                            width: 6,
+                                                          ),
+                                                          Text(
+                                                            _formatDate(
+                                                              att['uploadedAt'],
+                                                            ),
+                                                            style: TextStyle(
+                                                              color: _textGrey
+                                                                  .withValues(
+                                                                    alpha: 0.4,
+                                                                  ),
+                                                              fontSize: 10,
+                                                            ),
+                                                          ),
                                                         ],
-                                                        const SizedBox(width: 6),
-                                                        Text(_formatDate(att['uploadedAt']), style: TextStyle(color: _textGrey.withValues(alpha: 0.4), fontSize: 10)),
-                                                      ]),
+                                                      ),
                                                     ],
                                                   ),
                                                 ),
                                                 if (attId != null)
                                                   IconButton(
                                                     tooltip: 'Delete',
-                                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-                                                    onPressed: () => deleteAttachmentAction(attId),
+                                                    icon: const Icon(
+                                                      Icons.delete_outline,
+                                                      color: Colors.redAccent,
+                                                      size: 18,
+                                                    ),
+                                                    onPressed: () =>
+                                                        deleteAttachmentAction(
+                                                          attId,
+                                                        ),
                                                   ),
                                               ],
                                             ),
@@ -1819,95 +2476,205 @@ class _TasksScreenState extends State<TasksScreen> {
                             textGrey: _textGrey,
                             inputDark: _inputDark,
                             onStepCompleted: () => setState(() {}),
-                            formatDate: _formatDate, workflow: null, onStepComplete: null, onWorkflowAction: null,
+                            formatDate: _formatDate,
+                            workflow: null,
+                            onStepComplete: null,
+                            onWorkflowAction: null,
                           ),
 
                           // Ã¢â€¢ÂÃ¢â€¢Â TAB 4: ACTIVITY Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
-                          Builder(builder: (_) {
-                            final timeline = buildTimeline();
-                            if (timeline.isEmpty) {
-                              return Center(
-                                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                  Icon(Icons.history, size: 40, color: _textGrey.withValues(alpha: 0.3)),
-                                  const SizedBox(height: 8),
-                                  Text('No activity recorded', style: TextStyle(color: _textGrey, fontSize: 13)),
-                                ]),
-                              );
-                            }
-                            return ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                              itemCount: timeline.length,
-                              itemBuilder: (_, i) {
-                                final item = timeline[i];
-                                return IntrinsicHeight(
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                          Builder(
+                            builder: (_) {
+                              final timeline = buildTimeline();
+                              if (timeline.isEmpty) {
+                                return Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      // Timeline line + dot
-                                      SizedBox(
-                                        width: 32,
-                                        child: Column(
-                                          children: [
-                                            Container(
-                                              width: 28, height: 28,
-                                              decoration: BoxDecoration(
-                                                color: (item['iconColor'] as Color).withValues(alpha: 0.15),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(color: (item['iconColor'] as Color).withValues(alpha: 0.3)),
-                                              ),
-                                              child: Icon(item['icon'] as IconData, size: 13, color: item['iconColor'] as Color),
-                                            ),
-                                            if (i < timeline.length - 1)
-                                              Expanded(child: Container(width: 1, color: Colors.white.withValues(alpha: 0.07))),
-                                          ],
-                                        ),
+                                      Icon(
+                                        Icons.history,
+                                        size: 40,
+                                        color: _textGrey.withValues(alpha: 0.3),
                                       ),
-                                      const SizedBox(width: 10),
-                                      // Content
-                                      Expanded(
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(bottom: 16),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: RichText(
-                                                      text: TextSpan(
-                                                        children: [
-                                                          TextSpan(text: item['user']?.toString() ?? 'System', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                                                          const TextSpan(text: '  ', style: TextStyle(fontSize: 12)),
-                                                          TextSpan(text: item['action']?.toString() ?? '', style: TextStyle(color: _textGrey, fontSize: 12)),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              if ((item['detail'] ?? '').toString().isNotEmpty) ...[
-                                                const SizedBox(height: 3),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white.withValues(alpha: 0.04),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                  ),
-                                                  child: Text('"${item['detail']}"', style: TextStyle(color: _textGrey, fontSize: 11, fontStyle: FontStyle.italic)),
-                                                ),
-                                              ],
-                                              const SizedBox(height: 3),
-                                              Text(_formatDate(item['time']), style: TextStyle(color: _textGrey.withValues(alpha: 0.4), fontSize: 10)),
-                                            ],
-                                          ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'No activity recorded',
+                                        style: TextStyle(
+                                          color: _textGrey,
+                                          fontSize: 13,
                                         ),
                                       ),
                                     ],
                                   ),
                                 );
-                              },
-                            );
-                          }),
+                              }
+                              return ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  20,
+                                ),
+                                itemCount: timeline.length,
+                                itemBuilder: (_, i) {
+                                  final item = timeline[i];
+                                  return IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        // Timeline line + dot
+                                        SizedBox(
+                                          width: 32,
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: 28,
+                                                height: 28,
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      (item['iconColor']
+                                                              as Color)
+                                                          .withValues(
+                                                            alpha: 0.15,
+                                                          ),
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color:
+                                                        (item['iconColor']
+                                                                as Color)
+                                                            .withValues(
+                                                              alpha: 0.3,
+                                                            ),
+                                                  ),
+                                                ),
+                                                child: Icon(
+                                                  item['icon'] as IconData,
+                                                  size: 13,
+                                                  color:
+                                                      item['iconColor']
+                                                          as Color,
+                                                ),
+                                              ),
+                                              if (i < timeline.length - 1)
+                                                Expanded(
+                                                  child: Container(
+                                                    width: 1,
+                                                    color: Colors.white
+                                                        .withValues(
+                                                          alpha: 0.07,
+                                                        ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        // Content
+                                        Expanded(
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 16,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: RichText(
+                                                        text: TextSpan(
+                                                          children: [
+                                                            TextSpan(
+                                                              text:
+                                                                  item['user']
+                                                                      ?.toString() ??
+                                                                  'System',
+                                                              style: const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                              ),
+                                                            ),
+                                                            const TextSpan(
+                                                              text: '  ',
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                              ),
+                                                            ),
+                                                            TextSpan(
+                                                              text:
+                                                                  item['action']
+                                                                      ?.toString() ??
+                                                                  '',
+                                                              style: TextStyle(
+                                                                color:
+                                                                    _textGrey,
+                                                                fontSize: 12,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                if ((item['detail'] ?? '')
+                                                    .toString()
+                                                    .isNotEmpty) ...[
+                                                  const SizedBox(height: 3),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 4,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white
+                                                          .withValues(
+                                                            alpha: 0.04,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            6,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      '"${item['detail']}"',
+                                                      style: TextStyle(
+                                                        color: _textGrey,
+                                                        fontSize: 11,
+                                                        fontStyle:
+                                                            FontStyle.italic,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                                const SizedBox(height: 3),
+                                                Text(
+                                                  _formatDate(item['time']),
+                                                  style: TextStyle(
+                                                    color: _textGrey.withValues(
+                                                      alpha: 0.4,
+                                                    ),
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -1933,14 +2700,15 @@ class _TasksScreenState extends State<TasksScreen> {
   // Ã¢â€â‚¬Ã¢â€â‚¬ Helper: extract user name from a user field Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   String _getUserName(dynamic user) {
     if (user == null) return '';
-    if (user is Map) return user['name']?.toString() ?? user['email']?.toString() ?? '';
+    if (user is Map)
+      return user['name']?.toString() ?? user['email']?.toString() ?? '';
     return user.toString();
   }
 
   Future<void> _updateProgress(String taskId, int progress) async {
     if (_token == null) return;
     try {
-      await TaskService.updateTaskProgress(
+      await context.read<TasksNotifier>().updateTaskProgress(
         _token!,
         taskId,
         completionPercentage: progress,
@@ -2014,7 +2782,7 @@ class _TasksScreenState extends State<TasksScreen> {
     );
     if (ok != true) return;
     try {
-      await TaskService.deleteTask(_token!, taskId);
+      await context.read<TasksNotifier>().deleteTask(_token!, taskId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2077,7 +2845,9 @@ class _TasksScreenState extends State<TasksScreen> {
     DateTime? selectedStartDate;
     if (task['startDate'] != null) {
       try {
-        selectedStartDate = DateTime.parse(task['startDate'].toString()).toLocal();
+        selectedStartDate = DateTime.parse(
+          task['startDate'].toString(),
+        ).toLocal();
       } catch (_) {}
     }
 
@@ -2099,17 +2869,15 @@ class _TasksScreenState extends State<TasksScreen> {
     String? selectedEditWorkflow;
     final existingWf = task['workflow'];
     if (existingWf is Map) {
-      selectedEditWorkflow = (existingWf['_id'] ?? existingWf['id'])?.toString();
+      selectedEditWorkflow = (existingWf['_id'] ?? existingWf['id'])
+          ?.toString();
     } else if (existingWf is String && existingWf.isNotEmpty) {
       selectedEditWorkflow = existingWf;
     }
 
     bool submitting = false;
 
-    Future<DateTime?> pickDateTime(
-      BuildContext ctx,
-      DateTime? initial,
-    ) async {
+    Future<DateTime?> pickDateTime(BuildContext ctx, DateTime? initial) async {
       final date = await showDatePicker(
         context: ctx,
         initialDate: initial ?? DateTime.now().add(const Duration(days: 1)),
@@ -2117,8 +2885,10 @@ class _TasksScreenState extends State<TasksScreen> {
         lastDate: DateTime.now().add(const Duration(days: 365)),
         builder: (_, c) => Theme(
           data: ThemeData.dark().copyWith(
-            colorScheme:
-                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+            colorScheme: ColorScheme.dark(
+              primary: _accentPink,
+              surface: _cardDark,
+            ),
           ),
           child: c!,
         ),
@@ -2129,8 +2899,10 @@ class _TasksScreenState extends State<TasksScreen> {
         initialTime: TimeOfDay.fromDateTime(initial ?? DateTime.now()),
         builder: (_, c) => Theme(
           data: ThemeData.dark().copyWith(
-            colorScheme:
-                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+            colorScheme: ColorScheme.dark(
+              primary: _accentPink,
+              surface: _cardDark,
+            ),
           ),
           child: c!,
         ),
@@ -2231,45 +3003,47 @@ class _TasksScreenState extends State<TasksScreen> {
                                 Wrap(
                                   spacing: 6,
                                   runSpacing: 6,
-                                  children: [
-                                    'low',
-                                    'medium',
-                                    'high',
-                                    'critical',
-                                  ].map((p) {
-                                    final color = _priorityColor(p);
-                                    final sel = selectedPriority == p;
-                                    return GestureDetector(
-                                      onTap: () =>
-                                          ss(() => selectedPriority = p),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: sel
-                                              ? color.withOpacity(0.18)
-                                              : _inputDark,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: sel
-                                                ? color
-                                                : Colors.transparent,
+                                  children:
+                                      [
+                                        'low',
+                                        'medium',
+                                        'high',
+                                        'critical',
+                                      ].map((p) {
+                                        final color = _priorityColor(p);
+                                        final sel = selectedPriority == p;
+                                        return GestureDetector(
+                                          onTap: () =>
+                                              ss(() => selectedPriority = p),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: sel
+                                                  ? color.withOpacity(0.18)
+                                                  : _inputDark,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: sel
+                                                    ? color
+                                                    : Colors.transparent,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              p[0].toUpperCase() +
+                                                  p.substring(1),
+                                              style: TextStyle(
+                                                color: sel ? color : _textGrey,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                        child: Text(
-                                          p[0].toUpperCase() + p.substring(1),
-                                          style: TextStyle(
-                                            color: sel ? color : _textGrey,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                        );
+                                      }).toList(),
                                 ),
                               ],
                             ),
@@ -2284,45 +3058,49 @@ class _TasksScreenState extends State<TasksScreen> {
                                 Wrap(
                                   spacing: 6,
                                   runSpacing: 6,
-                                  children: [
-                                    _EstPreset('Custom Hours', null),
-                                    _EstPreset('Before Lunch(4h)', '240'),
-                                    _EstPreset('End of the Day(8h)', '480'),
-                                  ].map((ep) {
-                                    final sel = estimatedPreset == ep.value;
-                                    return GestureDetector(
-                                      onTap: () =>
-                                          ss(() => estimatedPreset = ep.value),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: sel
-                                              ? _accentPink.withOpacity(0.18)
-                                              : _inputDark,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: sel
-                                                ? _accentPink
-                                                : Colors.transparent,
+                                  children:
+                                      [
+                                        _EstPreset('Custom Hours', null),
+                                        _EstPreset('Before Lunch(4h)', '240'),
+                                        _EstPreset('End of the Day(8h)', '480'),
+                                      ].map((ep) {
+                                        final sel = estimatedPreset == ep.value;
+                                        return GestureDetector(
+                                          onTap: () => ss(
+                                            () => estimatedPreset = ep.value,
                                           ),
-                                        ),
-                                        child: Text(
-                                          ep.label,
-                                          style: TextStyle(
-                                            color: sel
-                                                ? _accentPink
-                                                : _textGrey,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: sel
+                                                  ? _accentPink.withOpacity(
+                                                      0.18,
+                                                    )
+                                                  : _inputDark,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: sel
+                                                    ? _accentPink
+                                                    : Colors.transparent,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              ep.label,
+                                              style: TextStyle(
+                                                color: sel
+                                                    ? _accentPink
+                                                    : _textGrey,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                        );
+                                      }).toList(),
                                 ),
                                 if (estimatedPreset == null) ...[
                                   const SizedBox(height: 8),
@@ -2559,111 +3337,126 @@ class _TasksScreenState extends State<TasksScreen> {
                                 ),
                               )
                             : _workflows.isEmpty
-                                ? Text(
-                                    'No workflows available',
-                                    style: TextStyle(
-                                      color: _textGrey.withOpacity(0.6),
-                                      fontSize: 14,
-                                    ),
-                                  )
-                                : Row(
-                                    children: [
-                                      Expanded(
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String?>(
-                                            isExpanded: true,
-                                            value: selectedEditWorkflow,
-                                            hint: Text(
-                                              'Select workflow...',
+                            ? Text(
+                                'No workflows available',
+                                style: TextStyle(
+                                  color: _textGrey.withOpacity(0.6),
+                                  fontSize: 14,
+                                ),
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String?>(
+                                        isExpanded: true,
+                                        value: selectedEditWorkflow,
+                                        hint: Text(
+                                          'Select workflow...',
+                                          style: TextStyle(
+                                            color: _textGrey.withOpacity(0.6),
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        dropdownColor: _cardDark,
+                                        items: [
+                                          DropdownMenuItem<String?>(
+                                            value: null,
+                                            child: Text(
+                                              'â€” No workflow â€”',
                                               style: TextStyle(
-                                                color: _textGrey.withOpacity(0.6),
-                                                fontSize: 14,
+                                                color: _textGrey,
+                                                fontSize: 13,
                                               ),
                                             ),
-                                            dropdownColor: _cardDark,
-                                            items: [
-                                              DropdownMenuItem<String?>(
-                                                value: null,
-                                                child: Text(
-                                                  'â€” No workflow â€”',
-                                                  style: TextStyle(
-                                                    color: _textGrey,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                              ),
-                                              ..._workflows.map((wf) {
-                                                final workflowId = wf['_id'] ?? '';
-                                                final workflowName = wf['name'] ?? 'Unnamed';
-                                                final stepCount = (wf['steps'] as List<dynamic>?)?.length ?? 0;
-                                                return DropdownMenuItem<String?>(
-                                                  value: workflowId,
-                                                  child: Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: Text(
-                                                          workflowName,
-                                                          style: const TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 13,
-                                                          ),
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
+                                          ),
+                                          ..._workflows.map((wf) {
+                                            final workflowId = wf['_id'] ?? '';
+                                            final workflowName =
+                                                wf['name'] ?? 'Unnamed';
+                                            final stepCount =
+                                                (wf['steps'] as List<dynamic>?)
+                                                    ?.length ??
+                                                0;
+                                            return DropdownMenuItem<String?>(
+                                              value: workflowId,
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      workflowName,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 13,
                                                       ),
-                                                      const SizedBox(width: 8),
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
                                                           horizontal: 6,
                                                           vertical: 2,
                                                         ),
-                                                        decoration: BoxDecoration(
-                                                          color: _accentPink.withOpacity(0.2),
-                                                          borderRadius: BorderRadius.circular(4),
-                                                        ),
-                                                        child: Text(
-                                                          '$stepCount steps',
-                                                          style: TextStyle(
-                                                            color: _accentPink,
-                                                            fontSize: 11,
-                                                            fontWeight: FontWeight.w600,
+                                                    decoration: BoxDecoration(
+                                                      color: _accentPink
+                                                          .withOpacity(0.2),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            4,
                                                           ),
-                                                        ),
+                                                    ),
+                                                    child: Text(
+                                                      '$stepCount steps',
+                                                      style: TextStyle(
+                                                        color: _accentPink,
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                       ),
-                                                    ],
+                                                    ),
                                                   ),
-                                                );
-                                              }),
-                                            ],
-                                            onChanged: (value) =>
-                                                ss(() => selectedEditWorkflow = value),
-                                          ),
+                                                ],
+                                              ),
+                                            );
+                                          }),
+                                        ],
+                                        onChanged: (value) => ss(
+                                          () => selectedEditWorkflow = value,
                                         ),
                                       ),
-                                      if (selectedEditWorkflow != null) ...[
-                                        const SizedBox(width: 8),
-                                        GestureDetector(
-                                          onTap: () =>
-                                              ss(() => selectedEditWorkflow = null),
-                                          child: Icon(
-                                            Icons.close,
-                                            color: _accentPink,
-                                            size: 18,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
+                                    ),
                                   ),
+                                  if (selectedEditWorkflow != null) ...[
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          ss(() => selectedEditWorkflow = null),
+                                      child: Icon(
+                                        Icons.close,
+                                        color: _accentPink,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                       ),
                       // â”€â”€ Workflow Preview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                       if (selectedEditWorkflow != null && _workflows.isNotEmpty)
                         Builder(
                           builder: (context) {
                             final selectedWfData = _workflows.firstWhere(
-                              (w) => (w['_id'] ?? w['id']) == selectedEditWorkflow,
+                              (w) =>
+                                  (w['_id'] ?? w['id']) == selectedEditWorkflow,
                               orElse: () => null,
                             );
-                            if (selectedWfData == null) return const SizedBox.shrink();
-                            final steps = selectedWfData['steps'] as List<dynamic>? ?? [];
+                            if (selectedWfData == null)
+                              return const SizedBox.shrink();
+                            final steps =
+                                selectedWfData['steps'] as List<dynamic>? ?? [];
                             return Column(
                               children: [
                                 const SizedBox(height: 12),
@@ -2687,7 +3480,8 @@ class _TasksScreenState extends State<TasksScreen> {
                                           ),
                                         )
                                       : Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Padding(
                                               padding: const EdgeInsets.all(12),
@@ -2700,13 +3494,23 @@ class _TasksScreenState extends State<TasksScreen> {
                                                 ),
                                               ),
                                             ),
-                                            ...steps.asMap().entries.map((entry) {
+                                            ...steps.asMap().entries.map((
+                                              entry,
+                                            ) {
                                               final idx = entry.key;
-                                              final step = entry.value as Map<String, dynamic>;
-                                              final title = step['title'] ?? 'Step ${idx + 1}';
-                                              final role = step['responsibleRole'] ?? 'any';
+                                              final step =
+                                                  entry.value
+                                                      as Map<String, dynamic>;
+                                              final title =
+                                                  step['title'] ??
+                                                  'Step ${idx + 1}';
+                                              final role =
+                                                  step['responsibleRole'] ??
+                                                  'any';
                                               Color roleColor;
-                                              switch (role.toString().toLowerCase()) {
+                                              switch (role
+                                                  .toString()
+                                                  .toLowerCase()) {
                                                 case 'admin':
                                                   roleColor = Colors.red;
                                                   break;
@@ -2720,14 +3524,16 @@ class _TasksScreenState extends State<TasksScreen> {
                                                   roleColor = Colors.blue;
                                               }
                                               return Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 8,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8,
+                                                    ),
                                                 decoration: BoxDecoration(
                                                   border: Border(
                                                     top: BorderSide(
-                                                      color: _textGrey.withOpacity(0.1),
+                                                      color: _textGrey
+                                                          .withOpacity(0.1),
                                                     ),
                                                   ),
                                                 ),
@@ -2738,9 +3544,11 @@ class _TasksScreenState extends State<TasksScreen> {
                                                       height: 28,
                                                       decoration: BoxDecoration(
                                                         shape: BoxShape.circle,
-                                                        color: _accentPink.withOpacity(0.15),
+                                                        color: _accentPink
+                                                            .withOpacity(0.15),
                                                         border: Border.all(
-                                                          color: _accentPink.withOpacity(0.3),
+                                                          color: _accentPink
+                                                              .withOpacity(0.3),
                                                         ),
                                                       ),
                                                       child: Center(
@@ -2749,7 +3557,8 @@ class _TasksScreenState extends State<TasksScreen> {
                                                           style: TextStyle(
                                                             color: _accentPink,
                                                             fontSize: 11,
-                                                            fontWeight: FontWeight.bold,
+                                                            fontWeight:
+                                                                FontWeight.bold,
                                                           ),
                                                         ),
                                                       ),
@@ -2765,20 +3574,26 @@ class _TasksScreenState extends State<TasksScreen> {
                                                       ),
                                                     ),
                                                     Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 6,
+                                                            vertical: 2,
+                                                          ),
                                                       decoration: BoxDecoration(
-                                                        color: roleColor.withOpacity(0.15),
-                                                        borderRadius: BorderRadius.circular(4),
+                                                        color: roleColor
+                                                            .withOpacity(0.15),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              4,
+                                                            ),
                                                       ),
                                                       child: Text(
                                                         role,
                                                         style: TextStyle(
                                                           color: roleColor,
                                                           fontSize: 10,
-                                                          fontWeight: FontWeight.w600,
+                                                          fontWeight:
+                                                              FontWeight.w600,
                                                         ),
                                                       ),
                                                     ),
@@ -2875,18 +3690,23 @@ class _TasksScreenState extends State<TasksScreen> {
                                       tags: tags,
                                     );
                                     // Assign workflow if selected
-                                    if (selectedEditWorkflow != null && _token != null) {
+                                    if (selectedEditWorkflow != null &&
+                                        _token != null) {
                                       try {
-                                        final workflowTemplate = _workflows.firstWhere(
-                                          (w) => (w['_id'] ?? w['id']) == selectedEditWorkflow,
-                                          orElse: () => null,
-                                        );
+                                        final workflowTemplate = _workflows
+                                            .firstWhere(
+                                              (w) =>
+                                                  (w['_id'] ?? w['id']) ==
+                                                  selectedEditWorkflow,
+                                              orElse: () => null,
+                                            );
                                         if (workflowTemplate != null) {
                                           await WorkflowService.assignToTask(
                                             _token!,
                                             task['_id'].toString(),
                                             templateId: selectedEditWorkflow!,
-                                            workflowName: workflowTemplate['name'],
+                                            workflowName:
+                                                workflowTemplate['name'],
                                           );
                                         }
                                       } catch (e) {
@@ -2979,7 +3799,7 @@ class _TasksScreenState extends State<TasksScreen> {
     List<String>? tags,
   }) async {
     if (_token == null) throw Exception('Not authenticated');
-    await TaskService.updateTask(
+    await context.read<TasksNotifier>().updateTask(
       _token!,
       taskId,
       title: title,
@@ -3013,10 +3833,7 @@ class _TasksScreenState extends State<TasksScreen> {
     String? selectedAssigneeId; // Optional: defaults to current user if null
     bool submitting = false;
 
-    Future<DateTime?> pickDateTime(
-      BuildContext ctx,
-      DateTime? initial,
-    ) async {
+    Future<DateTime?> pickDateTime(BuildContext ctx, DateTime? initial) async {
       final date = await showDatePicker(
         context: ctx,
         initialDate: initial ?? DateTime.now().add(const Duration(days: 1)),
@@ -3024,8 +3841,10 @@ class _TasksScreenState extends State<TasksScreen> {
         lastDate: DateTime.now().add(const Duration(days: 365)),
         builder: (_, c) => Theme(
           data: ThemeData.dark().copyWith(
-            colorScheme:
-                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+            colorScheme: ColorScheme.dark(
+              primary: _accentPink,
+              surface: _cardDark,
+            ),
           ),
           child: c!,
         ),
@@ -3036,8 +3855,10 @@ class _TasksScreenState extends State<TasksScreen> {
         initialTime: TimeOfDay.fromDateTime(initial ?? DateTime.now()),
         builder: (_, c) => Theme(
           data: ThemeData.dark().copyWith(
-            colorScheme:
-                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+            colorScheme: ColorScheme.dark(
+              primary: _accentPink,
+              surface: _cardDark,
+            ),
           ),
           child: c!,
         ),
@@ -3132,15 +3953,21 @@ class _TasksScreenState extends State<TasksScreen> {
                         builder: (ctx) {
                           final selectedEmployee = selectedAssigneeId == null
                               ? null
-                              : _employees.cast<Map<String, dynamic>>().firstWhere(
-                                  (e) => e['_id']?.toString() == selectedAssigneeId,
-                                  orElse: () => <String, dynamic>{},
-                                );
+                              : _employees
+                                    .cast<Map<String, dynamic>>()
+                                    .firstWhere(
+                                      (e) =>
+                                          e['_id']?.toString() ==
+                                          selectedAssigneeId,
+                                      orElse: () => <String, dynamic>{},
+                                    );
                           return Column(
                             children: [
                               GestureDetector(
                                 onTap: () async {
-                                  final picked = await _pickEmployee(sheetContext);
+                                  final picked = await _pickEmployee(
+                                    sheetContext,
+                                  );
                                   if (picked != null) {
                                     ss(() => selectedAssigneeId = picked);
                                   }
@@ -3156,7 +3983,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: Colors.white10),
                                   ),
-                                  child: selectedAssigneeId == null || (selectedEmployee?.isEmpty ?? true)
+                                  child:
+                                      selectedAssigneeId == null ||
+                                          (selectedEmployee?.isEmpty ?? true)
                                       ? Row(
                                           children: [
                                             Icon(
@@ -3178,10 +4007,11 @@ class _TasksScreenState extends State<TasksScreen> {
                                           children: [
                                             CircleAvatar(
                                               radius: 16,
-                                              backgroundColor:
-                                                  _accentPink.withValues(alpha: 0.2),
+                                              backgroundColor: _accentPink
+                                                  .withValues(alpha: 0.2),
                                               child: Text(
-                                                (selectedEmployee?['name'] ?? '?')[0]
+                                                (selectedEmployee?['name'] ??
+                                                        '?')[0]
                                                     .toString()
                                                     .toUpperCase(),
                                                 style: TextStyle(
@@ -3198,11 +4028,13 @@ class _TasksScreenState extends State<TasksScreen> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    selectedEmployee?['name'] ?? '',
+                                                    selectedEmployee?['name'] ??
+                                                        '',
                                                     style: const TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 13,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
                                                   Text(
@@ -3243,15 +4075,21 @@ class _TasksScreenState extends State<TasksScreen> {
                         builder: (ctx) {
                           final selectedEmployee = selectedAssigneeId == null
                               ? null
-                              : _employees.cast<Map<String, dynamic>>().firstWhere(
-                                  (e) => e['_id']?.toString() == selectedAssigneeId,
-                                  orElse: () => <String, dynamic>{},
-                                );
+                              : _employees
+                                    .cast<Map<String, dynamic>>()
+                                    .firstWhere(
+                                      (e) =>
+                                          e['_id']?.toString() ==
+                                          selectedAssigneeId,
+                                      orElse: () => <String, dynamic>{},
+                                    );
                           return Column(
                             children: [
                               GestureDetector(
                                 onTap: () async {
-                                  final picked = await _pickEmployee(sheetContext);
+                                  final picked = await _pickEmployee(
+                                    sheetContext,
+                                  );
                                   if (picked != null) {
                                     ss(() => selectedAssigneeId = picked);
                                   }
@@ -3267,7 +4105,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(color: Colors.white10),
                                   ),
-                                  child: selectedAssigneeId == null || (selectedEmployee?.isEmpty ?? true)
+                                  child:
+                                      selectedAssigneeId == null ||
+                                          (selectedEmployee?.isEmpty ?? true)
                                       ? Row(
                                           children: [
                                             Icon(
@@ -3289,10 +4129,11 @@ class _TasksScreenState extends State<TasksScreen> {
                                           children: [
                                             CircleAvatar(
                                               radius: 16,
-                                              backgroundColor:
-                                                  _accentPink.withValues(alpha: 0.2),
+                                              backgroundColor: _accentPink
+                                                  .withValues(alpha: 0.2),
                                               child: Text(
-                                                (selectedEmployee?['name'] ?? '?')[0]
+                                                (selectedEmployee?['name'] ??
+                                                        '?')[0]
                                                     .toString()
                                                     .toUpperCase(),
                                                 style: TextStyle(
@@ -3309,11 +4150,13 @@ class _TasksScreenState extends State<TasksScreen> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    selectedEmployee?['name'] ?? '',
+                                                    selectedEmployee?['name'] ??
+                                                        '',
                                                     style: const TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 13,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
                                                   Text(
@@ -3361,45 +4204,47 @@ class _TasksScreenState extends State<TasksScreen> {
                                 Wrap(
                                   spacing: 6,
                                   runSpacing: 6,
-                                  children: [
-                                    'low',
-                                    'medium',
-                                    'high',
-                                    'critical',
-                                  ].map((p) {
-                                    final color = _priorityColor(p);
-                                    final sel = selectedPriority == p;
-                                    return GestureDetector(
-                                      onTap: () =>
-                                          ss(() => selectedPriority = p),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: sel
-                                              ? color.withOpacity(0.18)
-                                              : _inputDark,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: sel
-                                                ? color
-                                                : Colors.transparent,
+                                  children:
+                                      [
+                                        'low',
+                                        'medium',
+                                        'high',
+                                        'critical',
+                                      ].map((p) {
+                                        final color = _priorityColor(p);
+                                        final sel = selectedPriority == p;
+                                        return GestureDetector(
+                                          onTap: () =>
+                                              ss(() => selectedPriority = p),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: sel
+                                                  ? color.withOpacity(0.18)
+                                                  : _inputDark,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: sel
+                                                    ? color
+                                                    : Colors.transparent,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              p[0].toUpperCase() +
+                                                  p.substring(1),
+                                              style: TextStyle(
+                                                color: sel ? color : _textGrey,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                        child: Text(
-                                          p[0].toUpperCase() + p.substring(1),
-                                          style: TextStyle(
-                                            color: sel ? color : _textGrey,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                        );
+                                      }).toList(),
                                 ),
                               ],
                             ),
@@ -3416,45 +4261,49 @@ class _TasksScreenState extends State<TasksScreen> {
                                 Wrap(
                                   spacing: 6,
                                   runSpacing: 6,
-                                  children: [
-                                    _EstPreset('Custom Hours', null),
-                                    _EstPreset('Before Lunch(4h)', '240'),
-                                    _EstPreset('End of the Day(8h)', '480'),
-                                  ].map((ep) {
-                                    final sel = estimatedPreset == ep.value;
-                                    return GestureDetector(
-                                      onTap: () =>
-                                          ss(() => estimatedPreset = ep.value),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 6,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: sel
-                                              ? _accentPink.withOpacity(0.18)
-                                              : _inputDark,
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          border: Border.all(
-                                            color: sel
-                                                ? _accentPink
-                                                : Colors.transparent,
+                                  children:
+                                      [
+                                        _EstPreset('Custom Hours', null),
+                                        _EstPreset('Before Lunch(4h)', '240'),
+                                        _EstPreset('End of the Day(8h)', '480'),
+                                      ].map((ep) {
+                                        final sel = estimatedPreset == ep.value;
+                                        return GestureDetector(
+                                          onTap: () => ss(
+                                            () => estimatedPreset = ep.value,
                                           ),
-                                        ),
-                                        child: Text(
-                                          ep.label,
-                                          style: TextStyle(
-                                            color: sel
-                                                ? _accentPink
-                                                : _textGrey,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: sel
+                                                  ? _accentPink.withOpacity(
+                                                      0.18,
+                                                    )
+                                                  : _inputDark,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: sel
+                                                    ? _accentPink
+                                                    : Colors.transparent,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              ep.label,
+                                              style: TextStyle(
+                                                color: sel
+                                                    ? _accentPink
+                                                    : _textGrey,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
+                                        );
+                                      }).toList(),
                                 ),
                                 if (estimatedPreset == null) ...[
                                   const SizedBox(height: 8),
@@ -3693,104 +4542,114 @@ class _TasksScreenState extends State<TasksScreen> {
                                 ),
                               )
                             : _workflows.isEmpty
-                                ? Text(
-                                    'No workflows available',
-                                    style: TextStyle(
-                                      color: _textGrey.withOpacity(0.6),
-                                      fontSize: 14,
-                                    ),
-                                  )
-                                : Row(
-                                    children: [
-                                      Expanded(
-                                        child: DropdownButtonHideUnderline(
-                                          child: DropdownButton<String?>(
-                                            isExpanded: true,
-                                            value: selectedWorkflow,
-                                            hint: Text(
-                                              'Select workflow...',
+                            ? Text(
+                                'No workflows available',
+                                style: TextStyle(
+                                  color: _textGrey.withOpacity(0.6),
+                                  fontSize: 14,
+                                ),
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String?>(
+                                        isExpanded: true,
+                                        value: selectedWorkflow,
+                                        hint: Text(
+                                          'Select workflow...',
+                                          style: TextStyle(
+                                            color: _textGrey.withOpacity(0.6),
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        dropdownColor: _cardDark,
+                                        items: [
+                                          DropdownMenuItem<String?>(
+                                            value: null,
+                                            child: Text(
+                                              'No workflow',
                                               style: TextStyle(
-                                                color: _textGrey.withOpacity(0.6),
-                                                fontSize: 14,
+                                                color: _textGrey,
+                                                fontSize: 13,
                                               ),
                                             ),
-                                            dropdownColor: _cardDark,
-                                            items: [
-                                              DropdownMenuItem<String?>(
-                                                value: null,
-                                                child: Text(
-                                                  'No workflow',
-                                                  style: TextStyle(
-                                                    color: _textGrey,
-                                                    fontSize: 13,
-                                                  ),
-                                                ),
-                                              ),
-                                              ..._workflows.map((wf) {
-                                                final workflowId = wf['_id'] ?? '';
-                                                final workflowName = wf['name'] ?? 'Unnamed';
-                                                final stepCount = (wf['steps'] as List<dynamic>?)?.length ?? 0;
-                                                return DropdownMenuItem<String?>(
-                                                  value: workflowId,
-                                                  child: Row(
-                                                    children: [
-                                                      Expanded(
-                                                        child: Text(
-                                                          workflowName,
-                                                          style: const TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 13,
-                                                          ),
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
+                                          ),
+                                          ..._workflows.map((wf) {
+                                            final workflowId = wf['_id'] ?? '';
+                                            final workflowName =
+                                                wf['name'] ?? 'Unnamed';
+                                            final stepCount =
+                                                (wf['steps'] as List<dynamic>?)
+                                                    ?.length ??
+                                                0;
+                                            return DropdownMenuItem<String?>(
+                                              value: workflowId,
+                                              child: Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      workflowName,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 13,
                                                       ),
-                                                      const SizedBox(width: 8),
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
                                                           horizontal: 6,
                                                           vertical: 2,
                                                         ),
-                                                        decoration: BoxDecoration(
-                                                          color: _accentPink.withOpacity(0.2),
-                                                          borderRadius: BorderRadius.circular(4),
-                                                        ),
-                                                        child: Text(
-                                                          '$stepCount steps',
-                                                          style: TextStyle(
-                                                            color: _accentPink,
-                                                            fontSize: 11,
-                                                            fontWeight: FontWeight.w600,
+                                                    decoration: BoxDecoration(
+                                                      color: _accentPink
+                                                          .withOpacity(0.2),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            4,
                                                           ),
-                                                        ),
+                                                    ),
+                                                    child: Text(
+                                                      '$stepCount steps',
+                                                      style: TextStyle(
+                                                        color: _accentPink,
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                       ),
-                                                    ],
+                                                    ),
                                                   ),
-                                                );
-                                              }),
-                                            ],
-                                            onChanged: (value) =>
-                                                ss(() => selectedWorkflow = value),
-                                          ),
-                                        ),
+                                                ],
+                                              ),
+                                            );
+                                          }),
+                                        ],
+                                        onChanged: (value) =>
+                                            ss(() => selectedWorkflow = value),
                                       ),
-                                      if (selectedWorkflow != null) ...[
-                                        const SizedBox(width: 8),
-                                        GestureDetector(
-                                          onTap: () =>
-                                              ss(() => selectedWorkflow = null),
-                                          child: Icon(
-                                            Icons.close,
-                                            color: _accentPink,
-                                            size: 18,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
+                                    ),
                                   ),
+                                  if (selectedWorkflow != null) ...[
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          ss(() => selectedWorkflow = null),
+                                      child: Icon(
+                                        Icons.close,
+                                        color: _accentPink,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                       ),
                       // Ã¢â€â‚¬Ã¢â€â‚¬ Workflow Preview Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-                      if (selectedWorkflow != null &&
-                          _workflows.isNotEmpty)
+                      if (selectedWorkflow != null && _workflows.isNotEmpty)
                         Builder(
                           builder: (context) {
                             final selectedWfData = _workflows.firstWhere(
@@ -3800,7 +4659,8 @@ class _TasksScreenState extends State<TasksScreen> {
                             if (selectedWfData == null) {
                               return const SizedBox.shrink();
                             }
-                            final steps = selectedWfData['steps'] as List<dynamic>? ?? [];
+                            final steps =
+                                selectedWfData['steps'] as List<dynamic>? ?? [];
                             return Column(
                               children: [
                                 const SizedBox(height: 12),
@@ -3824,7 +4684,8 @@ class _TasksScreenState extends State<TasksScreen> {
                                           ),
                                         )
                                       : Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Padding(
                                               padding: const EdgeInsets.all(12),
@@ -3837,12 +4698,20 @@ class _TasksScreenState extends State<TasksScreen> {
                                                 ),
                                               ),
                                             ),
-                                            ...steps.asMap().entries.map((entry) {
+                                            ...steps.asMap().entries.map((
+                                              entry,
+                                            ) {
                                               final idx = entry.key;
-                                              final step = entry.value as Map<String, dynamic>;
-                                              final title = step['title'] ?? 'Step ${idx + 1}';
-                                              final role = step['responsibleRole'] ?? 'any';
-                                              
+                                              final step =
+                                                  entry.value
+                                                      as Map<String, dynamic>;
+                                              final title =
+                                                  step['title'] ??
+                                                  'Step ${idx + 1}';
+                                              final role =
+                                                  step['responsibleRole'] ??
+                                                  'any';
+
                                               Color roleColor;
                                               switch (role.toLowerCase()) {
                                                 case 'admin':
@@ -3857,16 +4726,18 @@ class _TasksScreenState extends State<TasksScreen> {
                                                 default:
                                                   roleColor = Colors.blue;
                                               }
-                                              
+
                                               return Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 8,
-                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 8,
+                                                    ),
                                                 decoration: BoxDecoration(
                                                   border: Border(
                                                     top: BorderSide(
-                                                      color: _textGrey.withOpacity(0.1),
+                                                      color: _textGrey
+                                                          .withOpacity(0.1),
                                                     ),
                                                   ),
                                                 ),
@@ -3877,12 +4748,11 @@ class _TasksScreenState extends State<TasksScreen> {
                                                       height: 28,
                                                       decoration: BoxDecoration(
                                                         shape: BoxShape.circle,
-                                                        color:
-                                                            _accentPink.withOpacity(0.15),
+                                                        color: _accentPink
+                                                            .withOpacity(0.15),
                                                         border: Border.all(
-                                                          color: _accentPink.withOpacity(
-                                                            0.3,
-                                                          ),
+                                                          color: _accentPink
+                                                              .withOpacity(0.3),
                                                         ),
                                                       ),
                                                       child: Center(
@@ -3891,7 +4761,8 @@ class _TasksScreenState extends State<TasksScreen> {
                                                           style: TextStyle(
                                                             color: _accentPink,
                                                             fontSize: 11,
-                                                            fontWeight: FontWeight.bold,
+                                                            fontWeight:
+                                                                FontWeight.bold,
                                                           ),
                                                         ),
                                                       ),
@@ -3903,28 +4774,36 @@ class _TasksScreenState extends State<TasksScreen> {
                                                         style: const TextStyle(
                                                           color: Colors.white,
                                                           fontSize: 12,
-                                                          fontWeight: FontWeight.w500,
+                                                          fontWeight:
+                                                              FontWeight.w500,
                                                         ),
-                                                        overflow: TextOverflow.ellipsis,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                                     ),
                                                     const SizedBox(width: 8),
-                                                    if (role != null && role != 'any')
+                                                    if (role != null &&
+                                                        role != 'any')
                                                       Container(
                                                         padding:
                                                             const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 4,
-                                                        ),
-                                                        decoration: BoxDecoration(
-                                                          color:
-                                                              roleColor.withOpacity(0.15),
-                                                          borderRadius:
-                                                              BorderRadius.circular(4),
-                                                          border: Border.all(
-                                                            color: roleColor.withOpacity(
-                                                              0.3,
+                                                              horizontal: 8,
+                                                              vertical: 4,
                                                             ),
+                                                        decoration: BoxDecoration(
+                                                          color: roleColor
+                                                              .withOpacity(
+                                                                0.15,
+                                                              ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                4,
+                                                              ),
+                                                          border: Border.all(
+                                                            color: roleColor
+                                                                .withOpacity(
+                                                                  0.3,
+                                                                ),
                                                           ),
                                                         ),
                                                         child: Text(
@@ -3932,7 +4811,8 @@ class _TasksScreenState extends State<TasksScreen> {
                                                           style: TextStyle(
                                                             color: roleColor,
                                                             fontSize: 10,
-                                                            fontWeight: FontWeight.w600,
+                                                            fontWeight:
+                                                                FontWeight.w600,
                                                           ),
                                                         ),
                                                       ),
@@ -4010,18 +4890,24 @@ class _TasksScreenState extends State<TasksScreen> {
                                       assignedTo: selectedAssigneeId,
                                     );
                                     // Assign workflow if selected
-                                    if (selectedWorkflow != null && _token != null && taskId != null) {
+                                    if (selectedWorkflow != null &&
+                                        _token != null &&
+                                        taskId != null) {
                                       try {
-                                        final workflowTemplate = _workflows.firstWhere(
-                                          (w) => (w['_id'] ?? w['id']) == selectedWorkflow,
-                                          orElse: () => null,
-                                        );
+                                        final workflowTemplate = _workflows
+                                            .firstWhere(
+                                              (w) =>
+                                                  (w['_id'] ?? w['id']) ==
+                                                  selectedWorkflow,
+                                              orElse: () => null,
+                                            );
                                         if (workflowTemplate != null) {
                                           await WorkflowService.assignToTask(
                                             _token!,
                                             taskId,
                                             templateId: selectedWorkflow!,
-                                            workflowName: workflowTemplate['name'],
+                                            workflowName:
+                                                workflowTemplate['name'],
                                           );
                                         }
                                       } catch (e) {
@@ -4116,7 +5002,7 @@ class _TasksScreenState extends State<TasksScreen> {
     if (_token == null) throw Exception('Not authenticated');
     final assignTo = assignedTo ?? _userId ?? '';
     if (assignTo.isEmpty) throw Exception('User ID not found');
-    final response = await TaskService.createTask(
+    final taskId = await context.read<TasksNotifier>().createTask(
       _token!,
       title: title,
       description: description.isEmpty ? title : description,
@@ -4134,15 +5020,7 @@ class _TasksScreenState extends State<TasksScreen> {
       assignedTo: 'You',
       priority: priority,
     );
-    // Extract task ID from response for workflow assignment
-    if (response is Map<String, dynamic>) {
-      if (response['success'] == true && response['data'] != null) {
-        return response['data']['_id'] ?? response['data']['id'];
-      } else if (response['data'] != null && response['data'] is Map) {
-        return response['data']['_id'] ?? response['data']['id'];
-      }
-    }
-    return null;
+    return taskId;
   }
 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Input helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -4215,8 +5093,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   ? DateFormat('MMM d, y  HH:mm').format(value)
                   : placeholder,
               style: TextStyle(
-                color:
-                    hasValue ? Colors.white : _textGrey.withOpacity(0.6),
+                color: hasValue ? Colors.white : _textGrey.withOpacity(0.6),
                 fontSize: 12,
               ),
               overflow: TextOverflow.ellipsis,
@@ -4258,7 +5135,8 @@ class _TasksScreenState extends State<TasksScreen> {
   @override
   Widget build(BuildContext context) {
     // Show admin interface unless this is "My Tasks" view (showOnlyCurrentUser=true)
-    if (_isAdmin && widget.showOnlyCurrentUser != true) return _buildAdminScaffold(context);
+    if (_isAdmin && widget.showOnlyCurrentUser != true)
+      return _buildAdminScaffold(context);
     return Scaffold(
       backgroundColor: _bgDark,
       body: SafeArea(
@@ -4292,9 +5170,10 @@ class _TasksScreenState extends State<TasksScreen> {
                             RefreshIndicator(
                               color: _accentPink,
                               backgroundColor: _cardDark,
-                              onRefresh: () => widget.showOnlyCurrentUser == true
-                                ? _loadMyTasks(showLoading: false)
-                                : _loadData(showLoading: false),
+                              onRefresh: () =>
+                                  widget.showOnlyCurrentUser == true
+                                  ? _loadMyTasks(showLoading: false)
+                                  : _loadData(showLoading: false),
                               child: SingleChildScrollView(
                                 physics: const AlwaysScrollableScrollPhysics(),
                                 padding: const EdgeInsets.symmetric(
@@ -4386,7 +5265,10 @@ class _TasksScreenState extends State<TasksScreen> {
                             if (widget.showOnlyCurrentUser == true) {
                               await _loadMyTasks(showLoading: false);
                             } else {
-                              await Future.wait([_loadData(), _loadEmployees()]);
+                              await Future.wait([
+                                _loadData(),
+                                _loadEmployees(),
+                              ]);
                             }
                           },
                           child: SingleChildScrollView(
@@ -4415,13 +5297,9 @@ class _TasksScreenState extends State<TasksScreen> {
                         // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 3: Projects Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
                         _buildProjectsTab(),
                         // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 4: Time Tracking Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-                        SingleChildScrollView(
-                          child: _buildTimeTrackingTab(),
-                        ),
+                        SingleChildScrollView(child: _buildTimeTrackingTab()),
                         // Ã¢â€â‚¬Ã¢â€â‚¬ Tab 5: Analytics Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-                        SingleChildScrollView(
-                          child: _buildAnalyticsTab(),
-                        ),
+                        SingleChildScrollView(child: _buildAnalyticsTab()),
                       ],
                     ),
             ),
@@ -4441,15 +5319,15 @@ class _TasksScreenState extends State<TasksScreen> {
               elevation: 4,
             )
           : (_adminTab == 3
-              ? FloatingActionButton(
-                  onPressed: _showCreateProjectDialog,
-                  backgroundColor: _accentPink,
-                  foregroundColor: Colors.black,
-                  elevation: 4,
-                  tooltip: 'New Project',
-                  child: const Icon(Icons.add, size: 26),
-                )
-              : null),
+                ? FloatingActionButton(
+                    onPressed: _showCreateProjectDialog,
+                    backgroundColor: _accentPink,
+                    foregroundColor: Colors.black,
+                    elevation: 4,
+                    tooltip: 'New Project',
+                    child: const Icon(Icons.add, size: 26),
+                  )
+                : null),
     );
   }
 
@@ -4514,11 +5392,31 @@ class _TasksScreenState extends State<TasksScreen> {
     final underReview = _stats['underReview'] ?? 0;
     final statItems = [
       _StatItem('Total', '$total', Icons.folder_outlined, _accentPurple),
-      _StatItem('In Progress', '$inProgress', Icons.pending_actions, _accentOrange),
-      _StatItem('Completed', '$completed', Icons.check_circle_outline, _accentGreen),
-      _StatItem('Overdue', '$overdue', Icons.warning_amber_outlined, Colors.redAccent),
+      _StatItem(
+        'In Progress',
+        '$inProgress',
+        Icons.pending_actions,
+        _accentOrange,
+      ),
+      _StatItem(
+        'Completed',
+        '$completed',
+        Icons.check_circle_outline,
+        _accentGreen,
+      ),
+      _StatItem(
+        'Overdue',
+        '$overdue',
+        Icons.warning_amber_outlined,
+        Colors.redAccent,
+      ),
       _StatItem('Pending', '$pending', Icons.schedule, Colors.orangeAccent),
-      _StatItem('Under Review', '$underReview', Icons.visibility, Colors.blueAccent),
+      _StatItem(
+        'Under Review',
+        '$underReview',
+        Icons.visibility,
+        Colors.blueAccent,
+      ),
     ];
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -5805,10 +6703,7 @@ class _TasksScreenState extends State<TasksScreen> {
     String? selectedAdminWorkflow;
     bool submitting = false;
 
-    Future<DateTime?> pickDateTime(
-      BuildContext ctx,
-      DateTime? initial,
-    ) async {
+    Future<DateTime?> pickDateTime(BuildContext ctx, DateTime? initial) async {
       final date = await showDatePicker(
         context: ctx,
         initialDate: initial ?? DateTime.now().add(const Duration(days: 1)),
@@ -5816,8 +6711,10 @@ class _TasksScreenState extends State<TasksScreen> {
         lastDate: DateTime.now().add(const Duration(days: 365)),
         builder: (_, c) => Theme(
           data: ThemeData.dark().copyWith(
-            colorScheme:
-                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+            colorScheme: ColorScheme.dark(
+              primary: _accentPink,
+              surface: _cardDark,
+            ),
           ),
           child: c!,
         ),
@@ -5828,8 +6725,10 @@ class _TasksScreenState extends State<TasksScreen> {
         initialTime: TimeOfDay.fromDateTime(initial ?? DateTime.now()),
         builder: (_, c) => Theme(
           data: ThemeData.dark().copyWith(
-            colorScheme:
-                ColorScheme.dark(primary: _accentPink, surface: _cardDark),
+            colorScheme: ColorScheme.dark(
+              primary: _accentPink,
+              surface: _cardDark,
+            ),
           ),
           child: c!,
         ),
@@ -5849,9 +6748,9 @@ class _TasksScreenState extends State<TasksScreen> {
         builder: (sheetCtx) => StatefulBuilder(
           builder: (_, ss) {
             final selectedEmployees = selectedEmployeeIds.isNotEmpty
-                ? _employees.where(
-                    (e) => selectedEmployeeIds.contains(e['_id']),
-                  ).toList()
+                ? _employees
+                      .where((e) => selectedEmployeeIds.contains(e['_id']))
+                      .toList()
                 : [];
             return Padding(
               padding: EdgeInsets.only(
@@ -5940,8 +6839,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                           color: _accentPink.withValues(
                                             alpha: 0.15,
                                           ),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           border: Border.all(
                                             color: _accentPink.withValues(
                                               alpha: 0.3,
@@ -5988,8 +6888,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                       Text(
                                         'Tap to change',
                                         style: TextStyle(
-                                          color: _accentPink
-                                              .withValues(alpha: 0.7),
+                                          color: _accentPink.withValues(
+                                            alpha: 0.7,
+                                          ),
                                           fontSize: 11,
                                         ),
                                       ),
@@ -6184,117 +7085,127 @@ class _TasksScreenState extends State<TasksScreen> {
                               ),
                             )
                           : _workflows.isEmpty
-                              ? Text(
-                                  'No workflows available',
-                                  style: TextStyle(
-                                    color: _textGrey.withOpacity(0.6),
-                                    fontSize: 14,
-                                  ),
-                                )
-                              : Row(
-                                  children: [
-                                    Expanded(
-                                      child: DropdownButtonHideUnderline(
-                                        child: DropdownButton<String?>(
-                                          isExpanded: true,
-                                          value: selectedAdminWorkflow,
-                                          hint: Text(
-                                            'Select workflow...',
+                          ? Text(
+                              'No workflows available',
+                              style: TextStyle(
+                                color: _textGrey.withOpacity(0.6),
+                                fontSize: 14,
+                              ),
+                            )
+                          : Row(
+                              children: [
+                                Expanded(
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String?>(
+                                      isExpanded: true,
+                                      value: selectedAdminWorkflow,
+                                      hint: Text(
+                                        'Select workflow...',
+                                        style: TextStyle(
+                                          color: _textGrey.withOpacity(0.6),
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      dropdownColor: _cardDark,
+                                      items: [
+                                        DropdownMenuItem<String?>(
+                                          value: null,
+                                          child: Text(
+                                            'No workflow',
                                             style: TextStyle(
-                                              color: _textGrey.withOpacity(0.6),
-                                              fontSize: 14,
+                                              color: _textGrey,
+                                              fontSize: 13,
                                             ),
                                           ),
-                                          dropdownColor: _cardDark,
-                                          items: [
-                                            DropdownMenuItem<String?>(
-                                              value: null,
-                                              child: Text(
-                                                'No workflow',
-                                                style: TextStyle(
-                                                  color: _textGrey,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ),
-                                            ..._workflows.map((wf) {
-                                              final workflowId = wf['_id'] ?? '';
-                                              final workflowName = wf['name'] ?? 'Unnamed';
-                                              final stepCount = (wf['steps'] as List<dynamic>?)?.length ?? 0;
-                                              return DropdownMenuItem<String?>(
-                                                value: workflowId,
-                                                child: Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        workflowName,
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 13,
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
+                                        ),
+                                        ..._workflows.map((wf) {
+                                          final workflowId = wf['_id'] ?? '';
+                                          final workflowName =
+                                              wf['name'] ?? 'Unnamed';
+                                          final stepCount =
+                                              (wf['steps'] as List<dynamic>?)
+                                                  ?.length ??
+                                              0;
+                                          return DropdownMenuItem<String?>(
+                                            value: workflowId,
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    workflowName,
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 13,
                                                     ),
-                                                    const SizedBox(width: 8),
-                                                    Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
                                                         horizontal: 6,
                                                         vertical: 2,
                                                       ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            _accentPink.withOpacity(0.2),
-                                                        borderRadius:
-                                                            BorderRadius.circular(4),
-                                                      ),
-                                                      child: Text(
-                                                        '$stepCount steps',
-                                                        style: TextStyle(
-                                                          color: _accentPink,
-                                                          fontSize: 11,
-                                                          fontWeight: FontWeight.w600,
+                                                  decoration: BoxDecoration(
+                                                    color: _accentPink
+                                                        .withOpacity(0.2),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          4,
                                                         ),
-                                                      ),
+                                                  ),
+                                                  child: Text(
+                                                    '$stepCount steps',
+                                                    style: TextStyle(
+                                                      color: _accentPink,
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
-                                                  ],
+                                                  ),
                                                 ),
-                                              );
-                                            }),
-                                          ],
-                                          onChanged: (value) =>
-                                              ss(() => selectedAdminWorkflow = value),
-                                        ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
+                                      ],
+                                      onChanged: (value) => ss(
+                                        () => selectedAdminWorkflow = value,
                                       ),
                                     ),
-                                    if (selectedAdminWorkflow != null) ...[
-                                      const SizedBox(width: 8),
-                                      GestureDetector(
-                                        onTap: () =>
-                                            ss(() => selectedAdminWorkflow = null),
-                                        child: Icon(
-                                          Icons.close,
-                                          color: _accentPink,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
+                                  ),
                                 ),
+                                if (selectedAdminWorkflow != null) ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () =>
+                                        ss(() => selectedAdminWorkflow = null),
+                                    child: Icon(
+                                      Icons.close,
+                                      color: _accentPink,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                     ),
                     // Ã¢â€â‚¬Ã¢â€â‚¬ Workflow Preview Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-                    if (selectedAdminWorkflow != null &&
-                        _workflows.isNotEmpty)
+                    if (selectedAdminWorkflow != null && _workflows.isNotEmpty)
                       Builder(
                         builder: (context) {
                           final selectedWfData = _workflows.firstWhere(
-                            (w) => (w['_id'] ?? w['id']) == selectedAdminWorkflow,
+                            (w) =>
+                                (w['_id'] ?? w['id']) == selectedAdminWorkflow,
                             orElse: () => null,
                           );
                           if (selectedWfData == null) {
                             return const SizedBox.shrink();
                           }
-                          final steps = selectedWfData['steps'] as List<dynamic>? ?? [];
+                          final steps =
+                              selectedWfData['steps'] as List<dynamic>? ?? [];
                           return Column(
                             children: [
                               const SizedBox(height: 12),
@@ -6318,7 +7229,8 @@ class _TasksScreenState extends State<TasksScreen> {
                                         ),
                                       )
                                     : Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Padding(
                                             padding: const EdgeInsets.all(12),
@@ -6333,10 +7245,16 @@ class _TasksScreenState extends State<TasksScreen> {
                                           ),
                                           ...steps.asMap().entries.map((entry) {
                                             final idx = entry.key;
-                                            final step = entry.value as Map<String, dynamic>;
-                                            final title = step['title'] ?? 'Step ${idx + 1}';
-                                            final role = step['responsibleRole'] ?? 'any';
-                                            
+                                            final step =
+                                                entry.value
+                                                    as Map<String, dynamic>;
+                                            final title =
+                                                step['title'] ??
+                                                'Step ${idx + 1}';
+                                            final role =
+                                                step['responsibleRole'] ??
+                                                'any';
+
                                             Color roleColor;
                                             switch (role.toLowerCase()) {
                                               case 'admin':
@@ -6351,16 +7269,18 @@ class _TasksScreenState extends State<TasksScreen> {
                                               default:
                                                 roleColor = Colors.blue;
                                             }
-                                            
+
                                             return Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 8,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 border: Border(
                                                   top: BorderSide(
-                                                    color: _textGrey.withOpacity(0.1),
+                                                    color: _textGrey
+                                                        .withOpacity(0.1),
                                                   ),
                                                 ),
                                               ),
@@ -6371,12 +7291,11 @@ class _TasksScreenState extends State<TasksScreen> {
                                                     height: 28,
                                                     decoration: BoxDecoration(
                                                       shape: BoxShape.circle,
-                                                      color:
-                                                          _accentPink.withOpacity(0.15),
+                                                      color: _accentPink
+                                                          .withOpacity(0.15),
                                                       border: Border.all(
-                                                        color: _accentPink.withOpacity(
-                                                          0.3,
-                                                        ),
+                                                        color: _accentPink
+                                                            .withOpacity(0.3),
                                                       ),
                                                     ),
                                                     child: Center(
@@ -6385,7 +7304,8 @@ class _TasksScreenState extends State<TasksScreen> {
                                                         style: TextStyle(
                                                           color: _accentPink,
                                                           fontSize: 11,
-                                                          fontWeight: FontWeight.bold,
+                                                          fontWeight:
+                                                              FontWeight.bold,
                                                         ),
                                                       ),
                                                     ),
@@ -6397,28 +7317,32 @@ class _TasksScreenState extends State<TasksScreen> {
                                                       style: const TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 12,
-                                                        fontWeight: FontWeight.w500,
+                                                        fontWeight:
+                                                            FontWeight.w500,
                                                       ),
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ),
                                                   const SizedBox(width: 8),
-                                                  if (role != null && role != 'any')
+                                                  if (role != null &&
+                                                      role != 'any')
                                                     Container(
                                                       padding:
                                                           const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            roleColor.withOpacity(0.15),
-                                                        borderRadius:
-                                                            BorderRadius.circular(4),
-                                                        border: Border.all(
-                                                          color: roleColor.withOpacity(
-                                                            0.3,
+                                                            horizontal: 8,
+                                                            vertical: 4,
                                                           ),
+                                                      decoration: BoxDecoration(
+                                                        color: roleColor
+                                                            .withOpacity(0.15),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              4,
+                                                            ),
+                                                        border: Border.all(
+                                                          color: roleColor
+                                                              .withOpacity(0.3),
                                                         ),
                                                       ),
                                                       child: Text(
@@ -6426,7 +7350,8 @@ class _TasksScreenState extends State<TasksScreen> {
                                                         style: TextStyle(
                                                           color: roleColor,
                                                           fontSize: 10,
-                                                          fontWeight: FontWeight.w600,
+                                                          fontWeight:
+                                                              FontWeight.w600,
                                                         ),
                                                       ),
                                                     ),
@@ -6483,7 +7408,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                   if (selectedDueDate == null) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Due date & time is required'),
+                                        content: Text(
+                                          'Due date & time is required',
+                                        ),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
@@ -6495,7 +7422,9 @@ class _TasksScreenState extends State<TasksScreen> {
                                   if (selectedEmployeeIds.isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Please select at least one employee'),
+                                        content: Text(
+                                          'Please select at least one employee',
+                                        ),
                                         backgroundColor: Colors.red,
                                       ),
                                     );
@@ -6508,11 +7437,13 @@ class _TasksScreenState extends State<TasksScreen> {
                                   int successCount = 0;
                                   int failureCount = 0;
 
-                                  for (String employeeId in selectedEmployeeIds) {
+                                  for (String employeeId
+                                      in selectedEmployeeIds) {
                                     try {
                                       final taskId = await _createTask(
                                         title: titleCtrl.text.trim(),
-                                        description: descCtrl.text.trim().isEmpty
+                                        description:
+                                            descCtrl.text.trim().isEmpty
                                             ? titleCtrl.text.trim()
                                             : descCtrl.text.trim(),
                                         priority: selectedPriority,
@@ -6526,42 +7457,57 @@ class _TasksScreenState extends State<TasksScreen> {
                                         successCount++;
 
                                         // Assign workflow if selected (only for first task to avoid duplication)
-                                        if (selectedAdminWorkflow != null && _token != null && createdTaskIds.length == 1) {
+                                        if (selectedAdminWorkflow != null &&
+                                            _token != null &&
+                                            createdTaskIds.length == 1) {
                                           try {
-                                            final workflowTemplate = _workflows.firstWhere(
-                                              (w) => (w['_id'] ?? w['id']) == selectedAdminWorkflow,
-                                              orElse: () => null,
-                                            );
+                                            final workflowTemplate = _workflows
+                                                .firstWhere(
+                                                  (w) =>
+                                                      (w['_id'] ?? w['id']) ==
+                                                      selectedAdminWorkflow,
+                                                  orElse: () => null,
+                                                );
                                             if (workflowTemplate != null) {
                                               await WorkflowService.assignToTask(
                                                 _token!,
                                                 taskId,
-                                                templateId: selectedAdminWorkflow!,
-                                                workflowName: workflowTemplate['name'],
+                                                templateId:
+                                                    selectedAdminWorkflow!,
+                                                workflowName:
+                                                    workflowTemplate['name'],
                                               );
                                             }
                                           } catch (e) {
-                                            print('Error assigning workflow: $e');
+                                            print(
+                                              'Error assigning workflow: $e',
+                                            );
                                           }
                                         }
                                       }
                                     } catch (e) {
                                       failureCount++;
-                                      print('Failed to create task for employee $employeeId: $e');
+                                      print(
+                                        'Failed to create task for employee $employeeId: $e',
+                                      );
                                     }
                                   }
 
                                   // Show result summary
-                                  String resultMessage = 'Task created for $successCount employee${successCount != 1 ? 's' : ''}';
+                                  String resultMessage =
+                                      'Task created for $successCount employee${successCount != 1 ? 's' : ''}';
                                   if (failureCount > 0) {
-                                    resultMessage += '\n(Failed for $failureCount employee${failureCount != 1 ? 's' : ''})';
+                                    resultMessage +=
+                                        '\n(Failed for $failureCount employee${failureCount != 1 ? 's' : ''})';
                                   }
 
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(resultMessage),
-                                        backgroundColor: failureCount > 0 ? Colors.orange : Colors.green,
+                                        backgroundColor: failureCount > 0
+                                            ? Colors.orange
+                                            : Colors.green,
                                         duration: const Duration(seconds: 3),
                                       ),
                                     );
@@ -6698,10 +7644,7 @@ class _TasksScreenState extends State<TasksScreen> {
                         const SizedBox(height: 8),
                         Text(
                           '${selectedIds.length} selected',
-                          style: TextStyle(
-                            color: _textGrey,
-                            fontSize: 12,
-                          ),
+                          style: TextStyle(color: _textGrey, fontSize: 12),
                         ),
                         const SizedBox(height: 10),
                         Container(
@@ -6745,134 +7688,157 @@ class _TasksScreenState extends State<TasksScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.people_outline, color: _textGrey, size: 48),
+                                Icon(
+                                  Icons.people_outline,
+                                  color: _textGrey,
+                                  size: 48,
+                                ),
                                 const SizedBox(height: 12),
                                 Text(
                                   'No employees found',
-                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Check your permissions',
-                                  style: TextStyle(color: _textGrey, fontSize: 12),
+                                  style: TextStyle(
+                                    color: _textGrey,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
                           )
                         : filtered.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.search_off, color: _textGrey, size: 48),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'No matching employees',
-                                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.search_off,
+                                  color: _textGrey,
+                                  size: 48,
                                 ),
-                              )
-                            : ListView.builder(
-                      controller: sc,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (_, i) {
-                        final e = filtered[i];
-                        final eId = e['_id']?.toString() ?? '';
-                        final isSelected = selectedIds.contains(eId);
-                        return ListTile(
-                          dense: true,
-                          leading: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isSelected
-                                    ? _accentPink
-                                    : Colors.white30,
-                                width: 2,
-                              ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No matching employees',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: isSelected
-                                ? CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor: _accentPink,
-                                    child: Icon(
-                                      Icons.check,
-                                      color: Colors.black,
-                                      size: 14,
-                                    ),
-                                  )
-                                : CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor:
-                                        _accentPink.withValues(alpha: 0.2),
-                                    child: Text(
-                                      (e['name'] ?? '?')[0]
-                                          .toString()
-                                          .toUpperCase(),
-                                      style: TextStyle(
-                                        color: _accentPink,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                          )
+                        : ListView.builder(
+                            controller: sc,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) {
+                              final e = filtered[i];
+                              final eId = e['_id']?.toString() ?? '';
+                              final isSelected = selectedIds.contains(eId);
+                              return ListTile(
+                                dense: true,
+                                leading: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? _accentPink
+                                          : Colors.white30,
+                                      width: 2,
                                     ),
                                   ),
-                          ),
-                          title: Text(
-                            e['name'] ?? '',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
-                            '${e['department'] ?? ''} â€¢ ${e['employeeId'] ?? ''}',
-                            style: TextStyle(color: _textGrey, fontSize: 11),
-                          ),
-                          trailing: Checkbox(
-                            value: isSelected,
-                            onChanged: (_) {
-                              ss2(() {
-                                if (isSelected) {
-                                  selectedIds.remove(eId);
-                                } else {
-                                  selectedIds.add(eId);
-                                }
-                              });
+                                  child: isSelected
+                                      ? CircleAvatar(
+                                          radius: 16,
+                                          backgroundColor: _accentPink,
+                                          child: Icon(
+                                            Icons.check,
+                                            color: Colors.black,
+                                            size: 14,
+                                          ),
+                                        )
+                                      : CircleAvatar(
+                                          radius: 16,
+                                          backgroundColor: _accentPink
+                                              .withValues(alpha: 0.2),
+                                          child: Text(
+                                            (e['name'] ?? '?')[0]
+                                                .toString()
+                                                .toUpperCase(),
+                                            style: TextStyle(
+                                              color: _accentPink,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                                title: Text(
+                                  e['name'] ?? '',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '${e['department'] ?? ''} â€¢ ${e['employeeId'] ?? ''}',
+                                  style: TextStyle(
+                                    color: _textGrey,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                trailing: Checkbox(
+                                  value: isSelected,
+                                  onChanged: (_) {
+                                    ss2(() {
+                                      if (isSelected) {
+                                        selectedIds.remove(eId);
+                                      } else {
+                                        selectedIds.add(eId);
+                                      }
+                                    });
+                                  },
+                                  fillColor: WidgetStateColor.resolveWith(
+                                    (states) => isSelected
+                                        ? _accentPink
+                                        : Colors.transparent,
+                                  ),
+                                  checkColor: Colors.black,
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? _accentPink
+                                        : Colors.white30,
+                                    width: 2,
+                                  ),
+                                ),
+                                onTap: () {
+                                  ss2(() {
+                                    if (isSelected) {
+                                      selectedIds.remove(eId);
+                                    } else {
+                                      selectedIds.add(eId);
+                                    }
+                                  });
+                                },
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 2,
+                                ),
+                              );
                             },
-                            fillColor: WidgetStateColor.resolveWith(
-                              (states) => isSelected
-                                  ? _accentPink
-                                  : Colors.transparent,
-                            ),
-                            checkColor: Colors.black,
-                            side: BorderSide(
-                              color:
-                                  isSelected ? _accentPink : Colors.white30,
-                              width: 2,
-                            ),
                           ),
-                          onTap: () {
-                            ss2(() {
-                              if (isSelected) {
-                                selectedIds.remove(eId);
-                              } else {
-                                selectedIds.add(eId);
-                              }
-                            });
-                          },
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
-                          ),
-                        );
-                      },
-                    ),
                   ),
                   if (selectedIds.isNotEmpty)
                     Padding(
@@ -6880,14 +7846,11 @@ class _TasksScreenState extends State<TasksScreen> {
                       child: SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () =>
-                              Navigator.pop(context, selectedIds),
+                          onPressed: () => Navigator.pop(context, selectedIds),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _accentPink,
                             foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 14,
-                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -7012,78 +7975,106 @@ class _TasksScreenState extends State<TasksScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.people_outline, color: _textGrey, size: 48),
+                                Icon(
+                                  Icons.people_outline,
+                                  color: _textGrey,
+                                  size: 48,
+                                ),
                                 const SizedBox(height: 12),
                                 Text(
                                   'No employees found',
-                                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'Check your permissions',
-                                  style: TextStyle(color: _textGrey, fontSize: 12),
+                                  style: TextStyle(
+                                    color: _textGrey,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
                           )
                         : filtered.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.search_off, color: _textGrey, size: 48),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'No matching employees',
-                                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.search_off,
+                                  color: _textGrey,
+                                  size: 48,
                                 ),
-                              )
-                            : ListView.builder(
-                      controller: sc,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (_, i) {
-                        final e = filtered[i];
-                        return ListTile(
-                          dense: true,
-                          leading: CircleAvatar(
-                            radius: 18,
-                            backgroundColor: _accentPink.withValues(alpha: 0.2),
-                            child: Text(
-                              (e['name'] ?? '?')[0].toString().toUpperCase(),
-                              style: TextStyle(
-                                color: _accentPink,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No matching employees',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          title: Text(
-                            e['name'] ?? '',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                          )
+                        : ListView.builder(
+                            controller: sc,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
                             ),
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) {
+                              final e = filtered[i];
+                              return ListTile(
+                                dense: true,
+                                leading: CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: _accentPink.withValues(
+                                    alpha: 0.2,
+                                  ),
+                                  child: Text(
+                                    (e['name'] ?? '?')[0]
+                                        .toString()
+                                        .toUpperCase(),
+                                    style: TextStyle(
+                                      color: _accentPink,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                title: Text(
+                                  e['name'] ?? '',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '${e['department'] ?? ''} Ã¢â‚¬Â¢ ${e['employeeId'] ?? ''}',
+                                  style: TextStyle(
+                                    color: _textGrey,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                onTap: () => Navigator.pop(
+                                  context,
+                                  e['_id']?.toString(),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 2,
+                                ),
+                              );
+                            },
                           ),
-                          subtitle: Text(
-                            '${e['department'] ?? ''} Ã¢â‚¬Â¢ ${e['employeeId'] ?? ''}',
-                            style: TextStyle(color: _textGrey, fontSize: 11),
-                          ),
-                          onTap: () =>
-                              Navigator.pop(context, e['_id']?.toString()),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
-                          ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -7436,8 +8427,7 @@ class _TasksScreenState extends State<TasksScreen> {
                 color: _cardDark,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color:
-                      _statusFilter != null ? _accentPink : Colors.white12,
+                  color: _statusFilter != null ? _accentPink : Colors.white12,
                 ),
               ),
               child: Row(
@@ -7453,19 +8443,13 @@ class _TasksScreenState extends State<TasksScreen> {
                         ? 'All Status'
                         : _statusLabel(_statusFilter!),
                     style: TextStyle(
-                      color: _statusFilter != null
-                          ? _accentPink
-                          : Colors.white,
+                      color: _statusFilter != null ? _accentPink : Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const Spacer(),
-                  Icon(
-                    Icons.keyboard_arrow_down,
-                    color: _textGrey,
-                    size: 18,
-                  ),
+                  Icon(Icons.keyboard_arrow_down, color: _textGrey, size: 18),
                 ],
               ),
             ),
@@ -7477,9 +8461,7 @@ class _TasksScreenState extends State<TasksScreen> {
           decoration: BoxDecoration(
             color: _accentPink.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _accentPink.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: _accentPink.withValues(alpha: 0.3)),
           ),
           child: Text(
             '$count',
@@ -7504,11 +8486,7 @@ class _TasksScreenState extends State<TasksScreen> {
         'color': Colors.blueAccent,
       },
       {'value': 'assigned', 'label': 'Assigned', 'color': Colors.amber},
-      {
-        'value': 'in-progress',
-        'label': 'In Progress',
-        'color': _accentOrange,
-      },
+      {'value': 'in-progress', 'label': 'In Progress', 'color': _accentOrange},
       {
         'value': 'under-review',
         'label': 'Under Review',
@@ -7887,7 +8865,10 @@ class _TasksScreenState extends State<TasksScreen> {
               onTap: () => onChange(i),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 9,
+                ),
                 decoration: BoxDecoration(
                   color: active ? _accentPink : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
@@ -7946,9 +8927,13 @@ class _TasksScreenState extends State<TasksScreen> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      _statusFilter == null ? 'All Status' : _statusLabel(_statusFilter!),
+                      _statusFilter == null
+                          ? 'All Status'
+                          : _statusLabel(_statusFilter!),
                       style: TextStyle(
-                        color: _statusFilter != null ? _accentPink : Colors.white,
+                        color: _statusFilter != null
+                            ? _accentPink
+                            : Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -7970,11 +8955,20 @@ class _TasksScreenState extends State<TasksScreen> {
                 {'value': 'low', 'label': 'Low', 'color': _accentGreen},
                 {'value': 'medium', 'label': 'Medium', 'color': _accentOrange},
                 {'value': 'high', 'label': 'High', 'color': Colors.redAccent},
-                {'value': 'critical', 'label': 'Critical', 'color': const Color(0xFFFF1744)},
+                {
+                  'value': 'critical',
+                  'label': 'Critical',
+                  'color': const Color(0xFFFF1744),
+                },
               ];
-              _showFilterSheet('Filter by Priority', options, _employeePriorityFilter, (v) {
-                setState(() => _employeePriorityFilter = v as String?);
-              });
+              _showFilterSheet(
+                'Filter by Priority',
+                options,
+                _employeePriorityFilter,
+                (v) {
+                  setState(() => _employeePriorityFilter = v as String?);
+                },
+              );
             },
             child: Container(
               height: 44,
@@ -7983,14 +8977,18 @@ class _TasksScreenState extends State<TasksScreen> {
                 color: _cardDark,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _employeePriorityFilter != null ? _accentPink : Colors.white12,
+                  color: _employeePriorityFilter != null
+                      ? _accentPink
+                      : Colors.white12,
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.flag_outlined,
-                    color: _employeePriorityFilter != null ? _accentPink : _textGrey,
+                    color: _employeePriorityFilter != null
+                        ? _accentPink
+                        : _textGrey,
                     size: 16,
                   ),
                   const SizedBox(width: 6),
@@ -8000,7 +8998,9 @@ class _TasksScreenState extends State<TasksScreen> {
                           ? 'All Priority'
                           : '${_employeePriorityFilter![0].toUpperCase()}${_employeePriorityFilter!.substring(1)}',
                       style: TextStyle(
-                        color: _employeePriorityFilter != null ? _accentPink : Colors.white,
+                        color: _employeePriorityFilter != null
+                            ? _accentPink
+                            : Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -8037,10 +9037,17 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   // Show bottom sheet to change task status from Kanban
-  void _showKanbanStatusPicker(BuildContext context, Map<String, dynamic> task) {
+  void _showKanbanStatusPicker(
+    BuildContext context,
+    Map<String, dynamic> task,
+  ) {
     final statuses = [
       {'status': 'draft', 'label': 'Draft', 'color': 0xFF9E9E9E},
-      {'status': 'pending-approval', 'label': 'Pending Approval', 'color': 0xFFFFC107},
+      {
+        'status': 'pending-approval',
+        'label': 'Pending Approval',
+        'color': 0xFFFFC107,
+      },
       {'status': 'assigned', 'label': 'Assigned', 'color': 0xFF2196F3},
       {'status': 'todo', 'label': 'To Do', 'color': 0xFF03A9F4},
       {'status': 'in-progress', 'label': 'In Progress', 'color': 0xFFFFAB00},
@@ -8062,12 +9069,21 @@ class _TasksScreenState extends State<TasksScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Move to',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Move to',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(task['title'] ?? '',
+            Text(
+              task['title'] ?? '',
               style: const TextStyle(color: Color(0xFF888888), fontSize: 12),
-              maxLines: 1, overflow: TextOverflow.ellipsis),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
@@ -8081,18 +9097,35 @@ class _TasksScreenState extends State<TasksScreen> {
                     if (isCurrent) return;
                     final token = _token;
                     if (token == null) return;
-                    await TaskService.updateTaskStatus(token, task['_id']?.toString() ?? '', s['status'] as String);
+                    await TaskService.updateTaskStatus(
+                      token,
+                      task['_id']?.toString() ?? '',
+                      s['status'] as String,
+                    );
                     // _loadTasks();
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: col.withOpacity(isCurrent ? 0.25 : 0.1),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: col.withOpacity(isCurrent ? 0.8 : 0.3)),
+                      border: Border.all(
+                        color: col.withOpacity(isCurrent ? 0.8 : 0.3),
+                      ),
                     ),
-                    child: Text(s['label'] as String,
-                      style: TextStyle(color: col, fontSize: 13, fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal)),
+                    child: Text(
+                      s['label'] as String,
+                      style: TextStyle(
+                        color: col,
+                        fontSize: 13,
+                        fontWeight: isCurrent
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
                   ),
                 );
               }).toList(),
@@ -8108,11 +9141,19 @@ class _TasksScreenState extends State<TasksScreen> {
   Widget _buildKanbanView(List<dynamic> tasks) {
     final columns = [
       {'status': 'draft', 'label': 'Draft', 'color': Colors.grey},
-      {'status': 'pending-approval', 'label': 'Pending Approval', 'color': Colors.amber},
+      {
+        'status': 'pending-approval',
+        'label': 'Pending Approval',
+        'color': Colors.amber,
+      },
       {'status': 'assigned', 'label': 'Assigned', 'color': Colors.blueAccent},
       {'status': 'todo', 'label': 'To Do', 'color': Colors.lightBlueAccent},
       {'status': 'in-progress', 'label': 'In Progress', 'color': _accentOrange},
-      {'status': 'under-review', 'label': 'Under Review', 'color': Colors.tealAccent},
+      {
+        'status': 'under-review',
+        'label': 'Under Review',
+        'color': Colors.tealAccent,
+      },
       {'status': 'completed', 'label': 'Completed', 'color': _accentGreen},
       {'status': 'closed', 'label': 'Closed', 'color': Colors.blueGrey},
       {'status': 'rejected', 'label': 'Rejected', 'color': Colors.redAccent},
@@ -8126,7 +9167,9 @@ class _TasksScreenState extends State<TasksScreen> {
           final colStatus = col['status'] as String;
           final colLabel = col['label'] as String;
           final colColor = col['color'] as Color;
-          final colTasks = tasks.where((t) => t['status'] == colStatus).toList();
+          final colTasks = tasks
+              .where((t) => t['status'] == colStatus)
+              .toList();
           return Container(
             width: 260,
             margin: const EdgeInsets.only(right: 12),
@@ -8135,7 +9178,10 @@ class _TasksScreenState extends State<TasksScreen> {
               children: [
                 // Column header
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: colColor.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
@@ -8146,7 +9192,10 @@ class _TasksScreenState extends State<TasksScreen> {
                       Container(
                         width: 8,
                         height: 8,
-                        decoration: BoxDecoration(color: colColor, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: colColor,
+                          shape: BoxShape.circle,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -8160,7 +9209,10 @@ class _TasksScreenState extends State<TasksScreen> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: colColor.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(10),
@@ -8184,7 +9236,10 @@ class _TasksScreenState extends State<TasksScreen> {
                   final overdue = _isOverdue(task);
                   return GestureDetector(
                     onTap: () => _showTaskDetail(task as Map<String, dynamic>),
-                    onLongPress: () => _showKanbanStatusPicker(context, task as Map<String, dynamic>),
+                    onLongPress: () => _showKanbanStatusPicker(
+                      context,
+                      task as Map<String, dynamic>,
+                    ),
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
@@ -8203,7 +9258,8 @@ class _TasksScreenState extends State<TasksScreen> {
                           Row(
                             children: [
                               _miniChip(
-                                priority[0].toUpperCase() + priority.substring(1),
+                                priority[0].toUpperCase() +
+                                    priority.substring(1),
                                 _priorityColor(priority),
                               ),
                               if (overdue) ...[
@@ -8227,11 +9283,18 @@ class _TasksScreenState extends State<TasksScreen> {
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                Icon(Icons.calendar_today_outlined, size: 11, color: _textGrey),
+                                Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 11,
+                                  color: _textGrey,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   _formatDate(task['dueDate']),
-                                  style: TextStyle(color: _textGrey, fontSize: 11),
+                                  style: TextStyle(
+                                    color: _textGrey,
+                                    fontSize: 11,
+                                  ),
                                 ),
                               ],
                             ),
@@ -8240,12 +9303,19 @@ class _TasksScreenState extends State<TasksScreen> {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                Icon(Icons.person_outline, size: 11, color: _textGrey),
+                                Icon(
+                                  Icons.person_outline,
+                                  size: 11,
+                                  color: _textGrey,
+                                ),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     _assigneeName(task),
-                                    style: TextStyle(color: _textGrey, fontSize: 11),
+                                    style: TextStyle(
+                                      color: _textGrey,
+                                      fontSize: 11,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -8289,7 +9359,11 @@ class _TasksScreenState extends State<TasksScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.timer_outlined, color: _runningTimer != null ? _accentGreen : _textGrey, size: 20),
+                    Icon(
+                      Icons.timer_outlined,
+                      color: _runningTimer != null ? _accentGreen : _textGrey,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Active Timer',
@@ -8337,15 +9411,23 @@ class _TasksScreenState extends State<TasksScreen> {
                           ? SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.black,
+                              ),
                             )
                           : const Icon(Icons.stop_rounded, size: 18),
-                      label: const Text('Stop Timer', style: TextStyle(fontWeight: FontWeight.bold)),
+                      label: const Text(
+                        'Stop Timer',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.redAccent,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
@@ -8357,7 +9439,10 @@ class _TasksScreenState extends State<TasksScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Tap a task to start tracking time',
-                    style: TextStyle(color: _textGrey.withOpacity(0.6), fontSize: 12),
+                    style: TextStyle(
+                      color: _textGrey.withOpacity(0.6),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ],
@@ -8369,7 +9454,11 @@ class _TasksScreenState extends State<TasksScreen> {
             children: [
               Text(
                 'Recent Time Logs',
-                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const Spacer(),
               Text(
@@ -8385,9 +9474,16 @@ class _TasksScreenState extends State<TasksScreen> {
                 padding: const EdgeInsets.only(top: 24),
                 child: Column(
                   children: [
-                    Icon(Icons.access_time_outlined, size: 40, color: _textGrey.withOpacity(0.4)),
+                    Icon(
+                      Icons.access_time_outlined,
+                      size: 40,
+                      color: _textGrey.withOpacity(0.4),
+                    ),
                     const SizedBox(height: 12),
-                    Text('No time logs yet', style: TextStyle(color: _textGrey, fontSize: 14)),
+                    Text(
+                      'No time logs yet',
+                      style: TextStyle(color: _textGrey, fontSize: 14),
+                    ),
                   ],
                 ),
               ),
@@ -8395,14 +9491,18 @@ class _TasksScreenState extends State<TasksScreen> {
           else
             ...(_timeLogs.map((log) {
               final taskInfo = log['task'];
-              final taskTitle = taskInfo is Map ? (taskInfo['title'] ?? 'Task') : 'Task';
+              final taskTitle = taskInfo is Map
+                  ? (taskInfo['title'] ?? 'Task')
+                  : 'Task';
               final duration = (log['durationMinutes'] ?? 0) as num;
               final desc = (log['description'] ?? '').toString();
               final date = log['date'] ?? log['createdAt'];
               String dateStr = '';
               if (date != null) {
                 try {
-                  dateStr = DateFormat('MMM d').format(DateTime.parse(date.toString()).toLocal());
+                  dateStr = DateFormat(
+                    'MMM d',
+                  ).format(DateTime.parse(date.toString()).toLocal());
                 } catch (_) {}
               }
               return Container(
@@ -8421,7 +9521,11 @@ class _TasksScreenState extends State<TasksScreen> {
                         color: _accentPink.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(Icons.timer_outlined, color: _accentPink, size: 18),
+                      child: Icon(
+                        Icons.timer_outlined,
+                        color: _accentPink,
+                        size: 18,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -8430,11 +9534,19 @@ class _TasksScreenState extends State<TasksScreen> {
                         children: [
                           Text(
                             taskTitle.toString(),
-                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                           if (desc.isNotEmpty)
-                            Text(desc, style: TextStyle(color: _textGrey, fontSize: 11), overflow: TextOverflow.ellipsis),
+                            Text(
+                              desc,
+                              style: TextStyle(color: _textGrey, fontSize: 11),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                         ],
                       ),
                     ),
@@ -8444,10 +9556,17 @@ class _TasksScreenState extends State<TasksScreen> {
                       children: [
                         Text(
                           _formatDuration(duration.toInt()),
-                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         if (dateStr.isNotEmpty)
-                          Text(dateStr, style: TextStyle(color: _textGrey, fontSize: 11)),
+                          Text(
+                            dateStr,
+                            style: TextStyle(color: _textGrey, fontSize: 11),
+                          ),
                       ],
                     ),
                   ],
@@ -8468,9 +9587,16 @@ class _TasksScreenState extends State<TasksScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.group_outlined, size: 48, color: _textGrey.withOpacity(0.3)),
+              Icon(
+                Icons.group_outlined,
+                size: 48,
+                color: _textGrey.withOpacity(0.3),
+              ),
               const SizedBox(height: 16),
-              Text('No employees found', style: TextStyle(color: _textGrey, fontSize: 14)),
+              Text(
+                'No employees found',
+                style: TextStyle(color: _textGrey, fontSize: 14),
+              ),
             ],
           ),
         ),
@@ -8479,7 +9605,9 @@ class _TasksScreenState extends State<TasksScreen> {
     return RefreshIndicator(
       color: _accentPink,
       backgroundColor: _cardDark,
-      onRefresh: () async { await Future.wait([_loadData(), _loadEmployees()]); },
+      onRefresh: () async {
+        await Future.wait([_loadData(), _loadEmployees()]);
+      },
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _employees.length,
@@ -8488,12 +9616,17 @@ class _TasksScreenState extends State<TasksScreen> {
           final empId = (emp['_id'] ?? '').toString();
           final empTasks = _tasks.where((t) {
             final assignedTo = t['assignedTo'];
-            if (assignedTo is Map) return (assignedTo['_id'] ?? '').toString() == empId;
+            if (assignedTo is Map)
+              return (assignedTo['_id'] ?? '').toString() == empId;
             if (assignedTo is String) return assignedTo == empId;
             return false;
           }).toList();
-          final completed = empTasks.where((t) => t['status'] == 'completed').length;
-          final inProgress = empTasks.where((t) => t['status'] == 'in-progress').length;
+          final completed = empTasks
+              .where((t) => t['status'] == 'completed')
+              .length;
+          final inProgress = empTasks
+              .where((t) => t['status'] == 'in-progress')
+              .length;
           final overdue = empTasks.where((t) => _isOverdue(t)).length;
           final name = (emp['name'] ?? 'Employee').toString();
           final dept = (emp['department'] ?? '').toString();
@@ -8507,7 +9640,10 @@ class _TasksScreenState extends State<TasksScreen> {
               border: Border.all(color: Colors.white.withOpacity(0.06)),
             ),
             child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 4,
+              ),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               backgroundColor: Colors.transparent,
               collapsedBackgroundColor: Colors.transparent,
@@ -8519,7 +9655,10 @@ class _TasksScreenState extends State<TasksScreen> {
                     backgroundColor: _accentPink.withOpacity(0.2),
                     child: Text(
                       name[0].toUpperCase(),
-                      style: TextStyle(color: _accentPink, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: _accentPink,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -8527,7 +9666,14 @@ class _TasksScreenState extends State<TasksScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text(
+                          name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         Text(
                           '${dept.isNotEmpty ? '$dept Ã¢â‚¬Â¢ ' : ''}${empIdNum.isNotEmpty ? empIdNum : ''}',
                           style: TextStyle(color: _textGrey, fontSize: 11),
@@ -8545,7 +9691,11 @@ class _TasksScreenState extends State<TasksScreen> {
                       if (overdue > 0)
                         Text(
                           '$overdue overdue',
-                          style: const TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                     ],
                   ),
@@ -8567,7 +9717,10 @@ class _TasksScreenState extends State<TasksScreen> {
                   ? [
                       Text(
                         'No tasks assigned',
-                        style: TextStyle(color: _textGrey.withOpacity(0.6), fontSize: 13),
+                        style: TextStyle(
+                          color: _textGrey.withOpacity(0.6),
+                          fontSize: 13,
+                        ),
                       ),
                     ]
                   : empTasks.map((task) {
@@ -8582,7 +9735,9 @@ class _TasksScreenState extends State<TasksScreen> {
                           decoration: BoxDecoration(
                             color: _bgDark,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withOpacity(0.05)),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.05),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -8601,18 +9756,28 @@ class _TasksScreenState extends State<TasksScreen> {
                                   children: [
                                     Text(
                                       t['title'] ?? '',
-                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     if (t['dueDate'] != null)
                                       Text(
                                         _formatDate(t['dueDate']),
-                                        style: TextStyle(color: _textGrey, fontSize: 11),
+                                        style: TextStyle(
+                                          color: _textGrey,
+                                          fontSize: 11,
+                                        ),
                                       ),
                                   ],
                                 ),
                               ),
-                              _miniChip(_statusLabel(status), _statusColor(status)),
+                              _miniChip(
+                                _statusLabel(status),
+                                _statusColor(status),
+                              ),
                             ],
                           ),
                         ),
@@ -8634,13 +9799,23 @@ class _TasksScreenState extends State<TasksScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.folder_outlined, size: 56, color: _textGrey.withOpacity(0.3)),
+              Icon(
+                Icons.folder_outlined,
+                size: 56,
+                color: _textGrey.withOpacity(0.3),
+              ),
               const SizedBox(height: 16),
-              Text('No projects yet', style: TextStyle(color: _textGrey, fontSize: 15)),
+              Text(
+                'No projects yet',
+                style: TextStyle(color: _textGrey, fontSize: 15),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Tap + to create a project',
-                style: TextStyle(color: _textGrey.withOpacity(0.6), fontSize: 13),
+                style: TextStyle(
+                  color: _textGrey.withOpacity(0.6),
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -8689,21 +9864,39 @@ class _TasksScreenState extends State<TasksScreen> {
                             Container(
                               width: 14,
                               height: 14,
-                              decoration: BoxDecoration(color: projColor, shape: BoxShape.circle),
+                              decoration: BoxDecoration(
+                                color: projColor,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                              child: Text(
+                                name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.redAccent,
+                                size: 20,
+                              ),
                               onPressed: () async {
                                 Navigator.pop(ctx);
                                 await _deleteProject(projId);
                               },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white38, size: 20),
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white38,
+                                size: 20,
+                              ),
                               onPressed: () => Navigator.pop(ctx),
                             ),
                           ],
@@ -8712,33 +9905,57 @@ class _TasksScreenState extends State<TasksScreen> {
                       if (desc.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                          child: Text(desc, style: TextStyle(color: _textGrey, fontSize: 13)),
+                          child: Text(
+                            desc,
+                            style: TextStyle(color: _textGrey, fontSize: 13),
+                          ),
                         ),
                       const Divider(color: Colors.white10, height: 1),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
                         child: Row(
                           children: [
-                            Text('Milestones', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                            Text(
+                              'Milestones',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const Spacer(),
                             TextButton.icon(
-                              onPressed: () => _showCreateMilestoneDialog(projId),
+                              onPressed: () =>
+                                  _showCreateMilestoneDialog(projId),
                               icon: const Icon(Icons.add, size: 16),
                               label: const Text('Add'),
-                              style: TextButton.styleFrom(foregroundColor: _accentPink),
+                              style: TextButton.styleFrom(
+                                foregroundColor: _accentPink,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       Expanded(
                         child: _milestones.isEmpty
-                            ? Center(child: Text('No milestones yet', style: TextStyle(color: _textGrey, fontSize: 13)))
+                            ? Center(
+                                child: Text(
+                                  'No milestones yet',
+                                  style: TextStyle(
+                                    color: _textGrey,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              )
                             : ListView.builder(
                                 controller: scroll,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                                 itemCount: _milestones.length,
                                 itemBuilder: (_, j) {
-                                  final m = _milestones[j] as Map<String, dynamic>;
+                                  final m =
+                                      _milestones[j] as Map<String, dynamic>;
                                   final mTitle = (m['title'] ?? '').toString();
                                   final mDue = m['dueDate'];
                                   final mDone = m['isCompleted'] == true;
@@ -8748,41 +9965,69 @@ class _TasksScreenState extends State<TasksScreen> {
                                     decoration: BoxDecoration(
                                       color: _bgDark,
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.white.withOpacity(0.05)),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.05),
+                                      ),
                                     ),
                                     child: Row(
                                       children: [
                                         Icon(
-                                          mDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
-                                          color: mDone ? _accentGreen : _textGrey,
+                                          mDone
+                                              ? Icons.check_circle_rounded
+                                              : Icons.radio_button_unchecked,
+                                          color: mDone
+                                              ? _accentGreen
+                                              : _textGrey,
                                           size: 18,
                                         ),
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 mTitle,
                                                 style: TextStyle(
-                                                  color: mDone ? _textGrey : Colors.white,
+                                                  color: mDone
+                                                      ? _textGrey
+                                                      : Colors.white,
                                                   fontSize: 13,
-                                                  decoration: mDone ? TextDecoration.lineThrough : null,
+                                                  decoration: mDone
+                                                      ? TextDecoration
+                                                            .lineThrough
+                                                      : null,
                                                 ),
                                               ),
                                               if (mDue != null)
-                                                Text(_formatDate(mDue), style: TextStyle(color: _textGrey, fontSize: 11)),
+                                                Text(
+                                                  _formatDate(mDue),
+                                                  style: TextStyle(
+                                                    color: _textGrey,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
                                             ],
                                           ),
                                         ),
                                         IconButton(
-                                          icon: Icon(Icons.delete_outline, color: _textGrey.withOpacity(0.5), size: 16),
+                                          icon: Icon(
+                                            Icons.delete_outline,
+                                            color: _textGrey.withOpacity(0.5),
+                                            size: 16,
+                                          ),
                                           onPressed: () async {
-                                            await _deleteMilestone((m['_id'] ?? '').toString(), projId);
+                                            await _deleteMilestone(
+                                              (m['_id'] ?? '').toString(),
+                                              projId,
+                                            );
                                             ss(() {});
                                           },
                                           padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 36,
+                                            minHeight: 36,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -8803,7 +10048,9 @@ class _TasksScreenState extends State<TasksScreen> {
               color: _cardDark,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected ? projColor.withOpacity(0.5) : Colors.white.withOpacity(0.06),
+                color: isSelected
+                    ? projColor.withOpacity(0.5)
+                    : Colors.white.withOpacity(0.06),
               ),
             ),
             child: Row(
@@ -8811,20 +10058,38 @@ class _TasksScreenState extends State<TasksScreen> {
                 Container(
                   width: 14,
                   height: 14,
-                  decoration: BoxDecoration(color: projColor, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: projColor,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       if (desc.isNotEmpty)
-                        Text(desc, style: TextStyle(color: _textGrey, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(
+                          desc,
+                          style: TextStyle(color: _textGrey, fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                     ],
                   ),
                 ),
-                _miniChip(priority[0].toUpperCase() + priority.substring(1), _priorityColor(priority)),
+                _miniChip(
+                  priority[0].toUpperCase() + priority.substring(1),
+                  _priorityColor(priority),
+                ),
                 const SizedBox(width: 8),
                 Icon(Icons.chevron_right, color: _textGrey, size: 18),
               ],
@@ -8849,7 +10114,11 @@ class _TasksScreenState extends State<TasksScreen> {
           // Overall stats
           const Text(
             'Overview',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
           if (stats != null) ...[
@@ -8861,12 +10130,42 @@ class _TasksScreenState extends State<TasksScreen> {
               mainAxisSpacing: 10,
               childAspectRatio: 1.2,
               children: [
-                _buildStatCard('Total', '${stats['total'] ?? 0}', Icons.folder_outlined, _accentPurple),
-                _buildStatCard('Completed', '${stats['completed'] ?? 0}', Icons.check_circle_outline, _accentGreen),
-                _buildStatCard('In Progress', '${stats['inProgress'] ?? 0}', Icons.pending_actions, _accentOrange),
-                _buildStatCard('Overdue', '${stats['overdue'] ?? 0}', Icons.warning_amber_outlined, Colors.redAccent),
-                _buildStatCard('Pending', '${stats['pending'] ?? 0}', Icons.schedule, Colors.orangeAccent),
-                _buildStatCard('Under Review', '${stats['underReview'] ?? 0}', Icons.visibility, Colors.blueAccent),
+                _buildStatCard(
+                  'Total',
+                  '${stats['total'] ?? 0}',
+                  Icons.folder_outlined,
+                  _accentPurple,
+                ),
+                _buildStatCard(
+                  'Completed',
+                  '${stats['completed'] ?? 0}',
+                  Icons.check_circle_outline,
+                  _accentGreen,
+                ),
+                _buildStatCard(
+                  'In Progress',
+                  '${stats['inProgress'] ?? 0}',
+                  Icons.pending_actions,
+                  _accentOrange,
+                ),
+                _buildStatCard(
+                  'Overdue',
+                  '${stats['overdue'] ?? 0}',
+                  Icons.warning_amber_outlined,
+                  Colors.redAccent,
+                ),
+                _buildStatCard(
+                  'Pending',
+                  '${stats['pending'] ?? 0}',
+                  Icons.schedule,
+                  Colors.orangeAccent,
+                ),
+                _buildStatCard(
+                  'Under Review',
+                  '${stats['underReview'] ?? 0}',
+                  Icons.visibility,
+                  Colors.blueAccent,
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -8875,12 +10174,17 @@ class _TasksScreenState extends State<TasksScreen> {
           if (_analyticsWorkload.isNotEmpty) ...[
             const Text(
               'Workload Distribution',
-              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 12),
             ..._analyticsWorkload.map((w) {
               final emp = w as Map<String, dynamic>;
-              final name = (emp['employeeName'] ?? emp['name'] ?? 'Employee').toString();
+              final name = (emp['employeeName'] ?? emp['name'] ?? 'Employee')
+                  .toString();
               final count = (emp['taskCount'] ?? emp['count'] ?? 0) as num;
               final total = _analyticsWorkload.fold<num>(
                 0,
@@ -8901,9 +10205,19 @@ class _TasksScreenState extends State<TasksScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                          child: Text(
+                            name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                        Text('${count.toInt()} tasks', style: TextStyle(color: _textGrey, fontSize: 12)),
+                        Text(
+                          '${count.toInt()} tasks',
+                          style: TextStyle(color: _textGrey, fontSize: 12),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -8926,16 +10240,24 @@ class _TasksScreenState extends State<TasksScreen> {
           if (_analyticsProductivity.isNotEmpty) ...[
             const Text(
               'Productivity Trends',
-              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 12),
             ..._analyticsProductivity.take(10).map((p) {
               final prod = p as Map<String, dynamic>;
               final date = prod['date'] ?? prod['_id']?.toString() ?? '';
-              final completed = (prod['completed'] ?? prod['count'] ?? 0) as num;
+              final completed =
+                  (prod['completed'] ?? prod['count'] ?? 0) as num;
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: _cardDark,
                   borderRadius: BorderRadius.circular(12),
@@ -8944,7 +10266,10 @@ class _TasksScreenState extends State<TasksScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(date.toString(), style: TextStyle(color: _textGrey, fontSize: 12)),
+                      child: Text(
+                        date.toString(),
+                        style: TextStyle(color: _textGrey, fontSize: 12),
+                      ),
                     ),
                     _miniChip('${completed.toInt()} completed', _accentGreen),
                   ],
@@ -8966,7 +10291,14 @@ class _TasksScreenState extends State<TasksScreen> {
     String selectedColor = '#FF8FA3';
     bool submitting = false;
 
-    final colors = ['#FF8FA3', '#651FFF', '#FFB300', '#00C853', '#2196F3', '#FF5722'];
+    final colors = [
+      '#FF8FA3',
+      '#651FFF',
+      '#FFB300',
+      '#00C853',
+      '#2196F3',
+      '#FF5722',
+    ];
     final priorities = ['low', 'medium', 'high'];
 
     await showModalBottomSheet(
@@ -8978,7 +10310,9 @@ class _TasksScreenState extends State<TasksScreen> {
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (_, ss) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
             child: Column(
@@ -8999,10 +10333,21 @@ class _TasksScreenState extends State<TasksScreen> {
                 ),
                 const Text(
                   'New Project',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 20),
-                Text('Name', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  'Name',
+                  style: TextStyle(
+                    color: _textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
@@ -9015,14 +10360,24 @@ class _TasksScreenState extends State<TasksScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       hintText: 'Project name',
                       hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text('Description (optional)', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  'Description (optional)',
+                  style: TextStyle(
+                    color: _textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
@@ -9036,14 +10391,24 @@ class _TasksScreenState extends State<TasksScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       hintText: 'Short description...',
                       hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text('Priority', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  'Priority',
+                  style: TextStyle(
+                    color: _textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Row(
                   children: priorities.map((pr) {
@@ -9055,10 +10420,14 @@ class _TasksScreenState extends State<TasksScreen> {
                           margin: const EdgeInsets.only(right: 8),
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
-                            color: active ? _priorityColor(pr).withOpacity(0.2) : _inputDark,
+                            color: active
+                                ? _priorityColor(pr).withOpacity(0.2)
+                                : _inputDark,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: active ? _priorityColor(pr) : Colors.white.withOpacity(0.07),
+                              color: active
+                                  ? _priorityColor(pr)
+                                  : Colors.white.withOpacity(0.07),
                             ),
                           ),
                           child: Center(
@@ -9077,7 +10446,14 @@ class _TasksScreenState extends State<TasksScreen> {
                   }).toList(),
                 ),
                 const SizedBox(height: 14),
-                Text('Color', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  'Color',
+                  style: TextStyle(
+                    color: _textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 10),
                 Row(
                   children: colors.map((c) {
@@ -9101,7 +10477,11 @@ class _TasksScreenState extends State<TasksScreen> {
                           ),
                         ),
                         child: active
-                            ? const Icon(Icons.check, color: Colors.white, size: 16)
+                            ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 16,
+                              )
                             : null,
                       ),
                     );
@@ -9119,7 +10499,9 @@ class _TasksScreenState extends State<TasksScreen> {
                             ss(() => submitting = true);
                             await _createProject(
                               name: name,
-                              description: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : null,
+                              description: descCtrl.text.trim().isNotEmpty
+                                  ? descCtrl.text.trim()
+                                  : null,
                               priority: selectedPriority,
                               color: selectedColor,
                             );
@@ -9129,15 +10511,26 @@ class _TasksScreenState extends State<TasksScreen> {
                       backgroundColor: _accentPink,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: submitting
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
+                            ),
                           )
-                        : const Text('Create Project', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        : const Text(
+                            'Create Project',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -9166,7 +10559,9 @@ class _TasksScreenState extends State<TasksScreen> {
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (_, ss) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
             child: Column(
@@ -9178,12 +10573,29 @@ class _TasksScreenState extends State<TasksScreen> {
                     width: 40,
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                const Text('New Milestone', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'New Milestone',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 20),
-                Text('Title', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  'Title',
+                  style: TextStyle(
+                    color: _textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Container(
                   decoration: BoxDecoration(
@@ -9196,14 +10608,24 @@ class _TasksScreenState extends State<TasksScreen> {
                     style: const TextStyle(color: Colors.white, fontSize: 14),
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       hintText: 'Milestone title',
                       hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text('Due Date (optional)', style: TextStyle(color: _textGrey, fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  'Due Date (optional)',
+                  style: TextStyle(
+                    color: _textGrey,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () async {
@@ -9211,9 +10633,13 @@ class _TasksScreenState extends State<TasksScreen> {
                       context: ctx,
                       initialDate: DateTime.now().add(const Duration(days: 7)),
                       firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                      lastDate: DateTime.now().add(
+                        const Duration(days: 365 * 2),
+                      ),
                       builder: (ctx, child) => Theme(
-                        data: Theme.of(ctx).copyWith(colorScheme: ColorScheme.dark(primary: _accentPink)),
+                        data: Theme.of(ctx).copyWith(
+                          colorScheme: ColorScheme.dark(primary: _accentPink),
+                        ),
                         child: child!,
                       ),
                     );
@@ -9226,16 +10652,27 @@ class _TasksScreenState extends State<TasksScreen> {
                       color: _inputDark,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: dueDate != null ? _accentPink : Colors.white.withOpacity(0.07),
+                        color: dueDate != null
+                            ? _accentPink
+                            : Colors.white.withOpacity(0.07),
                       ),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.calendar_today_outlined, color: dueDate != null ? _accentPink : _textGrey, size: 16),
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          color: dueDate != null ? _accentPink : _textGrey,
+                          size: 16,
+                        ),
                         const SizedBox(width: 10),
                         Text(
-                          dueDate != null ? DateFormat('MMM d, y').format(dueDate!) : 'Select due date',
-                          style: TextStyle(color: dueDate != null ? Colors.white : _textGrey, fontSize: 14),
+                          dueDate != null
+                              ? DateFormat('MMM d, y').format(dueDate!)
+                              : 'Select due date',
+                          style: TextStyle(
+                            color: dueDate != null ? Colors.white : _textGrey,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -9262,15 +10699,26 @@ class _TasksScreenState extends State<TasksScreen> {
                       backgroundColor: _accentPink,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: submitting
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.black,
+                            ),
                           )
-                        : const Text('Create Milestone', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        : const Text(
+                            'Create Milestone',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -9299,4 +10747,3 @@ class _EstPreset {
   final String? value; // null = custom
   const _EstPreset(this.label, this.value);
 }
-

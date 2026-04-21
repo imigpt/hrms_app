@@ -6,9 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
 import 'package:hrms_app/features/chat/data/models/chat_room_model.dart';
-import 'package:hrms_app/features/chat/data/services/chat_service.dart';
+import 'package:hrms_app/features/chat/presentation/providers/chat_notifier.dart';
 import 'package:hrms_app/shared/services/communication/chat_socket_service.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/shared/services/communication/notification_service.dart';
@@ -68,10 +69,19 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_token == null) return;
     _socket.connect(_token!);
 
+    // ── Update ChatNotifier with connection status ──────────────────────────
+    if (mounted) {
+      context.read<ChatNotifier>().setConnectionStatus(isConnected: true);
+    }
+
     // Listen for any new incoming message across all rooms.
     _subs.add(
       _socket.onNewMessage.listen((msg) {
         if (!mounted) return;
+        
+        // ── Notify ChatNotifier of new message ──────────────────────────────
+        context.read<ChatNotifier>().receiveNewMessage(msg);
+
         // Show local notification only when the user is NOT already viewing that room.
         if (ChatDetailScreen.visibleRoomId != msg.chatRoom) {
           final senderName = msg.sender?.name ?? 'New Message';
@@ -100,6 +110,47 @@ class _ChatScreenState extends State<ChatScreen> {
         _loadRooms();
       }),
     );
+
+    // ── Listen for message-sent confirmations ───────────────────────────────
+    _subs.add(
+      _socket.onMessageSent.listen((event) {
+        if (!mounted) return;
+        context.read<ChatNotifier>().receiveMessageSent(
+          tempId: event.tempId,
+          serverMessage: event.message,
+        );
+      }),
+    );
+
+    // ── Listen for messages-read events ─────────────────────────────────────
+    _subs.add(
+      _socket.onMessagesRead.listen((event) {
+        if (!mounted) return;
+        context.read<ChatNotifier>().receiveMessagesRead(
+          roomId: event.roomId,
+          count: event.count,
+        );
+      }),
+    );
+
+    // ── Listen for online users list ────────────────────────────────────────
+    _subs.add(
+      _socket.onOnlineUsersList.listen((userIds) {
+        if (!mounted) return;
+        context.read<ChatNotifier>().updateOnlineUsers(userIds);
+      }),
+    );
+
+    // ── Listen for connection status changes ────────────────────────────────
+    _subs.add(
+      _socket.onConnectionChanged.listen((isConnected) {
+        if (!mounted) return;
+        context.read<ChatNotifier>().setConnectionStatus(
+          isConnected: isConnected,
+          isReconnecting: !isConnected,
+        );
+      }),
+    );
   }
 
   Future<void> _loadRooms() async {
@@ -111,8 +162,10 @@ class _ChatScreenState extends State<ChatScreen> {
       final token = _token ?? await TokenStorageService().getToken();
       if (token == null) throw Exception('Not logged in. Please log in again.');
 
-      final groupsResponse = await ChatService.getChatRooms(token: token);
-      final combined = List<ChatRoom>.from(groupsResponse.data);
+      await context.read<ChatNotifier>().loadChatRooms(token);
+      final combined = List<ChatRoom>.from(
+        context.read<ChatNotifier>().state.chatRooms,
+      );
 
       if (mounted) {
         setState(() {
@@ -182,7 +235,7 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Get display name for a user
   String _getDisplayName(ChatParticipant? user) {
     if (user == null) return 'Unknown';
-    return user.name ?? 'Unknown';
+    return user.name;
   }
 
   @override
@@ -654,12 +707,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   final _socket = ChatSocketService();
   final _imagePicker = ImagePicker();
 
+  ChatNotifier get _chatNotifier => context.read<ChatNotifier>();
+  List<ChatMessage> get _messages => _chatNotifier.state.currentRoomMessages;
+  bool get _isLoadingOlder => _chatNotifier.state.isRefreshingMessages;
+  bool get _hasMore => _chatNotifier.state.hasMoreMessages;
+
   // ── State ──────────────────────────────────────────────────────────────
-  List<ChatMessage> _messages = [];
   // bool _isLoading = true;
   bool _isSendingText = false;
-  bool _isLoadingOlder = false;
-  bool _hasMore = true;
   String? _error;
   String? _currentUserId;
   String? _token;
@@ -721,6 +776,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       });
       return;
     }
+    _chatNotifier.setDetailRoomMessages(messages: const [], hasMore: true);
     await _loadMessages(initial: true);
     _connectSocket();
   }
@@ -743,17 +799,17 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       });
     }
     try {
-      final res = await ChatService.getRoomMessages(
+      final res = await context.read<ChatNotifier>().fetchRoomMessages(
         token: _token!,
         roomId: widget.room.id,
         limit: 30,
       );
       if (!mounted) return;
-      setState(() {
-        // FIX: API ke data ko reverse karna zaroori hai taki newest message index 0 par aaye
-        _messages = res.data.reversed.toList();
-        _hasMore = res.hasMore;
-      });
+      // Keep newest message at index 0 for reverse ListView rendering.
+      _chatNotifier.setDetailRoomMessages(
+        messages: res.data.reversed.toList(),
+        hasMore: res.hasMore,
+      );
       
       // DEBUG: Log loaded messages
       if (initial) {
@@ -782,11 +838,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   Future<void> _loadOlderMessages() async {
     if (!_hasMore || _isLoadingOlder || _messages.isEmpty) return;
-    setState(() => _isLoadingOlder = true);
+    _chatNotifier.setLoadingOlderMessages(true);
     try {
       // Kyunki list reversed hai, oldest message ab list ke last mein hoga
       final oldest = _messages.last.createdAt.toUtc().toIso8601String();
-      final res = await ChatService.getRoomMessages(
+      final res = await context.read<ChatNotifier>().fetchRoomMessages(
         token: _token!,
         roomId: widget.room.id,
         limit: 30,
@@ -797,11 +853,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       // FIX: Purane messages ko bhi reverse karein aur list ke end me (addAll) jod dein
       final olderReversed = res.data.reversed.toList();
       final prevHeight = _scrollController.position.extentTotal;
-      setState(() {
-        _messages.addAll(olderReversed);
-        _hasMore = res.hasMore;
-        _isLoadingOlder = false;
-      });
+      _chatNotifier.appendOlderRoomMessages(
+        olderMessages: olderReversed,
+        hasMore: res.hasMore,
+      );
       // Scroll position ko maintain rakhne ke liye
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
@@ -812,7 +867,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         }
       });
     } catch (_) {
-      if (mounted) setState(() => _isLoadingOlder = false);
+      _chatNotifier.setLoadingOlderMessages(false);
     }
   }
 
@@ -831,15 +886,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         if (!mounted) return;
         if (evt.roomId != widget.room.id) return;
         if (evt.readBy == _currentUserId) return;
-        setState(() {
-          for (int i = 0; i < _messages.length; i++) {
-            final m = _messages[i];
-            if ((m.sender?.id == _currentUserId || m.sender == null) &&
-                !m.isRead) {
-              _messages[i] = m.copyWith(isRead: true);
-            }
-          }
-        });
+        _chatNotifier.markCurrentRoomMessagesRead(_currentUserId);
       }),
     );
 
@@ -888,7 +935,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         print('✅ NEW SOCKET MESSAGE ADDED - ID: ${msg.id}');
         print('   Message: ${msg.content}');
         print('   Total messages: ${_messages.length + 1}');
-        setState(() => _messages.insert(0, msg));
+        _chatNotifier.insertRoomMessage(msg);
         _scrollToBottom();
         _socket.markRead(widget.room.id);
       }),
@@ -897,12 +944,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     _subs.add(
       _socket.onMessageSent.listen((evt) {
         if (!mounted) return;
-        setState(() {
-          final idx = _messages.indexWhere((m) => m.tempId == evt.tempId);
-          if (idx != -1) {
-            _messages[idx] = evt.message;
-          }
-        });
+        _chatNotifier.replaceTempRoomMessage(evt.tempId, evt.message);
       }),
     );
 
@@ -912,12 +954,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         if (evt.roomId != widget.room.id) return;
         if (evt.userId == _currentUserId) return;
         _typingHideTimer?.cancel();
-        // Try to get user info from room participants
-        final participant = widget.room.participants.firstWhere(
-          (p) => p.id == evt.userId,
-          orElse: () =>
-              ChatParticipant(id: evt.userId, name: evt.userName, email: ''),
-        );
         setState(() {
           _someoneTyping = true;
           _typingUserName = evt.userName;
@@ -1004,7 +1040,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
           : null,
     );
     // FIX: Naye bhejey gaye message ko zero index par insert karein
-    setState(() => _messages.insert(0, optimistic));
+            _chatNotifier.insertRoomMessage(optimistic);
     _scrollToBottom();
 
     if (_socket.isConnected) {
@@ -1022,7 +1058,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       // The server will emit new-message to others; we update our own bubble
       // from the REST response.
       try {
-        final res = await ChatService.sendRoomMessage(
+        final res = await context.read<ChatNotifier>().sendRoomMessageDirect(
           token: _token!,
           roomId: widget.room.id,
           content: text,
@@ -1030,17 +1066,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
         );
         if (!mounted) return;
         if (res.success && res.data != null) {
-          setState(() {
-            final idx = _messages.indexWhere((m) => m.tempId == tempId);
-            if (idx != -1) _messages[idx] = res.data!;
-          });
+          _chatNotifier.replaceTempRoomMessage(tempId, res.data!);
         }
       } catch (e) {
         if (mounted) {
           _showSnack(
             'Failed to send: ${e.toString().replaceFirst('Exception: ', '')}',
           );
-          setState(() => _messages.removeWhere((m) => m.tempId == tempId));
+          _chatNotifier.removeTempRoomMessage(tempId);
         }
       } finally {
         if (mounted) setState(() => _isSendingText = false);
@@ -1075,12 +1108,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       updatedAt: DateTime.now(),
       tempId: tempId,
     );
-    
-    setState(() => _messages.insert(0, optimistic));
+
+    _chatNotifier.insertRoomMessage(optimistic);
     _scrollToBottom();
 
     try {
-      final res = await ChatService.sendMediaMessage(
+      final res = await context.read<ChatNotifier>().sendMediaMessageDirect(
         token: _token!,
         roomId: widget.room.id,
         file: file,
@@ -1092,21 +1125,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
       
       if (res.success && res.data != null) {
         // ✅ Replace optimistic message with actual server response
-        setState(() {
-          final idx = _messages.indexWhere((m) => m.tempId == tempId);
-          if (idx != -1) {
-            _messages[idx] = res.data!;
-            debugPrint('✅ ${messageType.toUpperCase()} message sent successfully');
-          }
-        });
+        _chatNotifier.replaceTempRoomMessage(tempId, res.data!);
+        debugPrint('✅ ${messageType.toUpperCase()} message sent successfully');
       } else {
         throw Exception('Failed to send $messageType');
       }
     } catch (e) {
       if (!mounted) return;
-      
+
       // ❌ Remove failed message
-      setState(() => _messages.removeWhere((m) => m.tempId == tempId));
+      _chatNotifier.removeTempRoomMessage(tempId);
       
       final errorMsg = e.toString().replaceFirst('Exception: ', '');
       debugPrint('❌ Error uploading $messageType: $errorMsg');
@@ -1324,7 +1352,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     );
     if (confirm != true) return;
     try {
-      await ChatService.leaveGroup(token: _token!, groupId: widget.room.id);
+      await context.read<ChatNotifier>().leaveGroup(widget.room.id);
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
@@ -1341,9 +1369,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
     final searchCtrl = TextEditingController();
 
     try {
-      final res = await ChatService.getCompanyUsers(token: _token!);
-      allUsers = res.data;
-      filtered = res.data;
+      final notifier = context.read<ChatNotifier>();
+      await notifier.loadCompanyUsers(_token!);
+      allUsers = notifier.state.companyUsers;
+      filtered = notifier.state.companyUsers;
     } catch (e) {
       _showSnack(
         'Failed to load users: ${e.toString().replaceFirst('Exception: ', '')}',
@@ -1472,11 +1501,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   Future<void> _addGroupMember(String groupId, String userId) async {
     try {
-      await ChatService.addGroupMember(
-        token: _token!,
-        groupId: groupId,
-        userId: userId,
-      );
+      await context.read<ChatNotifier>().addGroupMember(groupId, userId);
       if (!mounted) return;
       _showSnack('Member added successfully');
     } catch (e) {
@@ -1520,7 +1545,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   Future<void> _deleteGroup() async {
     try {
-      await ChatService.deleteGroup(token: _token!, groupId: widget.room.id);
+      await context.read<ChatNotifier>().deleteGroup(widget.room.id);
       if (!mounted) return;
       Navigator.pop(context);
       _showSnack('Group deleted successfully');
@@ -1725,18 +1750,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
   /// Get display name for a sender
   String _getSenderDisplayName(ChatMessageSender? sender) {
     if (sender == null) return 'Unknown';
-    return sender.name ?? 'Unknown';
+    return sender.name;
   }
 
   /// Get display name for a user
   String _getDisplayName(ChatParticipant? user) {
     if (user == null) return 'Unknown';
-    return user.name ?? 'Unknown';
+    return user.name;
   }
 
   // ── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    context.watch<ChatNotifier>().state;
+
     final displayName = widget.room.type == 'personal'
         ? _getDisplayName(widget.room.otherUser)
         : widget.room.name;
@@ -2355,14 +2382,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen>
 
   Future<void> _deleteMessage(ChatMessage msg) async {
     try {
-      await ChatService.deleteMessage(token: _token!, messageId: msg.id);
+      await context.read<ChatNotifier>().deleteMessage(msg.id);
       if (mounted) {
-        setState(() {
-          final idx = _messages.indexWhere((m) => m.id == msg.id);
-          if (idx != -1) {
-            _messages[idx] = _messages[idx].copyWith(isDeleted: true);
-          }
-        });
+        _chatNotifier.markRoomMessageDeleted(msg.id);
         _showSnack('Message deleted');
       }
     } catch (e) {
@@ -3894,11 +3916,12 @@ class _NewChatSheetState extends State<_NewChatSheet> {
       _loadError = null;
     });
     try {
-      final res = await ChatService.getCompanyUsers(token: widget.token);
+      final notifier = context.read<ChatNotifier>();
+      await notifier.loadCompanyUsers(widget.token);
       if (!mounted) return;
       setState(() {
-        _allUsers = res.data;
-        _filtered = res.data;
+        _allUsers = notifier.state.companyUsers;
+        _filtered = notifier.state.companyUsers;
         _loadingUsers = false;
       });
     } catch (e) {
@@ -3934,12 +3957,10 @@ class _NewChatSheetState extends State<_NewChatSheet> {
         if (!mounted) return;
         setState(() => _searching = true);
         try {
-          final res = await ChatService.searchUsers(
-            token: widget.token,
-            query: q,
-          );
+          final notifier = context.read<ChatNotifier>();
+          await notifier.searchUsers(q);
           if (!mounted) return;
-          setState(() => _filtered = res.data);
+          setState(() => _filtered = notifier.state.companyUsers);
         } catch (_) {
           // Keep client-side filter result on error
         } finally {
@@ -4130,12 +4151,12 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                         onTap: () async {
                           Navigator.pop(context);
                           try {
-                            final roomRes =
-                                await ChatService.getOrCreatePersonalChat(
-                                  token: widget.token,
-                                  userId: u.id,
-                                );
-                            widget.onUserSelected(roomRes.data);
+                            final room = await context
+                                .read<ChatNotifier>()
+                                .getOrCreatePersonalChatRoom(u.id);
+                            if (room != null) {
+                              widget.onUserSelected(room);
+                            }
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -4273,11 +4294,12 @@ class _CreateGroupDialogState extends State<_CreateGroupDialog> {
       _error = null;
     });
     try {
-      final res = await ChatService.getCompanyUsers(token: widget.token);
+      final notifier = context.read<ChatNotifier>();
+      await notifier.loadCompanyUsers(widget.token);
       if (!mounted) return;
       setState(() {
-        _allUsers = res.data;
-        _filtered = res.data;
+        _allUsers = notifier.state.companyUsers;
+        _filtered = notifier.state.companyUsers;
         _loadingUsers = false;
       });
     } catch (e) {
@@ -4322,8 +4344,7 @@ class _CreateGroupDialogState extends State<_CreateGroupDialog> {
 
     setState(() => _isCreating = true);
     try {
-      await ChatService.createGroup(
-        token: widget.token,
+      await context.read<ChatNotifier>().createGroup(
         name: name,
         description: _descriptionCtrl.text.trim(),
         memberIds: _selectedMemberIds.toList(),
