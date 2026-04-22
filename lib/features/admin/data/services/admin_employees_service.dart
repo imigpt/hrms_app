@@ -100,12 +100,15 @@ class AdminEmployeesService {
     String? salary,
     String? salaryType,
     String? status,
+    String? company,
+    String role = 'admin',
     File? profilePhoto,
   }) async {
     try {
+      final endpoint = (role.toLowerCase() == 'admin') ? '/admin/employees' : '/hr/employees';
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_baseUrl/hr/employees'),
+        Uri.parse('$_baseUrl$endpoint'),
       );
 
       // Add authorization header
@@ -133,6 +136,8 @@ class AdminEmployeesService {
         request.fields['salaryType'] = salaryType;
       if (status != null && status.isNotEmpty)
         request.fields['status'] = status;
+      if (company != null && company.isNotEmpty)
+        request.fields['company'] = company;
 
       // Add profile photo if available
       if (profilePhoto != null) {
@@ -185,12 +190,15 @@ class AdminEmployeesService {
     String? position,
     String? joinDate,
     String? status,
+    String? company,
+    String role = 'admin',
     File? profilePhoto,
   }) async {
     try {
+      final endpoint = (role.toLowerCase() == 'admin') ? '/admin/employees' : '/hr/employees';
       final request = http.MultipartRequest(
         'PUT',
-        Uri.parse('$_baseUrl/hr/employees/$employeeId'),
+        Uri.parse('$_baseUrl$endpoint/$employeeId'),
       );
 
       // Add authorization header
@@ -223,6 +231,9 @@ class AdminEmployeesService {
       }
       if (status != null && status.isNotEmpty) {
         request.fields['status'] = status;
+      }
+      if (company != null && company.isNotEmpty) {
+        request.fields['company'] = company;
       }
 
       // Add profile photo if available

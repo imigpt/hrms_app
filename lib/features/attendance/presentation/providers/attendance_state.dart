@@ -2,6 +2,8 @@ import 'package:equatable/equatable.dart';
 import 'package:hrms_app/features/attendance/data/models/today_attendance_model.dart';
 import 'package:hrms_app/features/attendance/data/models/attendance_history_model.dart' as history_model;
 import 'package:hrms_app/features/attendance/data/models/attendance_summary_model.dart';
+import 'package:hrms_app/features/attendance/data/models/attendance_edit_request_model.dart';
+
 
 /// Immutable Attendance State using Equatable for proper comparison
 class AttendanceState extends Equatable {
@@ -10,9 +12,13 @@ class AttendanceState extends Equatable {
   final AttendanceData? todayAttendance;
   final List<history_model.AttendanceRecord>? attendanceHistory;
   final AttendanceSummary? attendanceSummary;
+  final AttendanceEditRequestsList? myEditRequests;
   final bool isLoading;
+  final bool isLoadingEditRequests;
   final bool isCheckingIn;
   final bool isCheckingOut;
+  final bool isSubmittingEditRequest;
+  final bool isSubmittingHalfDayRequest;
   final String? errorMessage;
   final DateTime? lastUpdated;
   
@@ -38,9 +44,13 @@ class AttendanceState extends Equatable {
     this.todayAttendance,
     this.attendanceHistory,
     this.attendanceSummary,
+    this.myEditRequests,
     this.isLoading = false,
+    this.isLoadingEditRequests = false,
     this.isCheckingIn = false,
     this.isCheckingOut = false,
+    this.isSubmittingEditRequest = false,
+    this.isSubmittingHalfDayRequest = false,
     this.errorMessage,
     this.lastUpdated,
     this.currentLatitude,
@@ -62,9 +72,13 @@ class AttendanceState extends Equatable {
     Object? todayAttendance = _unset,
     Object? attendanceHistory = _unset,
     Object? attendanceSummary = _unset,
+    Object? myEditRequests = _unset,
     bool? isLoading,
+    bool? isLoadingEditRequests,
     bool? isCheckingIn,
     bool? isCheckingOut,
+    bool? isSubmittingEditRequest,
+    bool? isSubmittingHalfDayRequest,
     Object? errorMessage = _unset,
     Object? lastUpdated = _unset,
     Object? currentLatitude = _unset,
@@ -90,9 +104,15 @@ class AttendanceState extends Equatable {
       attendanceSummary: identical(attendanceSummary, _unset)
         ? this.attendanceSummary
         : attendanceSummary as AttendanceSummary?,
+      myEditRequests: identical(myEditRequests, _unset)
+        ? this.myEditRequests
+        : myEditRequests as AttendanceEditRequestsList?,
       isLoading: isLoading ?? this.isLoading,
+      isLoadingEditRequests: isLoadingEditRequests ?? this.isLoadingEditRequests,
       isCheckingIn: isCheckingIn ?? this.isCheckingIn,
       isCheckingOut: isCheckingOut ?? this.isCheckingOut,
+      isSubmittingEditRequest: isSubmittingEditRequest ?? this.isSubmittingEditRequest,
+      isSubmittingHalfDayRequest: isSubmittingHalfDayRequest ?? this.isSubmittingHalfDayRequest,
       errorMessage: identical(errorMessage, _unset)
         ? this.errorMessage
         : errorMessage as String?,
@@ -185,9 +205,13 @@ class AttendanceState extends Equatable {
     todayAttendance,
     attendanceHistory,
     attendanceSummary,
+    myEditRequests,
     isLoading,
+    isLoadingEditRequests,
     isCheckingIn,
     isCheckingOut,
+    isSubmittingEditRequest,
+    isSubmittingHalfDayRequest,
     errorMessage,
     lastUpdated,
     currentLatitude,

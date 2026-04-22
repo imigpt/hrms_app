@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:hrms_app/features/admin/data/services/admin_employees_service.dart';
+import 'package:provider/provider.dart';
+import 'package:hrms_app/features/admin/presentation/providers/all_employees_provider.dart';
 import 'package:hrms_app/features/chat/data/services/chat_service.dart';
 import 'package:hrms_app/shared/services/core/token_storage_service.dart';
 import 'package:hrms_app/features/chat/data/models/chat_room_model.dart';
@@ -36,18 +38,19 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
   static const Color _tableHeader = AppTheme.surfaceVariant;
 
   // State
-  bool _isLoading = true;
-  String? _error;
-  List<dynamic> _allEmployees = [];
-  List<dynamic> _filtered = [];
-
   String _searchQuery = '';
   String _selectedCompanyId = '';
   String _selectedDepartment = '';
   String _selectedStatus = '';
 
-  List<Map<String, dynamic>> _companies = [];
-  List<String> _departments = [];
+  AllEmployeesState get _providerState => context.watch<AllEmployeesNotifier>().state;
+  AllEmployeesNotifier get _providerRead => context.read<AllEmployeesNotifier>();
+
+  bool get _isLoading => _providerState.isLoading;
+  String? get _error => _providerState.error;
+  List<dynamic> get _filtered => _providerState.filteredEmployees;
+  List<Map<String, dynamic>> get _companies => _providerState.companies;
+  List<String> get _departments => _providerState.departments;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -65,112 +68,26 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
 
   // Data loading
   Future<void> _loadEmployees() async {
-    if (widget.token == null || widget.token!.isEmpty) {
-      setState(() {
-        _error = 'No authentication token provided';
-        _isLoading = false;
-      });
-      return;
-    }
-    try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-      final result = await AdminEmployeesService.getAllEmployees(
-        widget.token!,
-        role: widget.role,
-      );
-      if (!mounted) return;
-      if (result['success'] == true) {
-        final data = (result['data'] as List<dynamic>?) ?? [];
-        final seenCompanies = <String>{};
-        final companiesList = <Map<String, dynamic>>[];
-        final deptSet = <String>{};
-
-        for (final emp in data) {
-          final compObj = emp['company'];
-          if (compObj is Map) {
-            final id = compObj['_id']?.toString() ?? '';
-            final name = compObj['name']?.toString() ?? '';
-            if (id.isNotEmpty && !seenCompanies.contains(id)) {
-              seenCompanies.add(id);
-              companiesList.add({'_id': id, 'name': name});
-            }
-          }
-          final dept = emp['department']?.toString() ?? '';
-          if (dept.isNotEmpty) deptSet.add(dept);
-        }
-
-        setState(() {
-          _allEmployees = data;
-          _companies = companiesList;
-          _departments = deptSet.toList()..sort();
-          _isLoading = false;
-        });
-        _applyFilters();
-      } else {
-        setState(() {
-          _error = result['message'] ?? 'Failed to load employees';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceAll('Exception: ', '');
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  void _applyFilters() {
-    final q = _searchQuery.toLowerCase();
-    setState(() {
-      _filtered = _allEmployees.where((emp) {
-        if (_selectedCompanyId.isNotEmpty) {
-          final compId = (emp['company'] is Map)
-              ? (emp['company']['_id']?.toString() ?? '')
-              : '';
-          if (compId != _selectedCompanyId) return false;
-        }
-        if (_selectedDepartment.isNotEmpty) {
-          if ((emp['department']?.toString() ?? '') != _selectedDepartment)
-            return false;
-        }
-        if (_selectedStatus.isNotEmpty) {
-          if ((emp['status']?.toString() ?? '') != _selectedStatus)
-            return false;
-        }
-        if (q.isNotEmpty) {
-          final name = (emp['name'] ?? '').toString().toLowerCase();
-          final email = (emp['email'] ?? '').toString().toLowerCase();
-          final empId = (emp['employeeId'] ?? '').toString().toLowerCase();
-          final phone = (emp['phone'] ?? '').toString().toLowerCase();
-          final dept = (emp['department'] ?? '').toString().toLowerCase();
-          final pos = (emp['position'] ?? '').toString().toLowerCase();
-          if (!name.contains(q) &&
-              !email.contains(q) &&
-              !empId.contains(q) &&
-              !phone.contains(q) &&
-              !dept.contains(q) &&
-              !pos.contains(q))
-            return false;
-        }
-        return true;
-      }).toList();
+    if (widget.token == null || widget.token!.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _providerRead.loadEmployees(widget.token!, role: widget.role);
     });
   }
 
+  void _applyFilters() {
+    _providerRead.applyFilters(
+      query: _searchQuery,
+      selectedCompanyId: _selectedCompanyId,
+      selectedDepartment: _selectedDepartment,
+      selectedStatus: _selectedStatus,
+    );
+  }
+
   // Stats
-  int get _totalCount => _allEmployees.length;
-  int get _activeCount =>
-      _allEmployees.where((e) => e['status'] == 'active').length;
-  int get _onLeaveCount =>
-      _allEmployees.where((e) => e['status'] == 'on-leave').length;
-  int get _inactiveCount =>
-      _allEmployees.where((e) => e['status'] == 'inactive').length;
+  int get _totalCount => _providerState.allEmployees.length;
+  int get _activeCount => _providerState.allEmployees.where((e) => e['status'] == 'active').length;
+  int get _onLeaveCount => _providerState.allEmployees.where((e) => e['status'] == 'on-leave').length;
+  int get _inactiveCount => _providerState.allEmployees.where((e) => e['status'] == 'inactive').length;
 
   // Helpers
   String _formatDate(dynamic d) {
@@ -1056,7 +973,7 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => _EmployeeDetailPage(employee: emp, token: widget.token),
+        builder: (_) => _EmployeeDetailPage(employee: emp, token: widget.token, role: widget.role),
       ),
     );
   }
@@ -1220,6 +1137,7 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
       isScrollControlled: true,
       builder: (_) => _AddEmployeeDialog(
         token: widget.token,
+        role: widget.role,
         companies: _companies,
         departments: _departments,
         onEmployeeAdded: _loadEmployees,
@@ -1231,12 +1149,14 @@ class _AllEmployeesScreenState extends State<AllEmployeesScreen> {
 /// Add Employee Dialog Widget
 class _AddEmployeeDialog extends StatefulWidget {
   final String? token;
+  final String role;
   final List<Map<String, dynamic>> companies;
   final List<String> departments;
   final VoidCallback onEmployeeAdded;
 
   const _AddEmployeeDialog({
     required this.token,
+    required this.role,
     required this.companies,
     required this.departments,
     required this.onEmployeeAdded,
@@ -1270,6 +1190,7 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
   String _dob = '';
   String _address = '';
   String _selectedDepartment = '';
+  String _selectedCompany = '';
   String _position = '';
   String _joinDate = '';
   String _salary = '';
@@ -1475,6 +1396,10 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
                     const SizedBox(height: 12),
                     _formCard(
                       children: [
+                        if (widget.role == 'admin') ...[
+                          _buildCompanyDropdown(),
+                          const SizedBox(height: 14),
+                        ],
                         Row(
                           children: [
                             Expanded(child: _buildDepartmentDropdown()),
@@ -2013,6 +1938,68 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
     );
   }
 
+  Widget _buildCompanyDropdown() {
+    if (widget.role != 'admin') return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Company',
+          style: TextStyle(
+            color: _textLight,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Container(
+          height: 44,
+          decoration: BoxDecoration(
+            color: _input,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _border),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedCompany.isEmpty ? null : _selectedCompany,
+              hint: const Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: Text(
+                  'Select company',
+                  style: TextStyle(color: _textGrey, fontSize: 13),
+                ),
+              ),
+              items: widget.companies
+                  .map(
+                    (c) => DropdownMenuItem<String>(
+                      value: c['_id'].toString(),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Text(
+                          c['name'].toString(),
+                          style: const TextStyle(
+                            color: _textLight,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                setState(() => _selectedCompany = v ?? '');
+              },
+              dropdownColor: const Color(0xFF1A1A1A),
+              iconEnabledColor: _textGrey,
+              style: const TextStyle(color: _textLight, fontSize: 13),
+              isExpanded: true,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDepartmentDropdown() {
     final items = widget.departments.isEmpty
         ? <String>['Engineering', 'Finance', 'HR', 'Marketing', 'Sales']
@@ -2180,26 +2167,32 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
     });
 
     try {
-      final result = await AdminEmployeesService.addEmployee(
-        token: widget.token ?? '',
-        name: _fullName,
-        employeeId: _employeeId,
-        password: _password,
-        email: _email,
-        phone: _phone,
-        dateOfBirth: _dob,
-        address: _address,
-        department: _selectedDepartment,
-        position: _position,
-        joinDate: _joinDate,
-        salary: _salary,
-        salaryType: _salaryType,
-        profilePhoto: _selectedImage,
+      final data = {
+        'name': _fullName,
+        'employeeId': _employeeId,
+        'password': _password,
+        'email': _email,
+        'phone': _phone,
+        'dateOfBirth': _dob,
+        'address': _address,
+        'department': _selectedDepartment,
+        'position': _position,
+        'joinDate': _joinDate,
+        'salary': _salary,
+        'salaryType': _salaryType,
+        'status': 'active',
+        if (widget.role == 'admin' && _selectedCompany.isNotEmpty) 'company': _selectedCompany,
+      };
+      
+      final success = await context.read<AllEmployeesNotifier>().addEmployee(
+        widget.token ?? '',
+        data,
+        _selectedImage,
       );
 
       if (!mounted) return;
 
-      if (result['success'] == true) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Employee added successfully'),
@@ -2210,7 +2203,7 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
         widget.onEmployeeAdded();
       } else {
         setState(
-          () => _errorMessage = result['message'] ?? 'Failed to add employee',
+          () => _errorMessage = context.read<AllEmployeesNotifier>().state.error ?? 'Failed to add employee',
         );
       }
     } catch (e) {
@@ -2230,8 +2223,9 @@ class _AddEmployeeDialogState extends State<_AddEmployeeDialog> {
 class _EmployeeDetailPage extends StatefulWidget {
   final Map<String, dynamic> employee;
   final String? token;
+  final String role;
 
-  const _EmployeeDetailPage({required this.employee, required this.token});
+  const _EmployeeDetailPage({required this.employee, required this.token, required this.role});
 
   @override
   State<_EmployeeDetailPage> createState() => _EmployeeDetailPageState();
@@ -2375,6 +2369,7 @@ class _EmployeeDetailPageState extends State<_EmployeeDetailPage>
       builder: (_) => _EditEmployeeDialog(
         employee: widget.employee,
         token: widget.token,
+        role: widget.role,
         onEmployeeUpdated: () {
           Navigator.pop(context, true); // Return true to indicate refresh
         },
@@ -4801,11 +4796,13 @@ class _EmployeeChatTabState extends State<_EmployeeChatTab> {
 class _EditEmployeeDialog extends StatefulWidget {
   final Map<String, dynamic> employee;
   final String? token;
+  final String role;
   final VoidCallback onEmployeeUpdated;
 
   const _EditEmployeeDialog({
     required this.employee,
     required this.token,
+    required this.role,
     required this.onEmployeeUpdated,
   });
 
@@ -5568,24 +5565,28 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
 
     setState(() => _isSubmitting = true);
     try {
-      final result = await AdminEmployeesService.updateEmployee(
-        token: widget.token ?? '',
-        employeeId: widget.employee['_id'].toString(),
-        name: _fullName,
-        email: _email,
-        phone: _phone,
-        dateOfBirth: _dob,
-        address: _address,
-        department: _selectedDepartment,
-        position: _position,
-        joinDate: _joinDate,
-        status: _selectedStatus,
-        profilePhoto: _selectedImage,
+      final data = {
+        'name': _fullName,
+        'email': _email,
+        'phone': _phone,
+        'dateOfBirth': _dob,
+        'address': _address,
+        'department': _selectedDepartment,
+        'position': _position,
+        'joinDate': _joinDate,
+        'status': _selectedStatus,
+      };
+
+      final success = await context.read<AllEmployeesNotifier>().updateEmployee(
+        widget.token ?? '',
+        widget.employee['_id'].toString(),
+        data,
+        _selectedImage,
       );
 
       if (!mounted) return;
 
-      if (result['success'] == true) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Employee updated successfully'),
@@ -5597,7 +5598,7 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
       } else {
         setState(
           () =>
-              _errorMessage = result['message'] ?? 'Failed to update employee',
+              _errorMessage = context.read<AllEmployeesNotifier>().state.error ?? 'Failed to update employee',
         );
       }
     } catch (e) {

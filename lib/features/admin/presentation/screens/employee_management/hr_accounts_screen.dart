@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:hrms_app/features/admin/data/services/hr_accounts_service.dart';
+
 import 'package:hrms_app/core/utils/responsive_utils.dart';
 import 'package:hrms_app/shared/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import 'package:hrms_app/features/admin/presentation/providers/hr_accounts_provider.dart';
 
 class HRAccountsScreen extends StatefulWidget {
   final String? token;
@@ -29,15 +31,19 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   static const Color _orange = AppTheme.warningColor;
 
   // State
-  bool _isLoading = true;
-  String? _error;
-  List<dynamic> _hrAccounts = [];
-  List<dynamic> _filteredAccounts = [];
-  List<dynamic> _companies = [];
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   String? _token;
+
+  // Getters to bridge to Provider
+  HRAccountsState get _providerState => context.watch<HRAccountsNotifier>().state;
+  HRAccountsNotifier get _providerRead => context.read<HRAccountsNotifier>();
+  bool get _isLoading => _providerState.isLoading;
+  String? get _error => _providerState.error;
+  List<dynamic> get _hrAccounts => _providerState.hrAccounts;
+  List<dynamic> get _filteredAccounts => _providerState.filteredAccounts;
+  List<dynamic> get _companies => _providerState.companies;
 
   @override
   void initState() {
@@ -46,8 +52,12 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     _searchController.addListener(
       () => _onSearchChanged(_searchController.text),
     );
-    _loadHRAccounts();
-    _loadCompanies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_token != null) {
+        _providerRead.fetchHRAccounts(_token!);
+        _providerRead.fetchCompanies(_token!);
+      }
+    });
   }
 
   @override
@@ -68,68 +78,27 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   double get _dialogPadding => _isTablet ? 28 : 24;
 
   Future<void> _loadHRAccounts() async {
-    if (_token == null || _token!.isEmpty) {
-      setState(() {
-        _error = 'No authentication token provided';
-        _isLoading = false;
-      });
-      return;
-    }
-
-    try {
-      setState(() => _isLoading = true);
-
-      final result = await HRAccountsService.getHRAccounts(_token!);
-
-      if (mounted) {
-        setState(() {
-          if (result['success'] == true) {
-            _hrAccounts = result['data'] ?? [];
-            _filteredAccounts = _hrAccounts;
-            _error = null;
-          } else {
-            _error = result['message'] ?? 'Failed to load HR accounts';
-          }
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceAll('Exception: ', '');
-          _isLoading = false;
-        });
-      }
+    if (_token != null) {
+      await _providerRead.fetchHRAccounts(_token!);
     }
   }
 
   Future<void> _loadCompanies() async {
-    if (_token == null || _token!.isEmpty) return;
-    try {
-      final list = await HRAccountsService.getCompanies(_token!);
-      if (mounted) setState(() => _companies = list);
-    } catch (_) {}
+    if (_token != null) {
+      await _providerRead.fetchCompanies(_token!);
+    }
   }
 
   Future<void> _toggleStatus(Map<String, dynamic> account) async {
     if (_token == null) return;
     final current = (account['status'] ?? 'active').toString().toLowerCase();
     final newStatus = current == 'active' ? 'inactive' : 'active';
-    try {
-      await HRAccountsService.updateHRStatus(_token!, account['_id'], newStatus);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Status updated to $newStatus'),
-          backgroundColor: newStatus == 'active' ? _secondaryAccent : _textGrey,
-        ));
-        _loadHRAccounts();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: _red,
-        ));
+    final success = await _providerRead.updateHRStatus(_token!, account['_id'], newStatus);
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status updated to $newStatus'), backgroundColor: newStatus == 'active' ? _secondaryAccent : _textGrey));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_providerState.error ?? 'Error updating status'), backgroundColor: _red));
       }
     }
   }
@@ -292,31 +261,17 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
 
   Future<void> _updateHRStatus(String hrId, String newStatus) async {
     if (_token == null) return;
-    try {
-      await HRAccountsService.updateHRStatus(_token!, hrId, newStatus);
-      if (mounted) {
-        final statusLabels = {
-          'active': 'Active',
-          'on_leave': 'On Leave',
-          'inactive': 'Inactive',
-        };
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Status updated to ${statusLabels[newStatus] ?? newStatus}'),
-          backgroundColor: newStatus == 'active'
-              ? _secondaryAccent
-              : newStatus == 'on_leave'
-                  ? _orange
-                  : _red,
-        ));
-        _loadHRAccounts();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.toString().replaceAll('Exception: ', '')),
-          backgroundColor: _red,
-        ));
+    final success = await _providerRead.updateHRStatus(_token!, hrId, newStatus);
+    if (mounted) {
+      final statusLabels = {
+        'active': 'Active',
+        'on_leave': 'On Leave',
+        'inactive': 'Inactive',
+      };
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status updated to ${statusLabels[newStatus] ?? newStatus}'), backgroundColor: newStatus == 'active' ? _secondaryAccent : newStatus == 'on_leave' ? _orange : _red));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_providerState.error ?? 'Error updating status'), backgroundColor: _red));
       }
     }
   }
@@ -324,22 +279,8 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
   void _onSearchChanged(String query) {
     setState(() {
       _searchQuery = query.toLowerCase();
-      _filteredAccounts = _hrAccounts.where((account) {
-        final name = (account['name'] ?? '').toString().toLowerCase();
-        final email = (account['email'] ?? '').toString().toLowerCase();
-        final employeeId = (account['employeeId'] ?? '')
-            .toString()
-            .toLowerCase();
-        final companyName = (account['company']?['name'] ?? '')
-            .toString()
-            .toLowerCase();
-
-        return name.contains(_searchQuery) ||
-            email.contains(_searchQuery) ||
-            employeeId.contains(_searchQuery) ||
-            companyName.contains(_searchQuery);
-      }).toList();
     });
+    _providerRead.searchHRAccounts(query);
   }
 
   Future<void> _showDetailsDialog(Map<String, dynamic> account) async {
@@ -452,29 +393,14 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    try {
-      await HRAccountsService.resetHRPassword(_token!, hrId);
+    final success = await _providerRead.resetHRPassword(_token!, hrId);
 
-      if (mounted) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Password reset sent to $hrName'),
-            backgroundColor: _secondaryAccent,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: _red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+    if (mounted) {
+      Navigator.pop(context); // Close loading dialog
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Password reset sent to $hrName'), backgroundColor: _secondaryAccent, duration: const Duration(seconds: 2)));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_providerState.error ?? 'Error'), backgroundColor: _red, duration: const Duration(seconds: 3)));
       }
     }
   }
@@ -514,6 +440,9 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     );
     final _addressController = TextEditingController(
       text: manager['address'] ?? '',
+    );
+    final _salaryController = TextEditingController(
+      text: manager['salary']?.toString() ?? '',
     );
     final _joinDateController = TextEditingController(
       text: isoToField(manager['joinedDate'] ?? manager['joinDate']),
@@ -751,12 +680,19 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                     const SizedBox(height: 14),
                     _buildEditField('Address', _addressController, maxLines: 3),
                     const SizedBox(height: 14),
-                    _buildEditField(
-                      'Reporting To (Optional)',
-                      _reportingToController,
-                      helperText: 'Manager or supervisor name',
-                    ),
-                    const SizedBox(height: 28),
+                      _buildEditField(
+                        'Reporting To (Optional)',
+                        _reportingToController,
+                        helperText: 'Manager or supervisor name',
+                      ),
+                      const SizedBox(height: 14),
+                      _buildEditField(
+                        'Salary',
+                        _salaryController,
+                        keyboardType: TextInputType.number,
+                        helperText: 'Monthly salary amount',
+                      ),
+                      const SizedBox(height: 28),
                     Row(
                       children: [
                         Expanded(
@@ -822,29 +758,16 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                       'dateOfBirth': toISO(_dobController.text),
                                     if (toISO(_joinDateController.text) != null)
                                       'joinDate': toISO(_joinDateController.text),
+                                    if (_salaryController.text.isNotEmpty)
+                                      'salary': _salaryController.text,
                                   };
-                                  try {
-                                    await HRAccountsService.updateHRAccountWithPhoto(
-                                      _token!,
-                                      manager['_id'],
-                                      data,
-                                      photoFile,
-                                    );
-                                    if (mounted) {
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                        content: const Text('Manager updated successfully'),
-                                        backgroundColor: _secondaryAccent,
-                                      ));
-                                      _loadHRAccounts();
-                                    }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                        content: Text(
-                                            e.toString().replaceAll('Exception: ', '')),
-                                        backgroundColor: _red,
-                                      ));
+                                  final success = await _providerRead.updateHRAccount(_token!, manager['_id'], data, photoFile);
+                                  if (mounted) {
+                                    Navigator.pop(context);
+                                    if (success) {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Manager updated successfully'), backgroundColor: _secondaryAccent));
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_providerState.error ?? 'Error'), backgroundColor: _red));
                                     }
                                   }
                                 },
@@ -895,6 +818,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     final _departmentController = TextEditingController();
     final _positionController = TextEditingController();
     final _jobDateController = TextEditingController();
+    final _salaryController = TextEditingController();
     File? photoFile;
     String selectedCompany = '';
 
@@ -1193,6 +1117,13 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 14),
+                            _buildEditField(
+                              'Salary',
+                              _salaryController,
+                              keyboardType: TextInputType.number,
+                              helperText: 'Monthly salary amount',
+                            ),
                           ],
                         ),
                         const SizedBox(height: 28),
@@ -1274,43 +1205,20 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                       'dateOfBirth': toISO(_dobController.text),
                                     if (toISO(_jobDateController.text) != null)
                                       'joinedDate': toISO(_jobDateController.text),
+                                    if (_salaryController.text.isNotEmpty)
+                                      'salary': _salaryController.text,
                                   };
 
                                   Navigator.pop(context);
 
                                   // Create in background without loading dialog
-                                  try {
-                                    final result = await HRAccountsService.createHRAccountWithPhoto(
-                                      _token!,
-                                      data,
-                                      photoFile,
-                                    );
-                                    
-                                    if (mounted) {
-                                      // Directly add the new HR manager to the list
-                                      final newManager = result['data'] ?? result;
-                                      setState(() {
-                                        _hrAccounts.insert(0, newManager);
-                                        _filteredAccounts.insert(0, newManager);
-                                      });
-
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('✅ HR Manager created successfully'),
-                                          backgroundColor: _secondaryAccent,
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('❌ Error: ${e.toString().replaceAll('Exception: ', '')}'),
-                                          backgroundColor: _red,
-                                          duration: const Duration(seconds: 3),
-                                        ),
-                                      );
+                                  final success = await _providerRead.createHRAccount(_token!, data, photoFile);
+                                  
+                                  if (mounted) {
+                                    if (success) {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ HR Manager created successfully'), backgroundColor: _secondaryAccent, duration: Duration(seconds: 2)));
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('❌ Error: ${_providerState.error ?? "Failed"}'), backgroundColor: _red, duration: const Duration(seconds: 3)));
                                     }
                                   }
                                 },
@@ -1484,27 +1392,14 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
       builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
-    try {
-      await HRAccountsService.deleteHRAccount(_token!, managerId);
-      if (mounted) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$managerName deleted successfully'),
-            backgroundColor: _secondaryAccent,
-          ),
-        );
-        _loadHRAccounts();
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: _red,
-          ),
-        );
+    final success = await _providerRead.deleteHRAccount(_token!, managerId);
+
+    if (mounted) {
+      Navigator.pop(context); // Close loading dialog
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$managerName deleted successfully'), backgroundColor: _secondaryAccent));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_providerState.error ?? 'Error'), backgroundColor: _red));
       }
     }
   }
@@ -1551,6 +1446,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
     String? helperText,
     bool obscure = false,
     int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1567,6 +1463,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
         TextField(
           controller: controller,
           obscureText: obscure,
+          keyboardType: keyboardType,
           maxLines: obscure ? 1 : maxLines,
           minLines: maxLines > 1 ? 3 : 1,
           style: const TextStyle(color: _textLight, fontSize: 14),
@@ -2141,10 +2038,7 @@ class _HRAccountsScreenState extends State<HRAccountsScreen> {
                                 ),
                                 onPressed: () {
                                   _searchController.clear();
-                                  setState(() {
-                                    _searchQuery = '';
-                                    _filteredAccounts = _hrAccounts;
-                                  });
+                                  _onSearchChanged('');
                                 },
                               )
                             : null,

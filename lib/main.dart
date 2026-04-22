@@ -18,8 +18,10 @@ import 'package:hrms_app/features/tasks/presentation/screens/tasks_screen.dart';
 import 'package:hrms_app/features/profile/presentation/providers/profile_notifier.dart';
 import 'package:hrms_app/features/leave/presentation/providers/leave_notifier.dart';
 import 'package:hrms_app/features/admin/presentation/providers/calendar_notifier.dart';
-import 'package:hrms_app/features/admin/presentation/providers/company_notifier.dart';
+import 'package:hrms_app/features/admin/presentation/providers/company_provider.dart';
+import 'package:hrms_app/features/admin/presentation/providers/all_employees_provider.dart';
 import 'package:hrms_app/features/admin/presentation/providers/clients_notifier.dart';
+import 'package:hrms_app/features/admin/presentation/providers/hr_accounts_notifier.dart';
 import 'package:hrms_app/features/notifications/presentation/providers/notifications_notifier.dart';
 import 'package:hrms_app/features/dashboard/presentation/providers/dashboard_notifier.dart';
 import 'package:hrms_app/features/expenses/presentation/providers/expenses_notifier.dart';
@@ -261,6 +263,9 @@ class _HrmsAppState extends State<HrmsApp> {
         ChangeNotifierProvider<CompanyNotifier>(
           create: (_) => CompanyNotifier(),
         ),
+        ChangeNotifierProvider<HRAccountsNotifier>(
+          create: (_) => HRAccountsNotifier(),
+        ),
         ChangeNotifierProvider<ClientsNotifier>(
           create: (_) => ClientsNotifier(),
         ),
@@ -292,6 +297,8 @@ class _HrmsAppState extends State<HrmsApp> {
         ChangeNotifierProvider<SettingsNotifier>(
           create: (_) => SettingsNotifier(),
         ),
+        ChangeNotifierProvider(create: (_) => ClientsNotifier()),
+        ChangeNotifierProvider(create: (_) => AllEmployeesNotifier()),
         ChangeNotifierProvider<ChatNotifier>(create: (_) => ChatNotifier()),
       ],
       child: Builder(

@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart';
 class ApiConfig {
   // Change this to switch between environments
   // static const String _environment = 'localhost';
-  static const String _environment = 'production';
+   static const String _environment = 'production';
 
   // API Base URLs
-  static const String _localhostApi = 'http://192.168.1.74:5000/api';
+  static const String _localhostApi = 'http://192.168.1.89:5000/api';
   static const String _productionApi = 'https://hrms-backend-zzzc.onrender.com/api';
 
   /// Get the current API base URL based on environment

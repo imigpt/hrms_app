@@ -7,6 +7,7 @@ import 'package:hrms_app/features/attendance/data/models/attendance_history_mode
     as history_model;
 import 'package:hrms_app/features/attendance/data/models/attendance_summary_model.dart';
 import 'package:hrms_app/features/attendance/data/models/today_attendance_model.dart';
+import 'package:hrms_app/features/attendance/data/models/attendance_edit_request_model.dart';
 import 'package:hrms_app/features/attendance/data/services/attendance_service.dart';
 
 typedef _GetTodayAttendanceFn = Future<TodayAttendance?> Function({
@@ -34,6 +35,21 @@ typedef _CheckOutFn = Future<CheckInResponse> Function({
   required double latitude,
   required double longitude,
 });
+typedef _SubmitEditRequestFn = Future<AttendanceEditRequest> Function({
+  required String token,
+  required String attendanceId,
+  required String requestedCheckIn,
+  required String requestedCheckOut,
+  required String reason,
+});
+typedef _SubmitHalfDayRequestFn = Future<Map<String, dynamic>> Function({
+  required String token,
+  required String date,
+  required String reason,
+});
+typedef _GetEditRequestsFn = Future<AttendanceEditRequestsList> Function({
+  required String token,
+});
 
 /// Attendance Notifier - Manages all attendance state and business logic
 class AttendanceNotifier extends ChangeNotifier {
@@ -44,6 +60,9 @@ class AttendanceNotifier extends ChangeNotifier {
   final _GetAttendanceSummaryFn _getAttendanceSummary;
   final _CheckInFn _checkIn;
   final _CheckOutFn _checkOut;
+  final _SubmitEditRequestFn _submitEditRequest;
+  final _SubmitHalfDayRequestFn _submitHalfDayRequest;
+  final _GetEditRequestsFn _getEditRequests;
 
   AttendanceNotifier({
     _GetTodayAttendanceFn? getTodayAttendance,
@@ -51,6 +70,9 @@ class AttendanceNotifier extends ChangeNotifier {
     _GetAttendanceSummaryFn? getAttendanceSummary,
     _CheckInFn? checkIn,
     _CheckOutFn? checkOut,
+    _SubmitEditRequestFn? submitEditRequest,
+    _SubmitHalfDayRequestFn? submitHalfDayRequest,
+    _GetEditRequestsFn? getEditRequests,
   }) : _getTodayAttendance =
            getTodayAttendance ?? AttendanceService.getTodayAttendance,
        _getAttendanceHistory =
@@ -58,7 +80,10 @@ class AttendanceNotifier extends ChangeNotifier {
        _getAttendanceSummary =
            getAttendanceSummary ?? AttendanceService.getAttendanceSummary,
        _checkIn = checkIn ?? AttendanceService.checkIn,
-       _checkOut = checkOut ?? AttendanceService.checkOut;
+       _checkOut = checkOut ?? AttendanceService.checkOut,
+       _submitEditRequest = submitEditRequest ?? AttendanceService.submitEditRequest,
+       _submitHalfDayRequest = submitHalfDayRequest ?? AttendanceService.submitHalfDayRequest,
+       _getEditRequests = getEditRequests ?? AttendanceService.getEditRequests;
 
   AttendanceState get state => _state;
 
@@ -304,18 +329,108 @@ class AttendanceNotifier extends ChangeNotifier {
     }
   }
 
-  /// Check out with photo and location
+  /// Check out with location (no photo required)
   Future<void> checkOut(
     String token,
-    File photoFile,
     Position position,
   ) async {
-    // Note: photoFile parameter is not used by checkOut API.
     await checkOutWithCoordinates(
       token,
       latitude: position.latitude,
       longitude: position.longitude,
     );
+  }
+
+
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Requests
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<bool> submitEditRequest({
+    required String token,
+    required String attendanceId,
+    required String requestedCheckIn,
+    required String requestedCheckOut,
+    required String reason,
+  }) async {
+    debugPrint('📝 AttendanceNotifier: Submitting edit request...');
+    _setState(_state.copyWith(isSubmittingEditRequest: true, errorMessage: null));
+
+    try {
+      await _submitEditRequest(
+        token: token,
+        attendanceId: attendanceId,
+        requestedCheckIn: requestedCheckIn,
+        requestedCheckOut: requestedCheckOut,
+        reason: reason,
+      );
+
+      _setState(_state.copyWith(isSubmittingEditRequest: false));
+      debugPrint('✅ Edit request submitted successfully');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error submitting edit request: $e');
+      _setState(_state.copyWith(
+        isSubmittingEditRequest: false,
+        errorMessage: 'Failed to submit edit request: $e',
+      ));
+      return false;
+    }
+  }
+
+  Future<bool> submitHalfDayRequest({
+    required String token,
+    required String date,
+    required String reason,
+  }) async {
+    debugPrint('🕒 AttendanceNotifier: Submitting half-day request...');
+    _setState(_state.copyWith(isSubmittingHalfDayRequest: true, errorMessage: null));
+
+    try {
+      await _submitHalfDayRequest(
+        token: token,
+        date: date,
+        reason: reason,
+      );
+
+      _setState(_state.copyWith(isSubmittingHalfDayRequest: false));
+      debugPrint('✅ Half-day request submitted successfully');
+      return true;
+    } catch (e) {
+      debugPrint('❌ Error submitting half-day request: $e');
+      _setState(_state.copyWith(
+        isSubmittingHalfDayRequest: false,
+        errorMessage: 'Failed to submit half-day request: $e',
+      ));
+      return false;
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Fetch Edit Requests
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<void> loadMyEditRequests(String token) async {
+    debugPrint('📋 AttendanceNotifier: Loading my edit requests...');
+    _setState(_state.copyWith(isLoadingEditRequests: true, errorMessage: null));
+
+    try {
+      final response = await _getEditRequests(token: token);
+
+      _setState(_state.copyWith(
+        myEditRequests: response,
+        isLoadingEditRequests: false,
+      ));
+
+      debugPrint('✅ My edit requests loaded');
+    } catch (e) {
+      debugPrint('❌ Error loading my edit requests: $e');
+      _setState(_state.copyWith(
+        isLoadingEditRequests: false,
+        errorMessage: 'Failed to load edit requests: $e',
+      ));
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -371,28 +486,42 @@ class AttendanceNotifier extends ChangeNotifier {
   // Statistics Calculation
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Calculate attendance statistics from history
+  /// Calculate attendance statistics from history records (handles all status variants)
   void _calculateStatistics(List<history_model.AttendanceRecord> records) {
     int present = 0;
     int absent = 0;
     int late = 0;
+    int inProgress = 0;
+    int halfDay = 0;
 
     for (var record in records) {
-      final status = record.status.toLowerCase();
+      final status = record.status.toLowerCase().trim();
       if (status == 'present') {
         present++;
       } else if (status == 'absent') {
         absent++;
       } else if (status == 'late') {
         late++;
+      } else if (status == 'in-progress' ||
+          status == 'in_progress' ||
+          status == 'in progress') {
+        inProgress++;
+      } else if (status == 'halfday' ||
+          status == 'half_day' ||
+          status == 'half day' ||
+          status == 'half-day') {
+        halfDay++;
       }
+      // 'leave', 'on-leave', 'wfh' are not counted toward attendance percentage
     }
 
-    final total = present + absent + late;
-    final percentage = total > 0 ? (present / total) * 100 : 0.0;
+    // For percentage: present + late count as "present", inProgress also counts
+    final effectivePresent = present + late + inProgress;
+    final total = present + absent + late + inProgress + halfDay;
+    final percentage = total > 0 ? (effectivePresent / total) * 100 : 0.0;
 
     _setState(_state.copyWith(
-      presentDays: present,
+      presentDays: present + late, // official present (including late)
       absentDays: absent,
       lateDays: late,
       totalWorkingDays: total,
